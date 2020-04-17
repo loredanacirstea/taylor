@@ -16,7 +16,8 @@ object "ComplexStore" {
                 // inputHasSlotSize: dt.boolarray,
                 starts: dt.u32array,
                 // outputIndexes: dt.u8array,
-                input: dt.byte1array
+                input: dt.byte1array,
+                outputIndexes: dt.u8array
             )
             dtmstruct Type(
                 sig_bytecode: dt.dTypeSignature,
@@ -143,8 +144,8 @@ object "ComplexStore" {
                 // leave space for inputs (maybe too small)
                 // TODO what happens if we run multiple graphs & some data is left
                 
-                let _starts_ptr := _data_ptr
-                let _inputs_ptr := add(_starts_ptr, 64)
+                let _starts_ptr1 := _data_ptr
+                let _inputs_ptr := add(_starts_ptr1, 64)
                 let _dtype_ptr := add(_inputs_ptr, 128)
                 
                 // Get dtype data from storage
@@ -156,14 +157,21 @@ object "ComplexStore" {
                     getInput(_input_ptr, sig)
                     
                     // mstore initial starts & inputs
-                    ProgInput.starts.encodeTight(add(_input_ptr, 4), _starts_ptr)
+                    ProgInput.starts.encodeTight(add(_input_ptr, 4), _starts_ptr1)
                     ProgInput.input.encodeTight(add(_input_ptr, 4), _inputs_ptr)
                     
                     let _steps_ptr := add(add(_input_ptr, mslice(_input_ptr, 4)), 4)
                     getProgSteps(_steps_ptr, sig)
                     
-                    executeGraphSteps(_steps_ptr, _starts_ptr, _inputs_ptr, Type.steps(add(_dtype_ptr, 4)), _output_ptr)
-
+                    executeGraphSteps(
+                        _steps_ptr,
+                        _starts_ptr1,
+                        _inputs_ptr,
+                        Type.steps(add(_dtype_ptr, 4)),
+                        _output_ptr,
+                        ProgInput.outputIndexes.position(add(_input_ptr, 4))
+                    )
+                    
                     success := true
                     
                     // return (_output_ptr, 128)
@@ -171,12 +179,12 @@ object "ComplexStore" {
                 }
             }
             
-            function executeGraphSteps(_steps_ptr, _starts_ptr, _inputs_ptr, step_count, _output_ptr) {
+            function executeGraphSteps(_steps_ptr, _starts_ptr_, _inputs_ptr, step_count, _output_ptr, outputIndexes) {
                 let _step_indexes_ptr := add(_inputs_ptr, 512)
                 let _step_starts := add(_step_indexes_ptr, 32)
                 let _step_inputs_ptr := add(_step_starts, 64)
                 
-                let _last_start_ptr := add(_starts_ptr, mul(mslice(_starts_ptr, 4), 4))
+                let _last_start_ptr := add(_starts_ptr_, mul(mslice(_starts_ptr_, 4), 4))
 
                 // loop over steps & execute them
 
@@ -184,28 +192,28 @@ object "ComplexStore" {
                     let _step_ptr := getProgStepPointer(add(_steps_ptr, 4), i)
                        
                     _last_start_ptr, _step_ptr := executeGraphStep(
-                        _step_ptr, _step_indexes_ptr, _starts_ptr, _step_starts, _inputs_ptr, _last_start_ptr, _step_inputs_ptr, i
+                        _step_ptr, _step_indexes_ptr, _starts_ptr_, _step_starts, _inputs_ptr, _last_start_ptr, _step_inputs_ptr
                     )
                 }
-                    
-                // write result to _output_ptr through select
-                // write indexes length
-                mslicestore(_step_indexes_ptr, 1, 4)
-                // only 1 output now - the last one
-                mslicestore(add(_step_indexes_ptr, 4), sub(mslice(_starts_ptr, 4), 1), 1)
-                // return (_step_indexes_ptr, 64)
-                //  if gt(step_count, 0) { return (_step_indexes_ptr, 64) }
-                select(_step_indexes_ptr, _starts_ptr, _inputs_ptr, _step_starts, _step_inputs_ptr)
-                    
+                
+                // return (outputIndexes, 32)
+                   
+                select(
+                    outputIndexes,
+                    _starts_ptr_,
+                    _inputs_ptr,
+                    _step_starts,
+                    _step_inputs_ptr
+                )
+                        
                 // TODO: should return starts & inputs
                 let out_length := lengthFromStarts(_step_starts)
                 mslicestore(_output_ptr, out_length, 4)
                 mmultistore(add(_output_ptr, 4), _step_inputs_ptr, out_length)
-
             }
             
             function executeGraphStep(
-                _step_ptr, _step_indexes_ptr, _starts_ptr, _step_starts, _inputs_ptr, _last_start_ptr, _step_inputs_ptr, i
+                _step_ptr, _step_indexes_ptr, _starts_ptr2, _step_starts, _inputs_ptr, _last_start_ptr, _step_inputs_ptr
             ) -> _new_last_start_ptr, _new_step_ptr {
                         
                     // write step selection indexes
@@ -217,7 +225,7 @@ object "ComplexStore" {
                     // if eq(ProgStep.typeid(_step_ptr), 0x33333335) { return (_inputs_ptr, 64) }
                     
                     // select from indexes & starts -> write at _step_inputs_ptr
-                    select(_step_indexes_ptr, _starts_ptr, _inputs_ptr, _step_starts, _step_inputs_ptr)
+                    select(_step_indexes_ptr, _starts_ptr2, _inputs_ptr, _step_starts, _step_inputs_ptr)
                         
                     // return (_step_inputs_ptr, 72)
                     // if eq(i, 1) { return (_step_inputs_ptr, 128) }
@@ -231,26 +239,24 @@ object "ComplexStore" {
                     // if eq(ProgStep.typeid(_step_ptr), 0x44444444) { return (0, 128) }
                     
                     // we add the output to _inputs_ptr & add its size to _starts_ptr
-                    let out_size := mslice(0, 4)
+                    //  let out_size := mslice(0, 4)
                     // get current input size from last start
                     let inputs_size := mslice(_last_start_ptr, 4)
 
                     // add output to inputs
-                    mmultistore(add(add(_inputs_ptr, 4), inputs_size), 4, out_size)
+                    mmultistore(add(add(_inputs_ptr, 4), inputs_size), 4,  mslice(0, 4))
                         
                     // if eq(ProgStep.typeid(_step_ptr), 0x44444444) { return (_inputs_ptr, 64) }
                         
+                    _new_last_start_ptr := add(_last_start_ptr, 4)
+                    _new_step_ptr := add(_step_ptr, 32)
+                   
                     // add the new start
-                    _last_start_ptr := add(_last_start_ptr, 4)
-                    mslicestore(_last_start_ptr, add(inputs_size, out_size), 4)
+                    mslicestore(_new_last_start_ptr, add(inputs_size,  mslice(0, 4)), 4)
                         
                     // change starts length & _last_start_ptr
-                    mstorehead(_starts_ptr, add(mslice(_starts_ptr, 4), 1), 4)
-                        
-                    _step_ptr := add(_step_ptr, 32)
-                    _new_last_start_ptr := _last_start_ptr
-                    _new_step_ptr := _step_ptr
-                        
+                    mstorehead(_starts_ptr2, add(mslice(_starts_ptr2, 4), 1), 4)
+
                     // return (_inputs_ptr, 72)
                     // if eq(i, 1) { return (_starts_ptr, 128) }
                     // if eq(ProgStep.typeid(_step_ptr), 0x44444444) { return (_inputs_ptr, 64) }
