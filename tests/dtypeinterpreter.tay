@@ -27,31 +27,32 @@ object "ComplexStore" {
                 // name: dt.byte4  // char: byte1 ? u8 ascii ? bit8 ?
                 steps: dt.u8
             )
-            
+
             // mapping(sig_b -> Type) dtypes
             // mapping(sig_b -> uint8 -> ProgStep) progsteps
             // maping(sig_b -> ProgInput) proginputs
-            
-            
+
+
             // mapping(sig_in -> [sig_b])) in
             // mapping(sig_out -> [sig_b]) out
             // mapping(sig_b -> Type)
             // mapping(name: string -> size: u32 -> sig_b)
-            
-            
+
+
             // this ptr gets overwritten after each internal function call
             let _internal_output_ptr := 128
             let _calldata := 256
             let _calldata2 := add(_calldata, 4)
             let _data := add(_calldata2, 4)
-            
+            let _internal_data := add(_data, 72)
+
             // input: ProgInput(_data)
             // step length: _data + ProgInput.size(_data)
             // first step: ProgStep(_data + ProgInput.size(_data) - 4)
             // second step: first_step_pos + first_step.length
-            
+
             calldatacopy(_calldata, 0, calldatasize())
-            
+
             let fsig := mslice(_calldata, 4)
 
             // // External calls only pass through execute
@@ -59,58 +60,60 @@ object "ComplexStore" {
             //     mslicestore(0, 0xffff, 2)
             //     revert(0, 2)
             // }
-            
+
             switch fsig
-                
+
             // Execute function - the only one that returns
             case 0xffffffff {
-                    
+
                 // the actual function called
                 //  TODO: restrict to dtnew & dtcast
                 let exec_fsig := mslice(_calldata2, 4)
-                
+
                 // can be populated from ProgInput
-                
+
                 // !!! always 64 diff between them
                 // let starts_ptr := _data
                 // let inputs_ptr := add(starts_ptr, 64)
-                
-                executeInternal(exec_fsig, _data, _internal_output_ptr)
-                    
+
+                addGraphProgInput(_data, _internal_data, add(_internal_data, 64))
+
+                executeInternal(exec_fsig, _internal_data, _internal_output_ptr)
+
                 let size := mslice(_internal_output_ptr, 4)
                 return(add(_internal_output_ptr, 4), size)
 
             }
-            
+
             // case dtsig"function store(bytes4 sig) view public returns(u32)" {
             case 0xfffffffe {
                 // sstore(mappingInKey(Data.type.sig_in(_data)), Data.type.sig_bytecode(_data))
                 // sstore(mappingOutKey(Data.type.sig_out(_data)), Data.type.sig_bytecode(_data))
-                
+
                 // input length
                 let _ptr := _calldata2
                 let sig_bytecode := Type.sig_bytecode(add(_ptr, 4))
-                
+
                 storeType(_ptr, sig_bytecode)
-                
+
                 _ptr := add(add(_ptr, mslice(_ptr, 4)), 4)
                 storeInput(_ptr, sig_bytecode)
-                
+
                 _ptr := add(add(_ptr, mslice(_ptr, 4)), 4)
                 storeProgSteps(_ptr, sig_bytecode)
             }
-            
+
             // read from storage
             case 0xfffffffd {
                 let sig := mslice(_calldata2, 4)
                 let _output_ptr := _internal_output_ptr
                 let length := 0
-                
+
                 let _dtype_ptr := add(_output_ptr, 4)
                 getType(_dtype_ptr, sig)
 
                 length := add(add(length, mslice(_dtype_ptr, 4)), 4)
-                
+
                 let _input_ptr := add(_dtype_ptr, length)
                 getInput(_input_ptr, sig)
                 length := add(add(length, mslice(_input_ptr, 4)), 4)
@@ -119,15 +122,15 @@ object "ComplexStore" {
                 getProgSteps(_step_ptr, sig)
 
                 length := add(add(length, mslice(_step_ptr, 4)), 4)
-                
+
                 return(_dtype_ptr, length)
             }
-            
+
             default {
                 mslicestore(0, 0xffff, 2)
                 revert(0, 2)
             }
-            
+
             function executeInternal(exec_fsig, _data_ptr, _output_ptr) {
                 // if eq(exec_fsig, 0x44444444) { return (_data_ptr, 32) }
                 let success := executeGraph(exec_fsig, _data_ptr, _output_ptr)
@@ -136,18 +139,19 @@ object "ComplexStore" {
                     executeBaseFunction(exec_fsig, _data_ptr, _output_ptr)
                 }
             }
-            
-            // Only 1 output per graph step is supported
+
             function executeGraph(sig, _data_ptr, _output_ptr) -> success {
                 success := false
-                
+
                 // leave space for inputs (maybe too small)
                 // TODO what happens if we run multiple graphs & some data is left
-                
+
+                // There might be external inputs at _starts_ptr & _inputs_ptr
+                // we get the length & write ProgInput.input after it
                 let _starts_ptr1 := _data_ptr
                 let _inputs_ptr := add(_starts_ptr1, 64)
                 let _dtype_ptr := add(_inputs_ptr, 128)
-                
+
                 // Get dtype data from storage
                 getType(_dtype_ptr, sig)
 
@@ -155,14 +159,13 @@ object "ComplexStore" {
                     // Get dtype input data from storage
                     let _input_ptr := add(add(_dtype_ptr, mslice(_dtype_ptr, 4)), 4)
                     getInput(_input_ptr, sig)
-                    
-                    // mstore initial starts & inputs
-                    ProgInput.starts.encodeTight(add(_input_ptr, 4), _starts_ptr1)
-                    ProgInput.input.encodeTight(add(_input_ptr, 4), _inputs_ptr)
-                    
+
+                    // mstore add graph starts & inputs to possibly already existing starts & inputs
+                    addGraphProgInput(add(_input_ptr, 4), _starts_ptr1, _inputs_ptr)
+
                     let _steps_ptr := add(add(_input_ptr, mslice(_input_ptr, 4)), 4)
                     getProgSteps(_steps_ptr, sig)
-                    
+
                     executeGraphSteps(
                         _steps_ptr,
                         _starts_ptr1,
@@ -171,33 +174,51 @@ object "ComplexStore" {
                         _output_ptr,
                         ProgInput.outputIndexes.position(add(_input_ptr, 4))
                     )
-                    
+
                     success := true
-                    
+
                     // return (_output_ptr, 128)
                     // if eq(sig, 0x44444444) { return (_output_ptr, 128) }
                 }
             }
-            
+
+            function addGraphProgInput(_prog_input_ptr, _starts_ptr, _inputs_ptr) {
+                //  these starts already account for what data is expected from sources
+                // external to this graph - they have correct values
+
+                let source_starts := ProgInput.starts.position(_prog_input_ptr)
+                let source_inputs := ProgInput.input.position(_prog_input_ptr)
+                let start_size := mul(mslice(source_starts, 4), 4)
+                let input_size := lengthFromStarts(source_starts)
+
+                let last_start_index := lastStartsIndex(_starts_ptr)
+                let last_input_index := add(add(_inputs_ptr, lengthFromStarts(_starts_ptr)), 4)
+
+                mmultistore(add(last_start_index, 4), add(source_starts, 4), start_size)
+                mstorehead(_starts_ptr, add(mslice(_starts_ptr, 4), mslice(source_starts, 4)), 4)
+
+                mmultistore(last_input_index, add(source_inputs, 4), input_size)
+                mstorehead(_inputs_ptr, add(mslice(_inputs_ptr, 4), input_size), 4)
+            }
+
             function executeGraphSteps(_steps_ptr, _starts_ptr_, _inputs_ptr, step_count, _output_ptr, outputIndexes) {
                 let _step_indexes_ptr := add(_inputs_ptr, 512)
                 let _step_starts := add(_step_indexes_ptr, 32)
                 let _step_inputs_ptr := add(_step_starts, 64)
-                
-                let _last_start_ptr := add(_starts_ptr_, mul(mslice(_starts_ptr_, 4), 4))
+
+                let _last_start_ptr := lastStartsIndex(_starts_ptr_)
 
                 // loop over steps & execute them
-
                 for { let i := 0 } lt(i, step_count) { i := add(i, 1) } {
                     let _step_ptr := getProgStepPointer(add(_steps_ptr, 4), i)
-                       
+
                     _last_start_ptr, _step_ptr := executeGraphStep(
                         _step_ptr, _step_indexes_ptr, _starts_ptr_, _step_starts, _inputs_ptr, _last_start_ptr, _step_inputs_ptr
                     )
                 }
-                
-                // return (outputIndexes, 32)
-                   
+
+                // return (_inputs_ptr, 64)
+
                 select(
                     outputIndexes,
                     _starts_ptr_,
@@ -205,39 +226,38 @@ object "ComplexStore" {
                     _step_starts,
                     _step_inputs_ptr
                 )
-                        
+
                 // TODO: should return starts & inputs
                 let out_length := lengthFromStarts(_step_starts)
                 mslicestore(_output_ptr, out_length, 4)
                 mmultistore(add(_output_ptr, 4), _step_inputs_ptr, out_length)
+
             }
-            
+
             function executeGraphStep(
                 _step_ptr, _step_indexes_ptr, _starts_ptr2, _step_starts, _inputs_ptr, _last_start_ptr, _step_inputs_ptr
             ) -> _new_last_start_ptr, _new_step_ptr {
-                        
+
                     // write step selection indexes
                     ProgStep.inputIndexes.encodeTight(_step_ptr, _step_indexes_ptr)
-                    
-                    // return (_dtype_ptr, 72)
+
                     // if eq(i, 1) { return (_step_starts, 128) }
-                    // return (_dtype_ptr, 72)
                     // if eq(ProgStep.typeid(_step_ptr), 0x33333335) { return (_inputs_ptr, 64) }
-                    
+
                     // select from indexes & starts -> write at _step_inputs_ptr
                     select(_step_indexes_ptr, _starts_ptr2, _inputs_ptr, _step_starts, _step_inputs_ptr)
-                        
+
                     // return (_step_inputs_ptr, 72)
                     // if eq(i, 1) { return (_step_inputs_ptr, 128) }
                     // if eq(ProgStep.typeid(_step_ptr), 0x33333335) { return (_inputs_ptr, 64) }
 
                     // output is temporarily written at mem 0
                     executeInternal(ProgStep.typeid(_step_ptr), _step_starts, 0)
-                    
+
                     // return (0, 72)
                     // if eq(i, 1) { return (0, 64) }
                     // if eq(ProgStep.typeid(_step_ptr), 0x44444444) { return (0, 128) }
-                    
+
                     // we add the output to _inputs_ptr & add its size to _starts_ptr
                     //  let out_size := mslice(0, 4)
                     // get current input size from last start
@@ -245,15 +265,15 @@ object "ComplexStore" {
 
                     // add output to inputs
                     mmultistore(add(add(_inputs_ptr, 4), inputs_size), 4,  mslice(0, 4))
-                        
+
                     // if eq(ProgStep.typeid(_step_ptr), 0x44444444) { return (_inputs_ptr, 64) }
-                        
+
                     _new_last_start_ptr := add(_last_start_ptr, 4)
                     _new_step_ptr := add(_step_ptr, 32)
-                   
+
                     // add the new start
                     mslicestore(_new_last_start_ptr, add(inputs_size,  mslice(0, 4)), 4)
-                        
+
                     // change starts length & _last_start_ptr
                     mstorehead(_starts_ptr2, add(mslice(_starts_ptr2, 4), 1), 4)
 
@@ -261,11 +281,11 @@ object "ComplexStore" {
                     // if eq(i, 1) { return (_starts_ptr, 128) }
                     // if eq(ProgStep.typeid(_step_ptr), 0x44444444) { return (_inputs_ptr, 64) }
             }
-            
+
             function executeBaseFunction(sig, starts_ptr, _output_ptr) {
                 let _input_ptr := add(starts_ptr, 64)
                 switch sig
-                
+
                 // contig
                 case 0x33333335 {
                     //  input for contig: starts, inputs; bytes_length is second input
@@ -273,31 +293,32 @@ object "ComplexStore" {
                     let bytes_length := sub(mslice(add(starts_ptr, 8), 4), mslice(add(starts_ptr, 4), 4))
                     contig(mslice(_input_ptr, 4), bytes_length, add(_input_ptr, 4), _output_ptr)
                 }
-    
+
                 // byte1
                 case 0x33333338 {
                     let ans := byte1()
                     mslicestore(_output_ptr, 1, 4)
                     mslicestore(add(_output_ptr, 4), ans, 1)
                 }
-                
-                // // dtnew
-                // case 0x33333337 {
-                //     let _ptr := ProgInput.input.position(_data_ptr)
-                    
-                //     let type_id := mslice(_ptr, 8)
-                //     let size := mslice(add(_ptr, 4), 8)
-                //     mslicestore(_output_ptr, size, 4)
-                //     dtnew(type_id, size, add(_output_ptr, 4))
-                // }
-                
+
+                // function dtnew(abstract_type_id, size, _primordial_matter_ptr)
+                case 0x33333337 {
+                    let type_id := mslice(_input_ptr, 4)
+                    // let size := mslice(add(_input_ptr, 4), 4)
+                    mstore(_input_ptr, 0x00000000)
+                    mstore(starts_ptr, 0x0000000000000000000000000000000000000000000000000000000000000000)
+
+                    executeInternal(type_id, starts_ptr, _output_ptr)
+                    // return (_output_ptr, 64)
+                }
+
                 // // select
                 // case 0x33333336 {
                 //     let _ptr := ProgInput.input.position(_data_ptr)
                 //     // don't include input.length
                 //     // selectt(add(_ptr, 4), _output_ptr)
                 // }
-                
+
                 // // dtadd
                 // case 0x33333333 {
                 //     let _ptr := ProgInput.input.position(_data_ptr)
@@ -305,7 +326,7 @@ object "ComplexStore" {
                 //     mslicestore(_output_ptr, 4, 4)
                 //     mslicestore(add(_output_ptr, 4), ans, 4)
                 // }
-                
+
                 // // dtsub
                 // case 0x33333334 {
                 //     let _ptr := ProgInput.input.position(_data_ptr)
@@ -313,27 +334,31 @@ object "ComplexStore" {
                 //     mslicestore(_output_ptr, 4, 4)
                 //     mslicestore(add(_output_ptr, 4), ans, 4)
                 // }
-                
+
                  default {
                     mslicestore(0, 0xfffe, 2)
                     revert(0, 2)
                 }
             }
-            
-            function lengthFromStarts(_starts_ptr) -> _length {
-                _length := mslice(add(_starts_ptr, mul(mslice(_starts_ptr, 4), 4)), 4)
+
+            function lastStartsIndex(_starts_ptr) -> _index {
+                _index := add(_starts_ptr, mul(mslice(_starts_ptr, 4), 4))
             }
-            
+
+            function lengthFromStarts(_starts_ptr) -> _length {
+                _length := mslice(lastStartsIndex(_starts_ptr), 4)
+            }
+
             function mslicestore(_ptr, val, length) {
                 let slot := 32
                 mstore(_ptr, shl(mul(sub(slot, length), 8), val))
             }
-            
+
             function sslicestore(storageKey, val, length) {
                 let slot := 32
                 sstore(storageKey, shl(mul(sub(slot, length), 8), val))
             }
-            
+
             // Use carefully - replaces head bytes in a byte32 chunk
             function mstorehead(_ptr, value, length) {
                 let slot := 32
@@ -341,15 +366,15 @@ object "ComplexStore" {
                 mslicestore(_ptr, value, length)
                 mslicestore(add(_ptr, length), temp, safeSub(slot, length))
             }
-            
+
             function mmultistore(_ptr_target, _ptr_source, sizeBytes) {
                 let slot := 32
                 let size := div(sizeBytes, slot)
- 
+
                 for { let i := 0 } lt(i, size)  { i := add(i, 1) } {
                     mstore(add(_ptr_target, mul(i, slot)), mload(add(_ptr_source, mul(i, slot))))
                 }
-                
+
                 let current_length :=  mul(size, slot)
                 let remaining := sub(sizeBytes, current_length)
                 if gt(remaining, 0) {
@@ -360,7 +385,7 @@ object "ComplexStore" {
                     )
                 }
             }
-            
+
             function utils_or(condition, t_output, f_output) -> ans {
                 switch condition
                 case 1 {
@@ -370,39 +395,39 @@ object "ComplexStore" {
                     ans := f_output
                 }
             }
-            
+
             function not_zero_then_value(val_to_check, then_value) -> ans {
                 ans := utils_or(iszero(val_to_check), 0, then_value)
             }
-            
+
             function min(a, b) -> c {
                 switch lt(a, b)
                 case 1 { c := a }
                 case 0 { c := b }
             }
-            
+
             function max(a, b) -> c {
                 switch gt(a, b)
                 case 1 { c := a }
                 case 0 { c := b }
             }
-            
+
             function byte1() -> ans {
                 ans := 0x11
             }
-            
+
              function dtadd(pointer) -> ans {
                 let a := mslice(pointer, 4)
                 let b := mslice(add(pointer, 4), 4)
                 ans := add(a, b)
             }
-            
+
             function dtsub(pointer) -> ans {
                 let a := mslice(pointer, 4)
                 let b := mslice(add(pointer, 4), 4)
                 ans := sub(a, b)
             }
-            
+
             function contig(count, b_length, b_pointer, output_ptr) {
                 let slot := 32
                 mslicestore(output_ptr, mul(count, b_length), 4)
@@ -413,78 +438,65 @@ object "ComplexStore" {
                     mstore(add(ans_ptr, mul(b_length, i)), shl(mul(sub(slot, b_length), 8), mslice(b_pointer, b_length)))
                 }
             }
-            
-            // function dtnew(type_id, size, _ptr) {
-            //     //  size - if types have same id
-                
-            //     // following is defined by a type_id's progsteps
-            //     // dtnew -> gets dtype data -> executeInternal(dtype.steps)
-            //     let pt := 0
-                
-            //     mslicestore(pt, size, 4)
-            //     mslicestore(add(pt, 4), 1, 4)
-            //     mslicestore(add(pt, 8), 0x00, 1)
-            //     contig(pt, _ptr)
-            // }
-            
+
             function cast(type_id1, value_ptr, type_id2, answ_ptr) {
-                
+
             }
-            
+
             // function selectt(pointer, _output_ptr) {
             //     let select_pointer := pointer
             //     let select_length := mslice(select_pointer, 4)
-                
+
             //     let starts_pointer := add(select_pointer, mul(select_length, 4))
             //     let starts_length := mslice(starts_pointer, 4)
-                
+
             //     let b_pointer := add(starts_pointer, mul(starts_length, 4))
-                
+
             //     select(select_pointer, starts_pointer, b_pointer, _output_ptr)
             // }
-            
+
             // TODO: rewrite this more efficient
             function select(select_ptr, starts_ptr, inputs_ptr, _output_starts, _output_ptr) {
                 // if eq(mslice(select_ptr,4), 1) { return (inputs_ptr, 32) }
-                
+
                 let select_length := mslice(select_ptr, 4)
                 let select_pointer := add(select_ptr, 4)
                 let starts_pointer := add(starts_ptr, 4)
                 let output_pointer := _output_ptr
-                
+
                 selectInner(select_pointer, starts_pointer, add(inputs_ptr, 4), _output_starts, output_pointer, select_length)
             }
-            
+
             function selectInner(select_ptr, starts_ptr, inputs_ptr, _output_starts, _output_ptr, select_length) {
                 let sum_length := 0
-                
+
                 mslicestore(_output_starts, select_length, 4)
-                
+
                 // if eq(mslice(select_ptr, 1), 2) { return (_output_starts, 32) }
-                
+
                 for { let i := 0 } lt(i, select_length) { i := add(i, 1) } {
                     let start, length := selectOne(select_ptr, i, starts_ptr, _output_starts, sum_length)
 
                     mslicestore(add(_output_ptr, sum_length),  mslice(add(inputs_ptr, start), length), length)
-                   
+
                     sum_length := add(sum_length, length)
-                    
+
                     // return (_output_ptr, 128)
                     // if gt(i, 0) { return (_output_ptr, 128)  }
                 }
             }
-            
+
             function selectOne(select_ptr, i, _starts_ptr, _output_starts, sum_length) -> start, length {
                 let output_length := mslice(_output_starts, 4)
                 let index := mslice(add(select_ptr, mul(i, 1)), 1) // byte1 index value
-                
+
                 start := 0
                 if gt(index, 0) {
                     start := mslice(add(_starts_ptr, mul(sub(index, 1), 4)), 4)
                 }
-                
+
                 length := sub(mslice(add(_starts_ptr, mul(index, 4)), 4), start)
-                
+
                 mslicestore(add(add(_output_starts, 4), mul(i, 4)), add(sum_length, length), 4)
 
                 // if gt(i, 0) { mstore(0, output_length)  return (0, 32)  }
@@ -500,68 +512,68 @@ object "ComplexStore" {
                     dtapply(type_id2, arg_ptr, res_ptr)
                 }
             }
-            
+
             function dtapply(type_id, arg_ptr, res_ptr) {
                 // fsig := type_id
             }
-            
-                
+
+
                 // case 0x22222222 {
                 //     mstore(_data, shl(mul(sub(32, 4), 8), 0x00000011))  // sig_bytecode
                 //     mstore(add(_data, 4), shl(mul(sub(32, 4), 8), 0x00000022))  // sig_in
                 //     mstore(add(_data, 8), shl(mul(sub(32, 4), 8), 0x00000033))  // sig_out
                 //     mstore(add(_data, 12), shl(mul(sub(32, 4), 8), 0x00000008))  // ssize
-                    
+
                 //     mstore(add(_data, 16), shl(mul(sub(32, 4), 8), 0x00000002)) // steps length
-                    
+
                 //     mstore(add(_data, 20), shl(mul(sub(32, 4), 8), 0xcccccccc)) // typeid
                 //     mstore(add(_data, 24), shl(mul(sub(32, 5), 8), 0x0000000105)) // inputIndexes
                 //     mstore(add(_data, 29), shl(mul(sub(32, 5), 8), 0x0000000101)) // outputHasSlotSize
-                    
+
                 //     mstore(add(_data, 34), shl(mul(sub(32, 4), 8), 0xdddddddd)) // typeid
                 //     mstore(add(_data, 38), shl(mul(sub(32, 5), 8), 0x0000000106)) // inputIndexes
                 //     mstore(add(_data, 43), shl(mul(sub(32, 5), 8), 0x0000000100)) // outputHasSlotSize
-                    
+
                 //     fsig := 0x2edc3142
                 // }
-                
+
                 // case dtsig"function getSigBByIn(byte4 sig) view public returns(u32)" {
                 //     let key := mappingInKey(Data.type.sig_in(_data))
                 //     mstore(0, sload(key))
                 //     return (0, 32)
                 // }
-                
+
                 // case dtsig"function getSigBByOut(byte4 sig) view public returns(u32)" {
                 //     let key := mappingOutKey(Data.type.sig_out(_data))
                 //     mstore(0, sload(key))
                 //     return (0, 32)
                 // }
-                
-            
+
+
             function storeType(_pointer, mapKey) {
                 storeData(_pointer, mappingTypeKey(mapKey))
             }
-            
+
             function storeInput(_pointer, mapKey) {
                 storeData(_pointer, mappingProgInputKey(mapKey))
             }
-            
+
             function storeProgSteps(_pointer, mapKey) {
                 storeData(_pointer, mappingProgStepsKey(mapKey))
             }
-            
+
             function getType(_pointer, mapKey) {
                 getStoredData(_pointer, mappingTypeKey(mapKey))
             }
-            
+
             function getInput(_pointer, mapKey) {
                 getStoredData(_pointer, mappingProgInputKey(mapKey))
             }
-            
+
             function getProgSteps(_pointer, mapKey) {
                 getStoredData(_pointer, mappingProgStepsKey(mapKey))
             }
-            
+
             // does not contain the steps size
             function getProgStepPointer(_pointer, index) -> _new_ptr {
                 _new_ptr := _pointer
@@ -570,26 +582,26 @@ object "ComplexStore" {
                     _new_ptr := add(add(_new_ptr, 8), mul(input_indexes_length, 1))
                 }
             }
-            
+
             function storeData(_pointer, storageKey) {
                 let slot := 32
                 let sizeBytes := add(mslice(_pointer, 4), 4)
                 let size := div(sizeBytes, slot)
-                
+
                 for { let i := 0 } lt(i, size)  { i := add(i, 1) } {
                     sstore(add(storageKey, i), mload(add(_pointer, mul(i, slot))))
                 }
-                
+
                 let current_length :=  mul(size, slot)
                 let remaining := sub(sizeBytes, current_length)
                 if gt(remaining, 0) {
                     sslicestore(add(storageKey, size), mslice(add(_pointer, current_length), remaining), remaining)
                 }
             }
-            
+
             function getStoredData(_pointer, storageKey) {
                 let slot := 32
-                
+
                 // read first storage slot, for the length
                 mstore(_pointer, sload(storageKey))
 
@@ -603,7 +615,7 @@ object "ComplexStore" {
                     for { let i := 0 } lt(i, size)  { i := add(i, 1) } {
                         mstore(add(_pointer, mul(i, slot)), sload(add(storageKey, i)))
                     }
-                    
+
                     let current_length :=  mul(size, slot)
                     let remaining := sub(sizeBytes, current_length)
                     if gt(remaining, 0) {
@@ -611,37 +623,37 @@ object "ComplexStore" {
                     }
                 }
             }
-            
+
             // function mappingInKey(key) -> storageKey {
             //     storageKey := mappingStorageKey(0, key)
             // }
-            
+
             // function mappingOutKey(key) -> storageKey {
             //     storageKey := mappingStorageKey(1, key)
             // }
-            
+
             function mappingTypeKey(key) -> storageKey {
                 storageKey := mappingStorageKey(0, key)
             }
-            
+
             function mappingProgInputKey(key) -> storageKey {
                 storageKey := mappingStorageKey(1, key)
             }
-            
+
             function mappingProgStepsKey(key) -> storageKey {
                 storageKey := mappingStorageKey(2, key)
             }
-            
+
             // function mappingNamedKey(key1, key2) -> storageKey {
             //     storageKey := mappingStorageKey2(3, key1, key2)
             // }
-            
+
              // mapping(bytes32(max) => *)
             function mappingStorageKey(storageIndex, key) -> storageKey {
                 mstore(0, key, storageIndex)
                 storageKey := keccak256(0, 64)
             }
-    
+
             // // mapping(bytes32(max) => mapping(bytes32(max) => *)
             // function mappingStorageKey2(storageIndex, key1, key2) -> storageKey {
             //     mstore(0, key1, storageIndex, key2)
@@ -651,4 +663,3 @@ object "ComplexStore" {
         }
     }
 }
-
