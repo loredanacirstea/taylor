@@ -422,6 +422,7 @@ object "ComplexStore" {
                 let ans_ptr := add(output_ptr, 4)
 
                 for { let i := 0 } lt(i, count) { i := add(i, 1) } {
+                    // TODO mmultistore
                     mstore(add(ans_ptr, mul(b_length, i)), shl(mul(sub(slot, b_length), 8), mslice(b_pointer, b_length)))
                 }
             }
@@ -474,24 +475,33 @@ object "ComplexStore" {
                 // if eq(mslice(select_ptr, 1), 2) { return (_output_starts, 32) }
 
                 for { let i := 0 } lt(i, select_length) { i := add(i, 1) } {
-                    let start, length := selectOne(select_ptr, i, starts_ptr, _output_starts, sum_length)
+                    let index := mslice(add(select_ptr, mul(i, 1)), 1)
+                    let start, length := selectOne(select_ptr, index, starts_ptr, inputs_ptr)
 
+                    mslicestore(add(add(_output_starts, 4), mul(i, 4)), add(sum_length, length), 4)
+
+                    // TODO: mmultistore!!
                     mslicestore(add(_output_ptr, sum_length),  mslice(add(inputs_ptr, start), length), length)
 
                     sum_length := add(sum_length, length)
                 }
             }
 
-            function selectOne(select_ptr, i, _starts_ptr, _output_starts, sum_length) -> start, length {
-                let output_length := mslice(_output_starts, 4)
-                let index := mslice(add(select_ptr, mul(i, 1)), 1) // byte1 index value
-
+            function selectOne(select_ptr, index, _starts_ptr, inputs_ptr) -> start, length {
                 start := 0
                 if gt(index, 0) {
+                    // enforced rule for making the selector dynamic, based on ProgInput values
+                    // for implementing Union type
+                    if gt(index, 128) {
+                        index := sub(255, index)
+                        let st, len := selectOne(select_ptr, index, _starts_ptr, inputs_ptr)
+                        index := mslice(add(inputs_ptr, st), len)
+                    }
                     start := mslice(add(_starts_ptr, mul(sub(index, 1), 4)), 4)
                 }
 
                 length := sub(mslice(add(_starts_ptr, mul(index, 4)), 4), start)
+            }
 
             function reduce(funcsig, array_ptr, bytes_length, accumulator_ptr, accumulator_length, _output_ptr) {
                 let len := mslice(array_ptr, 4)
