@@ -291,6 +291,12 @@ object "ComplexStore" {
                     mmultistore(add(_output_ptr, 4), _input_ptr, size)
                 }
 
+                // prod
+                case 0x33333333 {
+                    mslicestore(_output_ptr, 4, 4)
+                    mslicestore(add(_output_ptr, 4), dtprod(_input_ptr), 4)
+                }
+
                 // // select
                 // case 0x33333336 {
                 //     let _ptr := ProgInput.input.position(_data_ptr)
@@ -405,6 +411,12 @@ object "ComplexStore" {
                 let a := mslice(pointer, 4)
                 let b := mslice(add(pointer, 4), 4)
                 ans := sub(a, b)
+            }
+
+            function dtprod(pointer) -> ans {
+                let a := mslice(pointer, 4)
+                let b := mslice(add(pointer, 4), 4)
+                ans := mul(a, b)
             }
 
             function contig(count, b_length, b_pointer, output_ptr) {
