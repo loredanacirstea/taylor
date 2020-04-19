@@ -10,8 +10,6 @@ object "ComplexStore" {
                 inputIndexes: dt.u8array
             )
             dtmstruct ProgInput(
-                // count: dt.u8,
-                // isize: dt.u32,
                 starts: dt.u32array,
                 input: dt.byte1array
             )
@@ -24,8 +22,9 @@ object "ComplexStore" {
                 steps: dt.u8
             )
 
+
+
             // mapping(sig_b -> Type) dtypes
-            // mapping(sig_b -> uint8 -> ProgStep) progsteps
             // maping(sig_b -> ProgInput) proginputs
 
 
@@ -52,17 +51,15 @@ object "ComplexStore" {
             case 0xffffffff {
                 let exec_fsig := mslice(_calldata2, 4)
 
-                // !!! always 64 diff between them
+                // !!! always 96 diff between them
                 // let starts_ptr := _data
-                // let inputs_ptr := add(starts_ptr, 64)
+                // let inputs_ptr := add(starts_ptr, 96)
 
-                addGraphProgInput(_data, _internal_data, add(_internal_data, 64))
-
+                addGraphProgInput(_data, _internal_data, add(_internal_data, 96))
                 executeInternal(exec_fsig, _internal_data, _internal_output_ptr)
 
                 let size := mslice(_internal_output_ptr, 4)
                 return(add(_internal_output_ptr, 4), size)
-
             }
 
             // case dtsig"function store(bytes4 sig) view public returns(u32)" {
@@ -126,7 +123,7 @@ object "ComplexStore" {
                 // There might be external inputs at _starts_ptr & _inputs_ptr
                 // we get the length & write ProgInput.input after it
                 let _starts_ptr1 := _data_ptr
-                let _inputs_ptr := add(_starts_ptr1, 64)
+                let _inputs_ptr := add(_starts_ptr1, 96)
                 let _dtype_ptr := add(_inputs_ptr, 128)
 
                 // Get dtype data from storage
@@ -175,7 +172,7 @@ object "ComplexStore" {
             function executeGraphSteps(_steps_ptr, _starts_ptr_, _inputs_ptr, step_count, _output_ptr) {
                 let _step_indexes_ptr := add(_inputs_ptr, 512)
                 let _step_starts := add(_step_indexes_ptr, 32)
-                let _step_inputs_ptr := add(_step_starts, 64)
+                let _step_inputs_ptr := add(_step_starts, 96)
 
                 let _last_start_ptr := lastStartsIndex(_starts_ptr_)
 
@@ -247,12 +244,12 @@ object "ComplexStore" {
             }
 
             function executeBaseFunction(sig, starts_ptr, _output_ptr) -> success {
-                let _input_ptr := add(starts_ptr, 64)
+                let _input_ptr := add(starts_ptr, 96)
                 success := true
 
                 switch sig
 
-                // contig
+                // contig (count, b_length, b_pointer, output_ptr)
                 case 0x33333335 {
                     //  input for contig: starts, inputs; bytes_length is second input
                     // and we get the length by start[1] - start[0]
