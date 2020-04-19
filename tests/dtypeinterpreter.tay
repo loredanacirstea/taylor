@@ -335,9 +335,8 @@ object "ComplexStore" {
             // Use carefully - replaces head bytes in a byte32 chunk
             function mstorehead(_ptr, value, length) {
                 let slot := 32
-                let temp := mload(_ptr)
-                mslicestore(_ptr, value, length)
-                mslicestore(add(_ptr, length), temp, safeSub(slot, length))
+                let temp := add(mslice(add(_ptr, 4), sub(slot, 4)), shl(mul(sub(slot, length), 8), value))
+                mstore(_ptr, temp)
             }
 
             function mmultistore(_ptr_target, _ptr_source, sizeBytes) {
