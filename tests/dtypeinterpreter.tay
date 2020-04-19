@@ -212,18 +212,14 @@ object "ComplexStore" {
                     // write step selection indexes
 
                     ProgStep.inputIndexes.encodeTight(_step_ptr, _step_indexes_ptr)
-                    // mmultistore(_step_indexes_ptr, add(_step_ptr, 4), add(mslice(add(_step_ptr, 4), 4), 4))
 
                     // if eq(i, 1) { return (_step_starts, 128) }
-                    // if eq(ProgStep.typeid(_step_ptr), 0x33333335) { return (_step_indexes_ptr, 64) }
-
 
                     // select from indexes & starts -> write at _step_inputs_ptr
                     select(_step_indexes_ptr, _starts_ptr2, _inputs_ptr, _step_starts, _step_inputs_ptr)
 
                     // output is temporarily written at mem 0
                     executeInternal(ProgStep.typeid(_step_ptr), _step_starts, 0)
-
 
                     // we add the output to _inputs_ptr & add its size to _starts_ptr
                     //  let out_size := mslice(0, 4)
@@ -295,6 +291,20 @@ object "ComplexStore" {
                 case 0x33333333 {
                     mslicestore(_output_ptr, 4, 4)
                     mslicestore(add(_output_ptr, 4), dtprod(_input_ptr), 4)
+                }
+
+
+                // reduce : ffsig, array, initial value
+                case 0x33333331 {
+                    // first elem is inputs length ??
+                    let ffsig := mslice(add(_input_ptr, 4), 4)
+                    // starts[1] - starts[0]
+                    let bytes_length := sub(mslice(add(starts_ptr, 8), 4), mslice(add(starts_ptr, 4), 4))
+                    let initial_value_ptr := add(add(_input_ptr, bytes_length), 8)
+                    // starts[2] - starts[1]
+                    let initial_value_length := sub(mslice(add(starts_ptr, 12), 4), mslice(add(starts_ptr, 8), 4))
+
+                    reduce(ffsig, add(_input_ptr, 8), bytes_length, initial_value_ptr, initial_value_length, _output_ptr)
                 }
 
                 // // select
@@ -497,7 +507,49 @@ object "ComplexStore" {
 
                 length := sub(mslice(add(_starts_ptr, mul(index, 4)), 4), start)
 
-                mslicestore(add(add(_output_starts, 4), mul(i, 4)), add(sum_length, length), 4)
+            function reduce(funcsig, array_ptr, bytes_length, accumulator_ptr, accumulator_length, _output_ptr) {
+                let len := mslice(array_ptr, 4)
+                let itemlength := div(sub(bytes_length, 4), len)
+                let array_values := add(array_ptr, 4)
+
+                let new_starts_ptr := add(add(array_values, bytes_length), accumulator_length)
+                let new_inputs_ptr := add(new_starts_ptr, 96)
+                let accum_ptr := accumulator_ptr
+                let accum_length := accumulator_length
+
+                // Number of starts always remains 2
+                mslicestore(new_starts_ptr, 2, 4)
+
+                for { let i:= 0 } lt(i, len) { i := add(i, 1) } {
+                    // starts_ptr & inputs_ptr contain initial/prev value + current item
+
+                    let current_value_ptr := reduceUtil(accum_ptr, accum_length, itemlength, new_starts_ptr, new_inputs_ptr)
+
+                    // add current value
+                    mmultistore(current_value_ptr, add(array_values, mul(i, itemlength)), itemlength)
+                    mstore(_output_ptr, 0)
+
+                    executeInternal(funcsig, new_starts_ptr, _output_ptr)
+
+                    accum_length := mslice(_output_ptr, 4)
+                    accum_ptr := add(_output_ptr, 4)
+                }
+
+                // mslicestore(_output_ptr, add(new_starts_ptr, 4), 4)
+                // mmultistore(add(_output_ptr, 4), accum_ptr, mslice(add(new_starts_ptr, 4), 4))
+            }
+
+            // sets: updates both starts, inputs length, accum value in inputs
+            function reduceUtil(accum_ptr, accum_length, itemlength, new_starts_ptr, new_inputs_ptr) -> current_value_ptr {
+                // let accum_new_ptr := add(new_inputs_ptr, 4)
+                let accum_new_ptr := new_inputs_ptr
+
+                mslicestore(add(new_starts_ptr, 4), accum_length, 4)
+                mslicestore(add(new_starts_ptr, 8), add(accum_length, itemlength), 4)
+
+                // mslicestore(new_inputs_ptr, add(accum_length, itemlength), 4)
+                mmultistore(accum_new_ptr, accum_ptr, accum_length)
+                current_value_ptr := add(accum_new_ptr, accum_length)
             }
 
             function storeType(_pointer, mapKey) {
