@@ -381,20 +381,6 @@ object "ComplexStore" {
                 }
             }
 
-            function utils_or(condition, t_output, f_output) -> ans {
-                switch condition
-                case 1 {
-                    ans := t_output
-                }
-                case 0 {
-                    ans := f_output
-                }
-            }
-
-            function not_zero_then_value(val_to_check, then_value) -> ans {
-                ans := utils_or(iszero(val_to_check), 0, then_value)
-            }
-
             function min(a, b) -> c {
                 switch lt(a, b)
                 case 1 { c := a }
@@ -444,13 +430,13 @@ object "ComplexStore" {
 
             }
 
-            function dtif(condition, type_id1, type_id2, arg_ptr, res_ptr) {
+            function dtif(condition, t_output, f_output) -> ans {
                 switch condition
-                case 0x01 {
-                    dtapply(type_id1, arg_ptr, res_ptr)
+                case 1 {
+                    ans := t_output
                 }
-                case 0x02 {
-                    dtapply(type_id2, arg_ptr, res_ptr)
+                case 0 {
+                    ans := f_output
                 }
             }
 
