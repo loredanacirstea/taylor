@@ -267,9 +267,19 @@ object "ComplexStore" {
                 // function dtnew(abstract_type_id, size, _primordial_matter_ptr)
                 case 0x33333337 {
                     let type_id := mslice(_input_ptr, 4)
-                    // let size := mslice(add(_input_ptr, 4), 4)
-                    mstore(_input_ptr, 0x00000000)
-                    mstore(starts_ptr, 0x0000000000000000000000000000000000000000000000000000000000000000)
+                    let size := mslice(add(_input_ptr, 4), 4)
+
+                    switch size
+                    // if type is stored with a size,
+                    case 0 {
+                        mstore(_input_ptr, 0x00000000)
+                        mstore(starts_ptr, 0x0000000000000000000000000000000000000000000000000000000000000000)
+                    }
+                    default {
+                        mslicestore(_input_ptr, 4, 4)
+                        mslicestore(add(_input_ptr, 4), size, 4)
+                        mslicestore(starts_ptr, 0x0000000100000004, 8)
+                    }
 
                     executeInternal(type_id, starts_ptr, _output_ptr)
                 }
