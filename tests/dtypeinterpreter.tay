@@ -40,7 +40,7 @@ object "ComplexStore" {
             let _calldata := 256
             let _calldata2 := add(_calldata, 4)
             let _data := add(_calldata2, 4)
-            let _internal_data := add(_data, 72)
+            let _internal_data := add(_data, 1024)
 
             calldatacopy(_calldata, 0, calldatasize())
 
@@ -55,6 +55,7 @@ object "ComplexStore" {
                 // !!! always 96 diff between them
                 // let starts_ptr := _data
                 // let inputs_ptr := add(starts_ptr, 96)
+                // dtype data is sub(starts_ptr, 512)
 
                 addGraphProgInput(_data, _internal_data, add(_internal_data, 96), 0)
                 executeInternal(exec_fsig, _internal_data, _internal_output_ptr)
@@ -124,7 +125,8 @@ object "ComplexStore" {
                 // we get the length & write ProgInput.input after it
                 let _starts_ptr1 := _data_ptr
                 let _inputs_ptr := add(_starts_ptr1, 96)
-                let _dtype_ptr := add(_inputs_ptr, 128)
+                let _dtype_ptr := sub(_data_ptr, 512)
+
                 // if eq(sig, 44444444) { return (_data_ptr, 128) }
 
                 // Get dtype data from storage
@@ -154,7 +156,7 @@ object "ComplexStore" {
             }
 
             function executeGraphSteps(_steps_ptr, _starts_ptr_, _inputs_ptr, step_count, _output_ptr) {
-                let _step_indexes_ptr := add(_inputs_ptr, 512)
+                let _step_indexes_ptr := add(_inputs_ptr, 1024)
                 let _step_starts := add(_step_indexes_ptr, 32)
                 let _step_inputs_ptr := add(_step_starts, 96)
 
