@@ -2,36 +2,118 @@
 
 ## Base
 
+Type id rules:
+
+```
+11000000 - u
+11000001 - u8
+11000002 - u16
+11000004 - u32
+
+12000000 - i
+
+byte
+22000000 - byte
+22000008 - byte1
+22000010 - byte16
+
+array - dim, sizes[]
+
+44000000 - array
+44000001 - array[1]
+44000002 - array[2]
+44000003 - array[3]
+
+
+44000003 - arr[3]
+44000002 - arr[2]
+11000004 - u32
+00000006
+00000008
+00000003
+00000004
+00000005
+00000004
+
+
+tuple - ids[]
+
+ee000002
+11000008
+11000010
+3
+10
+
+
+tuple(u32arr[2], u32arr[3])
+ee000002 - tuple size 2
+00000010
+00000024
+44000002 - arr[2]
+11000020 - u32
+6
+7
+44000003 - arr[3]
+11000020 - u32
+4
+5
+6
+```
+
+### None
+
+Store def: `0xfffffffe00000009100000000000000000`
+
+```
+00000009 - length
+10000000 - sig
+00000000 - size empty
+00       - steps count
+```
+
 ### uint
 
 Store def:
 ```
-0xfffffffe00000009444444440000000003000000000000001b333333380000000033333335000000020001333333340000000102
+0xfffffffe0000000511000000030000000dee0000010000000522000001110000001c33333338000000003333333500000003000102333333340000000103
 
-00000009 - length
-44444444 - sig
-00000000 - size empty
+00000005 - length
+11000000 - sig
 03       - steps count
 
-00000000 - inputs length
+0000000d - inputs length
+ee000001
+00000005
+22000001
+11
 
-0000001b - steps length
+0000001c - steps length
 33333338 - byte1 sig
 00000000 - input indexes length
-33333335 - contig
-00000002 - input indexes length
+33333335 - contig / pad(size-8)
+00000003 - input indexes length
 00       - count/size
-01       - byte1() result
+01       - type_id header
+02       - byte1() result
 33333334 - identity
 00000001
-02       - contig result
+03       - contig result
 ```
 
 Instantiate:
 
 - `u32`:
 ```
-0xffffffff4444444400000001000000040000000400000004
+0xffffffff11000000ee000001000000081100000400000004
+
+
+ee000001 - tuple size 1
+00000008 - end first tuple item
+11000004 - u32
+00000004 - value (size)
+
+# result: 0x1100000411111111
+
 
 44444444 - u sig
 00000001 - starts length
