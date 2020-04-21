@@ -604,6 +604,7 @@ object "ComplexStore" {
             function selectInner(select_ptr, starts_ptr, inputs_ptr, _output_starts, _output_ptr, select_length) {
                 let sum_length := 0
 
+                // add tuple type with size 0xee<size byte4>
                 mslicestore(_output_starts, 0xee, 1)
                 mslicestore(add(_output_starts, 1), select_length, 3)
 
@@ -613,10 +614,11 @@ object "ComplexStore" {
                     let index := mslice(add(select_ptr, mul(i, 1)), 1)
                     let start, length := selectOne(select_ptr, index, starts_ptr, inputs_ptr)
 
+                    // add new end
                     mslicestore(add(add(_output_starts, 4), mul(i, 4)), add(sum_length, length), 4)
 
-                    // TODO: mmultistore!!
-                    mslicestore(add(_output_ptr, sum_length),  mslice(add(inputs_ptr, start), length), length)
+                    // add new input
+                    mmultistore(add(_output_ptr, sum_length), add(inputs_ptr, start), length)
 
                     sum_length := add(sum_length, length)
                 }
