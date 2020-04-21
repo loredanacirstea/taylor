@@ -59,8 +59,10 @@ object "ComplexStore" {
                 addGraphProgInput(_data, _internal_data, add(_internal_data, 96), 0)
                 executeInternal(exec_fsig, _internal_data, _internal_output_ptr)
 
-                let size := mslice(_internal_output_ptr, 4)
-                return(add(_internal_output_ptr, 4), size)
+                let input_size := getlengthFromStarts(_internal_output_ptr)
+                let starts_size := getStartsLength(_internal_output_ptr)
+
+                return (_internal_output_ptr, add(starts_size, input_size))
             }
 
             // case dtsig"function store(bytes4 sig) view public returns(u32)" {
@@ -127,25 +129,28 @@ object "ComplexStore" {
 
                 // Get dtype data from storage
                 getType(_dtype_ptr, sig)
-                if eq(eq(Type.sig_bytecode(add(_dtype_ptr, 4)), sig), true) {
-                    // Get dtype input data from storage
-                    let _input_ptr := add(add(_dtype_ptr, mslice(_dtype_ptr, 4)), 4)
-                    getInput(_input_ptr, sig)
+                dtrequire(
+                    eq(Type.sig_bytecode(add(_dtype_ptr, 4)), sig),
+                    0xee
+                )
 
-                    // mstore add graph starts & inputs to possibly already existing starts & inputs
-                    addGraphProgInput(add(_input_ptr, 4), _starts_ptr1, _inputs_ptr, 1)
+                // Get dtype input data from storage
+                let _input_ptr := add(add(_dtype_ptr, mslice(_dtype_ptr, 4)), 4)
+                getInput(_input_ptr, sig)
 
-                    let _steps_ptr := add(add(_input_ptr, mslice(_input_ptr, 4)), 4)
-                    getProgSteps(_steps_ptr, sig)
+                // mstore add graph starts & inputs to possibly already existing starts & inputs
+                addGraphProgInput(add(_input_ptr, 4), _starts_ptr1, _inputs_ptr, 1)
 
-                    executeGraphSteps(
-                        _steps_ptr,
-                        _starts_ptr1,
-                        _inputs_ptr,
-                        Type.steps(add(_dtype_ptr, 4)),
-                        _output_ptr
-                    )
-                }
+                let _steps_ptr := add(add(_input_ptr, mslice(_input_ptr, 4)), 4)
+                getProgSteps(_steps_ptr, sig)
+
+                executeGraphSteps(
+                    _steps_ptr,
+                    _starts_ptr1,
+                    _inputs_ptr,
+                    Type.steps(add(_dtype_ptr, 4)),
+                    _output_ptr
+                )
             }
 
             function executeGraphSteps(_steps_ptr, _starts_ptr_, _inputs_ptr, step_count, _output_ptr) {
@@ -178,11 +183,7 @@ object "ComplexStore" {
                     _step_inputs_ptr
                 )
 
-                // TODO: should return starts & inputs
-                let out_length := getlengthFromStarts(_step_starts)
-                mslicestore(_output_ptr, out_length, 4)
-                mmultistore(add(_output_ptr, 4), _step_inputs_ptr, out_length)
-
+                identity(_step_starts, _step_inputs_ptr, _output_ptr)
             }
 
             function executeGraphStep(
@@ -278,11 +279,13 @@ object "ComplexStore" {
 
                 // function dtnew(abstract_type_id, size, _primordial_matter_ptr)
                 case 0x33333337 {
-                    let type_id := getSig(_input_ptr)
-                    let size := getSize(_input_ptr)
+                    // type id, size
+                    // e.g. 22000004110000001100000400000004
+                    let type_id := mslice(add(_input_ptr, 4), 4)
+                    let size := mslice(add(_input_ptr, 12), 4)
 
                     switch size
-                    // if type is stored with a size,
+                    // if type is stored with a size, we don't need external inputs
                     case 0 {
                         mstore(_input_ptr, 0x00000000)
                         mstore(starts_ptr, 0x0000000000000000000000000000000000000000000000000000000000000000)
@@ -290,7 +293,8 @@ object "ComplexStore" {
                     default {
                         mslicestore(_input_ptr, 0x11000004, 4)
                         mslicestore(add(_input_ptr, 4), size, 4)
-                        mslicestore(starts_ptr, 0xee00000100000004, 8)
+
+                        mslicestore(starts_ptr, 0xee00000100000008, 8)
                     }
 
                     executeInternal(type_id, starts_ptr, _output_ptr)
@@ -322,11 +326,7 @@ object "ComplexStore" {
 
                 // identity function
                 case 0x33333334 {
-                    let input_size := getlengthFromStarts(starts_ptr)
-                    let starts_size := getStartsLength(starts_ptr)
-
-                    mmultistore(_output_ptr, starts_ptr, starts_size)
-                    mmultistore(add(_output_ptr, starts_size), _input_ptr, input_size)
+                    identity(starts_ptr, _input_ptr, _output_ptr)
                 }
 
                 // prod
@@ -530,6 +530,14 @@ object "ComplexStore" {
                 let a := mslice(pointer, 4)
                 let b := mslice(add(pointer, 4), 4)
                 ans := mul(a, b)
+            }
+
+            function identity(starts_ptr, _input_ptr, _output_ptr) {
+                let input_size := getlengthFromStarts(starts_ptr)
+                let starts_size := getStartsLength(starts_ptr)
+
+                mmultistore(_output_ptr, starts_ptr, starts_size)
+                mmultistore(add(_output_ptr, starts_size), _input_ptr, input_size)
             }
 
             function contig(count, b_length, b_pointer, output_ptr) {
