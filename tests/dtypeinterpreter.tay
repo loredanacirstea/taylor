@@ -206,8 +206,6 @@ object "ComplexStore" {
 
                     // we add the output to _inputs_ptr & add its size to _starts_ptr
                     addGraphProgInput(0, _starts_ptr2, _inputs_ptr, 1)
-
-                    // if eq(ProgStep.typeid(_step_ptr), 0x33333335) { return (_starts_ptr2, 128) }
             }
 
             function addGraphProgInput(source_starts, _starts_ptr, _inputs_ptr, additive) {
@@ -280,9 +278,9 @@ object "ComplexStore" {
                 // function dtnew(abstract_type_id, size, _primordial_matter_ptr)
                 case 0x33333337 {
                     // type id, size
-                    // e.g. 22000004110000001100000400000004
+                    // e.g. 220000041100000011000003000004
                     let type_id := mslice(add(_input_ptr, 4), 4)
-                    let size := mslice(add(_input_ptr, 12), 4)
+                    let size := mslice(add(_input_ptr, 12), 3)
 
                     switch size
                     // if type is stored with a size, we don't need external inputs
@@ -291,10 +289,10 @@ object "ComplexStore" {
                         mstore(starts_ptr, 0x0000000000000000000000000000000000000000000000000000000000000000)
                     }
                     default {
-                        mslicestore(_input_ptr, 0x11000004, 4)
-                        mslicestore(add(_input_ptr, 4), size, 4)
+                        mslicestore(_input_ptr, 0x11000003, 4)
+                        mslicestore(add(_input_ptr, 4), size, 3)
 
-                        mslicestore(starts_ptr, 0xee00000100000008, 8)
+                        mslicestore(starts_ptr, 0xee00000100000007, 8)
                     }
 
                     executeInternal(type_id, starts_ptr, _output_ptr)
@@ -302,16 +300,20 @@ object "ComplexStore" {
 
                  // contig (count, b_length, b_pointer, output_ptr)
                 case 0x33333335 {
-                    //  count, typeid header, bytes
-                    // eg. starts: 0xee000003000000080000000d00000012
-                    // eg. inputs: 110000040000000422000001112200000111
+                    //  count, bytes
+                    // eg. starts: 0xee000002000000070000000c
+                    // eg. inputs: 110000030000042200000111
 
-                    // type checking u32 for count
-                    dtrequire(eq(mslice(_input_ptr, 4), 0x11000004), 0xef)
-                    let count := mslice(add(_input_ptr, 4), 4)
-                    let type_header := mslice(add(_input_ptr, 12), 1)
+                    // type checking count/size to be u28
+                    dtrequire(eq(mslice(_input_ptr, 4), 0x11000003), 0xef)
+                    let count := mslice(add(_input_ptr, 4), 3)
 
-                    let bytes_length := mslice(add(_input_ptr, 9), 3)
+                    // byte type id
+                    let type_header := 0x22
+
+                    let bytes_length := mslice(add(_input_ptr, 8), 3)
+
+                    // if eq(bytes_length, 32) { return(starts_ptr, 172) }
 
                     let size := mul(count, bytes_length)
                     // starts
@@ -321,7 +323,7 @@ object "ComplexStore" {
                     mslicestore(add(_output_ptr, 8), type_header, 1)
                     mslicestore(add(_output_ptr, 9), size, 3)
 
-                    contig(count, bytes_length, add(_input_ptr, 12), add(_output_ptr, 12))
+                    contig(count, bytes_length, add(_input_ptr, 11), add(_output_ptr, 12))
                 }
 
                 // identity function
@@ -359,6 +361,39 @@ object "ComplexStore" {
                     let initial_value_length := sub(mslice(add(starts_ptr, 12), 4), mslice(add(starts_ptr, 8), 4))
 
                     reduce(ffsig, add(_input_ptr, 8), bytes_length, initial_value_ptr, initial_value_length, _output_ptr)
+                }
+
+                // concat - concatenates untyped values
+                // used for building typed values from components -> concat does not need to have a special
+                // return type - it just wraps the value in a tuple
+                case 0x33333330 {
+                    let count := getSize(starts_ptr)
+
+                    mslicestore(_output_ptr, 0xee000001, 4)
+
+                    let source_ptr := _input_ptr
+                    let target_ptr := add(_output_ptr, 8)
+                    let length := 0
+
+                    for { let i := 0 } lt(i, count) { i := add(i, 1) } {
+                        let length_bytes := getTypeLength(source_ptr)
+                        let value_ptr := getValuesPointer(source_ptr)
+                        mmultistore(target_ptr, value_ptr, length_bytes)
+
+                        length := add(length, length_bytes)
+                        source_ptr := add(add(source_ptr, length_bytes), 4)
+                        target_ptr := add(target_ptr, length_bytes)
+                    }
+                    mstorehead(add(_output_ptr, 4), length, 4)
+                }
+
+                // getTypeSignature
+                case 0x33333329 {
+                    let type_id := mslice(_input_ptr, 4)
+
+                    // starts
+                    mslicestore(_output_ptr, 0xee0000010000000822000004, 12)
+                    mslicestore(add(_output_ptr, 12), type_id, 4)
                 }
 
                 // // times function
@@ -548,27 +583,6 @@ object "ComplexStore" {
                 }
             }
 
-            // function contig(count, b_length, b_pointer, output_ptr) {
-            //     let slot := 32
-
-            //     let size := mul(count, b_length)
-            //     // starts
-            //     mslicestore(output_ptr, 1, 4)
-            //     mslicestore(add(output_ptr, 4), size, 4)
-            //     // inputs
-            //     mslicestore(add(output_ptr, 8), size, 4)
-
-            //     // mslicestore(output_ptr, mul(count, b_length), 4)
-
-            //     // let ans_ptr := add(output_ptr, 4)
-            //     let ans_ptr := add(output_ptr, 12)
-
-            //     for { let i := 0 } lt(i, count) { i := add(i, 1) } {
-            //         ans_ptr := add(ans_ptr, mul(b_length, i))
-            //         mmultistore(ans_ptr, b_pointer, b_length)
-            //     }
-            // }
-
             function dtif(condition, t_output, f_output) -> ans {
                 switch condition
                 case 1 {
@@ -712,8 +726,13 @@ object "ComplexStore" {
                 end := mslice(add(_starts_ptr, mul(index, 4)), 4)
             }
 
+            // Only gets the small abstract type sig
             function getSig(_ptr) -> _dtsig {
                 _dtsig := mslice(_ptr, 1)
+            }
+
+            function getTypeSignature(_ptr) -> _dtsig {
+                _dtsig := mslice(_ptr, 4)
             }
 
             function getSize(_ptr) -> _size {
@@ -738,14 +757,14 @@ object "ComplexStore" {
                 _length := mslice(getlastStartsIndex(_starts_ptr), 4)
             }
 
-            function getValuesIndex(_starts_ptr) -> _index {
+            function getValuesPointer(_starts_ptr) -> _index {
                 let dtsig := mslice(_starts_ptr, 1)
                 switch dtsig
                 case 0xee {
                     _index := add(getlastStartsIndex(_starts_ptr), 4)
                 }
                 case 0x44 {
-                    _index := getValuesIndex(add(_starts_ptr, 4))
+                    _index := getValuesPointer(add(_starts_ptr, 4))
                 }
                 default {
                     _index := add(_starts_ptr, 4)
