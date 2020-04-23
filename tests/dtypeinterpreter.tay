@@ -341,14 +341,9 @@ object "ComplexStore" {
                     identity(starts_ptr, _input_ptr, _output_ptr)
                 }
 
-                // prod
+                // dtprod
                 case 0x33333333 {
-                    // starts
-                    mslicestore(_output_ptr, 1, 4)
-                    mslicestore(add(_output_ptr, 4), 1, 4)
-                    // inputs
-                    mslicestore(add(_output_ptr, 8), 1, 4)
-                    mslicestore(add(_output_ptr, 12), dtprod(_input_ptr), 4)
+                    dtprod(_input_ptr, _output_ptr)
                 }
 
                 // map: fsig/pointer, array
@@ -667,10 +662,18 @@ object "ComplexStore" {
                 ans := sub(a, b)
             }
 
-            function dtprod(pointer) -> ans {
-                let a := mslice(pointer, 4)
-                let b := mslice(add(pointer, 4), 4)
-                ans := mul(a, b)
+            function dtprod(pointer, _output_ptr) {
+                let a_size :=  getSize(pointer)
+                let b_ptr := add(pointer, add(4, a_size))
+                let b_size := getSize(b_ptr)
+                let a := mslice(add(pointer, 4), a_size)
+                let b := mslice(add(b_ptr, 4), b_size)
+                let res_size := max(a_size, b_size)
+
+                mslicestore(_output_ptr, 0xee000001, 4)
+                mslicestore(add(_output_ptr, 4), add(4, res_size), 4)
+                mslicestore(add(_output_ptr, 8), add(0x11000000, res_size), 4)
+                mslicestore(add(_output_ptr, 12), mul(a, b), res_size)
             }
 
             function identity(starts_ptr, _input_ptr, _output_ptr) {
