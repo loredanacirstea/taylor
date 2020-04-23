@@ -352,8 +352,6 @@ object "ComplexStore" {
                     let funcsig := mslice(add(_input_ptr, 4), sigsize)
                     let array_ptr := add(add(_input_ptr, 4), sigsize)
 
-                    let offset := 0
-
                     mslicestore(_output_ptr, 0xee000001, 4)
                     // mslicestore(add(_output_ptr, 4), array_size, 4)
                     mslicestore(add(_output_ptr, 8), mslice(array_ptr, 4), 4)
@@ -364,15 +362,14 @@ object "ComplexStore" {
 
                 // reduce : ffsig, array, initial value
                 case 0x33333331 {
-                    // first elem is inputs length ??
-                    let ffsig := mslice(add(_input_ptr, 4), 4)
-                    // starts[1] - starts[0]
-                    let bytes_length := sub(mslice(add(starts_ptr, 8), 4), mslice(add(starts_ptr, 4), 4))
-                    let initial_value_ptr := add(add(_input_ptr, bytes_length), 8)
-                    // starts[2] - starts[1]
-                    let initial_value_length := sub(mslice(add(starts_ptr, 12), 4), mslice(add(starts_ptr, 8), 4))
+                    // e.g. 0xee00000300000008000000160000001d
+                    // 2200000433333333440000021100000300000200000511000003000001
+                    let sigsize := getSize(_input_ptr)
+                    let funcsig := mslice(add(_input_ptr, 4), sigsize)
+                    let array_ptr := add(add(_input_ptr, 4), sigsize)
+                    let initial_value_ptr := add(_input_ptr, mslice(add(starts_ptr, 8), 4))
 
-                    reduce(ffsig, add(_input_ptr, 8), bytes_length, initial_value_ptr, initial_value_length, _output_ptr)
+                    reduce(add(_input_ptr, 512), funcsig, array_ptr, initial_value_ptr, _output_ptr)
                 }
 
                 // concat - concatenates untyped values
@@ -757,63 +754,51 @@ object "ComplexStore" {
                 length := sub(end, start)
             }
 
-            function reduce(funcsig, array_ptr, bytes_length, accumulator_ptr, accumulator_length, _output_ptr) {
-                let len := mslice(array_ptr, 4)
-                let itemlength := div(sub(bytes_length, 4), len)
-                let array_values := add(array_ptr, 4)
-
-                let new_starts_ptr := add(add(array_values, bytes_length), accumulator_length)
+            function reduce(new_starts_ptr, funcsig, array_ptr, accumulator_ptr, _output_ptr) {
                 let new_inputs_ptr := add(new_starts_ptr, 96)
-                let accum_ptr := accumulator_ptr
-                let accum_length := accumulator_length
+                let internal_output := add(new_inputs_ptr, 128)
 
-                // Number of starts always remains 2
-                mslicestore(new_starts_ptr, 2, 4)
+                let len := getSize(array_ptr)
+                let item_size := getTypeLength(add(array_ptr, 4))
+                let array_values := getValuesPointer(array_ptr)
+
+                let accum_ptr := accumulator_ptr
+                let accum_length := add(getTypeLength(accum_ptr), 4)
+
+                mslicestore(new_starts_ptr, 0xee000002, 4)
 
                 for { let i:= 0 } lt(i, len) { i := add(i, 1) } {
                     // starts_ptr & inputs_ptr contain initial/prev value + current item
+                    let current_value_ptr := reduceStepHead(accum_ptr, accum_length, item_size, new_starts_ptr, new_inputs_ptr)
 
-                    let current_value_ptr := reduceUtil(accum_ptr, accum_length, itemlength, new_starts_ptr, new_inputs_ptr)
+                    // add current element type & value
+                    mslicestore(current_value_ptr, mslice(add(array_ptr, 4), 4), 4)
+                    mmultistore(add(current_value_ptr, 4), add(array_values, mul(i, item_size)), item_size)
 
-                    // add current value
-                    mmultistore(current_value_ptr, add(array_values, mul(i, itemlength)), itemlength)
                     mstore(_output_ptr, 0)
 
                     executeInternal(funcsig, new_starts_ptr, _output_ptr)
 
-                    accum_length := mslice(_output_ptr, 4)
-                    accum_ptr := add(_output_ptr, 4)
+                    accum_length := add(getTypeLength(add(_output_ptr, 8)), 4)
+                    mmultistore(accum_ptr, add(_output_ptr, 8), accum_length)
                 }
 
-                // mslicestore(_output_ptr, add(new_starts_ptr, 4), 4)
-                // mmultistore(add(_output_ptr, 4), accum_ptr, mslice(add(new_starts_ptr, 4), 4))
+                reduceResult(_output_ptr, accum_ptr, accum_length)
             }
 
             // sets: updates both starts, inputs length, accum value in inputs
-            function reduceUtil(accum_ptr, accum_length, itemlength, new_starts_ptr, new_inputs_ptr) -> current_value_ptr {
-                // let accum_new_ptr := add(new_inputs_ptr, 4)
-                let accum_new_ptr := new_inputs_ptr
-
+            function reduceStepHead(accum_ptr, accum_length, item_size, new_starts_ptr, new_inputs_ptr) -> current_value_ptr {
                 mslicestore(add(new_starts_ptr, 4), accum_length, 4)
-                mslicestore(add(new_starts_ptr, 8), add(accum_length, itemlength), 4)
-
-                // mslicestore(new_inputs_ptr, add(accum_length, itemlength), 4)
-                mmultistore(accum_new_ptr, accum_ptr, accum_length)
-                current_value_ptr := add(accum_new_ptr, accum_length)
+                mslicestore(add(new_starts_ptr, 8), add(add(accum_length, item_size), 4), 4)
+                mmultistore(new_inputs_ptr, accum_ptr, accum_length)
+                current_value_ptr := add(new_inputs_ptr, accum_length)
             }
 
-            // // another array is written at _output_ptr
-            // function map(_array_ptr, bytes_length, fsig, _output_ptr) {
-            //     let len := mslice(_array_ptr, 4)
-            //     let itemlength := div(bytes_length, len)
-            //     let _values_ptr := add(_array_ptr, 4)
-
-            //     for { let i:= 0 } lt(i, len) { i := add(i, 1) } {
-            //         mslicestore(starts_ptr, 1, 4)
-            //         mslicestore(inputs_ptr, mslice(add(_values_ptr, mul(itemlength, i)), itemlength))
-            //         executeInternal(fsig, starts_ptr, _output_ptr)
-            //     }
-            // }
+            function reduceResult(_output_ptr, accum_ptr, accum_length) {
+                mslicestore(_output_ptr, 0xee000001, 4)
+                mslicestore(add(_output_ptr, 4), accum_length, 4)
+                mmultistore(add(_output_ptr, 8), accum_ptr, accum_length)
+            }
 
             function boundsFromStarts(index, _starts_ptr) -> start, end {
                 start := 0
