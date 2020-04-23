@@ -244,13 +244,16 @@ object "ComplexStore" {
                 case 1 {
                     // loop through starts, to add them one by one
                     let last_end := mslice(last_start_index, 4)
+                    let last_start := 0
                     for { let i := 0 } lt(i, source_count) { i := add(i, 1) } {
                         last_start_index := add(last_start_index, 4)
+                        let current_start := mslice(add(add(source_starts, 4), mul(i, 4)), 4)
                         last_end := add(
                             last_end,
-                            mslice(add(add(source_starts, 4), mul(i, 4)), 4)
+                            sub(current_start, last_start)
                         )
                         mslicestore(last_start_index, last_end, 4)
+                        last_start := current_start
                     }
                 }
             }
