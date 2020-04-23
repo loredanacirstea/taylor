@@ -437,6 +437,47 @@ object "ComplexStore" {
                     mstore(add(_output_ptr, 12), fpointer)
                 }
 
+                // type check
+                case 0x33333327 {
+                    // let ans := typeCheck(_calldata2, sub(calldatasize(), 4))
+                }
+
+                // insert typed value
+                case 0x33333326 {
+                    // typed content -> index
+                    storeValueWrap(starts_ptr, _input_ptr, _output_ptr)
+                }
+
+                // get typed value
+                case 0x33333325 {
+                    // type_id, index -> typed value
+                    getValueWrap(starts_ptr, _input_ptr, _output_ptr)
+                }
+
+                // count values
+                case 0x33333324 {
+                    // type_id
+                    // 0xee0000010000000822000004<type_id>
+                    getValueCounterWrap(starts_ptr, _input_ptr, _output_ptr)
+                }
+
+                // modify typed value
+                case 0x33333323 {
+                    // type_id, index, new typed value -> success
+                }
+
+                // log typed value
+                case 0x33333322 {
+                    // typed value
+                    let length := getTypeLength(starts_ptr)
+                    let starts_len := getStartsLength(starts_ptr)
+                    mmultistore(_output_ptr, starts_ptr, starts_len)
+                    mmultistore(add(_output_ptr, starts_len), _input_ptr, length)
+                    logTypedValue(_output_ptr)
+                    mstore(_output_ptr, 0)
+                }
+                // TODO: these functions should receive a full value, not starts & inputs ?
+
                 // // times function
                 // case 0x33333333 {
                 //     let times := mslice(_input_ptr, 4)
@@ -568,6 +609,10 @@ object "ComplexStore" {
                     mstore(0, error_bytes)
                     revert(0, 2)
                 }
+            }
+
+            function uconcat(a, b, length_b) -> c {
+                c := add(shl(mul(length_b, 8), a), b)
             }
 
             function mslicestore(_ptr, val, length) {
@@ -872,6 +917,52 @@ object "ComplexStore" {
                 }
             }
 
+            function storeValueWrap(starts_ptr, input_ptr, _output_ptr) {
+                // typed content -> index
+                // content is in a tuple 0xee000001<length><typed_value>
+                // add length for storage
+                // let length := mslice(add(_pointer, 4), 4)
+                let length := getTypeLength(starts_ptr)
+                let type_id := mslice(input_ptr, 4)
+
+                // // TODO - better mem management?
+                mslicestore(_output_ptr, length, 4)
+                mmultistore(add(_output_ptr, 4), input_ptr, length)
+
+                let index := storeValue(type_id, _output_ptr)
+                mstore(_output_ptr, 0)
+                mslicestore(_output_ptr, uconcat(0xee0000010000000811000004, index, 4), 16)
+            }
+
+            function getValueWrap(starts_ptr, input_ptr, _output_ptr) {
+                // type_id, index -> typed value
+                // content is in a tuple 0xee000001000000080000001022000004<type_id>11000004<index>
+                dtrequire(eq(getSize(starts_ptr), 2), 0xe9)
+                dtrequire(eq(mslice(add(starts_ptr, 4), 4), 8), 0xe9)
+                dtrequire(eq(mslice(add(starts_ptr, 8), 4), 16), 0xe9)
+                dtrequire(eq(mslice(input_ptr, 4), 0x22000004), 0xe9)
+                dtrequire(eq(mslice(add(input_ptr, 8), 4), 0x11000004), 0xe9)
+
+                let type_id := mslice(add(input_ptr, 4), 4)
+                let index := mslice(add(input_ptr, 12), 4)
+                let data_len_ptr := add(_output_ptr, 4)
+                // mslicestore(_output_ptr, 0xee000001, 4)
+                getValue(data_len_ptr, type_id, index)
+                mstorehead(_output_ptr, 0xee000001, 4)
+            }
+
+            function getValueCounterWrap(starts_ptr, input_ptr, _output_ptr) {
+                // type_id
+                // 0xee0000010000000822000004<type_id>
+                dtrequire(eq(mslice(add(starts_ptr, 4), 4), 8), 0xe9)
+                dtrequire(eq(mslice(input_ptr, 4), 0x11000004), 0xe9)
+
+                let type_id := mslice(add(input_ptr, 4), 4)
+
+                let count := getValueCounter(type_id)
+                mslicestore(_output_ptr, uconcat(0xee0000010000000811000004, count, 4), 16)
+            }
+
             function storeType(_pointer, mapKey) {
                 storeData(_pointer, mappingTypeKey(mapKey))
             }
@@ -903,6 +994,41 @@ object "ComplexStore" {
                     let input_indexes_length := mslice(add(_new_ptr, 4), 4)
                     _new_ptr := add(add(_new_ptr, 8), mul(input_indexes_length, 1))
                 }
+            }
+
+            function updateValueCounter(type_id) {
+                let count := getValueCounter(type_id)
+                sstore(valueCountKey(type_id), add(count, 1))
+            }
+
+            function getValueCounter(type_id) -> _count {
+                _count := sload(valueCountKey(type_id))
+            }
+
+            // expects a length before the type
+            function storeValue(type_id, _pointer) -> index {
+                // TODO: check if type is valid
+                index := add(getValueCounter(type_id), 1)
+                storeData(_pointer, valueKey(type_id, index))
+                updateValueCounter(type_id)
+                logTypedValue(add(_pointer, 4))
+            }
+
+            function getValue(_pointer, type_id, index) {
+                getStoredData(_pointer, valueKey(type_id, index))
+                // TODO check if type_ids are the same & content is valid
+            }
+
+            function hashTypedValue(_pointer) -> _hash {
+                let length := getTypeLength(_pointer)
+                _hash := keccak256(_pointer, length)
+            }
+
+            function logTypedValue(_pointer) {
+                let type_id := mslice(_pointer, 4)
+                let hash := hashTypedValue(_pointer)
+                mstore(0, hash)
+                log1(0, 32, type_id)
             }
 
             function storeData(_pointer, storageKey) {
@@ -958,18 +1084,26 @@ object "ComplexStore" {
                 storageKey := mappingStorageKey(2, key)
             }
 
+            function valueCountKey(type_id) -> storageKey {
+                storageKey := mappingStorageKey(3, type_id)
+            }
+
+            function valueKey(type_id, index) -> storageKey {
+                storageKey := mappingStorageKey2(4, type_id, index)
+            }
+
              // mapping(bytes32(max) => *)
             function mappingStorageKey(storageIndex, key) -> storageKey {
                 mstore(0, key, storageIndex)
                 storageKey := keccak256(0, 64)
             }
 
-            // // mapping(bytes32(max) => mapping(bytes32(max) => *)
-            // function mappingStorageKey2(storageIndex, key1, key2) -> storageKey {
-            //     mstore(0, key1, storageIndex, key2)
-            //     mstore(96, keccak256(0, 64))
-            //     storageKey := keccak256(64, 64)
-            // }
+            // mapping(bytes32(max) => mapping(bytes32(max) => *)
+            function mappingStorageKey2(storageIndex, key1, key2) -> storageKey {
+                mstore(0, key1, storageIndex, key2)
+                mstore(96, keccak256(0, 64))
+                storageKey := keccak256(64, 64)
+            }
         }
     }
 }
