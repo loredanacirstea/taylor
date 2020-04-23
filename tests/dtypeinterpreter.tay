@@ -390,7 +390,7 @@ object "ComplexStore" {
                         mmultistore(target_ptr, value_ptr, length_bytes)
 
                         length := add(length, length_bytes)
-                        source_ptr := add(add(source_ptr, length_bytes), 4)
+                        source_ptr := add(value_ptr, length_bytes)
                         target_ptr := add(target_ptr, length_bytes)
                     }
                     mstorehead(add(_output_ptr, 4), length, 4)
@@ -861,7 +861,7 @@ object "ComplexStore" {
                 }
                 case 0x44 {
                     let size := getSize(_starts_ptr)
-                    _length := mul(mul(_length, size), getTypeLength(add(_starts_ptr, 4)))
+                    _length := mul(size, getTypeLength(add(_starts_ptr, 4)))
                 }
                 default {
                     _length := getSize(_starts_ptr)
