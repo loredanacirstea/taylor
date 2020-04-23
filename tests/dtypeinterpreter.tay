@@ -410,7 +410,6 @@ object "ComplexStore" {
                     // 0xee0000022000000080000000x
                     // 2000004<fsig><data>
                     // TODO type checking signature
-
                     let _runtime_fns := sub(starts_ptr, 1024)
                     // first 32 bytes is the free pointer
                     let fpointer := mload(_runtime_fns)
@@ -746,8 +745,13 @@ object "ComplexStore" {
                 // for implementing Union type
                 if gt(index, 128) {
                     index := sub(255, index)
+
                     let st, len := selectOne(select_ptr, index, _starts_ptr, inputs_ptr)
-                    index := mslice(add(inputs_ptr, st), len)
+                    let _ptr := add(inputs_ptr, st)
+                    // Runtime index needs to be a uint
+                    dtrequire(eq(mslice(_ptr, 1), 0x22), 0xed)
+                    // Add 1, to avoid choosing the selector itself
+                    index := add(mslice(add(_ptr, 4), sub(len, 4)), 1)
                 }
                 let end := 0
                 start, end := boundsFromStarts(index, _starts_ptr)
