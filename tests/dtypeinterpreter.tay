@@ -1081,7 +1081,7 @@ object "ComplexStore" {
                 log1(0, 32, type_id)
             }
 
-            function sendPay(value, addr) -> success {
+            function sendPay(addr, value) -> success {
                 success := call(gas(), addr, value, 0, 0, 0, 0)
             }
 
