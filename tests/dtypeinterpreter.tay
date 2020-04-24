@@ -478,6 +478,21 @@ object "ComplexStore" {
                 }
                 // TODO: these functions should receive a full value, not starts & inputs ?
 
+                  // dtadd
+                case 0x3333331f {
+                    dtadd(_input_ptr, _output_ptr)
+                }
+
+                // dtsub
+                case 0x3333331e {
+                    dtsub(_input_ptr, _output_ptr)
+                }
+
+                // dtdiv
+                case 0x3333331d {
+                    dtdiv(_input_ptr, _output_ptr)
+                }
+
                 // // times function
                 // case 0x33333333 {
                 //     let times := mslice(_input_ptr, 4)
@@ -517,22 +532,6 @@ object "ComplexStore" {
                 // }
 
                 // function apply()
-
-                // // dtadd
-                // case 0x33333333 {
-                //     let _ptr := ProgInput.input.position(_data_ptr)
-                //     let ans := dtadd(add(_ptr, 4))
-                //     mslicestore(_output_ptr, 4, 4)
-                //     mslicestore(add(_output_ptr, 4), ans, 4)
-                // }
-
-                // // dtsub
-                // case 0x33333334 {
-                //     let _ptr := ProgInput.input.position(_data_ptr)
-                //     let ans := dtsub(add(_ptr, 4))
-                //     mslicestore(_output_ptr, 4, 4)
-                //     mslicestore(add(_output_ptr, 4), ans, 4)
-                // }
 
                  default {
                     // mslicestore(0, 0xfffe, 2)
@@ -691,16 +690,32 @@ object "ComplexStore" {
                 ans := 0x11
             }
 
-             function dtadd(pointer) -> ans {
-                let a := mslice(pointer, 4)
-                let b := mslice(add(pointer, 4), 4)
-                ans := add(a, b)
+             function dtadd(pointer, _output_ptr) {
+                let a_size :=  getSize(pointer)
+                let b_ptr := add(pointer, add(4, a_size))
+                let b_size := getSize(b_ptr)
+                let a := mslice(add(pointer, 4), a_size)
+                let b := mslice(add(b_ptr, 4), b_size)
+                let res_size := max(a_size, b_size)
+
+                mslicestore(_output_ptr, 0xee000001, 4)
+                mslicestore(add(_output_ptr, 4), add(4, res_size), 4)
+                mslicestore(add(_output_ptr, 8), add(0x11000000, res_size), 4)
+                mslicestore(add(_output_ptr, 12), add(a, b), res_size)
             }
 
-            function dtsub(pointer) -> ans {
-                let a := mslice(pointer, 4)
-                let b := mslice(add(pointer, 4), 4)
-                ans := sub(a, b)
+            function dtsub(pointer, _output_ptr) {
+                let a_size :=  getSize(pointer)
+                let b_ptr := add(pointer, add(4, a_size))
+                let b_size := getSize(b_ptr)
+                let a := mslice(add(pointer, 4), a_size)
+                let b := mslice(add(b_ptr, 4), b_size)
+                let res_size := max(a_size, b_size)
+
+                mslicestore(_output_ptr, 0xee000001, 4)
+                mslicestore(add(_output_ptr, 4), add(4, res_size), 4)
+                mslicestore(add(_output_ptr, 8), add(0x11000000, res_size), 4)
+                mslicestore(add(_output_ptr, 12), sub(a, b), res_size)
             }
 
             function dtprod(pointer, _output_ptr) {
@@ -715,6 +730,20 @@ object "ComplexStore" {
                 mslicestore(add(_output_ptr, 4), add(4, res_size), 4)
                 mslicestore(add(_output_ptr, 8), add(0x11000000, res_size), 4)
                 mslicestore(add(_output_ptr, 12), mul(a, b), res_size)
+            }
+
+            function dtdiv(pointer, _output_ptr) {
+                let a_size :=  getSize(pointer)
+                let b_ptr := add(pointer, add(4, a_size))
+                let b_size := getSize(b_ptr)
+                let a := mslice(add(pointer, 4), a_size)
+                let b := mslice(add(b_ptr, 4), b_size)
+                let res_size := max(a_size, b_size)
+
+                mslicestore(_output_ptr, 0xee000001, 4)
+                mslicestore(add(_output_ptr, 4), add(4, res_size), 4)
+                mslicestore(add(_output_ptr, 8), add(0x11000000, res_size), 4)
+                mslicestore(add(_output_ptr, 12), div(a, b), res_size)
             }
 
             function identity(starts_ptr, _input_ptr, _output_ptr) {
