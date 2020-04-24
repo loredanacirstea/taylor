@@ -514,6 +514,16 @@ object "ComplexStore" {
                     dtdiv(_input_ptr, _output_ptr)
                 }
 
+                 // cast
+                case 0x3333331c {
+                    // 0xee0000020000000800000010
+                    // 22000004 11000020 11000004 00000001
+                    dtrequire(eq(getSize(starts_ptr), 2), 0xe7)
+                    dtrequire(eq(mslice(_input_ptr, 4), 0x22000004), 0xe8)
+
+                    dtcast(add(_input_ptr, 4), _output_ptr)
+                }
+
                 // // times function
                 // case 0x33333333 {
                 //     let times := mslice(_input_ptr, 4)
@@ -797,8 +807,40 @@ object "ComplexStore" {
                 // fsig := type_id
             }
 
-            function cast(type_id1, value_ptr, type_id2, answ_ptr) {
+            // type_id1, value_ptr, type_id2, answ_ptr
+            function dtcast(input_ptr, output_ptr) {
+                let to_type_ptr := input_ptr
+                let from_type_ptr := add(input_ptr, 4)
+                let abstract_type_id := mslice(to_type_ptr, 1)
 
+                // require the same abstract type id
+                dtrequire(eq(abstract_type_id, mslice(from_type_ptr, 1)), 0xea)
+
+                let to_size := getSize(to_type_ptr)
+                let from_size := getSize(from_type_ptr)
+                // only cast size from lt -> gt
+                dtrequire(gt(to_size, from_size), 0xea)
+
+                let diff := sub(to_size, from_size)
+
+                mslicestore(output_ptr, 0xee000001, 4)
+                mslicestore(add(output_ptr, 4), add(to_size, 4), 4)
+                mslicestore(add(output_ptr, 8), mslice(to_type_ptr, 4), 4)
+
+                switch abstract_type_id
+                // right pad for uint
+                case 0x11 {
+                    mslicestore(add(output_ptr, 12), 0, diff)
+                    mmultistore(add(add(output_ptr, 12), diff), add(input_ptr, 8), from_size)
+                }
+                // left pad for byte
+                case 0x22 {
+                    mmultistore(add(output_ptr, 12), add(input_ptr, 8), from_size)
+                    mslicestore(add(add(output_ptr, 12), from_size), 0, diff)
+                }
+                default {
+                    dtrequire(false, 0xea)
+                }
             }
 
             // TODO: rewrite this more efficient
