@@ -443,18 +443,21 @@ object "ComplexStore" {
                 }
 
                 // insert typed value
+                // 0xffffffff33333326ee0000010000000722000003777777
                 case 0x33333326 {
                     // typed content -> index
                     storeValueWrap(starts_ptr, _input_ptr, _output_ptr)
                 }
 
                 // get typed value
+                // 0xffffffff33333325ee000002000000080000001022000004220000031100000400000001
                 case 0x33333325 {
                     // type_id, index -> typed value
                     getValueWrap(starts_ptr, _input_ptr, _output_ptr)
                 }
 
                 // count values
+                // 0xffffffff33333324ee000001000000081100000422000003
                 case 0x33333324 {
                     // type_id
                     // 0xee0000010000000822000004<type_id>
@@ -475,6 +478,24 @@ object "ComplexStore" {
                     mmultistore(add(_output_ptr, starts_len), _input_ptr, length)
                     logTypedValue(_output_ptr)
                     mstore(_output_ptr, 0)
+                }
+
+                case 0x33333321 {
+                    // address, value
+                    // 0xee000002000000180000003c11000014<address>11000020<value>
+                    dtrequire(eq(getSize(starts_ptr), 2), 0xe8)
+                    dtrequire(eq(mslice(add(starts_ptr, 4), 4), 0x18), 0xe8)
+                    dtrequire(eq(mslice(add(starts_ptr, 8), 4), 0x3c), 0xe8)
+                    dtrequire(eq(mslice(_input_ptr, 4), 0x11000014), 0xe8)
+                    dtrequire(eq(mslice(add(_input_ptr, 24), 4), 0x11000020), 0xe8)
+
+                    let successful := sendPay(
+                        mslice(add(_input_ptr, 4), 20),
+                        mload(add(_input_ptr, 28))
+                    )
+
+                    // dtrequire(eq(successful, true), 0xe8)
+                    mslicestore(_output_ptr, uconcat(0xee0000010000000511000001, successful, 1) ,13)
                 }
                 // TODO: these functions should receive a full value, not starts & inputs ?
 
@@ -1058,6 +1079,10 @@ object "ComplexStore" {
                 let hash := hashTypedValue(_pointer)
                 mstore(0, hash)
                 log1(0, 32, type_id)
+            }
+
+            function sendPay(value, addr) -> success {
+                success := call(gas(), addr, value, 0, 0, 0, 0)
             }
 
             function storeData(_pointer, storageKey) {
