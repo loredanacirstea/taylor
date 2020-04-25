@@ -108,6 +108,24 @@ object "ComplexStore" {
                 return(_dtype_ptr, length)
             }
 
+            // insert named type
+            // 0xffffffff33333326ee0000010000000722000003777777
+            case 0xfffffffc {
+                // named type id, abstract_type_id, inputs
+                let named_type_id := mslice(_calldata2, 4)
+                let data_ptr := add(_calldata2, 12)
+                storeCurried(data_ptr, named_type_id)
+            }
+
+            // get named type
+            // 0xffffffff33333325ee000002000000080000001022000004220000031100000400000001
+            case 0xfffffffb {
+                // type_id
+                let named_type_id := mslice(_calldata2, 4)
+                getCurried(_internal_output_ptr, named_type_id)
+                return (add(_internal_output_ptr, 4), mslice(_internal_output_ptr, 4))
+            }
+
             default {
                 mslicestore(0, 0xffff, 2)
                 revert(0, 2)
@@ -120,9 +138,46 @@ object "ComplexStore" {
                     success := executeVirtualFunction(exec_fsig, _data_ptr, _output_ptr)
                 }
 
+                if eq(success, false) {
+                    success := executeCurriedType(exec_fsig, _data_ptr, _output_ptr)
+                }
+
                 if eq(success, false)  {
                     executeGraph(exec_fsig, _data_ptr, _output_ptr)
                 }
+            }
+
+            // E.g. sized types 22000004 & named types
+            function executeCurriedType(sig, _data_ptr, _output_ptr) -> success {
+                success := false
+                let temp_ptr := 0x80
+                let _new_data_ptr := add(_data_ptr, 1024)
+                let _new_inputs_ptr := add(_new_data_ptr, 96)
+                // first check if a named type exists
+                getCurried(temp_ptr, sig)
+
+                let abstract_type_id := mslice(add(temp_ptr, 4), 4)
+
+                switch abstract_type_id
+                case 0 {
+                    let size := 0
+                    abstract_type_id, size := decomposeType(sig)
+                    mslicestore(_new_data_ptr, 0xee00000100000007, 8)
+                    mslicestore(_new_inputs_ptr, uconcat(0x11000003, size, 3), 7)
+                }
+                default {
+                    let starts_ptr := add(temp_ptr, 8)
+                    let starts_size := getStartsLength(starts_ptr)
+                    let input_size := getlengthFromStarts(starts_ptr)
+                    let input_ptr := add(starts_ptr, starts_size)
+                    // store starts
+                    mmultistore(_new_data_ptr, starts_ptr, starts_size)
+                    // store inputs
+                    mmultistore(_new_inputs_ptr, input_ptr, input_size)
+                }
+                executeGraph(abstract_type_id, _new_data_ptr, _output_ptr)
+
+                success := true
             }
 
             function executeGraph(sig, _data_ptr, _output_ptr) {
@@ -949,6 +1004,11 @@ object "ComplexStore" {
                 end := mslice(add(_starts_ptr, mul(index, 4)), 4)
             }
 
+            function decomposeType(sig) -> type_head, size {
+                type_head := and(sig, 0xff000000)
+                size := and(sig, 0x00ffffff)
+            }
+
             // Only gets the small abstract type sig
             function getSig(_ptr) -> _dtsig {
                 _dtsig := mslice(_ptr, 1)
@@ -1067,6 +1127,10 @@ object "ComplexStore" {
                 storeData(_pointer, mappingProgStepsKey(mapKey))
             }
 
+            function storeCurried(_pointer, mapKey) {
+                storeData(_pointer, mappingCurriedKey(mapKey))
+            }
+
             function getType(_pointer, mapKey) {
                 getStoredData(_pointer, mappingTypeKey(mapKey))
             }
@@ -1086,6 +1150,10 @@ object "ComplexStore" {
                     let input_indexes_length := mslice(add(_new_ptr, 4), 4)
                     _new_ptr := add(add(_new_ptr, 8), mul(input_indexes_length, 1))
                 }
+            }
+
+            function getCurried(_pointer, mapKey) {
+                getStoredData(_pointer, mappingCurriedKey(mapKey))
             }
 
             function updateValueCounter(type_id) {
@@ -1180,12 +1248,16 @@ object "ComplexStore" {
                 storageKey := mappingStorageKey(2, key)
             }
 
+            function mappingCurriedKey(key) -> storageKey {
+                storageKey := mappingStorageKey(3, key)
+            }
+
             function valueCountKey(type_id) -> storageKey {
-                storageKey := mappingStorageKey(3, type_id)
+                storageKey := mappingStorageKey(4, type_id)
             }
 
             function valueKey(type_id, index) -> storageKey {
-                storageKey := mappingStorageKey2(4, type_id, index)
+                storageKey := mappingStorageKey2(5, type_id, index)
             }
 
              // mapping(bytes32(max) => *)
