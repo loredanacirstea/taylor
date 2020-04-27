@@ -138,12 +138,16 @@ object "ComplexStore" {
                     success := executeVirtualFunction(exec_fsig, _data_ptr, _output_ptr)
                 }
 
+                if eq(success, false)  {
+                    success := executeGraph(exec_fsig, _data_ptr, _output_ptr)
+                }
+
                 if eq(success, false) {
                     success := executeCurriedType(exec_fsig, _data_ptr, _output_ptr)
                 }
 
-                if eq(success, false)  {
-                    executeGraph(exec_fsig, _data_ptr, _output_ptr)
+                if eq(success, false) {
+                    dtrequire(false, 0xec)
                 }
             }
 
@@ -153,6 +157,7 @@ object "ComplexStore" {
                 let temp_ptr := 0x80
                 let _new_data_ptr := add(_data_ptr, 1024)
                 let _new_inputs_ptr := add(_new_data_ptr, 96)
+
                 // first check if a named type exists
                 getCurried(temp_ptr, sig)
 
@@ -175,12 +180,12 @@ object "ComplexStore" {
                     // store inputs
                     mmultistore(_new_inputs_ptr, input_ptr, input_size)
                 }
-                executeGraph(abstract_type_id, _new_data_ptr, _output_ptr)
-
-                success := true
+                success := executeGraph(abstract_type_id, _new_data_ptr, _output_ptr)
             }
 
-            function executeGraph(sig, _data_ptr, _output_ptr) {
+            function executeGraph(sig, _data_ptr, _output_ptr) -> success {
+                success := false
+
                 // There might be external inputs at _starts_ptr & _inputs_ptr
                 // we get the length & write ProgInput.input after it
                 let _starts_ptr1 := _data_ptr
@@ -191,28 +196,27 @@ object "ComplexStore" {
 
                 // Get dtype data from storage
                 getType(_dtype_ptr, sig)
-                dtrequire(
-                    eq(Type.sig_bytecode(add(_dtype_ptr, 4)), sig),
-                    0xee
-                )
 
-                // Get dtype input data from storage
-                let _input_ptr := add(add(_dtype_ptr, mslice(_dtype_ptr, 4)), 4)
-                getInput(_input_ptr, sig)
+                if eq(Type.sig_bytecode(add(_dtype_ptr, 4)), sig) {
+                    // Get dtype input data from storage
+                    let _input_ptr := add(add(_dtype_ptr, mslice(_dtype_ptr, 4)), 4)
+                    getInput(_input_ptr, sig)
 
-                // mstore add graph starts & inputs to possibly already existing starts & inputs
-                addGraphProgInput(add(_input_ptr, 4), _starts_ptr1, _inputs_ptr, 1)
+                    // mstore add graph starts & inputs to possibly already existing starts & inputs
+                    addGraphProgInput(add(_input_ptr, 4), _starts_ptr1, _inputs_ptr, 1)
 
-                let _steps_ptr := add(add(_input_ptr, mslice(_input_ptr, 4)), 4)
-                getProgSteps(_steps_ptr, sig)
+                    let _steps_ptr := add(add(_input_ptr, mslice(_input_ptr, 4)), 4)
+                    getProgSteps(_steps_ptr, sig)
 
-                executeGraphSteps(
-                    _steps_ptr,
-                    _starts_ptr1,
-                    _inputs_ptr,
-                    Type.steps(add(_dtype_ptr, 4)),
-                    _output_ptr
-                )
+                    executeGraphSteps(
+                        _steps_ptr,
+                        _starts_ptr1,
+                        _inputs_ptr,
+                        Type.steps(add(_dtype_ptr, 4)),
+                        _output_ptr
+                    )
+                    success := true
+                }
             }
 
             function executeGraphSteps(_steps_ptr, _starts_ptr_, _inputs_ptr, step_count, _output_ptr) {
