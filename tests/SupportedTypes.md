@@ -363,7 +363,15 @@ ee000001 - input for new(abstract_type_id(<input>))
 Use: `0xffffffff88ffffff`. Result: `0xee00000100000024110000201111111111111111111111111111111111111111111111111111111111111111`
 
 
-## Native Functions Tests
+## Native Functions
+
+- byte1, new, identity, contig, concat
+- sum, sub, div, prod
+- map, reduce, curry1
+- cast
+- getTypeSignature
+- insert, get, count, log typed values per type
+- sendPay
 
 ### Reduce
 

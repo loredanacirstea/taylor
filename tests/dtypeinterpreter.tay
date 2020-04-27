@@ -535,6 +535,7 @@ object "ComplexStore" {
                     mstore(_output_ptr, 0)
                 }
 
+                // sendPay
                 case 0x33333321 {
                     // address, value
                     // 0xee000002000000180000003c11000014<address>11000020<value>
@@ -569,7 +570,7 @@ object "ComplexStore" {
                     dtdiv(_input_ptr, _output_ptr)
                 }
 
-                 // cast
+                // cast
                 case 0x3333331c {
                     // 0xee0000020000000800000010
                     // 22000004 11000020 11000004 00000001
@@ -1061,6 +1062,10 @@ object "ComplexStore" {
                     _length := getlengthFromStarts(_starts_ptr)
                 }
                 case 0x44 {
+                    let size := getSize(_starts_ptr)
+                    _length := mul(size, getTypeLength(add(_starts_ptr, 4)))
+                }
+                case 0x45 {
                     let size := getSize(_starts_ptr)
                     _length := mul(size, getTypeLength(add(_starts_ptr, 4)))
                 }
