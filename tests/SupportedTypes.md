@@ -62,6 +62,8 @@ ee000002 - tuple size 2
 
 ### None
 
+`ee00000000000000`
+
 Store def: `0xfffffffe000000051000000000`
 
 ```
@@ -369,11 +371,11 @@ E.g. for uint `0x11000000`, we only store the above `uint` definition. Then, we 
 
 ## Named Types
 
-Store def: `0xfffffffc88ffffffee000002000000040000002211000000ee0000010000000711000003000020`
+Store def: `0xfffffffc88ffffffee000002000000040000001311000000ee0000010000000711000003000020`
 ```
 88ffffff - named type id
 
-ee0000020000000400000022
+ee0000020000000400000013
 11000000 - abstract type id
 ee000001 - input for new(abstract_type_id(<input>))
 00000007
