@@ -871,17 +871,19 @@ object "ComplexStore" {
             function dtcast(input_ptr, output_ptr) {
                 let to_type_ptr := input_ptr
                 let from_type_ptr := add(input_ptr, 4)
+                let value_ptr := add(input_ptr, 8)
                 let abstract_type_id := mslice(to_type_ptr, 1)
-
-                // require the same abstract type id
-                dtrequire(eq(abstract_type_id, mslice(from_type_ptr, 1)), 0xea)
 
                 let to_size := getSize(to_type_ptr)
                 let from_size := getSize(from_type_ptr)
-                // only cast size from lt -> gt
-                dtrequire(gt(to_size, from_size), 0xea)
 
-                let diff := sub(to_size, from_size)
+                // casting size from lt -> gt is allowed if
+                // the actual value size < to_sie
+                if lt(to_size, from_size) {
+                    let index := firstSignificantByte(sub(from_size, to_size), add(input_ptr, 8))
+                    from_size := sub(from_size, index)
+                    value_ptr := add(value_ptr, index)
+                }
 
                 mslicestore(output_ptr, 0xee000001, 4)
                 mslicestore(add(output_ptr, 4), add(to_size, 4), 4)
@@ -890,16 +892,94 @@ object "ComplexStore" {
                 switch abstract_type_id
                 // right pad for uint
                 case 0x11 {
-                    mslicestore(add(output_ptr, 12), 0, diff)
-                    mmultistore(add(add(output_ptr, 12), diff), add(input_ptr, 8), from_size)
+                    dtcastToUint(from_type_ptr, from_size, to_size, value_ptr, add(output_ptr, 12))
+                }
+                case 0x12 {
+                    dtcastToInt(from_type_ptr, from_size, to_size, value_ptr, add(output_ptr, 12))
                 }
                 // left pad for byte
                 case 0x22 {
-                    mmultistore(add(output_ptr, 12), add(input_ptr, 8), from_size)
-                    mslicestore(add(add(output_ptr, 12), from_size), 0, diff)
+                    dtcastToBytes(from_type_ptr, from_size, to_size, value_ptr, add(output_ptr, 12))
                 }
                 default {
                     dtrequire(false, 0xea)
+                }
+            }
+
+            function dtcastToInt(from_type_ptr, from_size, to_size, value_ptr, output_ptr) {
+                dtrequire(gt(add(to_size, 1), from_size), 0xea)
+
+                let canCast := eq(mslice(from_type_ptr, 1), 0x11)
+                if canCast {
+                    if isFirstBitOne(value_ptr) {
+                        dtrequire(false, 0xe7)
+                    }
+                }
+
+                if iszero(canCast) {
+                    canCast := eq(mslice(from_type_ptr, 1), 0x12)
+                }
+
+                dtrequire(eq(canCast, true), 0xea)
+
+                let diff := sub(to_size, from_size)
+                let isnegative := isFirstBitOne(value_ptr)
+
+                // right pad for uint
+                switch isnegative
+                case 0 {
+                    mslicestore(output_ptr, 0, diff)
+                    mmultistore(add(output_ptr, diff), value_ptr, from_size)
+                }
+                case 1 {
+                    mslicestore(output_ptr, 0xff, diff)
+                    mmultistore(add(output_ptr, diff), value_ptr, from_size)
+                }
+            }
+
+            function dtcastToUint(from_type_ptr, from_size, to_size, value_ptr, output_ptr) {
+                // to_size >= from_size
+                dtrequire(gt(add(to_size, 1), from_size), 0xea)
+
+                let canCast := eq(mslice(from_type_ptr, 1), 0x12)
+                if eq(canCast, true) {
+                    dtrequire(eq(isFirstBitOne(value_ptr), false), 0xe8)
+                }
+                if iszero(canCast) {
+                    canCast := eq(mslice(from_type_ptr, 1), 0x11)
+                }
+                dtrequire(eq(canCast, true), 0xe7)
+
+                let diff := sub(to_size, from_size)
+
+                // right pad for uint
+                mslicestore(output_ptr, 0, diff)
+                mmultistore(add(output_ptr, diff), value_ptr, from_size)
+            }
+
+            function dtcastToBytes(from_type, from_size, to_size, value_ptr, output_ptr) {
+                dtrequire(gt(to_size, from_size), 0xea)
+                let diff := sub(to_size, from_size)
+
+                // left pad for byte
+                mmultistore(output_ptr, value_ptr, from_size)
+                mslicestore(add(output_ptr, from_size), 0, diff)
+            }
+
+            function isFirstBitOne(value_ptr) -> isbitone {
+                let stbyte := mslice(value_ptr, 1)
+                isbitone := gt(stbyte, 0x7f)
+            }
+
+            function firstSignificantByte(maxindex, value_ptr) -> offset {
+                let current_byte := mslice(value_ptr, 1)
+                for { } eq(current_byte, 0x00) { } {
+                    offset := add(offset, 1)
+                    current_byte := mslice(add(value_ptr, offset), 1)
+                    if gt(offset, maxindex) {
+                        current_byte := 0x11
+                        offset := sub(offset, 1)
+                    }
                 }
             }
 
