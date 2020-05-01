@@ -50,7 +50,8 @@ object "ComplexStore" {
             switch fsig
 
             case 0xffffffff {
-                let exec_fsig := mslice(_calldata2, 4)
+                // let exec_fsig := mslice(_calldata2, 4)
+                let exec_fsig, sig_len := getTypeSignature(_calldata2)
 
                 // !!! always 96 diff between them
                 // let starts_ptr := _data
@@ -58,7 +59,7 @@ object "ComplexStore" {
                 // dtype data := sub(starts_ptr, 512)
                 // _runtime_fns := sub(starts_ptr, 1024)
 
-                addGraphProgInput(_data, _internal_data, add(_internal_data, 96), 0)
+                addGraphProgInput(add(_calldata2, sig_len), _internal_data, add(_internal_data, 96), 0)
                 executeInternal(exec_fsig, _internal_data, _internal_output_ptr)
 
                 let input_size := getlengthFromStarts(_internal_output_ptr)
@@ -161,15 +162,27 @@ object "ComplexStore" {
                 // first check if a named type exists
                 getCurried(temp_ptr, sig)
 
-                let abstract_type_id := mslice(add(temp_ptr, 4), 4)
+                // let abstract_type_id := mslice(add(temp_ptr, 4), 4)
+                let abstract_type_id, abstract_len := getTypeSignature(add(temp_ptr, 4))
 
                 switch abstract_type_id
+                // sized type
                 case 0 {
                     let size := 0
-                    abstract_type_id, size := decomposeType(sig)
-                    mslicestore(_new_data_ptr, 0xee00000100000007, 8)
-                    mslicestore(_new_inputs_ptr, uconcat(0x11000003, size, 3), 7)
+                    let rest := 0
+                    abstract_type_id, size, rest := decomposeType(sig)
+                    switch rest
+                    case 0 {
+                        mslicestore(_new_data_ptr, 0xee00000100000007, 8)
+                        mslicestore(_new_inputs_ptr, uconcat(0x11000003, size, 3), 7)
+                    }
+                    default {
+                        mslicestore(_new_data_ptr, 0xee000002000000070000000f, 12)
+                        mslicestore(_new_inputs_ptr, uconcat(0x11000003, size, 3), 7)
+                        mslicestore(add(_new_inputs_ptr, 7), uconcat(0x22000004, rest, 4), 8)
+                    }
                 }
+                // named type
                 default {
                     let starts_ptr := add(temp_ptr, 8)
                     let starts_size := getStartsLength(starts_ptr)
@@ -346,10 +359,11 @@ object "ComplexStore" {
 
                 // function dtnew(abstract_type_id, size, _primordial_matter_ptr)
                 case 0x33333337 {
-                    // type id, size
+                    // type id, size(optional)
                     // e.g. 220000041100000011000003000004
-                    let type_id := mslice(add(_input_ptr, 4), 4)
-                    let size := mslice(add(_input_ptr, 12), 3)
+                    // let type_id := mslice(add(_input_ptr, 4), 4)
+                    let type_id, id_len := getTypeSignature(add(_input_ptr, 4))
+                    let size := mslice(add(add(_input_ptr, 8), id_len), 3)
 
                     switch size
                     // if type is stored with a size, we don't need external inputs
@@ -457,11 +471,12 @@ object "ComplexStore" {
 
                 // getTypeSignature
                 case 0x33333329 {
-                    let type_id := mslice(_input_ptr, 4)
+                    // let type_id := mslice(_input_ptr, 4)
+                    let type_id, id_len := getTypeSignature(_input_ptr)
 
                     // starts
                     mslicestore(_output_ptr, 0xee0000010000000822000004, 12)
-                    mslicestore(add(_output_ptr, 12), type_id, 4)
+                    mslicestore(add(_output_ptr, 12), type_id, id_len)
                 }
 
                 // curry1: fsig, partial application argument
@@ -869,9 +884,16 @@ object "ComplexStore" {
 
             // type_id1, value_ptr, type_id2, answ_ptr
             function dtcast(input_ptr, output_ptr) {
+                // TODO fix this hack
                 let to_type_ptr := input_ptr
-                let from_type_ptr := add(input_ptr, 4)
-                let value_ptr := add(input_ptr, 8)
+                let from_type_ptr := add(add(to_type_ptr, getSize(input_ptr)), 4)
+
+                if eq(mslice(input_ptr, 4), 0x22000004) {
+                    to_type_ptr := add(input_ptr, 4)
+                    from_type_ptr := add(to_type_ptr, 4)
+                }
+
+                let value_ptr := add(from_type_ptr, 4)
                 let abstract_type_id := mslice(to_type_ptr, 1)
 
                 let to_size := getSize(to_type_ptr)
@@ -880,7 +902,7 @@ object "ComplexStore" {
                 // casting size from lt -> gt is allowed if
                 // the actual value size < to_sie
                 if lt(to_size, from_size) {
-                    let index := firstSignificantByte(sub(from_size, to_size), add(input_ptr, 8))
+                    let index := firstSignificantByte(sub(from_size, to_size), value_ptr)
                     from_size := sub(from_size, index)
                     value_ptr := add(value_ptr, index)
                 }
@@ -1004,7 +1026,7 @@ object "ComplexStore" {
 
                 for { let i := 0 } lt(i, select_length) { i := add(i, 1) } {
                     let index := mslice(add(select_ptr, mul(i, 1)), 1)
-                    let start, length := selectOne(select_ptr, index, starts_ptr, inputs_ptr)
+                    let start, length := selectOneBoundaries(select_ptr, index, starts_ptr, inputs_ptr)
 
                     // add new end
                     mslicestore(add(add(_output_starts, 4), mul(i, 4)), add(sum_length, length), 4)
@@ -1017,13 +1039,13 @@ object "ComplexStore" {
                 // if eq(select_length, 2) { return (_output_starts, 128) }
             }
 
-            function selectOne(select_ptr, index, _starts_ptr, inputs_ptr) -> start, length {
+            function selectOneBoundaries(select_ptr, index, _starts_ptr, inputs_ptr) -> start, length {
                 // enforced rule for making the selector dynamic, based on ProgInput values
                 // for implementing Union type
                 if gt(index, 128) {
                     index := sub(255, index)
 
-                    let st, len := selectOne(select_ptr, index, _starts_ptr, inputs_ptr)
+                    let st, len := selectOneBoundaries(select_ptr, index, _starts_ptr, inputs_ptr)
                     let _ptr := add(inputs_ptr, st)
                     // Runtime index needs to be a uint
                     dtrequire(eq(mslice(_ptr, 1), 0x22), 0xed)
@@ -1089,9 +1111,16 @@ object "ComplexStore" {
                 end := mslice(add(_starts_ptr, mul(index, 4)), 4)
             }
 
-            function decomposeType(sig) -> type_head, size {
-                type_head := and(sig, 0xff000000)
-                size := and(sig, 0x00ffffff)
+            function decomposeType(sig) -> type_head, size, rest {
+                let rsig := sig
+                if gt(sig, 0xffffffff) {
+                    // TODO: fix this hack for array sig -> sig needs to be a pointer .... or something else
+                    rsig := shr(32, and(sig, 0xffffffff00000000))
+                    rest := and(sig, 0x00000000ffffffff)
+                }
+
+                type_head := and(rsig, 0xff000000)
+                size := and(rsig, 0x00ffffff)
             }
 
             // Only gets the small abstract type sig
@@ -1099,7 +1128,19 @@ object "ComplexStore" {
                 _dtsig := mslice(_ptr, 1)
             }
 
-            function getTypeSignature(_ptr) -> _dtsig {
+            function getTypeSignature(_ptr) -> _dtsig, _len {
+                switch mslice(_ptr, 1)
+                case 0x44 {
+                    _dtsig := mslice(_ptr, 8)
+                    _len := 8
+                }
+                default {
+                    _dtsig := mslice(_ptr, 4)
+                    _len := 4
+                }
+            }
+
+            function getTypeSignatureBase(_ptr) -> _dtsig {
                 _dtsig := mslice(_ptr, 4)
             }
 
@@ -1114,6 +1155,13 @@ object "ComplexStore" {
 
             function getlastStartsIndex(_starts_ptr) -> _index {
                 _index := add(_starts_ptr, mul(getSize(_starts_ptr), 4))
+            }
+
+            function getTupleItem(tuple_ptr, index) -> item_ptr, length {
+                let input_ptr := getValuesPointer(tuple_ptr)
+                let start := 0
+                start, length := selectOneBoundaries(0, index, tuple_ptr, input_ptr)
+                item_ptr := add(input_ptr, start)
             }
 
             function getStartsLength(_starts_ptr) -> _length {
