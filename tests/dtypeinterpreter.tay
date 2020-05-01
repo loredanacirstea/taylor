@@ -593,10 +593,35 @@ object "ComplexStore" {
                 case 0x3333331c {
                     // 0xee0000020000000800000010
                     // 22000004 11000020 11000004 00000001
+                    // or typed value in lieu of 22000004 11000020
                     dtrequire(eq(getSize(starts_ptr), 2), 0xe7)
-                    dtrequire(eq(mslice(_input_ptr, 4), 0x22000004), 0xe8)
 
-                    dtcast(add(_input_ptr, 4), _output_ptr)
+                    // dtrequire(eq(mslice(_input_ptr, 4), 0x22000004), 0xe6)
+                    dtcast(_input_ptr, _output_ptr)
+                    // dtcast(add(_input_ptr, 4), _output_ptr)
+                }
+
+                // zip_apply - sig1, array1, array2
+                // applies sig1 on array1_item, array2_item
+                case 0x3333331b {
+                    // return (starts_ptr, 512)
+                    let funcsig, sig_length := getTypeSignature(add(_input_ptr, 4))
+                    let array1_ptr := add(add(_input_ptr, 4), sig_length)
+
+                    // index 3?
+                    let start, arrlength := selectOneBoundaries(0, 3, starts_ptr, _input_ptr)
+                    let array2_ptr := add(_input_ptr, start)
+
+                    mslicestore(_output_ptr, 0xee000001, 4)
+                    // mslicestore(add(_output_ptr, 4), array_size, 4)
+
+                    // mslicestore(add(_output_ptr, 8), mslice(array_ptr, 4), 4)
+                    // return (_input_ptr, 172)
+
+                    let new_size, array_length := zip_apply(add(_input_ptr, 512), funcsig, array1_ptr, array2_ptr, add(_output_ptr, 12))
+                    mstorehead(add(_output_ptr, 4), add(new_size, 4), 4)
+                    mstorehead(add(_output_ptr, 8), uconcat(0x44, array_length, 3), 4)
+                    return (_output_ptr, add(new_size, 12))
                 }
 
                 // // times function
@@ -707,6 +732,59 @@ object "ComplexStore" {
                     if iszero(newtypeid) { newtypeid := mslice(add(internal_output, 4), 4) }
                 }
                 mstorehead(_output_ptr, newtypeid, 4)
+            }
+
+            function zip_apply(internal_starts, funcsig, array1_ptr, array2_ptr, output_ptr) -> new_size, array_length {
+                let internal_inputs := add(internal_starts, 96)
+                let internal_output := add(internal_inputs, 128)
+
+                let array1_values := getValuesPointer(array1_ptr)
+                let array2_values := getValuesPointer(array2_ptr)
+                // let item1_size := getSize(sub(array1_values, 4))
+                // let item2_size := getSize(sub(array2_values, 4))
+                array_length := min(getSize(array1_ptr), getSize(array2_ptr))
+
+                // mslicestore(output_ptr, uconcat(0x44, array_length, 3), 4)
+
+                // leave space for element signature
+                let current_output_ptr := add(output_ptr, 4)
+                let newtypeid := 0
+                new_size := 4
+
+                for { let i:= 0 } lt(i, array_length) { i := add(i, 1) } {
+                    zip_apply_meld(internal_starts, internal_inputs, i, array1_values, array2_values)
+
+                    executeInternal(funcsig, internal_starts, internal_output)
+
+                    // remove sig
+                    let newitem_size := sub(mslice(add(internal_output, 4), 4), 4)
+
+                    mmultistore(current_output_ptr, add(internal_output, 12), newitem_size)
+                    current_output_ptr := add(current_output_ptr, newitem_size)
+                    new_size := add(new_size, newitem_size)
+                    if iszero(newtypeid) { newtypeid := mslice(add(internal_output, 8), 4) }
+                }
+                mstorehead(output_ptr, newtypeid, 4)
+            }
+
+            function zip_apply_meld(internal_starts, internal_inputs, i, array1_values, array2_values) {
+                let item1_size := getSize(sub(array1_values, 4))
+                let item2_size := getSize(sub(array2_values, 4))
+                let input_offset := 0
+                mslicestore(internal_starts, 0xee000002, 4)
+                mslicestore(add(internal_starts, 4), add(item1_size, 4), 4)
+                mslicestore(add(internal_starts, 8), add(item2_size, 4), 4)
+
+                // add element from first array
+                mslicestore(internal_inputs, mslice(sub(array1_values, 4), 4), 4)
+                input_offset := add(internal_inputs, 4)
+                mmultistore(input_offset, add(array1_values, mul(i, item1_size)), item1_size)
+
+                // add element from second array
+                input_offset := add(input_offset, item1_size)
+                mslicestore(input_offset, mslice(sub(array2_values, 4), 4), 4)
+                input_offset := add(input_offset, 4)
+                mmultistore(input_offset, add(array2_values, mul(i, item2_size)), item2_size)
             }
 
             function dtrequire(cond, error_bytes) {
@@ -947,7 +1025,7 @@ object "ComplexStore" {
                 let diff := sub(to_size, from_size)
                 let isnegative := isFirstBitOne(value_ptr)
 
-                // right pad for uint
+                // left pad for uint
                 switch isnegative
                 case 0 {
                     mslicestore(output_ptr, 0, diff)
@@ -974,7 +1052,7 @@ object "ComplexStore" {
 
                 let diff := sub(to_size, from_size)
 
-                // right pad for uint
+                // left pad for uint
                 mslicestore(output_ptr, 0, diff)
                 mmultistore(add(output_ptr, diff), value_ptr, from_size)
             }
@@ -983,7 +1061,7 @@ object "ComplexStore" {
                 dtrequire(gt(to_size, from_size), 0xea)
                 let diff := sub(to_size, from_size)
 
-                // left pad for byte
+                // right pad for byte
                 mmultistore(output_ptr, value_ptr, from_size)
                 mslicestore(add(output_ptr, from_size), 0, diff)
             }
