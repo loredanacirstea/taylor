@@ -1,0 +1,30 @@
+{
+  "name": "taylor",
+  "version": "1.0.0",
+  "description": "",
+  "main": "index.js",
+  "directories": {
+    "test": "tests"
+  },
+  "scripts": {
+    "build": "webpack --watch",
+    "test": "jest"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/loredanacirstea/taylor.git"
+  },
+  "author": "",
+  "license": "GPL-3.0-or-later",
+  "bugs": {
+    "url": "https://github.com/loredanacirstea/taylor/issues"
+  },
+  "homepage": "https://github.com/loredanacirstea/taylor#readme",
+  "devDependencies": {
+    "jest": "^25.5.4"
+  },
+  "dependencies": {
+    "ethers": "^4.0.46",
+    "solc": "0.5.7"
+  }
+}

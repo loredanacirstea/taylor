@@ -35,6 +35,28 @@ array - dim, sizes[]
 00000005
 00000004
 
+45000000 - n-dimensional array
+
+55000000 - tree
+
+55000004 - tree rank 4
+22000004 - component type id (e.g. u32)
+00000009 - root
+00000003 - root child 1
+00000004
+00000005
+00000004
+
+
+55000004 - tree rank 4
+22000004 - component type id (e.g. u32)
+00000009 - root
+00000003 - root child 1
+00000004
+00000005
+00000004
+
+
 
 tuple - ids[]
 
@@ -354,6 +376,62 @@ ee000005
 44444444
 ```
 
+## Tree
+
+One level tree: `Tree(rank:u8, T) = Concat(T, Contig(rank, None))`
+
+Input:
+- rank
+-
+
+Store def:
+```
+0xfffffffe0000000511000000030000000dee0000010000000522000001110000001d3333333800000000333333350000000200023333333000000003010003
+
+00000005 - length
+55000000 - sig
+04       - steps count
+
+0000000d - inputs length
+ee000001
+00000005
+22000001
+11
+
+0000001d - steps length
+33333338 - byte1 sig
+00000000 - input indexes length
+33333335 - contig
+00000002 - input indexes length
+00       - count/size
+02       - byte1() result
+33333330 - concat
+00000003
+01       - type_id header
+00       - count/size
+03       - contig result
+```
+
+
+`Tree(rank:u32, T) = Concat(T, Contig(rank, Union(None, Tree(rank, T))))`
+
+
+Tree(rank:u8, T) = Concat(T, non_none:u32, Contig(rank, Union(None, Tree(rank, T))))
+
+Tree(rank:u8, T) = Concat(T, Contig(rank, None))
+
+Tree(rank:u8, T, Tuple) = Concat(T, Tuple)
+
+arrity(Tuple) = rank
+Tuple  = contig(rank, )
+
+- None, T, Tree(rank, T)
+
+## Linked List
+
+LinkedList(T) = concat(T, next: Union(None, LinkedList(T)))
+
+
 ## Casting
 
 E.g. u32 -> u256: `0xffffffff3333331cee000002000000080000001022000004110000201100000400000001`
@@ -591,3 +669,51 @@ D32298893dD95c1Aaed8A79bc06018b8C265a279
 ```
 
 Execute: `0xffffffff77777777ee000002000000180000003c11000014fffFd05c2b12cfE3c74464531f88349e159785ea110000200000000000000000000000000000000000000000000000000de0b6b3a7640000`
+
+## Runtime Functions
+
+### Integer Casting
+
+Store def:
+```
+0xfffffffe0000000511000000030000000dee0000010000000522000001110000001d3333333800000000333333350000000200023333333000000003010003
+
+00000005 - length
+11000000 - sig
+03       - steps count
+
+0000000d - inputs length
+ee000001
+00000005
+22000001
+11
+
+0000001d - steps length
+33333338 - byte1 sig
+00000000 - input indexes length
+33333335 - contig
+00000002 - input indexes length
+00       - count/size
+02       - byte1() result
+33333330 - concat
+00000003
+01       - type_id header
+00       - count/size
+03       - contig result
+```
+
+Instantiate:
+
+- `u32`:
+```
+0xffffffff11000000ee0000010000000711000003000004
+
+
+ee000001 - tuple size 1
+00000008 - end first tuple item
+11000004 - u32
+00000004 - value (size)
+
+# result: 0xee000001000000081100000411111111
+
+```

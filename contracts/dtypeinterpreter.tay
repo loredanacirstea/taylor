@@ -22,8 +22,6 @@ object "ComplexStore" {
                 steps: dt.u8
             )
 
-
-
             // mapping(sig_b -> Type) dtypes
             // maping(sig_b -> ProgInput) proginputs
             // mapping(sig_b -> )
@@ -93,7 +91,6 @@ object "ComplexStore" {
                 let length := 0
 
                 let _dtype_ptr := add(_output_ptr, 4)
-                // getType(_dtype_ptr, sig)
 
                 length := add(add(length, mslice(_dtype_ptr, 4)), 4)
 
@@ -162,7 +159,6 @@ object "ComplexStore" {
                 // first check if a named type exists
                 getCurried(temp_ptr, sig)
 
-                // let abstract_type_id := mslice(add(temp_ptr, 4), 4)
                 let abstract_type_id, abstract_len := getTypeSignature(add(temp_ptr, 4))
 
                 switch abstract_type_id
@@ -204,8 +200,6 @@ object "ComplexStore" {
                 let _starts_ptr1 := _data_ptr
                 let _inputs_ptr := add(_starts_ptr1, 96)
                 let _dtype_ptr := sub(_data_ptr, 512)
-
-                // if eq(sig, 44444444) { return (_data_ptr, 128) }
 
                 // Get dtype data from storage
                 getType(_dtype_ptr, sig)
@@ -276,9 +270,6 @@ object "ComplexStore" {
                     // select from indexes & starts -> write at _step_inputs_ptr
                     select(_step_indexes_ptr, _starts_ptr2, _inputs_ptr, _step_starts, _step_inputs_ptr)
 
-                    // if eq(i, 1) { return (_step_starts, 128) }
-                    // if eq(ProgStep.typeid(_step_ptr), 0x44444444) { return (_inputs_ptr, 128) }
-
                     // output is temporarily written at mem 0
                     // result also has a tuple encoding, based on structs
                     executeInternal(ProgStep.typeid(_step_ptr), _step_starts, 0)
@@ -336,16 +327,6 @@ object "ComplexStore" {
 
                 switch sig
 
-                // // is_not_none
-                // case 0x33333339 {
-                //     let index := mslice(_input_ptr, 4)
-                //     let not_none := is_not_none(index, starts_ptr)
-                //     // starts
-                //     mslicestore(_output_ptr, 1, 4)
-                //     mslicestore(_output_ptr, 1, 4)
-                //     mslicestore(_output_ptr, not_none, 4)
-                // }
-
                 // byte1
                 case 0x33333338 {
                     let ans := byte1()
@@ -361,7 +342,6 @@ object "ComplexStore" {
                 case 0x33333337 {
                     // type id, size(optional)
                     // e.g. 220000041100000011000003000004
-                    // let type_id := mslice(add(_input_ptr, 4), 4)
                     let type_id, id_len := getTypeSignature(add(_input_ptr, 4))
                     let size := mslice(add(add(_input_ptr, 8), id_len), 3)
 
@@ -396,8 +376,6 @@ object "ComplexStore" {
 
                     let bytes_length := mslice(add(_input_ptr, 8), 3)
 
-                    // if eq(bytes_length, 32) { return(starts_ptr, 172) }
-
                     let size := mul(count, bytes_length)
                     // starts
                     mslicestore(_output_ptr, 0xee, 1)
@@ -426,7 +404,6 @@ object "ComplexStore" {
                     let array_ptr := add(add(_input_ptr, 4), sigsize)
 
                     mslicestore(_output_ptr, 0xee000001, 4)
-                    // mslicestore(add(_output_ptr, 4), array_size, 4)
                     mslicestore(add(_output_ptr, 8), mslice(array_ptr, 4), 4)
 
                     let new_size := dtmap(add(_input_ptr, 512), funcsig, array_ptr, add(_output_ptr, 12))
@@ -471,7 +448,6 @@ object "ComplexStore" {
 
                 // getTypeSignature
                 case 0x33333329 {
-                    // let type_id := mslice(_input_ptr, 4)
                     let type_id, id_len := getTypeSignature(_input_ptr)
 
                     // starts
@@ -595,16 +571,12 @@ object "ComplexStore" {
                     // 22000004 11000020 11000004 00000001
                     // or typed value in lieu of 22000004 11000020
                     dtrequire(eq(getSize(starts_ptr), 2), 0xe7)
-
-                    // dtrequire(eq(mslice(_input_ptr, 4), 0x22000004), 0xe6)
                     dtcast(_input_ptr, _output_ptr)
-                    // dtcast(add(_input_ptr, 4), _output_ptr)
                 }
 
                 // zip_apply - sig1, array1, array2
                 // applies sig1 on array1_item, array2_item
                 case 0x3333331b {
-                    // return (starts_ptr, 512)
                     let funcsig, sig_length := getTypeSignature(add(_input_ptr, 4))
                     let array1_ptr := add(add(_input_ptr, 4), sig_length)
 
@@ -613,10 +585,6 @@ object "ComplexStore" {
                     let array2_ptr := add(_input_ptr, start)
 
                     mslicestore(_output_ptr, 0xee000001, 4)
-                    // mslicestore(add(_output_ptr, 4), array_size, 4)
-
-                    // mslicestore(add(_output_ptr, 8), mslice(array_ptr, 4), 4)
-                    // return (_input_ptr, 172)
 
                     let new_size, array_length := zip_apply(add(_input_ptr, 512), funcsig, array1_ptr, array2_ptr, add(_output_ptr, 12))
                     mstorehead(add(_output_ptr, 4), add(new_size, 4), 4)
@@ -624,49 +592,7 @@ object "ComplexStore" {
                     return (_output_ptr, add(new_size, 12))
                 }
 
-                // // times function
-                // case 0x33333333 {
-                //     let times := mslice(_input_ptr, 4)
-                //     let sig_function := mslice(add(_input_ptr, 4), 4)
-                //     let type_id := mslice(add(_input_ptr, 8), 4)
-
-                //     times(times, sig_function, type_id)
-                // }
-
-                // function times(starts_ptr, inputs_ptr, _output_ptr) {
-                //     let times := mslice(_input_ptr, 4)
-                //     let sig_function := mslice(add(_input_ptr, 4), 4)
-                //     let type_id := mslice(add(_input_ptr, 8), 4)
-
-
-
-                //     dtif(
-                //         iszero(times),
-                //         executeInternal(type_id, starts_ptr, _output_ptr),
-
-                //         // executeInternal(0x33333333, starts_ptr, _output_ptr) // sub times & replace
-
-                //         times(sub(times, 1), sig_function, executeInternal(sig_function, starts_ptr, _output_ptr))
-                //     )
-                // }
-
-                // // Times(times:u32, T1, T2) = If( Eq(times, 0), T2, Times( Sub(times, 1), T1, T1( T2)))
-                // function times(times, sig_function, type_id) {
-                //     dtif(
-                //         iszero(times),
-                //         executeInternal(type_id, starts_ptr, _output_ptr),
-
-                //         // executeInternal(0x33333333, starts_ptr, _output_ptr) // sub times & replace
-
-                //         times(sub(times, 1), sig_function, executeInternal(sig_function, starts_ptr, _output_ptr))
-                //     )
-                // }
-
-                // function apply()
-
                  default {
-                    // mslicestore(0, 0xfffe, 2)
-                    // revert(0, 2)
                     success := false
                 }
             }
@@ -704,7 +630,6 @@ object "ComplexStore" {
             }
 
             function dtmap(internal_starts, funcsig, array_ptr, _output_ptr) -> new_size {
-                // let internal_starts := add(_input_ptr, 512)
                 let internal_inputs := add(internal_starts, 96)
                 let internal_output := add(internal_inputs, 128)
 
@@ -788,9 +713,10 @@ object "ComplexStore" {
             }
 
             function dtrequire(cond, error_bytes) {
-                if lt(cond, 1) {
-                    mstore(0, error_bytes)
-                    revert(0, 2)
+                if eq(cond, 0) {
+                    mslicestore(0, error_bytes, 1)
+                    // revert(0, 1)
+                    return (0, 1)
                 }
             }
 
@@ -850,6 +776,12 @@ object "ComplexStore" {
                         remaining
                     )
                 }
+            }
+
+            function allocate(size) -> ptr {
+                ptr := mload(0x40)
+                if iszero(ptr) { ptr := 0x60 }
+                mstore(0x40, add(ptr, size))
             }
 
             function min(a, b) -> c {
@@ -954,10 +886,6 @@ object "ComplexStore" {
                 case 0 {
                     ans := f_output
                 }
-            }
-
-            function dtapply(type_id, arg_ptr, res_ptr) {
-                // fsig := type_id
             }
 
             // type_id1, value_ptr, type_id2, answ_ptr
@@ -1089,7 +1017,7 @@ object "ComplexStore" {
                 let select_pointer := add(select_ptr, 4)
                 let starts_pointer := add(starts_ptr, 4)
                 let output_pointer := _output_ptr
-                // if eq(mslice(select_ptr, 4), 2) { return (inputs_ptr, 128) }
+
                 selectInner(select_pointer, starts_pointer, inputs_ptr, _output_starts, output_pointer, select_length)
             }
 
@@ -1099,8 +1027,6 @@ object "ComplexStore" {
                 // add tuple type with size 0xee<size byte4>
                 mslicestore(_output_starts, 0xee, 1)
                 mslicestore(add(_output_starts, 1), select_length, 3)
-
-                // if eq(select_length, 2) { return (inputs_ptr, 128) }
 
                 for { let i := 0 } lt(i, select_length) { i := add(i, 1) } {
                     let index := mslice(add(select_ptr, mul(i, 1)), 1)
@@ -1114,7 +1040,6 @@ object "ComplexStore" {
 
                     sum_length := add(sum_length, length)
                 }
-                // if eq(select_length, 2) { return (_output_starts, 128) }
             }
 
             function selectOneBoundaries(select_ptr, index, _starts_ptr, inputs_ptr) -> start, length {
