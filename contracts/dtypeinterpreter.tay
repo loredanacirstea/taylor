@@ -414,13 +414,18 @@ object "ComplexStore" {
 
                 // map: fsig/pointer, array
                 case 0x33333332 {
-                    let sigsize := getSize(_input_ptr)
-                    let array_ptr := add(add(_input_ptr, 4), sigsize)
+                    let sig_length := getSize(_input_ptr)
+                    let array_ptr := add(add(_input_ptr, 4), sig_length)
 
                     mslicestore(_output_ptr, 0xee000001, 4)
                     mslicestore(add(_output_ptr, 8), mslice(array_ptr, 4), 4)
 
-                    let new_size := dtmap(add(_input_ptr, 512), add(_input_ptr, 4), array_ptr, add(_output_ptr, 12))
+                    let new_size := dtmap(
+                        add(_input_ptr, 512),
+                        add(_input_ptr, 4),
+                        array_ptr,
+                        add(_output_ptr, 12)
+                    )
                     mstorehead(add(_output_ptr, 4), new_size, 4)
                 }
 
@@ -666,12 +671,13 @@ object "ComplexStore" {
 
                     executeInternal(sig_ptr, internal_starts, internal_output)
 
-                    let newitem_size := mslice(add(internal_output, 4), 4)
+                    // remove sig
+                    let newitem_size := sub(mslice(add(internal_output, 4), 4), 4)
+                    mmultistore(current_output_ptr, add(internal_output, 12), newitem_size)
 
-                    mmultistore(current_output_ptr, add(internal_output, 8), newitem_size)
                     current_output_ptr := add(current_output_ptr, newitem_size)
                     new_size := add(new_size, newitem_size)
-                    if iszero(newtypeid) { newtypeid := mslice(add(internal_output, 4), 4) }
+                    if iszero(newtypeid) { newtypeid := mslice(add(internal_output, 8), 4) }
                 }
                 mstorehead(_output_ptr, newtypeid, 4)
             }
