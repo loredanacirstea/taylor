@@ -473,7 +473,7 @@ object "ComplexStore" {
                     mmultistore(add(_output_ptr, 12), _input_ptr, sig_len)
                 }
 
-                // curry1: fsig, partial application argument
+                // curry: fsig, partial application arguments
                 case 0x33333328 {
                     // 0xee0000022000000080000000x
                     // 2000004<fsig><data>
@@ -486,24 +486,7 @@ object "ComplexStore" {
                         fpointer := add(_runtime_fns, 32)
                     }
 
-                    let sig_length := getSignatureLength(add(_input_ptr, 4))
-                    let data_ptr := add(_input_ptr, 8)
-                    let data_size := getTypeLength(data_ptr)
-
-                    let tuple_length := getTypeLength(starts_ptr)
-
-                    // virtual function marker
-                    mslicestore(fpointer, 0xfefe, 2)
-                    mmultistore(add(fpointer, 2), add(_input_ptr, 4), sig_length)
-
-                    // store tuple with 1 element: data
-                    let offset := add(sig_length, 2)
-                    mslicestore(add(fpointer, offset), 0xee000001, 4)
-                    offset := add(offset, 4)
-                    mslicestore(add(fpointer, offset), add(data_size, 4), 4)
-                    offset := add(offset, 4)
-                    mmultistore(add(fpointer, offset), data_ptr, add(data_size, 4))
-
+                    let tuple_length := curry(fpointer, starts_ptr, _input_ptr)
                     mstore(_runtime_fns, add(fpointer, tuple_length))
 
                     mslicestore(_output_ptr, 0xee0000010000002422000020, 12)
@@ -748,6 +731,39 @@ object "ComplexStore" {
                 mslicestore(input_offset, mslice(sub(array2_values, 4), 4), 4)
                 input_offset := add(input_offset, 4)
                 mmultistore(input_offset, add(array2_values, mul(i, item2_size)), item2_size)
+            }
+
+            function curry(fpointer, starts_ptr, _input_ptr) -> tuple_length {
+                let starts_len := sub(getStartsLength(starts_ptr), 4)
+                tuple_length := getTypeLength(starts_ptr)
+                let args_count := sub(getSize(starts_ptr), 1)
+
+                // virtual function marker
+                mslicestore(fpointer, 0xfefe, 2)
+
+                let sig_length := getSize(_input_ptr)
+                mmultistore(add(fpointer, 2), add(_input_ptr, 4), sig_length)
+                let offseted := add(add(fpointer, 2), sig_length)
+
+                let select_ptr := allocate(add(4, args_count))
+                mslicestore(select_ptr, args_count, 4)
+                for { let i := 0 } lt(i, args_count) { i := add(i, 1) } {
+                    mslicestore(add(add(select_ptr, 4), i), add(i, 1), 1)
+                }
+
+                let inputs_ptr := allocate(tuple_length)
+
+                select(
+                    select_ptr,
+                    starts_ptr,
+                    _input_ptr,
+                    offseted,
+                    inputs_ptr
+                )
+
+                tuple_length := getTypeLength(offseted)
+                mmultistore(add(offseted, starts_len), inputs_ptr, tuple_length)
+                tuple_length := add(tuple_length, starts_len)
             }
 
             function dtrequire(cond, error_bytes) {
