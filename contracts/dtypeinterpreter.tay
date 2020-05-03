@@ -166,7 +166,19 @@ object "ComplexStore" {
                 case 0 {
                     let size := 0
                     let rest := 0
-                    abstract_type_id, size, rest := decomposeType(sig)
+                    // TODO: vodoo
+                    // abstract_type_id, size, rest := decomposeType(sig)
+
+                    let rsig := sig
+                    if gt(sig, 0xffffffff) {
+                        // TODO: fix this hack for array sig -> sig needs to be a pointer .... or something else
+                        rsig := shr(32, and(sig, 0xffffffff00000000))
+                        rest := and(sig, 0x00000000ffffffff)
+                    }
+
+                    abstract_type_id := and(rsig, 0xff000000)
+                    size := and(rsig, 0x00ffffff)
+
                     switch rest
                     case 0 {
                         mslicestore(_new_data_ptr, 0xee00000100000007, 8)
@@ -660,36 +672,36 @@ object "ComplexStore" {
             }
 
             function zip_apply(internal_starts, funcsig, array1_ptr, array2_ptr, output_ptr) -> new_size, array_length {
-                let internal_inputs := add(internal_starts, 96)
-                let internal_output := add(internal_inputs, 128)
-
-                let array1_values := getValuesPointer(array1_ptr)
-                let array2_values := getValuesPointer(array2_ptr)
-                // let item1_size := getSize(sub(array1_values, 4))
-                // let item2_size := getSize(sub(array2_values, 4))
-                array_length := min(getSize(array1_ptr), getSize(array2_ptr))
-
-                // mslicestore(output_ptr, uconcat(0x44, array_length, 3), 4)
-
-                // leave space for element signature
-                let current_output_ptr := add(output_ptr, 4)
-                let newtypeid := 0
-                new_size := 4
-
-                for { let i:= 0 } lt(i, array_length) { i := add(i, 1) } {
-                    zip_apply_meld(internal_starts, internal_inputs, i, array1_values, array2_values)
-
-                    executeInternal(funcsig, internal_starts, internal_output)
-
-                    // remove sig
-                    let newitem_size := sub(mslice(add(internal_output, 4), 4), 4)
-
-                    mmultistore(current_output_ptr, add(internal_output, 12), newitem_size)
-                    current_output_ptr := add(current_output_ptr, newitem_size)
-                    new_size := add(new_size, newitem_size)
-                    if iszero(newtypeid) { newtypeid := mslice(add(internal_output, 8), 4) }
-                }
-                mstorehead(output_ptr, newtypeid, 4)
+                // let internal_inputs := add(internal_starts, 96)
+                // let internal_output := add(internal_inputs, 128)
+                //
+                // let array1_values := getValuesPointer(array1_ptr)
+                // let array2_values := getValuesPointer(array2_ptr)
+                // // let item1_size := getSize(sub(array1_values, 4))
+                // // let item2_size := getSize(sub(array2_values, 4))
+                // array_length := min(getSize(array1_ptr), getSize(array2_ptr))
+                //
+                // // mslicestore(output_ptr, uconcat(0x44, array_length, 3), 4)
+                //
+                // // leave space for element signature
+                // let current_output_ptr := add(output_ptr, 4)
+                // let newtypeid := 0
+                // new_size := 4
+                //
+                // for { let i:= 0 } lt(i, array_length) { i := add(i, 1) } {
+                //     zip_apply_meld(internal_starts, internal_inputs, i, array1_values, array2_values)
+                //
+                //     executeInternal(funcsig, internal_starts, internal_output)
+                //
+                //     // remove sig
+                //     let newitem_size := sub(mslice(add(internal_output, 4), 4), 4)
+                //
+                //     mmultistore(current_output_ptr, add(internal_output, 12), newitem_size)
+                //     current_output_ptr := add(current_output_ptr, newitem_size)
+                //     new_size := add(new_size, newitem_size)
+                //     if iszero(newtypeid) { newtypeid := mslice(add(internal_output, 8), 4) }
+                // }
+                // mstorehead(output_ptr, newtypeid, 4)
             }
 
             function zip_apply_meld(internal_starts, internal_inputs, i, array1_values, array2_values) {
@@ -1056,7 +1068,16 @@ object "ComplexStore" {
                     index := add(mslice(add(_ptr, 4), sub(len, 4)), 1)
                 }
                 let end := 0
-                start, end := boundsFromStarts(index, _starts_ptr)
+
+                // TODO: vodoo
+                // start, end := boundsFromStarts(index, _starts_ptr)
+
+                start := 0
+                if gt(index, 0) {
+                    start := mslice(add(_starts_ptr, mul(sub(index, 1), 4)), 4)
+                }
+                end := mslice(add(_starts_ptr, mul(index, 4)), 4)
+
                 length := sub(end, start)
             }
 
