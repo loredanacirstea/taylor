@@ -614,7 +614,22 @@ object "ComplexStore" {
                     mstorehead(add(_output_ptr, 8), uconcat(0x44, array_length, 3), 4)
                 }
 
-                 default {
+                // selectraw (ptr, slice_size, index)
+                case 0x3333331a {
+                    // 0xee000003000000070000000e0000001a
+                    // 1100000300000411000003000002220000084400000311000004
+                    let arg1_size := getSize(_input_ptr)
+                    let slice_size := mslice(add(_input_ptr, 4), arg1_size)
+                    let _ptr := add(add(_input_ptr, 4), arg1_size)
+                    let index := mslice(add(_ptr, 4), getSize(_ptr))
+                    _ptr := add(add(_ptr, 4), getSize(_ptr))
+
+                    let item_ptr := selectraw(_ptr, slice_size, index)
+                    mslicestore(_output_ptr, uconcat(0xee000001, add(slice_size, 4), 4), 8)
+                    mslicestore(add(_output_ptr, 8), uconcat(0x22, slice_size, 3), 4)
+                    mmultistore(add(_output_ptr, 12), item_ptr, slice_size)
+                }
+
                     success := false
                 }
             }
@@ -1031,6 +1046,16 @@ object "ComplexStore" {
                         current_byte := 0x11
                         offset := sub(offset, 1)
                     }
+                }
+            }
+
+            function selectraw(data_ptr, slice_size, index) -> item_ptr {
+                switch index
+                case 0 {
+                    item_ptr := data_ptr
+                }
+                default {
+                    item_ptr := selectraw(add(data_ptr, slice_size), slice_size, sub(index, 1))
                 }
             }
 
