@@ -286,17 +286,17 @@ ee000004
 33333329 - getTypeSignature  - 10
 00000001
 07       - new() result
-33333328 - curry1         - 11
+33333328 - curry         - 11
 00000002
 05       - concat 33333330
 03       - type id - 45
 33333332 - map            - 12
 00000002
-0b       - vfsig curry1
+0b       - vfsig curry
 02       - lengths array
 33333330 - concat         - 13
 00000003
-0c       - curry1 map result
+0c       - curry map result
 0a       - dtnew signature
 09       - contig result
 ```
@@ -578,7 +578,7 @@ Use: `0xffffffff88ffffff`. Result: `0xee0000010000002411000020000000000000000000
 
 - byte1, new, identity, contig, concat
 - sum, sub, div, prod
-- map, reduce, curry1
+- map, reduce, curry
 - cast
 - getTypeSignature
 - insert, get, count, log typed values per type
@@ -613,11 +613,11 @@ ee000003
 
 Result: `0xee000001000000071100000300000a` -> `10`
 
-### Curry1
+### curry
 
 E.g. `[0x000003, 0x000002].map(concat(0x44))` -> `[0x44000003, 0x44000002]`
 
-`0xfffffffe00000005660000000200000000000000143333332800000002000133333332000000020302`
+`0xfffffffe0000000566000000020000000000000015333333280000000300010233333332000000020403`
 
 ```
 00000005 - length
@@ -626,27 +626,32 @@ E.g. `[0x000003, 0x000002].map(concat(0x44))` -> `[0x44000003, 0x44000002]`
 
 00000000 - inputs length
 
-00000014
-33333328 - curry1
-00000002
+00000015
+33333328 - curry
+00000003
 00       - concat 33333330
-01       - typeid index
+01       - final element id
+02       - typeid index
 33333332 - map
 00000002
-03       - vfsig curry1
-02       - array
+04       - vfsig curry
+03       - array
 ```
-Execute: `0xffffffff66000000ee000003000000080000000d0000001e220000043333333022000001444400000311000003000003000002000005`
+Execute: `0xffffffff66000000ee000004000000080000001000000015000000262200000433333330220000042200000422000001444400000311000003000003000002000005`
+
 ```
-ee000003
+ee000004
 00000008
-0000000d
-0000001e
-22000004
+00000010
+00000015
+00000026
+22000004 - concat sig
 33333330
-22000001
+22000004 - final array element id
+22000004
+22000001 - typeid index
 44
-44000003
+44000003 - array
 11000003
 000003
 000002
