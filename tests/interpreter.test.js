@@ -11,39 +11,39 @@ beforeAll(() => {
 });
 
 it('store uint', async function () {
-  await Taylor.send(defs_new.uint);
+  await Taylor.storeType(defs_new.uint);
 });
 
 it('store int', async function () {
-  await Taylor.send(defs_new.int);
+  await Taylor.storeType(defs_new.int);
 });
 
 it('store array', async function () {
-  await Taylor.send(defs_new.array);
+  await Taylor.storeType(defs_new.array);
 });
 
 it('store narray', async function () {
-  await Taylor.send(defs_new.narray);
+  await Taylor.storeType(defs_new.narray);
 });
 
 it('get uint', async function () {
   const resp = await Taylor.call('0xfffffffd11000000');
-  expect(resp).toBe('0x0000000511000000030000000dee0000010000000522000001110000001d3333333800000000333333350000000200023333333000000003010003');
+  expect(resp).toBe('0x' + defs_new.uint);
 });
 
 it('get int', async function () {
   const resp = await Taylor.call('0xfffffffd12000000');
-  expect(resp).toBe('0x0000000512000000030000000dee0000010000000522000001120000001d3333333800000000333333350000000200023333333000000003010003');
+  expect(resp).toBe('0x' + defs_new.int);
 });
 
 it('get array', async function () {
   const resp = await Taylor.call('0xfffffffd44000000');
-  expect(resp).toBe('0x0000000544000000040000000dee0000010000000522000001440000002833333337000000010133333335000000020003333333290000000103333333300000000402000504');
+  expect(resp).toBe('0x' + defs_new.array);
 });
 
 it('get narray', async function () {
   const resp = await Taylor.call('0xfffffffd45000000');
-  expect(resp).toBe('0x0000000545000000070000003cee000005000000050000000d000000150000001c000000242200000145220000043333333322000004333333301100000300000122000004220000040000004833333337000000020001333333310000000304020633333335000000020908333333290000000108333333280000000305070333333332000000020c0233333330000000030d0b0a');
+  expect(resp).toBe('0x' + defs_new.narray);
 });
 
 it('initialize uint', async function () {
@@ -180,7 +180,7 @@ it('cast x -> i16', async function () {
 });
 
 it('cast array', async function () {
-  await Taylor.send(defs_funcs.castarray);
+  await Taylor.storeType(defs_funcs.castarray);
 
   resp = await Taylor.call('0xffffffff77777777ee0000020000000c000000202200000844000003110000044400000312000004000000020000000500000004');
   expect(resp).toBe('0xee000001000000144400000311000004000000020000000500000004');
@@ -190,7 +190,7 @@ it('cast array', async function () {
 });
 
 it('cast array2', async function () {
-  await Taylor.send(defs_funcs.castarray2);
+  await Taylor.storeType(defs_funcs.castarray2);
 
   resp = await Taylor.call('0xffffffff77777788ee0000020000000c000000202200000844000003110000044400000312000004000000020000000500000004');
   expect(resp).toBe('0xee000001000000144400000311000004000000020000000500000004');

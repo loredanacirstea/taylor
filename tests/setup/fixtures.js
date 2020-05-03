@@ -78,6 +78,7 @@ const getTaylor = async () => {
   return {
     send: sendTransaction(signer)(taylorAddress),
     call: call(provider)(taylorAddress),
+    storeType: data => sendTransaction(signer)(taylorAddress)('0xfffffffe' + data),
   }
 }
 
