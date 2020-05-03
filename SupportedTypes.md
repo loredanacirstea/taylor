@@ -248,18 +248,19 @@ Or shorthand: (by sized types)
 
 Store def:
 ```
-0xfffffffe00000005450000000700000030ee000004000000050000000d000000150000001c2200000145220000043333333322000004333333301100000300000100000047333333370000000200013333333100000003040206333333350000000208073333332900000001073333332800000002050333333332000000020b0233333330000000030c0a09
+0xfffffffe0000000545000000070000003cee000005000000050000000d000000150000001c000000242200000145220000043333333322000004333333301100000300000122000004220000040000004833333337000000020001333333310000000304020633333335000000020908333333290000000108333333280000000305070333333332000000020c0233333330000000030d0b0a
 
 00000005 - length
 45000000 - sig
 07       - steps count
 
-00000030 - inputs length
-ee000004
+0000003c - inputs length
+ee000005
 00000005
 0000000d
 00000015
 0000001c
+00000024
 22000001 - 03
 45
 22000004 - 04 - prod sig
@@ -268,37 +269,41 @@ ee000004
 33333330
 11000003 - 06 - initial reduce value
 000001
+22000004 - 07 - signature type
+22000004
 
-00000047
-33333337 - dtnew (sig)    - 07
+
+00000048
+33333337 - dtnew (sig)    - 08
 00000002 - input indexes length
 00       - component type_id
 01       - component size
-33333331 - reduce            - 08
+33333331 - reduce            - 09
 00000003
 04       - prod sig 33333333
 02       - lengths array
 06       - initial reduce value - 1
-33333335 - contig         - 09
+33333335 - contig         - 0a
 00000002 - input indexes length
-08       - reduce lengths prod
-07       - new() result
-33333329 - getTypeSignature  - 10
+09       - reduce lengths prod
+08       - new() result
+33333329 - getTypeSignature  - 0b
 00000001
-07       - new() result
-33333328 - curry         - 11
-00000002
-05       - concat 33333330
-03       - type id - 45
-33333332 - map            - 12
-00000002
-0b       - vfsig curry
-02       - lengths array
-33333330 - concat         - 13
+08       - new() result
+33333328 - curry         - 0c
 00000003
-0c       - curry map result
-0a       - dtnew signature
-09       - contig result
+05       - concat 33333330
+07       - signature type
+03       - type id - 45
+33333332 - map            - 0d
+00000002
+0c       - vfsig curry
+02       - lengths array
+33333330 - concat         - 0e
+00000003
+0d       - curry map result
+0b       - dtnew signature
+0a       - contig result
 ```
 
 E.g. `[[1, 2, 3, 4, 5], [6, 7, 8, 9, 10]]` - `u32[2][5]`
