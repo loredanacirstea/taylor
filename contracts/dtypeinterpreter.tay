@@ -127,6 +127,7 @@ object "TaylorInterpreter" {
                 return (add(_internal_output_ptr, 4), mslice(_internal_output_ptr, 4))
             }
 
+            // Execute graph from calldata
             case 0xfffffffa {
                 let success := executeGraphWrapper(_calldata2, _internal_data, _internal_output_ptr)
 
