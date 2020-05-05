@@ -1,5 +1,51 @@
 # dTypes
 
+## Native Functions
+
+### Entry Points
+
+- store graph: `fffffffe`
+- get graph from storage: `fffffffd`
+- execute stored graph: `ffffffff`
+- execute graph from calldata: `fffffffa`
+- insert named type: `fffffffc`
+- get named type: `fffffffb`
+
+### Pure Functions
+
+| name             | signature |
+|------------------|-----------|
+| byte1            | 33333338 |
+| contig           | 33333335 |
+| concat           | 33333330 |
+| identity         | 33333334 |
+| new              | 33333337 |
+| add              | 3333331f |
+| sub              | 3333331e |
+| div              | 3333331d |
+| prod             | 33333333 |
+| map              | 33333332 |
+| reduce           | 33333331 |
+| curry            | 33333328 |
+| cast             | 3333331c |
+| zip_apply        | 3333331b |
+| selectraw        | 3333331a |
+| getTypeSignature | 33333329 |
+
+```
+{"byte1":"33333338","contig":"33333335","concat":"33333330","identity":"33333334","new":"33333337","add":"3333331f","sub":"3333331e","div":"3333331d","prod":"33333333","map":"33333332","reduce":"33333331","curry":"33333328","cast":"3333331c","getTypeSignature":"33333329"}
+```
+
+### State Modifying Functions
+
+- insert typed value: `3333326`
+- get typed value: `33333325`
+- count typed values: `33333324`
+- sendPay: `33333321`
+
+- insert, get, count, log typed values per type
+- sendPay
+
 ## Base
 
 Type id rules:
@@ -579,15 +625,7 @@ ee000001 - input for new(abstract_type_id(<input>))
 Use: `0xffffffff88ffffff`. Result: `0xee00000100000024110000200000000000000000000000000000000000000000000000000000000000000000`
 
 
-## Native Functions
-
-- byte1, new, identity, contig, concat
-- sum, sub, div, prod
-- map, reduce, curry
-- cast
-- getTypeSignature
-- insert, get, count, log typed values per type
-- sendPay
+## Testing Native Functions
 
 ### Reduce
 
@@ -671,11 +709,6 @@ Result: `0xee000001000000144400000300000004440000034400000244000005` -> tuple wi
 - count values per type: `0xffffffff33333324ee000001000000081100000422000003`
 
 - send pay: `0xffffffff33333321ee000002000000180000003c11000014D32298893dD95c1Aaed8A79bc06018b8C265a279110000200000000000000000000000000000000000000000000000000de0b6b3a7640000`
-
-de0b6b3a7640000
-100000000000000
-0000
-
 
 Input:
 - percentage to address2
