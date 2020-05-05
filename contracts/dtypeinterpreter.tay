@@ -127,6 +127,15 @@ object "ComplexStore" {
                 return (add(_internal_output_ptr, 4), mslice(_internal_output_ptr, 4))
             }
 
+            case 0xfffffffa {
+                let success := executeGraphWrapper(_calldata2, _internal_data, _internal_output_ptr)
+
+                let input_size := getlengthFromStarts(_internal_output_ptr)
+                let starts_size := getStartsLength(_internal_output_ptr)
+
+                return (_internal_output_ptr, add(starts_size, input_size))
+            }
+
             default {
                 mslicestore(0, 0xffff, 2)
                 revert(0, 2)
@@ -200,6 +209,38 @@ object "ComplexStore" {
                     mmultistore(_new_inputs_ptr, input_ptr, input_size)
                 }
                 success := executeGraph(abstract_type_id, _new_data_ptr, output_ptr)
+            }
+
+            function executeGraphWrapper(data_ptr, gdata_ptr, goutput_ptr) -> success {
+                success := false
+
+                // There might be external inputs at _starts_ptr & _inputs_ptr
+                // we get the length & write ProgInput.input after it
+                let _starts_ptr1 := gdata_ptr
+                let _inputs_ptr := add(_starts_ptr1, 96)
+
+                addGraphProgInput(data_ptr, _starts_ptr1, _inputs_ptr, 0)
+
+                let input_size := getlengthFromStarts(data_ptr)
+                let starts_size := getStartsLength(data_ptr)
+
+                let _dtype_ptr := add(add(data_ptr, input_size), starts_size)
+                let _input_ptr := add(add(_dtype_ptr, mslice(_dtype_ptr, 4)), 4)
+                let _steps_ptr := add(add(_input_ptr, mslice(_input_ptr, 4)), 4)
+
+                // mstore add graph starts & inputs to possibly already existing starts & inputs
+                if gt(mslice(_input_ptr, 4), 0) {
+                    addGraphProgInput(add(_input_ptr, 4), _starts_ptr1, _inputs_ptr, 1)
+                }
+
+                executeGraphSteps(
+                    _steps_ptr,
+                    _starts_ptr1,
+                    _inputs_ptr,
+                    Type.steps(add(_dtype_ptr, 4)),
+                    goutput_ptr
+                )
+                success := true
             }
 
             function executeGraph(sig_ptr, gdata_ptr, goutput_ptr) -> success {
