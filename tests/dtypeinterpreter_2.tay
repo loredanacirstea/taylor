@@ -799,6 +799,11 @@ object "TaylorInterpreter" {
                     mmultistore(add(_output_ptr, 12), item_ptr, slice_size)
                 }
 
+                // add2
+                case 0x33333319 {
+                    dtadd(_input_ptr, _output_ptr)
+                }
+
                 default {
                     // mslicestore(0, 0xfffe, 2)
                     // revert(0, 2)
