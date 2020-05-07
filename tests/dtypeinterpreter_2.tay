@@ -222,10 +222,20 @@ object "TaylorInterpreter" {
                         )
                     }
 
+                    // return (temp_ptr, data_length)
+
                     for { let i := 1 } loop_again { i := add(i, 1) } {
                         let addr := shr(96, shl(32, getRegisteredAddress(i)))
 
                         let callSuccess := staticcall(gas(), addr, temp_ptr, data_length, 0, 0)
+
+                        // if eq(i, 2) {
+                        //     // mstore(0, returndatasize())
+                        //     // return (0, 32)
+                        //
+                        //     returndatacopy(0, 0, returndatasize())
+                        //     return (0, returndatasize())
+                        // }
 
                         if eq(callSuccess, 1) {
                             returndatacopy(_output_ptr, 0, returndatasize())
@@ -332,6 +342,8 @@ object "TaylorInterpreter" {
                 let _inputs_ptr := add(_starts_ptr1, 96)
                 let _dtype_ptr := sub(gdata_ptr, 512)
 
+                // if eq(sig, 0x44000000) { return (gdata_ptr, 128) }
+
                 // Get dtype data from storage
                 getType(_dtype_ptr, sig)
 
@@ -372,6 +384,8 @@ object "TaylorInterpreter" {
                         _starts_ptr_, _inputs_ptr, i
                     )
                 }
+                // if eq(step_count, 7) { return (_starts_ptr_, 512) }
+                // return (_step_indexes_ptr, 512)
 
                 // write result to _output_ptr through select
                 // write indexes length
@@ -398,15 +412,52 @@ object "TaylorInterpreter" {
                     // write step selection indexes
                     ProgStep.inputIndexes.encodeTight(_step_ptr, _step_indexes_ptr)
 
+                    // if eq(ProgStep.typeid(_step_ptr), 0x33333335) { return (_step_indexes_ptr, 256) }
+
+                    // if eq(ProgStep.typeid(_step_ptr), 0x33333337) { return (_step_ptr, 32) }
+
+                    // if eq(ProgStep.typeid(_step_ptr), 0x33333335) {
+                    //     if eq(ProgStep.inputIndexes(_step_ptr, 1), 0x02) { // 0000000030c0a09
+                    //         return (_starts_ptr2, 512)
+                    //     }
+                    // }
+
                     // select from indexes & starts -> write at _step_inputs_ptr
                     select(_step_indexes_ptr, _starts_ptr2, _inputs_ptr, _step_starts, _step_inputs_ptr)
+
+                    // if eq(ProgStep.typeid(_step_ptr), 0x33333335) { return (_step_starts, 256) }
+
+                    // if eq(ProgStep.typeid(_step_ptr), 0x33333335) {
+                    //     if eq(ProgStep.inputIndexes(_step_ptr, 0), 0x08) { // 0000000030c0a09
+                    //         return (_step_starts, 512)
+                    //     }
+                    // }
 
                     // output is temporarily written at mem 0
                     // result also has a tuple encoding, based on structs
 
                     executeInternal(ProgStep.typeid.position(_step_ptr), _step_starts, 0)
+
+                    // if eq(ProgStep.typeid(_step_ptr), 0x33333338) { return (0, 64) }
+
+                    // if eq(ProgStep.typeid(_step_ptr), 0x33333328) {
+                    //     if eq(ProgStep.inputIndexes(_step_ptr, 0), 0x08) { // 0000000030c0a09
+                    //         return (0, 256)
+                    //     }
+                    // }
+
+                    // if eq(ProgStep.typeid(_step_ptr), 0x33333337) {
+                    //     if eq(mslice(_step_inputs_ptr, 1), 0x44) { // 0000000030c0a09
+                    //         return (0, 256)
+                    //     }
+                    // }
+
                     // we add the output to _inputs_ptr & add its size to _starts_ptr
                     addGraphProgInput(0, _starts_ptr2, _inputs_ptr, 1)
+
+                    // return (_starts_ptr2, 256)
+
+                    // if eq(ProgStep.typeid(_step_ptr), 0x33333338) { return (_starts_ptr2, 256) }
             }
 
             function addGraphProgInput(source_starts, _starts_ptr, _inputs_ptr, additive) {
@@ -422,6 +473,8 @@ object "TaylorInterpreter" {
                     let source_inputs := add(getlastStartsIndex(source_starts), 4)
                     let source_count := getSize(source_starts)
 
+                    // if eq(getSize(_starts_ptr), 3) { return (_starts_ptr, 256) }
+                    // if eq(getSize(_starts_ptr), 3) { return (source_starts, 256) }
 
                     // change number of starts
                     if eq(last_start_index, _starts_ptr) {
@@ -432,6 +485,10 @@ object "TaylorInterpreter" {
 
                     // store inputs unchanged
                     mmultistore(last_input_index, source_inputs, input_size)
+
+                    // if eq(input_size, 0x18) {return (last_input_index, 172) }
+
+                    // if eq(mslice(add(source_starts, 4), 4), 0x24) { return (_starts_ptr, 128) }
 
                     switch additive
                     case 0 {
@@ -454,6 +511,7 @@ object "TaylorInterpreter" {
                         }
                     }
                 }
+                // if eq(getSize(_starts_ptr), 6) { return (_starts_ptr, 256) }
             }
 
             function executeBaseFunction(_sig_ptr, starts_ptr, _output_ptr) -> success {
@@ -514,6 +572,8 @@ object "TaylorInterpreter" {
                     let type_header := 0x22
 
                     let bytes_length := mslice(add(_input_ptr, 8), 3)
+
+                    // if eq(bytes_length, 32) { return(starts_ptr, 172) }
 
                     let size := mul(count, bytes_length)
                     // starts
@@ -701,6 +761,8 @@ object "TaylorInterpreter" {
                     // 22000004 11000020 11000004 00000001
                     // or typed value in lieu of 22000004 11000020
                     dtrequire(eq(getSize(starts_ptr), 2), 0xe7)
+
+                    // dtrequire(eq(mslice(_input_ptr, 4), 0x22000004), 0xe6)
                     dtcast(_input_ptr, _output_ptr)
                 }
 
@@ -737,7 +799,14 @@ object "TaylorInterpreter" {
                     mmultistore(add(_output_ptr, 12), item_ptr, slice_size)
                 }
 
+                // add2
+                case 0x33333319 {
+                    dtadd(_input_ptr, _output_ptr)
+                }
+
                 default {
+                    // mslicestore(0, 0xfffe, 2)
+                    // revert(0, 2)
                     success := false
                 }
             }
@@ -765,7 +834,7 @@ object "TaylorInterpreter" {
 
                         // add external input data to starts & input
                         addGraphProgInput(temp_ptr, starts_ptr, _input_ptr, 1)
-
+                        // return (add(sig, 2), 32)
                         // execute funcsig
                         executeInternal(add(sig, 2), starts_ptr, _output_ptr)
 
@@ -775,6 +844,7 @@ object "TaylorInterpreter" {
             }
 
             function dtmap(internal_starts, sig_ptr, array_ptr, _output_ptr) -> new_size {
+                // let internal_starts := add(_input_ptr, 512)
                 let internal_inputs := add(internal_starts, 96)
                 let internal_output := add(internal_inputs, 128)
 
@@ -1209,7 +1279,7 @@ object "TaylorInterpreter" {
                 let select_pointer := add(select_ptr, 4)
                 let starts_pointer := add(starts_ptr, 4)
                 let output_pointer := _output_ptr
-
+                // if eq(mslice(select_ptr, 4), 2) { return (inputs_ptr, 128) }
                 selectInner(select_pointer, starts_pointer, inputs_ptr, _output_starts, output_pointer, select_length)
             }
 
@@ -1220,9 +1290,15 @@ object "TaylorInterpreter" {
                 mslicestore(_output_starts, 0xee, 1)
                 mslicestore(add(_output_starts, 1), select_length, 3)
 
+                // if eq(select_length, 2) { return (inputs_ptr, 128) }
+                // return (_output_starts, 64)
+
                 for { let i := 0 } lt(i, select_length) { i := add(i, 1) } {
                     let index := mslice(add(select_ptr, mul(i, 1)), 1)
                     let start, length := selectOneBoundaries(select_ptr, index, starts_ptr, inputs_ptr)
+
+                    // if eq(select_length, 2) { mstore(0, length) return (0, 32) }
+                    // if eq(select_length, 2) { return (add(inputs_ptr, start), length) }
 
                     // add new end
                     mslicestore(add(add(_output_starts, 4), mul(i, 4)), add(sum_length, length), 4)
@@ -1231,7 +1307,9 @@ object "TaylorInterpreter" {
                     mmultistore(add(_output_ptr, sum_length), add(inputs_ptr, start), length)
 
                     sum_length := add(sum_length, length)
+                    // if eq(select_length, 2) { return (_output_starts, 64) }
                 }
+                // if eq(select_length, 2) { return (_output_starts, 64) }
             }
 
             function selectOneBoundaries(select_ptr, index, _starts_ptr, inputs_ptr) -> start, length {
@@ -1567,6 +1645,7 @@ object "TaylorInterpreter" {
             }
 
             function getRegisteredAddress(index) -> addr {
+                // mstore(_pointer, sload(mappingRegistrationKey(index)))
                 addr := shl(64, sload(mappingRegistrationKey(index)))
                 // TODO check if type_ids are the same & content is valid
             }

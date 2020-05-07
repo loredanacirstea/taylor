@@ -155,8 +155,9 @@ it('cast i32 -> u256', async function () {
 });
 
 it('cast i32 -> u256', async function () {
-  const resp = await Taylor.call('0xffffffff3333331cee0000020000000800000010220000041100002012000004ffffffff');
-  // revert
+  await expect(() => {
+    return Taylor.call('0xffffffff3333331cee0000020000000800000010220000041100002012000004ffffffff');
+  }).rejects.toThrow(/revert/);
 });
 
 it('cast u256 -> i32', async function () {
@@ -172,8 +173,9 @@ it('cast u256 -> i8', async function () {
   resp = await Taylor.call('0xffffffff3333331cee000002000000080000002c220000041200000111000020000000000000000000000000000000000000000000000000000000000000007f');
   expect(resp).toBe('0xee00000100000005120000017f');
 
-  resp = await Taylor.call('0xffffffff3333331cee000002000000080000002c2200000412000001110000200000000000000000000000000000000000000000000000000000000000000080');
-  // revert
+  await expect(() => {
+    return Taylor.call('0xffffffff3333331cee000002000000080000002c2200000412000001110000200000000000000000000000000000000000000000000000000000000000000080');
+  }).rejects.toThrow(/revert/);
 });
 
 it('cast x -> i16', async function () {
@@ -187,8 +189,9 @@ it('cast x -> i16', async function () {
   expect(resp).toBe('0xee0000010000000612000002fffa');
 
   // i8 -> i16
-  resp = await Taylor.call('0xffffffff3333331cee000002000000080000002c2200000412000002110000200000000000000000000000000000000000000000000000000000000000008000');
-  // revert
+  await expect(() => {
+    return Taylor.call('0xffffffff3333331cee000002000000080000002c2200000412000002110000200000000000000000000000000000000000000000000000000000000000008000');
+  }).rejects.toThrow(/revert/);
 });
 
 it('cast array', async function () {
@@ -273,3 +276,45 @@ it('pay', async function () {
   resp = await Taylor.send('0xffffffff77777777ee000002000000180000003c11000014fffFd05c2b12cfE3c74464531f88349e159785ea110000200000000000000000000000000000000000000000000000000de0b6b3a7640000');
   // TODO: check ETH balances
 });
+
+it('execute registered', async function () {
+  let resp;
+
+  const TaylorRoot = await getTaylor();
+  const Taylor1 = await getTaylor(1);
+  const Taylor2 = await getTaylor(1);
+
+  await TaylorRoot.register(Taylor1.address);
+  await TaylorRoot.register(Taylor2.address);
+
+  resp = await TaylorRoot.call('0xfffffff8' + '11000004' + '00000001');
+  expect(resp).toBe('0xee0000010000001811000014' + Taylor1.address.substring(2));
+
+  resp = await TaylorRoot.call('0xfffffff8' + '11000004' + '00000002');
+  expect(resp).toBe('0xee0000010000001811000014' + Taylor2.address.substring(2));
+
+  await Taylor1.storeType(defs_new.uint);
+  await Taylor2.storeType(defs_new.int);
+  await Taylor2.storeType(defs_new.array);
+
+  resp = await Taylor1.call('0xffffffff11000001');
+  expect(resp).toBe('0xee000001000000051100000100');
+
+  resp = await TaylorRoot.call('0xffffffff11000001');
+  expect(resp).toBe('0xee000001000000051100000100');
+
+  resp = await TaylorRoot.call('0xffffffff12000004');
+  expect(resp).toBe('0xee000001000000081200000400000000');
+
+  resp = await Taylor2.call('0xfffffffd44000000');
+  expect(resp).toBe('0x' + defs_new.array);
+
+  resp = await Taylor2.call('0xffffffff44000000ee000002000000070000000f110000030000042200000412000004');
+  expect(resp).toBe('0xee00000100000018440000041200000400000000000000000000000000000000');
+
+  resp = await TaylorRoot.call('0xffffffff44000000ee000002000000070000000f110000030000042200000412000004');
+  expect(resp).toBe('0xee00000100000018440000041200000400000000000000000000000000000000');
+
+  resp = await TaylorRoot.call('0xffffffff33333319ee000002000000080000001011000004000000041100000400000007');
+  expect(resp).toBe('0xee00000100000008110000040000000b');
+}, 10000);

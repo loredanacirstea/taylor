@@ -5,6 +5,7 @@ const yulp = require('yulp');
 
 const PROVIDER_URL = 'http://192.168.1.140:8545';
 const CPATH = './contracts/dtypeinterpreter.tay';
+const CPATH2 = './tests/dtypeinterpreter_2.tay';
 
 
 const provider = new ethers.providers.JsonRpcProvider(PROVIDER_URL);
@@ -40,7 +41,7 @@ const deployContract = signer => async filePath => {
   if (!compiled) throw new Error('not compiled');
   const transaction = {
     data: '0x' + compiled.evm.bytecode.object,
-    gasLimit: 4000000,
+    gasLimit: 5000000,
     value: 0,
   };
   const response = await signer.sendTransaction(transaction);
@@ -71,14 +72,25 @@ const call = provider => address => async data => {
   return await provider.call(transaction);
 }
 
-const deployTaylor = () => deployContract(signer)(CPATH);
+const deployTaylor = (instance_type = 0) => {
+  switch (instance_type) {
+    case 0:
+      return deployContract(signer)(CPATH);
+    case 1:
+      return deployContract(signer)(CPATH2);
+    default:
+      throw new Error('No other Taylor instances found.');
+  }
+}
 
-const getTaylor = async () => {
-  const taylorAddress = await deployTaylor();
+const getTaylor = async (instance_type = 0) => {
+  const taylorAddress = await deployTaylor(instance_type);
   return {
+    address: taylorAddress.toLowerCase(),
     send: sendTransaction(signer)(taylorAddress),
     call: call(provider)(taylorAddress),
     storeType: data => sendTransaction(signer)(taylorAddress)('0xfffffffe' + data),
+    register: address => sendTransaction(signer)(taylorAddress)('0xfffffff9' + '11000014' + address.substring(2)),
   }
 }
 
