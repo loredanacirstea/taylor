@@ -18,7 +18,7 @@ const getResult = code => {
 
   if (result) {
     result = {
-      output: result.results[0].v,
+      output: result.results ? result.results[0].v : [],
       result: result.results
     }
   }
