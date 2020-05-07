@@ -30,6 +30,6 @@ module.exports = override(
   addBabelPlugins(
     "@babel/plugin-proposal-class-properties"
   ),
-  addWebpackPlugin(new MonacoWebpackPlugin({languages: ['json']})),
+  addWebpackPlugin(new MonacoWebpackPlugin({languages: ['json', 'javascript']})),
   addWebpackModuleRule({test: /\.ne/, use: 'raw-loader'}),
 );

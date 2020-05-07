@@ -26,7 +26,7 @@ class GrammarDev extends Component {
       <MonacoEditor
         width={styles.width}
         height={styles.height}
-        language="nearley"
+        language="javascript"
         theme="vs-dark"
         value={code}
         options={editorOpts}
