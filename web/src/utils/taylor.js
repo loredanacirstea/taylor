@@ -1,4 +1,4 @@
-const TAYLOR_GRAMMAR = `
+let TAYLOR_GRAMMAR = `
 @{%
 
 function plus(a,b){return parseFloat(a)+parseFloat(b);}
@@ -127,6 +127,11 @@ _ -> [\s]:*     {% function(d) {return null } %}
 __ -> [\s]:+   {% function(d) {return null } %}
 
 `
+
+TAYLOR_GRAMMAR = TAYLOR_GRAMMAR.replace('"""', '"\\""');
+TAYLOR_GRAMMAR = TAYLOR_GRAMMAR.replace('"""', '"\\""');
+TAYLOR_GRAMMAR = TAYLOR_GRAMMAR.replace('[s]', '[\\s]');
+TAYLOR_GRAMMAR = TAYLOR_GRAMMAR.replace('[s]', '[\\s]');
 
 const DEFAULT_CODE = '(add (mul 2 1 34 (add 13 56)) 9000)';
 

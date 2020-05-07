@@ -3,6 +3,7 @@ import { Dimensions, StyleSheet, ScrollView } from 'react-native';
 import './App.css';
 import GrammarDev from './components/GrammarDev.js';
 import GraphView from './components/GraphView.js';
+import * as taylorUtils from './utils/taylor.js';
 
 const MIN_WIDTH = 800;
 
@@ -20,10 +21,12 @@ class App extends Component {
     this.state = {
       ...this.getWindowDimensions(),
       pageNumber: 2,
+      grammar: taylorUtils.getGrammar(),
     }
 
     this.onContentSizeChange = this.onContentSizeChange.bind(this);
     this.getWindowDimensions = this.getWindowDimensions.bind(this);
+    this.onGrammarChange = this.onGrammarChange.bind(this);
   }
 
   onContentSizeChange() {
@@ -41,10 +44,16 @@ class App extends Component {
     return dims;
   }
 
+  onGrammarChange(grammar) {
+    taylorUtils.storeGrammar(grammar);
+    this.setState({ grammar });
+  }
+
   render() {
     let {
       width,
       height,
+      grammar,
     } = this.state;
     const pageStyles = getPageSize(this.state.pageNumber, { width, height });
 
@@ -58,8 +67,12 @@ class App extends Component {
         contentContainerStyle={{width: "100%"}}
         onContentSizeChange={this.onContentSizeChange}
       >
-        <GrammarDev styles={pageStyles} />
-        <GraphView styles={pageStyles} />
+        <GrammarDev
+          styles={pageStyles}
+          grammar={grammar}
+          onGrammarChange={this.onGrammarChange}
+        />
+        <GraphView styles={pageStyles} grammar={grammar}/>
       </ScrollView>
     );
   }

@@ -7,13 +7,18 @@ import Taylor from 'taylor';
 import { editorOpts } from '../utils/config.js';
 import * as taylorUtils from '../utils/taylor.js';
 
-const getResult = code => {
+const getResult = (grammar, code) => {
   let result = [];
   let errors;
   try {
-    result = Taylor.compile(code);
+    ({ result, errors } = Taylor.compileDev(grammar, code));
+    if (errors) {
+      errors = errors.toString();
+    }
   } catch (e) {
-    errors = e;
+    if (!errors) {
+      errors = e.toString();
+    }
   }
 
   if (result) {
@@ -31,10 +36,14 @@ class Editor extends Component {
     super(props);
     this.state = {
       code: taylorUtils.getCode(),
-      ...getResult(taylorUtils.getCode()),
+      ...getResult(props.grammar, taylorUtils.getCode()),
     }
 
     this.onChange = this.onChange.bind(this);
+  }
+
+  getResult(code) {
+    return getResult(this.props.grammar, code);
   }
 
   editorDidMount(editor, monaco) {
@@ -44,7 +53,7 @@ class Editor extends Component {
 
   onChange(newValue, e) {
     console.log('onChange', newValue, e);
-    this.setState({ ...getResult(newValue), code: newValue });
+    this.setState({ ...this.getResult(newValue), code: newValue });
     taylorUtils.storeCode(newValue);
   }
 
@@ -84,7 +93,7 @@ class Editor extends Component {
             style={{ ...styles, height: consoleHeight.height, flex: 1 }}
           >
             {errors
-              ? <Text style={{color: 'firebrick'}}>{errors.toString()}</Text>
+              ? <Text style={{color: 'firebrick'}}>{errors}</Text>
               : <ReactJson
                 src={result}
                 name="result"
