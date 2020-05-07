@@ -3,8 +3,11 @@ const {
   override,
   addWebpackAlias,
   babelInclude,
-  addBabelPlugins
+  addBabelPlugins,
+  addWebpackPlugin,
+  addWebpackModuleRule,
 } = require('customize-cra');
+const MonacoWebpackPlugin = require('monaco-editor-webpack-plugin');
 
 module.exports = override(
   addWebpackAlias({
@@ -27,4 +30,6 @@ module.exports = override(
   addBabelPlugins(
     "@babel/plugin-proposal-class-properties"
   ),
+  addWebpackPlugin(new MonacoWebpackPlugin({languages: ['json']})),
+  addWebpackModuleRule({test: /\.ne/, use: 'raw-loader'}),
 );
