@@ -1,6 +1,5 @@
 import React, { Component } from 'react';
 import MonacoEditor from 'react-monaco-editor';
-// import Taylor from '../../taylor';
 import * as taylorUtils from '../utils/taylor.js';
 import { editorOpts } from '../utils/config.js';
 
@@ -12,11 +11,10 @@ class GrammarDev extends Component {
     }
   }
   editorDidMount(editor, monaco) {
-    console.log('editorDidMount', editor);
     editor.focus();
   }
   onChange(newValue, e) {
-    console.log('onChange', newValue, e);
+    taylorUtils.storeGrammar(newValue);
   }
   render() {
     const {styles} = this.props;

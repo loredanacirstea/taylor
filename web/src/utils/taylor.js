@@ -128,11 +128,26 @@ __ -> [\s]:+   {% function(d) {return null } %}
 
 `
 
+const STORAGE_KEY = 'TaylorGrammar';
+
+const getDefaultGrammar = () => {
+  return TAYLOR_GRAMMAR;
+}
+
+const storeGrammar = source => {
+  window.localStorage.setItem(STORAGE_KEY, source);
+}
 
 const getGrammar = () => {
-  return TAYLOR_GRAMMAR;
+  let source = window.localStorage.getItem(STORAGE_KEY);
+  if (!source) {
+    source = getDefaultGrammar();
+    window.localStorage.setItem(STORAGE_KEY, source);
+  }
+  return source;
 }
 
 export {
   getGrammar,
+  storeGrammar,
 }
