@@ -5,8 +5,8 @@ import MonacoEditor from 'react-monaco-editor';
 import ReactJson from 'custom-react-json-view'
 import Taylor from 'taylor';
 import { editorOpts } from '../utils/config.js';
+import * as taylorUtils from '../utils/taylor.js';
 
-const defaultCode = '(add (mul 2 1 34 (add 13 56)) 9000)';
 const getResult = code => {
   let result;
   let errors;
@@ -24,8 +24,8 @@ class Editor extends Component {
   constructor(props) {
     super(props);
     this.state = {
-      code: defaultCode,
-      ...getResult(defaultCode),
+      code: taylorUtils.getCode(),
+      ...getResult(taylorUtils.getCode()),
     }
 
     this.onChange = this.onChange.bind(this);
@@ -39,6 +39,7 @@ class Editor extends Component {
   onChange(newValue, e) {
     console.log('onChange', newValue, e);
     this.setState({ ...getResult(newValue), code: newValue });
+    taylorUtils.storeCode(newValue);
   }
 
   render() {
