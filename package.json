@@ -25,6 +25,7 @@
   },
   "dependencies": {
     "ethers": "^4.0.46",
+    "nearley": "^2.19.3",
     "solc": "0.5.7"
   }
 }
