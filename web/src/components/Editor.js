@@ -8,14 +8,20 @@ import { editorOpts } from '../utils/config.js';
 import * as taylorUtils from '../utils/taylor.js';
 
 const getResult = code => {
-  let result;
+  let result = [];
   let errors;
   try {
     result = Taylor.compile(code);
   } catch (e) {
     errors = e;
   }
-  result = result ? result.results : [];
+
+  if (result) {
+    result = {
+      output: result.results[0].v,
+      result: result.results
+    }
+  }
 
   return { result, errors };
 }
@@ -83,7 +89,8 @@ class Editor extends Component {
                 src={result}
                 name="result"
                 theme="twilight"
-                collapsed={false}
+                collapsed={6}
+                shouldCollapse={field => field.name === 'd' }
               />
             }
           </ScrollView>
