@@ -4,6 +4,18 @@ const DEFAULT_CODE = '(add (mul 2 1 34 (add 13 56)) 9000)';
 
 const STORAGE_KEY = 'TaylorGrammar';
 const STORAGE_KEY_CODE = 'TaylorCode';
+const STORAGE_KEY_TAYLOR_ADDRESS = 'TaylorInterpreterAddress';
+
+const DEFAULT_DEPLOYMENT = {
+  5777: {
+    address: '0x8441CC06e0B98aeFfC7C04f7d88cc69035F983D0',
+    block: 0,
+  },
+  3: {
+    address: '0x7D4150f492f93e2eDD7FC0Fc62c9193b322f75e5',
+    block: 0,
+  },
+}
 
 const storeGrammar = source => {
   window.localStorage.setItem(STORAGE_KEY, source);
@@ -31,9 +43,27 @@ const getCode = () => {
   return source;
 }
 
+const storeAddress = (chainid, address) => {
+  const key = STORAGE_KEY_TAYLOR_ADDRESS + '_' + chainid;
+  window.localStorage.setItem(key, address);
+}
+
+const getAddress = (chainid) => {
+  const key = STORAGE_KEY_TAYLOR_ADDRESS + '_' + chainid;
+  let addressData = {};
+  addressData.address = window.localStorage.getItem(key);
+  if (!addressData.address) {
+    addressData = DEFAULT_DEPLOYMENT[chainid];
+    window.localStorage.setItem(STORAGE_KEY_TAYLOR_ADDRESS, addressData.address);
+  }
+  return { ...addressData, block: addressData.block || 0 };
+}
+
 export {
   getGrammar,
   storeGrammar,
   storeCode,
   getCode,
+  storeAddress,
+  getAddress,
 }

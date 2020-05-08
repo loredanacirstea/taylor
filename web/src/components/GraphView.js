@@ -1,6 +1,7 @@
 import React, { Component } from 'react';
 import { View } from 'native-base';
 import Editor from './Editor.js';
+import TaylorInterpreter from './TaylorInterpreter.js';
 
 export default class GraphView extends Component {
   render() {
