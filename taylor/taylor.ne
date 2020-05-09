@@ -8,6 +8,7 @@ function concat(a,b){return a+b;}
 
 let frame ={}
 let steps = []
+let usedf = new Set();
 
 let functions= {
   final: function(args){console.log("fff",args,frame,"steps",steps);},
@@ -38,7 +39,7 @@ let ethcontract = {
     "add": {"fun": function(args){if (args) return args.reduce(concat,"");}, "sig": "3333331f"},
     "sub": {"fun": function(args){if (args) return args.reduce(concat,"");}, "sig": "3333331e"},
     "div": {"fun": function(args){if (args) return args.reduce(concat,"");}, "sig": "3333331d"},
-    "prod": {"fun": function(args){if (args) return args.reduce(concat,"");}, "sig": "33333333"},
+    "mul": {"fun": function(args){if (args) return args.reduce(concat,"");}, "sig": "33333333"},
     "map": {"fun": function(args){if (args) return args.reduce(concat,"");}, "sig": "33333332"},
     "reduce": {"fun": function(args){if (args) return args.reduce(concat,"");}, "sig": "33333331"},
     "curry": {"fun": function(args){if (args) return args.reduce(concat,"");}, "sig": "33333328"},
@@ -47,26 +48,19 @@ let ethcontract = {
 
 }
 
-
 function call(code, args) {
   //if (code != steps[steps.length-1] )
   for ( let i = 0; i < steps.length; i ++ ) {
-    console.log('*', code == steps[i][0], steps[i][1][0] == args[0])// , steps[i][1][0][0] == args[0][0])
-    //if (code == steps[i][0] && steps[i][1][0] == args[0]) {
-      //  || steps[i][1][0][0] == args[0][0])
       if (code == steps[i][0] ) {
-        //((!!steps[i][1][0] && !!args[0] && steps[i][1][0] == args[0]) || (!!steps[i][1][0][0] && !!args[0][0] && steps[i][1][0][0] == args[0][0])))
         if (steps[i][1][0] == args[0] || steps[i][1][0][0] == args[0][0] || (""+steps[i][1][0])[0] ==  (""+args[0])[0])
           console.log("+? ",(""+steps[i][1][0])[0], (""+args[0])[0])
           steps.splice(i, 1);
       }
-    /*
-      if (code == steps[i][0] && steps[i][1][0][0] == args[0][0]){
-        //((!!steps[i][1][0] && !!args[0] && steps[i][1][0] == args[0]) || (!!steps[i][1][0][0] && !!args[0][0] && steps[i][1][0][0] == args[0][0])))
-      steps.splice(i, 1);
-      } */
   }
+
   steps.push([code,args])
+
+  usedf.add(code);
 
   if (code in functions) {
     return functions[code](args)
@@ -80,7 +74,7 @@ function call(code, args) {
 %}
 
 
-main ->  ( _ line ):* _  {% function(d) {console.log("main ", d );if (d[0][0]) {call("final", d[0][0][1].v);return {steps: steps,type:'main', d:d, v:d[0].map(x=>x[1].v)}}} %}
+main ->  ( _ line ):* _  {% function(d) {console.log("main ", d );if (d[0][0]) {call("final", d[0][0][1].v);return {steps: steps, type:'main', d:d, v:d[0].map(x=>x[1].v), tr: ethcontract, usedf: [...usedf]}}} %}
 
 line-> _ P _   {% function(d) {return {type:'line', d:d, v:d[1].v}} %}
 
