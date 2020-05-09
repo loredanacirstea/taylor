@@ -34,12 +34,16 @@ const getResult = (grammar, code) => {
 class Editor extends Component {
   constructor(props) {
     super(props);
+
+    const newgr = getResult(props.grammar, taylorUtils.getCode());
+
     this.state = {
       code: taylorUtils.getCode(),
-      ...getResult(props.grammar, taylorUtils.getCode()),
+      ...newgr,
     }
 
     this.onChange = this.onChange.bind(this);
+    this.props.onGraphChange(newgr);
   }
 
   getResult(code) {
@@ -53,8 +57,10 @@ class Editor extends Component {
 
   onChange(newValue, e) {
     console.log('onChange', newValue, e);
-    this.setState({ ...this.getResult(newValue), code: newValue });
+    const newgr = this.getResult(newValue);
+    this.setState({ ...newgr, code: newValue });
     taylorUtils.storeCode(newValue);
+    this.props.onGraphChange(newgr);
   }
 
   render() {
