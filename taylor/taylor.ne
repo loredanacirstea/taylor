@@ -5,6 +5,30 @@ function minus(a,b){return parseFloat(a)-parseFloat(b);}
 function mul(a,b){return parseFloat(a)*parseFloat(b);}
 function div(a,b){return parseFloat(a)/parseFloat(b);}
 function concat(a,b){return a+b;}
+function byte1(){return '00';}
+
+const getSize = tvalue => parseInt('0x' + tvalue.substring(2, 8), 16)
+
+const getSignatureLength = tvalue => {
+  const size = getSize(tvalue);
+  if (size === 0) return 4;
+
+  const type_head = tvalue.substring(0, 2);
+  switch (type_head) {
+    case '44':
+      return 8;
+    case '45':
+      return 4 + getSignatureLength(tvalue.substring(8))
+    default:
+      return 4;
+  }
+}
+const getSignatureLengthHex = tvalue => 2 * getSignatureLength(tvalue)
+
+function getTypeSignature(tvalue) {
+  const length = getSignatureLengthHex(tvalue);
+  return tvalue.substring(0, length);
+}
 
 let frame ={}
 let steps = []
@@ -17,17 +41,23 @@ let functions= {
   sub: function(args){if (args) return args.reduce(minus,0);},
   mul: function(args){if (args) return args.reduce(mul,1);},
   div: function(args){if (args) return args.reduce(div,1);},
+  byte1: function(args){if (args) return byte1();},
   sin: function(...args){if (args) return Math.sin(args[0]);},
   map: function(args){if (1 in args)  return args[1].map(args[0]);},
   list: function(args){ console.log("listt",args); return args;},
   fun: function(args){ console.log("funn",args); return functions[args[0]];},
   defun: function(args){ console.log("defun",args); return args;},
-  contig: function(args){ console.log("contig",args);if (1 in args) return args[1].repeat(args[0]);},
+  contig: function(args){ console.log("contig",args, args[1]);if (1 in args) return args[1].repeat(args[0]);},
   "a": function(args){},
   concat: function(args){if (args) return args.reduce(concat,"");},
   car: function(args){console.log("car",args);if (args) return args[0][0];},
 
-
+  identity: function(args){return args;},
+  dtnew: function(args){return args;},
+  reduce: function(args){if (1 in args) return args[1].reduce(args[0], args[2]);},
+  curry: function(args){return args;},
+  cast: function(args){return args;},
+  getTypeSignature: function(args){return getTypeSignature(args[0]);},
 }
 
 let ethcontract = {
