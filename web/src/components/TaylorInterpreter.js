@@ -149,16 +149,13 @@ class TaylorInterpreter extends Component {
             <Picker
               mode="dropdown"
               style={{ width: styles.width, backgroundColor: 'rgb(169, 169, 169)' }}
-              placeholder="Select your SIM"
-              placeholderStyle={{ color: "#bfc6ea" }}
-              placeholderIconColor="#007aff"
               selectedValue={this.state.currentSignature}
               onValueChange={this.changeCurrentSig2}
             >
-              <Picker.Item label="select signature" value={null} />
+              <Picker.Item label="select signature" value={''} />
               {
                 Object.keys(tfunctions).map(name => {
-                  return <Picker.Item label={name} value={tfunctions[name].sig} />
+                  return <Picker.Item label={name} value={tfunctions[name].sig} key={tfunctions[name].sig}/>
                 })
               }
             </Picker>
@@ -167,8 +164,8 @@ class TaylorInterpreter extends Component {
           <Item style={{ width: styles.width }}>
             <Input
               style={{ color: 'white' }}
-              placeholder='user input'
-              label='user input'
+              placeholder='input'
+              label='input'
               onChangeText={this.changeUserInputs}
             />
           </Item>
