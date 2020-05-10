@@ -23,7 +23,7 @@ const getResult = (grammar, code) => {
 
   if (result) {
     result = {
-      output: result.results ? result.results[0].v : [],
+      output: result.results && result.results[0] ? result.results[0].v : [],
       result: result.results
     }
   }

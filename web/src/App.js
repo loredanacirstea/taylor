@@ -46,9 +46,9 @@ class App extends Component {
     return dims;
   }
 
-  onGrammarChange(grammar) {
+  onGrammarChange(grammar, force) {
     taylorUtils.storeGrammar(grammar);
-    if (this.state.autocompile) {
+    if (this.state.autocompile || force === true) {
       this.setState({ grammar });
     }
   }
@@ -80,7 +80,10 @@ class App extends Component {
           small
           light
           style={{ position: 'fixed', top: '0px', left: '0px', backgroundColor: 'white',  opacity: this.state.autocompile ? 0.5 : 0.2 }}
-          onClick={() => this.setState({ autocompile: !this.state.autocompile })}
+          onClick={() => {
+            this.setState({ autocompile: !this.state.autocompile });
+            this.onGrammarChange(this.state.grammar, true);
+          }}
         >
           <Icon type="FontAwesome" name='refresh' />
         </Button>

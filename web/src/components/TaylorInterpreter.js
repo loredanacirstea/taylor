@@ -109,7 +109,7 @@ class TaylorInterpreter extends Component {
     const { types, addressData, executeAnswer } = this.state;
     const { result, errors } = this.props.currentGraph || {};
 
-    const tfunctions = result && result.result ? result.result[0].tr : {};
+    const tfunctions = result && result.result && result.result[0] ? result.result[0].tr : {};
 
     return (
       <View style={{ ...styles}}>
