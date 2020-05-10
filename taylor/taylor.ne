@@ -83,7 +83,7 @@ function call(code, args) {
   for ( let i = 0; i < steps.length; i ++ ) {
       if (code == steps[i][0] ) {
         if (steps[i][1][0] == args[0] || steps[i][1][0][0] == args[0][0] || (""+steps[i][1][0])[0] ==  (""+args[0])[0])
-          console.log("+? ",(""+steps[i][1][0])[0], (""+args[0])[0])
+          // console.log("+? ",(""+steps[i][1][0])[0], (""+args[0])[0])
           steps.splice(i, 1);
       }
   }
@@ -104,38 +104,91 @@ function call(code, args) {
 %}
 
 
-main ->  ( _ line ):* _  {% function(d) {console.log("main ", d );if (d[0][0]) {call("final", d[0][0][1].v);return {steps: steps, type:'main', d:d, v:d[0].map(x=>x[1].v), tr: ethcontract, usedf: [...usedf]}}} %}
+main ->  ( _ line ):* _  {% function(d) {
+    // console.log("main ", d );
+    if (d[0][0]) {
+      call("final", d[0][0][1].v);
+      return {
+        steps: steps,
+        type:'main',
+        d:d,
+        v:d[0].map(x=>x[1].v),
+        tr: ethcontract,
+        usedf: [...usedf]
+      }
+    }
+} %}
 
-line-> _ P _   {% function(d) {return {type:'line', d:d, v:d[1].v}} %}
+line -> _ P _   {% function(d) {
+  return {type:'line', d:d, v:d[1].v}
+} %}
 
 
 # Parentheses
-P -> "(" _ E _ ")" {% function(d) {return {type:'P', d:d, v:d[2].v}} %}
-    | _ V           {% function(d) {console.log("N " , d[1]);return {type:'N', d:d, v:d[1].v};}  %}
-  | "(" _ ")"		{% function(d) {return {type:'P', d:d, v:""}} %}
+P -> "(" _ E _ ")" {% function(d) {
+        return {type:'P', d:d, v:d[2].v}
+      } %}
+  | _ V  {% function(d) {
+        // console.log("N " , d[1]);
+        return {type:'N', d:d, v:d[1].v};
+      }  %}
+  | "(" _ ")"		{% function(d) {
+        return {type:'P', d:d, v:""}
+      } %}
 
 
 
-# Addition and subtraction
-E -> ident _ ( __ P):+  {% function(d) {console.log("as",d); return {type:d[0].v, d:d, v: call(d[0].v, d[2].map(x=>{ console.log("x1",x[1]); if ("v" in x[1]) {return x[1].v} else {return x[1].d[1].v}}) )}} %}
+# Expression
+E -> ident _ ( __ P):+  {% function(d) {
+  // console.log("as",d);
+  return {
+    type:d[0].v,
+    d:d,
+    v: call(
+      d[0].v,
+      d[2].map(x => {
+        // console.log("x1",x[1]);
+        if ("v" in x[1]) {return x[1].v}
+        else {return x[1].d[1].v}
+      })
+    )
+  }
+} %}
 
 
 
 ident -> [a-zA-Z_] [a-zA-Z0-9_]:* {% function(d) {let val = d[0]+d[1].join("" ); if (val in frame) val = frame[val]();return {type:'ident', d:d, v: val}} %}
 
-# A number or a function of a number
-V -> float          {% function(d) {console.log("float",d); return {v:d[0].v} } %}
-  | ident         {% function(d) {return {type:'ident', d:d, v:d[0].v}} %}
-  | string		{% function(d) {console.log("stri",d); return {type:'string', d:d, v:d[0].v}} %}
+# Value
+V -> float          {% function(d) {
+        // console.log("float",d);
+        return {v:d[0].v}
+      } %}
+  | ident {% function(d) {
+        return {type:'ident', d:d, v:d[0].v}
+      } %}
+  | string {% function(d) {
+        // console.log("stri",d);
+        return {type:'string', d:d, v:d[0].v}
+      } %}
 
-string -> "\"" [a-zA-Z0-9_]:* "\"" {% function(d) {console.log("striii ",d); return {v: d[1].join("")}}  %}
+string -> "\"" [a-zA-Z0-9_]:* "\"" {% function(d) {
+  // console.log("striii ",d);
+  return {v: d[1].join("")}
+}  %}
 
 # I use `float` to basically mean a number with a decimal point in it
 float ->
       int "." ipositive   {% function(d) {return {v:parseFloat(d[0].v + d[1] + d[2].v)}} %}
-    | int           {% function(d) {console.log("int",d);return {v:parseInt(d[0].v)}} %}
+    | int           {% function(d) {
+          // console.log("int",d);
+          return {v:parseInt(d[0].v)}
+      } %}
 
-int -> ipositive {% function(d) {console.log("ipos",d);return {type:"ip",d:d,v:d[0].v}} %}
+int -> ipositive {% function(d) {
+        // console.log("ipos",d);
+        return {type:"ip",d:d,v:d[0].v}
+      } %}
   | inegative  {% function(d) {return {type:"in",d:d,v:d[0].v}} %}
 
 inegative -> "-" [0-9]:+        {% function(d) {return {v: d[0]+d[1].join("")}} %}
