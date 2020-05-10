@@ -1,5 +1,6 @@
 import React, { Component } from 'react';
 import { Dimensions, StyleSheet, ScrollView } from 'react-native';
+import { Button, Icon } from 'native-base';
 import './App.css';
 import GrammarDev from './components/GrammarDev.js';
 import GraphView from './components/GraphView.js';
@@ -22,6 +23,7 @@ class App extends Component {
       ...this.getWindowDimensions(),
       pageNumber: 2,
       grammar: taylorUtils.getGrammar(),
+      autocompile: true,
     }
 
     this.onContentSizeChange = this.onContentSizeChange.bind(this);
@@ -46,7 +48,9 @@ class App extends Component {
 
   onGrammarChange(grammar) {
     taylorUtils.storeGrammar(grammar);
-    this.setState({ grammar });
+    if (this.state.autocompile) {
+      this.setState({ grammar });
+    }
   }
 
   render() {
@@ -72,6 +76,14 @@ class App extends Component {
           grammar={grammar}
           onGrammarChange={this.onGrammarChange}
         />
+        <Button
+          small
+          light
+          style={{ position: 'fixed', top: '0px', left: '0px', backgroundColor: 'white',  opacity: this.state.autocompile ? 0.5 : 0.2 }}
+          onClick={() => this.setState({ autocompile: !this.state.autocompile })}
+        >
+          <Icon type="FontAwesome" name='refresh' />
+        </Button>
         <GraphView styles={pageStyles} grammar={grammar}/>
       </ScrollView>
     );

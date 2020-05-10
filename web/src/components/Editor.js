@@ -1,6 +1,6 @@
 import React, { Component } from 'react';
 import { ScrollView } from 'react-native';
-import { View, Text } from 'native-base';
+import { View, Text, Button, Icon } from 'native-base';
 import MonacoEditor from 'react-monaco-editor';
 import ReactJson from 'custom-react-json-view'
 import Taylor from 'taylor';
@@ -40,6 +40,7 @@ class Editor extends Component {
     this.state = {
       code: taylorUtils.getCode(),
       ...newgr,
+      autocompile: true,
     }
 
     this.onChange = this.onChange.bind(this);
@@ -55,12 +56,15 @@ class Editor extends Component {
     editor.focus();
   }
 
-  onChange(newValue, e) {
-    console.log('onChange', newValue, e);
-    const newgr = this.getResult(newValue);
-    this.setState({ ...newgr, code: newValue });
+  onChange(newValue, force) {
+    this.setState({ code: newValue });
     taylorUtils.storeCode(newValue);
-    this.props.onGraphChange(newgr);
+
+    if (this.state.autocompile || force === true) {
+      const newgr = this.getResult(newValue);
+      this.setState({ ...newgr });
+      this.props.onGraphChange(newgr);
+    }
   }
 
   render() {
@@ -110,6 +114,17 @@ class Editor extends Component {
             }
           </ScrollView>
         </ScrollView>
+        <Button
+          small
+          light
+          style={{ position: 'fixed', top: '0px', left: '50%', backgroundColor: 'white',  opacity: this.state.autocompile ? 0.5 : 0.2 }}
+          onClick={() => {
+            this.setState({ autocompile: !this.state.autocompile });
+            this.onChange(this.state.code, true)
+          }}
+        >
+          <Icon type="FontAwesome" name='refresh' />
+        </Button>
       </View>
     );
   }
