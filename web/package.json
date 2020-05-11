@@ -7,6 +7,7 @@
     "@testing-library/react": "^9.3.2",
     "@testing-library/user-event": "^7.1.2",
     "custom-react-json-view": "^1.20.1",
+    "ethers": "^4.0.47",
     "native-base": "^2.13.12",
     "react": "^16.13.1",
     "react-art": "^16.13.1",

@@ -1,6 +1,6 @@
 import React, { Component } from 'react';
 import { ScrollView } from 'react-native';
-import { View, Text } from 'native-base';
+import { View, Text, Button, Icon } from 'native-base';
 import MonacoEditor from 'react-monaco-editor';
 import ReactJson from 'custom-react-json-view'
 import Taylor from 'taylor';
@@ -23,7 +23,7 @@ const getResult = (grammar, code) => {
 
   if (result) {
     result = {
-      output: result.results ? result.results[0].v : [],
+      output: result.results && result.results[0] ? result.results[0].v : [],
       result: result.results
     }
   }
@@ -34,12 +34,17 @@ const getResult = (grammar, code) => {
 class Editor extends Component {
   constructor(props) {
     super(props);
+
+    const newgr = getResult(props.grammar, taylorUtils.getCode());
+
     this.state = {
       code: taylorUtils.getCode(),
-      ...getResult(props.grammar, taylorUtils.getCode()),
+      ...newgr,
+      autocompile: true,
     }
 
     this.onChange = this.onChange.bind(this);
+    this.props.onGraphChange(newgr);
   }
 
   getResult(code) {
@@ -51,10 +56,15 @@ class Editor extends Component {
     editor.focus();
   }
 
-  onChange(newValue, e) {
-    console.log('onChange', newValue, e);
-    this.setState({ ...this.getResult(newValue), code: newValue });
+  onChange(newValue, force) {
+    this.setState({ code: newValue });
     taylorUtils.storeCode(newValue);
+
+    if (this.state.autocompile || force === true) {
+      const newgr = this.getResult(newValue);
+      this.setState({ ...newgr });
+      this.props.onGraphChange(newgr);
+    }
   }
 
   render() {
@@ -104,6 +114,17 @@ class Editor extends Component {
             }
           </ScrollView>
         </ScrollView>
+        <Button
+          small
+          light
+          style={{ position: 'fixed', top: '0px', left: '50%', backgroundColor: 'white',  opacity: this.state.autocompile ? 0.5 : 0.2 }}
+          onClick={() => {
+            this.setState({ autocompile: !this.state.autocompile });
+            this.onChange(this.state.code, true)
+          }}
+        >
+          <Icon type="FontAwesome" name='refresh' />
+        </Button>
       </View>
     );
   }

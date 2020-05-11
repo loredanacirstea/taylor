@@ -83,6 +83,8 @@ object "TaylorInterpreter" {
 
                 _ptr := add(add(_ptr, mslice(_ptr, 4)), 4)
                 storeProgSteps(_ptr, sig_bytecode)
+
+                logInsertSignature(sig_bytecode)
             }
 
             // read from storage
@@ -1543,6 +1545,11 @@ object "TaylorInterpreter" {
                 let hash := hashTypedValue(_pointer)
                 mstore(0, hash)
                 log1(0, 32, type_id)
+            }
+
+            function logInsertSignature(sig) {
+                let insertTopic := 0x1111111111111111111111111111111111111111111111111111111111111111
+                log2(0, 0, insertTopic, sig)
             }
 
             function sendPay(addr, value) -> success {
