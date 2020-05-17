@@ -8,6 +8,7 @@
   },
   "scripts": {
     "build": "webpack --watch",
+    "build_interpreter": "node build.js",
     "test": "jest"
   },
   "repository": {
