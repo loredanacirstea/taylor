@@ -6,6 +6,7 @@ const yulp = require('yulp');
 const PROVIDER_URL = 'http://192.168.1.140:8545';
 const CPATH = './contracts/dtypeinterpreter.tay';
 const CPATH2 = './tests/dtypeinterpreter_2.tay';
+const MALLT_PATH = './contracts/mal_like_tay.sol';
 
 
 const provider = new ethers.providers.JsonRpcProvider(PROVIDER_URL);
@@ -94,6 +95,15 @@ const getTaylor = async (instance_type = 0) => {
   }
 }
 
+const getMalTay = async () => {
+  const address = await deployContract(signer)(MALLT_PATH);
+  return {
+    address: address.toLowerCase(),
+    send: sendTransaction(signer)(address),
+    call: call(provider)(address),
+  }
+}
+
 
 module.exports = {
   provider,
@@ -102,4 +112,5 @@ module.exports = {
   deployContract,
   deployTaylor,
   getTaylor,
+  getMalTay,
 }

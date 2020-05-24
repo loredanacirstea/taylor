@@ -11,11 +11,10 @@ object "malLikeTay" {
         // array   : 01000000000000000000000000000000
         
         let _calldata := 512
-        let _reader := 1024
         calldatacopy(_calldata, 0, calldatasize())
         
         let end, res := execute(_calldata)
-        return (res, 32)
+        return (res, 4)
         
         
         function execute(data_ptr) -> end_ptr, result_ptr {
@@ -103,16 +102,16 @@ object "malLikeTay" {
         // 2684354564
         function _add(ptr1, ptr2) -> result_ptr {
             result_ptr := allocate(32)
-            let c := add(mload(ptr1), mload(ptr2))
-            mstore(result_ptr, c)
+            let c := add(mslice(ptr1, 4), mslice(ptr2, 4))
+            mslicestore(result_ptr, c, 4)
         }
         
         // 10100000000000000000000000001000
         // 2684354568
         function _sub(ptr1, ptr2) -> result_ptr {
             result_ptr := allocate(32)
-            let c := sub(mload(ptr1), mload(ptr2))
-            mstore(result_ptr, c)
+            let c := sub(mslice(ptr1, 4), mslice(ptr2, 4))
+            mslicestore(result_ptr, c, 4)
         }
         
         function _mul(a, b) -> c {
@@ -237,6 +236,16 @@ object "malLikeTay" {
             ptr := mload(0x40)
             if iszero(ptr) { ptr := 0x60 }
             mstore(0x40, add(ptr, size))
+        }
+
+        function mslicestore(_ptr, val, length) {
+            let slot := 32
+            mstore(_ptr, shl(mul(sub(slot, length), 8), val))
+        }
+
+        function sslicestore(storageKey, val, length) {
+            let slot := 32
+            sstore(storageKey, shl(mul(sub(slot, length), 8), val))
         }
     }}
 }
