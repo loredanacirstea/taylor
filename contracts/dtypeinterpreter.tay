@@ -85,6 +85,7 @@ object "TaylorInterpreter" {
                 storeProgSteps(_ptr, sig_bytecode)
 
                 logInsertSignature(sig_bytecode)
+                return (0, 0)
             }
 
             // read from storage
@@ -944,20 +945,22 @@ object "TaylorInterpreter" {
             function mmultistore(_ptr_target, _ptr_source, sizeBytes) {
                 if gt(sizeBytes, 0) {
                     let slot := 32
-                    let size := div(sizeBytes, slot)
+                    let storedBytes := 0
 
-                    for { let i := 0 } lt(i, size)  { i := add(i, 1) } {
-                        mstore(add(_ptr_target, mul(i, slot)), mload(add(_ptr_source, mul(i, slot))))
-                    }
-
-                    let current_length :=  mul(size, slot)
-                    let remaining := sub(sizeBytes, current_length)
-                    if gt(remaining, 0) {
-                        mslicestore(
-                            add(_ptr_target, current_length),
-                            mslice(add(_ptr_source, current_length), remaining),
-                            remaining
-                        )
+                    for {} lt(storedBytes, sizeBytes) {} {
+                        let remaining := sub(sizeBytes, storedBytes)
+                        switch gt(remaining, 31)
+                        case 1 {
+                            mstore(safeAdd(_ptr_target, storedBytes), mload(safeAdd(_ptr_source, storedBytes)))
+                            storedBytes := add(storedBytes, 32)
+                        }
+                        case 0 {
+                            mslicestore(
+                                safeAdd(_ptr_target, storedBytes),
+                                mslice(safeAdd(_ptr_source, storedBytes), remaining),
+                                remaining
+                            )
+                        }
                     }
                 }
             }
@@ -1580,17 +1583,24 @@ object "TaylorInterpreter" {
 
             function storeData(_pointer, storageKey) {
                 let slot := 32
-                let sizeBytes := add(mslice(_pointer, 4), 4)
-                let size := div(sizeBytes, slot)
+                let sizeBytes := safeAdd(mslice(_pointer, 4), 4)
+                let storedBytes := 0
+                let index := 0
 
-                for { let i := 0 } lt(i, size)  { i := add(i, 1) } {
-                    sstore(add(storageKey, i), mload(add(_pointer, mul(i, slot))))
-                }
+                for {} lt(storedBytes, sizeBytes) {} {
+                    let remaining := sub(sizeBytes, storedBytes)
+                    switch gt(remaining, 31)
+                    case 1 {
+                        sstore(safeAdd(storageKey, index), mload(safeAdd(_pointer, storedBytes)))
 
-                let current_length :=  mul(size, slot)
-                let remaining := sub(sizeBytes, current_length)
-                if gt(remaining, 0) {
-                    sslicestore(add(storageKey, size), mslice(add(_pointer, current_length), remaining), remaining)
+                        storedBytes := add(storedBytes, 32)
+                        index := add(index, 1)
+                    }
+                    case 0 {
+                        if gt(remaining, 0) {
+                            sslicestore(safeAdd(storageKey, index), mslice(safeAdd(_pointer, storedBytes), remaining), remaining)
+                        }
+                    }
                 }
             }
 
@@ -1601,23 +1611,29 @@ object "TaylorInterpreter" {
                 mstore(_pointer, sload(storageKey))
 
                 let sizeBytes := mslice(_pointer, 4)
-                let loadedData := sub(slot, 4)
+                let loadedData := safeSub(slot, 4)
                 if gt(sizeBytes, loadedData) {
-                    sizeBytes := sub(sizeBytes, loadedData)
-                    let size := div(sizeBytes, slot)
-                    _pointer :=  add(_pointer, slot)
+                    sizeBytes := safeSub(sizeBytes, loadedData)
+                    let storedBytes := 0
+                    let index := 0
 
-                    for { let i := 0 } lt(i, size)  { i := add(i, 1) } {
-                        mstore(add(_pointer, mul(i, slot)), sload(add(storageKey, add(i, 1))))
-                    }
-
-                    let current_length :=  mul(size, slot)
-                    let remaining := sub(sizeBytes, current_length)
-                    if gt(remaining, 0) {
-                        mstore(add(_pointer, current_length), sload(add(storageKey, add(size, 1))))
+                    for {} lt(storedBytes, sizeBytes) {} {
+                        let remaining := sub(sizeBytes, storedBytes)
+                        switch gt(remaining, 31)
+                        case 1 {
+                            mstore(safeAdd(_pointer, storedBytes), sload(safeAdd(storageKey, safeAdd(index, 1))))
+                            storedBytes := add(storedBytes, 32)
+                            index := add(index, 1)
+                        }
+                        case 0 {
+                            if gt(remaining, 0) {
+                                mstore(safeAdd(_pointer, storedBytes), sload(safeAdd(storageKey, safeAdd(index, 1))))
+                            }
+                        }
                     }
                 }
             }
+
 
             function mappingTypeKey(key) -> storageKey {
                 storageKey := mappingStorageKey(0, key)
