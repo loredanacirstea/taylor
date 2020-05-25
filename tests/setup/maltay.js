@@ -90,13 +90,15 @@ Object.keys(nativeEnv).forEach((key, id) => {
 
 // console.log('nativeEnv', nativeEnv);
 
+// TODO: this only encodes uint
 const encode = (types, values) => {
     if (types.length !== values.length) throw new Error('Encode - different lengths.');
    return types.map((t, i) => {
         switch (t.type) {
             case 'uint':
-                let sizeb =  u2b(t.size).padStart(16, '0')
+                let sizeb = u2b(t.size).padStart(16, '0')
                 let id = typeid.number + numberid.uint + sizeb;
+                // id = b2h(id).padStart(4, '0');
                 id = strip0x(hexZeroPad(x0(b2h(id)), 4));
                 const value = parseInt(values[i]);
                 const padded = strip0x(hexZeroPad(
@@ -104,6 +106,13 @@ const encode = (types, values) => {
                     t.size
                 ));
                 return id + padded;
+            case 'list':
+                let len = u2b(values[i].length).padStart(24, '0');
+                let lid = typeid.list + u2b(1).padStart(4, '0') + len;
+                // lid = b2h(lid).padStart(4, '0');
+                lid = strip0x(hexZeroPad(x0(b2h(lid)), 4));
+                return lid + values[i].map(value => encode([{type: 'uint', size: 4}], [value]))
+                    .join('');
             default:
                 throw new Error('Not implemented');
         }
@@ -111,7 +120,8 @@ const encode = (types, values) => {
 }
 
 const ast2h = ast => {
-    const arity = ast.length;
+    // do not count the function itselt
+    const arity = ast.length - 1;
     return ast.map(elem => {
         // if Symbol
         if (malTypes._symbol_Q(elem)) {
@@ -121,6 +131,7 @@ const ast2h = ast => {
             if (typeof nativeEnv[elem.value].hex !== 'function') {
                 throw new Error('Unexpected native function: ' + elem.value);
             }
+            // variadic function
             return nativeEnv[elem.value].hex(arity);
         }
 

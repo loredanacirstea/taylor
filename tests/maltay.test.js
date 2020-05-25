@@ -24,3 +24,17 @@ it('test sum-sub', async function () {
     const resp = await MalTay.call(expr);
     expect(resp).toBe('0x0a9100040000002f');
 });
+
+it('test list', async function () {
+    let resp;
+    const expected = '0x' + encode([{type: 'list'}], [[5, 4, 8, 3, 5]]);
+    
+    const exprSimple = expr2h('(list 5 4 8 3 5)');
+    resp = await MalTay.call(exprSimple);
+    expect(resp).toBe(expected);
+
+    const expr = expr2h('(list 5 4 (add 6 2) 3 (sub 6 1))');
+    expect(expr).toBe('0xa800003e0a910004000000050a91000400000004900000020a910004000000060a910004000000020a91000400000003900000040a910004000000060a91000400000001');
+    resp = await MalTay.call(expr);
+    expect(resp).toBe(expected);
+});
