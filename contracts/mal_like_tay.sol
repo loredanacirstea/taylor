@@ -25,11 +25,10 @@ object "malLikeTay" {
         let _calldata := 512
         calldatacopy(_calldata, 0, calldatasize())
         
-        let end, res := execute(_calldata)
+        let end, res := eval(_calldata)
         return (res, 8)
         
-        
-        function execute(data_ptr) -> end_ptr, result_ptr {
+        function eval(data_ptr) -> end_ptr, result_ptr {
             let sig := getFuncSig(data_ptr)
 
             switch isFunction(data_ptr)
@@ -39,40 +38,51 @@ object "malLikeTay" {
             }
             case 1 {
                 let arity := getFuncArity(data_ptr)
-                
+
                 switch arity
                 case 0 {
                     // TODO sig length
                     end_ptr := add(data_ptr, 8)
-                    result_ptr := executeNative(sig, 0, 0, 0, 0, 0, 0, 0, 0)
+                    result_ptr := evalWithEnv(sig, 0, 0, 0, 0, 0, 0, 0, 0)
                 }
                 case 1 {
                     // TODO sig length
-                    let _end_ptr, arg1_ptr := execute(add(data_ptr, 4))
+                    let _end_ptr, arg1_ptr := eval(add(data_ptr, 4))
                     end_ptr := _end_ptr
                     
-                    result_ptr := executeNative(sig, arg1_ptr, 0, 0, 0, 0, 0, 0, 0)
+                    result_ptr := evalWithEnv(sig, arg1_ptr, 0, 0, 0, 0, 0, 0, 0)
                 }
                 case 2 {
                     // TODO sig length
-                    let _end1_ptr, arg1_ptr := execute(add(data_ptr, 4))
-                    let _end2_ptr, arg2_ptr := execute(_end1_ptr)
+                    let _end1_ptr, arg1_ptr := eval(add(data_ptr, 4))
+                    let _end2_ptr, arg2_ptr := eval(_end1_ptr)
  
                     end_ptr := _end2_ptr
                     
-                    result_ptr := executeNative(sig, arg1_ptr, arg2_ptr, 0, 0, 0, 0, 0, 0)
+                    result_ptr := evalWithEnv(sig, arg1_ptr, arg2_ptr, 0, 0, 0, 0, 0, 0)
                 }
             }
         }
         
-        function executeNative(fsig, ptr1, ptr2, ptr3, ptr4, ptr5, ptr6, ptr7, ptr8) -> result_ptr {
+        function evalWithEnv(fsig, ptr1, ptr2, ptr3, ptr4, ptr5, ptr6, ptr7, ptr8) -> result_ptr {
             switch fsig
-            case 2684354564 {
+
+            // 10010000000000000000000000000010
+            case 0x90000002 {
                 result_ptr := _add(ptr1, ptr2)
             }
-            case 2684354568 {
+            // 10010000000000000000000000000100
+            case 0x90000004 {
                 result_ptr := _sub(ptr1, ptr2)
             }
+            // list
+            case 2684354574 {
+                // result_ptr := list(ptr1, ptr2, ptr3, ptr4, ptr5, ptr6, ptr7, ptr8)
+            }
+        }
+
+        function list(ptr1, ptr2, ptr3, ptr4, ptr5, ptr6, ptr7, ptr8) -> _data_ptr {
+            _data_ptr := ptr1
         }
         
         function getFuncSig(ptr) -> _sig {
@@ -117,30 +127,24 @@ object "malLikeTay" {
             _length := add(getValueLength(ptr), getSignatureLength(ptr))
         }
         
-        // arity - first 3 bits 0 -> 7
+        // arity - 4 bits -> 16 args
         function getFuncArity(ptr) -> arity {
-            // 01110000000000000000000000000000
-            arity := shr(28, and(getFuncSig(ptr), 1879048192))
+            // 01111000000000000000000000000000
+            arity := shr(27, and(getFuncSig(ptr), 0x78000000))
         }
         
-        function read(str) -> _str {
-            _str := str
-        }
+        // function read(str) -> _str {
+        //     _str := str
+        // }
 
-        function eval(ast, env) -> answ {
-            answ := ast
-        }
+        // function print(ast) -> answ {
+        //     answ := ast
+        // }
 
-        function print(ast) -> answ {
-            answ := ast
-        }
-
-        function rep(line) -> answ {
-            answ := print(eval(read(line), 0))
-        }
+        // function rep(line) -> answ {
+        //     answ := print(eval(read(line)))
+        // }
        
-        // 10100000000000000000000000000100
-        // 2684354564
         // TODO: auto cast if overflow
         function _add(ptr1, ptr2) -> result_ptr {
             result_ptr := allocate(32)
@@ -150,9 +154,7 @@ object "malLikeTay" {
             )
             mslicestore(result_ptr, uconcat(getFuncSig(ptr1), c, 4), 8)
         }
-        
-        // 10100000000000000000000000001000
-        // 2684354568
+
         function _sub(ptr1, ptr2) -> result_ptr {
             result_ptr := allocate(32)
             let c := sub(

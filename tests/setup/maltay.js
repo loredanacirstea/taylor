@@ -1,5 +1,7 @@
 const ethers = require('ethers');
 const { hexStripZeros, hexZeroPad } = ethers.utils;
+const malReader = require('./mal/reader.js');
+const malTypes = require('./mal/types.js');
 
 const u2b = value => value.toString(2);
 const u2h = value => value.toString(16);
@@ -9,6 +11,16 @@ const h2u = value => parseInt(value, 16);
 const h2b = value => u2b(h2u(value));
 const x0 = value => '0x' + value;
 const strip0x = value => value.substring(0, 2) === '0x' ? value.substring(2) : value;
+
+const arityb = arity => u2b(arity).padStart(4, '0');
+const mutableb = mutable => mutable ? '1' : '0';
+const fidb = id => u2b(id).padStart(26, '0');
+const funcidb = name => {
+    const nativef = nativeEnv[name];
+    const f = arity => '1' + arityb(arity) + fidb(nativef.id) + mutableb(nativef.mutable);
+    if (nativef.arity !== null) return f(nativef.arity);
+    return f;
+}
 
 const typeid = {
     function: '1',
@@ -31,10 +43,52 @@ const numberid = {
     uint: '01010010001',
 }
 
-const native = {
-    add: '10100000000000000000000000000100',
-    sub: '10100000000000000000000000001000',
+const nativeEnv = {
+    // EVM specific
+    add:          { mutable: false, arity: 2 },
+    sub:          { mutable: false, arity: 2 },
+    mul:          { mutable: false, arity: 2 },
+    div:          { mutable: false, arity: 2 },
+    sdiv:         { mutable: false, arity: 2 },
+    mod:          { mutable: false, arity: 2 },
+    smod:         { mutable: false, arity: 2 },
+    exp:          { mutable: false, arity: 2 },
+    not:          { mutable: false, arity: 1 },
+    lt:           { mutable: false, arity: 2 },
+    gt:           { mutable: false, arity: 2 },
+    slt:          { mutable: false, arity: 2 },
+    sgt:          { mutable: false, arity: 2 },
+    eq:           { mutable: false, arity: 2 },
+    iszero:       { mutable: false, arity: 1 },
+    and:          { mutable: false, arity: 2 },
+    or:           { mutable: false, arity: 2 },
+    xor:          { mutable: false, arity: 2 },
+    byte:         { mutable: false, arity: 2 },
+    shl:          { mutable: false, arity: 2 },
+    shr:          { mutable: false, arity: 2 },
+    sar:          { mutable: false, arity: 2 },
+    addmod:       { mutable: false, arity: 3 },
+    mulmod:       { mutable: false, arity: 3 },
+    signextend:   { mutable: false, arity: 2 },
+    keccak256:    { mutable: false, arity: 2 },
+    call:         { mutable: true, arity: 2 },
+    callcode:     { mutable: true, arity: 2 },
+    delegatecall: { mutable: true, arity: 2 },
+    staticcall:   { mutable: false, arity: 2 },
+    
+    // Mal specific
+    list:         { mutable: false, arity: null },
 }
+
+Object.keys(nativeEnv).forEach((key, id) => {
+    nativeEnv[key].id = id + 1;
+    nativeEnv[key].encoded = funcidb(key);
+    nativeEnv[key].hex = typeof nativeEnv[key].encoded === 'string'
+        ? b2h(nativeEnv[key].encoded)
+        : arity => b2h(nativeEnv[key].encoded(arity));
+});
+
+// console.log('nativeEnv', nativeEnv);
 
 const encode = (types, values) => {
     if (types.length !== values.length) throw new Error('Encode - different lengths.');
@@ -56,26 +110,38 @@ const encode = (types, values) => {
     }).join('');
 }
 
-const expr2h = expression => {
-    const exprlist = expression.replace(/\(/g, '').replace(/\)/g, '').split(' ');
-    const hexb = exprlist.map(elem => {
-        if (native[elem]) return b2h(native[elem]);
+const ast2h = ast => {
+    const arity = ast.length;
+    return ast.map(elem => {
+        // if Symbol
+        if (malTypes._symbol_Q(elem)) {
+            if (typeof nativeEnv[elem.value].hex === 'string') {
+                return nativeEnv[elem.value].hex;
+            }
+            if (typeof nativeEnv[elem.value].hex !== 'function') {
+                throw new Error('Unexpected native function: ' + elem.value);
+            }
+            return nativeEnv[elem.value].hex(arity);
+        }
+
+        if (elem instanceof Array) {
+            return ast2h(elem);
+        }
+
+        // TODO
         if (parseInt(elem)) return encode([{type: 'uint', size: 4}], [elem]);
 
-        let list;
-        try {
-            list = JSON.parse(elem);
-        } catch (e) {
-            return '';
-        }
-        encode([{type: 'list', size: list.length}], [list]);
     }).join('');
-    return x0(hexb);
+}
+
+const expr2h = expression => {
+    const ast = malReader.read_str(expression);
+    return x0(ast2h(ast));
 }
 
 module.exports = {
     u2b, u2h, b2u, b2h, h2u, h2b,
-    typeid, native,
+    typeid, nativeEnv,
     encode,
     expr2h,
 }
