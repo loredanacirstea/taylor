@@ -7,27 +7,35 @@ object "malLikeTay" {
     object "Runtime" {
     code {
         
-        // function: 10000000000000000000000000000000
-        // array   : 01000000000000000000000000000000
+        // function: 1 000 00000000000000000000000000 0 0
+        // - typeid, arity, id, payable, mutability
+
+        // array   : 01 000000000000000000000000000000
+        // - typeid, length
+        
+        // struct  : 001 0000 000000000000000000000000 0
+        // - typeid, arity, id, exists in storage or not -> if yes, signature follows
+        
+        // list    : 0001 0000 000000000000000000000000
+        // - typeid, list type (vector..?), size
+        
+        // number  : 00001 00000000000 0000000000000000
+        // - typeid, bit11 subtypeid, size
         
         let _calldata := 512
         calldatacopy(_calldata, 0, calldatasize())
         
         let end, res := execute(_calldata)
-        return (res, 4)
+        return (res, 8)
         
         
         function execute(data_ptr) -> end_ptr, result_ptr {
-            let sig := mslice(data_ptr, 4)
+            let sig := getFuncSig(data_ptr)
 
-            // function 1 * 0000000000000000000000000000000
-            let func := and(sig, 2147483648)
-            
-            switch gt(func, 0)
+            switch isFunction(data_ptr)
             case 0 {
                 result_ptr := data_ptr
-                // TODO: get proper size
-                end_ptr := add(data_ptr, 4)
+                end_ptr := add(data_ptr, getTypedLength(data_ptr))
             }
             case 1 {
                 let arity := getFuncArity(data_ptr)
@@ -35,7 +43,7 @@ object "malLikeTay" {
                 switch arity
                 case 0 {
                     // TODO sig length
-                    end_ptr := add(data_ptr, 4)
+                    end_ptr := add(data_ptr, 8)
                     result_ptr := executeNative(sig, 0, 0, 0, 0, 0, 0, 0, 0)
                 }
                 case 1 {
@@ -49,6 +57,7 @@ object "malLikeTay" {
                     // TODO sig length
                     let _end1_ptr, arg1_ptr := execute(add(data_ptr, 4))
                     let _end2_ptr, arg2_ptr := execute(_end1_ptr)
+ 
                     end_ptr := _end2_ptr
                     
                     result_ptr := executeNative(sig, arg1_ptr, arg2_ptr, 0, 0, 0, 0, 0, 0)
@@ -66,13 +75,46 @@ object "malLikeTay" {
             }
         }
         
-        
-        function isFunction() -> isf {
-            
-        }
-        
         function getFuncSig(ptr) -> _sig {
             _sig := mslice(ptr, 4)
+        }
+
+        // function 10000000000000000000000000000000
+        function isFunction(ptr) -> isf {
+            let sig := getFuncSig(ptr)
+            let func := and(sig, 2147483648)
+            isf := gt(func, 0)
+        }
+
+        // 00001000000000000000000000000000
+        function isNumber(ptr) -> isn {
+            let sig := getFuncSig(ptr)
+            let numb := and(sig, 0x8000000)
+            isn := gt(numb, 0)
+        }
+
+        // last 16 bits
+        function numberSize(sig) -> _size {
+            _size := and(sig, 0xffff)
+        }
+
+        // TODO: for arrays
+        function getSignatureLength(ptr) -> _length {
+            _length := 4
+        }
+
+        function getValueLength(ptr) -> _length {
+            let sig := getFuncSig(ptr)
+            if isFunction(ptr) {
+                _length := 0
+            }
+            if isNumber(ptr) {
+                _length := numberSize(sig)
+            }
+        }
+
+        function getTypedLength(ptr) -> _length {
+            _length := add(getValueLength(ptr), getSignatureLength(ptr))
         }
         
         // arity - first 3 bits 0 -> 7
@@ -80,7 +122,6 @@ object "malLikeTay" {
             // 01110000000000000000000000000000
             arity := shr(28, and(getFuncSig(ptr), 1879048192))
         }
-        
         
         function read(str) -> _str {
             _str := str
@@ -100,18 +141,25 @@ object "malLikeTay" {
        
         // 10100000000000000000000000000100
         // 2684354564
+        // TODO: auto cast if overflow
         function _add(ptr1, ptr2) -> result_ptr {
             result_ptr := allocate(32)
-            let c := add(mslice(ptr1, 4), mslice(ptr2, 4))
-            mslicestore(result_ptr, c, 4)
+            let c := add(
+                mslice(add(ptr1, getSignatureLength(ptr1)), getValueLength(ptr1)),
+                mslice(add(ptr2, getSignatureLength(ptr2)), getValueLength(ptr2))
+            )
+            mslicestore(result_ptr, uconcat(getFuncSig(ptr1), c, 4), 8)
         }
         
         // 10100000000000000000000000001000
         // 2684354568
         function _sub(ptr1, ptr2) -> result_ptr {
             result_ptr := allocate(32)
-            let c := sub(mslice(ptr1, 4), mslice(ptr2, 4))
-            mslicestore(result_ptr, c, 4)
+            let c := sub(
+                mslice(add(ptr1, getSignatureLength(ptr1)), getValueLength(ptr1)),
+                mslice(add(ptr2, getSignatureLength(ptr2)), getValueLength(ptr2))
+            )
+            mslicestore(result_ptr, uconcat(getFuncSig(ptr1), c, 4), 8)
         }
         
         function _mul(a, b) -> c {
@@ -236,6 +284,10 @@ object "malLikeTay" {
             ptr := mload(0x40)
             if iszero(ptr) { ptr := 0x60 }
             mstore(0x40, add(ptr, size))
+        }
+
+        function uconcat(a, b, length_b) -> c {
+            c := add(shl(mul(length_b, 8), a), b)
         }
 
         function mslicestore(_ptr, val, length) {
