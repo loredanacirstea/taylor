@@ -24,10 +24,10 @@ object "malLikeTay" {
         let _calldata := allocate(calldatasize())
         calldatacopy(_calldata, 0, calldatasize())
         
-        let end, res := eval(_calldata)
+        let end, res := eval(_calldata, 0)
         return (res, getTypedLength(res))
         
-        function eval(data_ptr) -> end_ptr, result_ptr {
+        function eval(data_ptr, env_ptr) -> end_ptr, result_ptr {
             let sig := getFuncSig(data_ptr)
 
             // if !list -> eval_ast(ast)
@@ -42,15 +42,27 @@ object "malLikeTay" {
 
             switch isFunction(data_ptr)
             case 0 {
-                let size := getTypedLength(data_ptr)
-                result_ptr := data_ptr
-                end_ptr := add(data_ptr, size)
+                switch gt(env_ptr, 0)
+                case 1 {
+                    // replace args from lambdas
+                    let index := and(mslice(data_ptr, 4), 0x3f)
+                    let value_ptr := add(env_ptr, mul(index, 32))
+                    let size := getTypedLength(value_ptr)
+                    result_ptr := value_ptr
+                    end_ptr := add(data_ptr, size)
+                }
+                case 0 {
+                    let size := getTypedLength(data_ptr)
+                    result_ptr := data_ptr
+                    end_ptr := add(data_ptr, size)
+                }
             }
             case 1 {
                 let arity := getFuncArity(data_ptr)
                 
                 // allocate arity number of slots for argument pointers
                 let args_ptrs := allocate(mul(add(arity, 1), 32))
+                
                 // first argument is the number of arguments
                 // for variadic functions
                 mstore(args_ptrs, arity)
@@ -58,16 +70,25 @@ object "malLikeTay" {
 
                 // TODO: assumes signature length is 4
                 end_ptr := add(data_ptr, 4)
-                
-                for { let i := 0 } lt(i, arity) { i := add(i, 1) } {
-                    let _end_ptr, arg_ptr := eval(end_ptr)
 
-                    // store pointer to argument value
-                    mstore(args_ptrs_now, arg_ptr)
-                    end_ptr := _end_ptr
-                    args_ptrs_now := add(args_ptrs_now, 32)
+                let isl := isLambda(data_ptr)
+                switch isl
+                case 1 {
+                    // store lambda body ptr
+                    mstore(args_ptrs_now, end_ptr)
+                    end_ptr := add(end_ptr, lambdaLength(sig))
                 }
+                case 0 {
+                    for { let i := 0 } lt(i, arity) { i := add(i, 1) } {
+                        let _end_ptr, arg_ptr := eval(end_ptr, env_ptr)
 
+                        // store pointer to argument value
+                        mstore(args_ptrs_now, arg_ptr)
+                        end_ptr := _end_ptr
+                        args_ptrs_now := add(args_ptrs_now, 32)
+                    }
+                }
+                
                 // apply function on arguments
                 result_ptr := evalWithEnv(sig, args_ptrs)
             }
@@ -88,6 +109,15 @@ object "malLikeTay" {
             case 0xa800003e {
                 result_ptr := list(arg_ptrs_ptr)
             }
+
+            case 0x98002000 {
+                result_ptr := _apply(arg_ptrs_ptr)
+            }
+
+            // TODO: better lambda
+            default {
+                result_ptr := lambda(arg_ptrs_ptr)
+            }
         }
         
         function getFuncSig(ptr) -> _sig {
@@ -97,8 +127,16 @@ object "malLikeTay" {
         // function 10000000000000000000000000000000
         function isFunction(ptr) -> isf {
             let sig := getFuncSig(ptr)
-            let func := and(sig, 0x80000000)  // 2147483648)
+            let func := and(sig, 2147483648) // 0x80000000)
             isf := gt(func, 0)
+        }
+
+        // 10001100000000000000000000000000
+        // 100000000000000000000000000
+        function isLambda(ptr) -> isl {
+            let sig := getFuncSig(ptr)
+            let func := and(sig, 0x4000000)  // 0x8c000000)
+            isl := gt(func, 0)
         }
 
         // 01000000000000000000000000000000
@@ -137,6 +175,11 @@ object "malLikeTay" {
         // last 24 bits
         function listSize(sig) -> _size {
             _size := and(sig, 0xffffff)
+        }
+        
+        // 11111111111111111111111110
+        function lambdaLength(sig) -> _blength {
+            _blength := shr(1, and(sig, 0x3fffffe))
         }
 
         // TODO: for arrays
@@ -206,6 +249,35 @@ object "malLikeTay" {
                 mmultistore(ptr, arg_ptr, size)
                 ptrs := add(ptrs, 32)
             }
+        }
+
+        function _apply(arg_ptrs) -> _data_ptr {
+            let arity := mload(arg_ptrs)
+            
+            // lambda_ptr can be a signature or a lambda pointer
+            let lambda_ptr := mload(mload(add(arg_ptrs, 32)))
+            
+            // TODO: if signature -> call eval
+            
+            let args_ptr := allocate(mul(arity, 32))
+            let source := add(arg_ptrs, 64)
+            let addit := 0
+            for { let i := 0 } lt(i, arity) { i := add(i, 1) } {
+                mstore(
+                    add(args_ptr, addit), 
+                    mload(mload(add(source, addit)))
+                )
+                addit := add(addit, 32)
+            }
+            
+            let end, res := eval(lambda_ptr, args_ptr)
+            // TODO: end?
+            _data_ptr := res
+        }
+
+        function lambda(arg_ptrs) -> _data_ptr {
+            // skip arity, just point to the lambda body
+            _data_ptr := add(arg_ptrs, 32)
         }
        
         // TODO: auto cast if overflow
