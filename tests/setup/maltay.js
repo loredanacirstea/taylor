@@ -17,9 +17,26 @@ const mutableb = mutable => mutable ? '1' : '0';
 const fidb = id => u2b(id).padStart(26, '0');
 const funcidb = name => {
     const nativef = nativeEnv[name];
-    const f = arity => '1' + arityb(arity) + fidb(nativef.id) + mutableb(nativef.mutable);
-    if (nativef.arity !== null) return f(nativef.arity);
-    return f;
+    let binf, hex;
+    if (!nativef.composed) {
+        binf = arity => '1' + arityb(arity) + fidb(nativef.id) + mutableb(nativef.mutable);
+    } else {
+        const composedf = nativef.composed.map(cname => funcidb(cname));
+        binf = arities => composedf.map((funcs, i) => typeof funcs.bin === 'string' ? funcs.bin : funcs.bin(arities[i])).join('');
+        hex = arities => composedf.map((funcs, i) => typeof funcs.hex === 'string' ? funcs.hex : funcs.hex(arities[i])).join('');
+    }
+    
+    if (nativef.arity !== null) {
+        const bin = binf(nativef.arity);
+        return { bin, hex: b2h(bin) }
+    }
+    return { bin: binf, hex: hex || (arity => b2h(binf(arity))) }
+}
+const unknown = index => {
+    let id = b2h(typeid.unknown + u2b(index).padStart(24, '0')).padStart(8, '0');
+    // this is not used directly, but it should be
+    let value = u2h(index).padStart(8, '0');
+    return id + value;
 }
 
 const typeid = {
@@ -28,6 +45,7 @@ const typeid = {
     struct: '001',
     list: '0001',
     number: '00001',
+    unknown: '00000001'
 }
 
 const numberid = {
@@ -78,15 +96,25 @@ const nativeEnv = {
     
     // Mal specific
     list:         { mutable: false, arity: null },
+    apply:        { mutable: false, arity: null },
+    lambda:       { mutable: false, arity: null },
+    'fn*':        { mutable: false, arity: null, composed: ['apply', 'lambda'] },
 }
 
 Object.keys(nativeEnv).forEach((key, id) => {
     nativeEnv[key].id = id + 1;
-    nativeEnv[key].encoded = funcidb(key);
-    nativeEnv[key].hex = typeof nativeEnv[key].encoded === 'string'
-        ? b2h(nativeEnv[key].encoded)
-        : arity => b2h(nativeEnv[key].encoded(arity));
+    nativeEnv[key].idb = fidb(nativeEnv[key].id);
+    nativeEnv[key].idmask = '10000' + nativeEnv[key].idb + '0';
+    nativeEnv[key].idmaskhex = b2h(nativeEnv[key].idmask);
+    const { bin, hex } = funcidb(key);
+    nativeEnv[key].encoded = bin;
+    nativeEnv[key].hex = hex;
 });
+nativeEnv.lambda.encoded = bodylenb => '100011' + u2b(bodylenb / 2).padStart(25, '0') + '0';
+nativeEnv.lambda.hex = bodylenb => {
+    const enc = b2h(nativeEnv.lambda.encoded(bodylenb));
+    return enc;
+}
 
 // console.log('nativeEnv', nativeEnv);
 
@@ -119,24 +147,46 @@ const encode = (types, values) => {
     }).join('');
 }
 
-const ast2h = ast => {
+const ast2h = (ast, unkownMap={}) => {
     // do not count the function itselt
     const arity = ast.length - 1;
-    return ast.map(elem => {
+    return ast.map((elem, i) => {
         // if Symbol
         if (malTypes._symbol_Q(elem)) {
+            if (!nativeEnv[elem.value]) {
+                // at the moment, only lambda variables should end up here
+                // lambda argument definition
+                if (!unkownMap[elem.value]) {
+                    unkownMap[elem.value] = unknown(i);
+                    // TODO: now we don't include `(a, b)` from `fn* (a b) (add a b)`
+                    return '';
+                }
+                return unkownMap[elem.value];
+            }
             if (typeof nativeEnv[elem.value].hex === 'string') {
                 return nativeEnv[elem.value].hex;
             }
             if (typeof nativeEnv[elem.value].hex !== 'function') {
                 throw new Error('Unexpected native function: ' + elem.value);
             }
-            // variadic function
+            
+            // variadic functions
+            if (nativeEnv[elem.value].composed) {
+                // TODO: temporary fix, because only fn* is composed right now
+                // apply arity: 1 + number of args
+                // lambda: arity 1 (for body)
+
+                const applyArity = ast[1].length + 1;
+                const lambdaBody = ast2h([ast[1], ast[2]]);
+
+                return nativeEnv.apply.hex(applyArity) + nativeEnv.lambda.hex(lambdaBody.length);
+                // return nativeEnv[elem.value].hex([applyArity, lambdaBodyLen]);
+            }
             return nativeEnv[elem.value].hex(arity);
         }
 
         if (elem instanceof Array) {
-            return ast2h(elem);
+            return ast2h(elem, unkownMap);
         }
 
         // TODO

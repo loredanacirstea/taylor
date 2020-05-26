@@ -39,24 +39,33 @@ it('test list', async function () {
     expect(resp).toBe(expected);
 });
 
-it.skip('test lambda', async function () {
+it('test lambda', async function () {
     let expr, resp;
 
     // TODO: return function type?
     // expr = expr2h('(fn* (a) a)');
 
     // expr = expr2h('( (fn* (a) a) 7)');
-    // expect(expr).toBe('0x9000000290000002900000040a910004000000070a910004000000020a910004000000010a91000400000029');
+    // console.log('expr1', expr);
+    // // expect(expr).toBe('0x9000000290000002900000040a910004000000070a910004000000020a910004000000010a91000400000029');
     // resp = await MalTay.call(expr);
     // expect(resp).toBe('0x0a91000400000007');
 
-    // expr = expr2h('( (fn* (a) (+ a 1)) 10)');
-    // expect(expr).toBe('0x9000000290000002900000040a910004000000070a910004000000020a910004000000010a91000400000029');
+    // expr = expr2h('( (fn* (a) (add a 1)) 10)');
+    // console.log('expr2', expr);
+    // // expect(expr).toBe('0x9000000290000002900000040a910004000000070a910004000000020a910004000000010a91000400000029');
     // resp = await MalTay.call(expr);
     // expect(resp).toBe('0x0a9100040000000b');
 
-    // expr = expr2h('( (fn* (a b) (add a b)) 2 3)');
-    // expect(expr).toBe('0x9000000290000002900000040a910004000000070a910004000000020a910004000000010a91000400000029');
+    expr = expr2h('( (fn* (a b) (add a b)) 2 3)');
+    expect(expr).toBe('0x980000408c00002890000002010000000000000001000001000000010a910004000000020a91000400000003');
+    resp = await MalTay.call(expr);
+    expect(resp).toBe('0x0a91000400000005');
+
+    expr = expr2h('( (fn* (a b) (add a b)) (add (add (sub 7 2) 1) 41) (add 2 3))');
+    expect(expr).toBe('0x980000408c00002890000002010000000000000001000001000000019000000290000002900000040a910004000000070a910004000000020a910004000000010a91000400000029900000020a910004000000020a91000400000003');
+    resp = await MalTay.call(expr);
+    expect(resp).toBe('0x0a91000400000034');
 });
 
 it('test lambda 1', async function () {
@@ -70,8 +79,8 @@ it('test lambda 1', async function () {
     
     // 10001100000000000000000000100000
     const lambdasig = '100011' + u2b(lambdabdy.length / 2).padStart(25, '0') + '0';
-    expr = '0x' + b2h('10011000000000000010000000000000')  // apply
-         + b2h(lambdasig)                          // lambda
+    expr = '0x' + '98000040'  // apply
+         + b2h(lambdasig)     // lambda
          + lambdabdy
          + lambdaRntArgs;
     
@@ -94,8 +103,8 @@ it('test lambda 2', async function () {
     // 10001100000000000000000000100000
     const lambdasig = '100011' + u2b(lambdabdy.length / 2).padStart(25, '0') + '0';
 
-    expr = '0x' + b2h('10011000000000000010000000000000')  // apply
-         + b2h(lambdasig)                          // lambda
+    expr = '0x' + '98000040'  // apply
+         + b2h(lambdasig)     // lambda
          + lambdabdy
          + lambdaRntArgs;
     

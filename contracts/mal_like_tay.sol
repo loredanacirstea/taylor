@@ -110,7 +110,7 @@ object "malLikeTay" {
                 result_ptr := list(arg_ptrs_ptr)
             }
 
-            case 0x98002000 {
+            case 0x98000040 {
                 result_ptr := _apply(arg_ptrs_ptr)
             }
 
