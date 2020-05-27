@@ -16,7 +16,7 @@ const arityb = arity => u2b(arity).padStart(4, '0');
 const mutableb = mutable => mutable ? '1' : '0';
 const fidb = id => u2b(id).padStart(26, '0');
 const funcidb = name => {
-    const nativef = nativeEnv[name];
+    const nativef = typeof name === 'string' ? nativeEnv[name] : name;
     let binf, hex;
     if (!nativef.composed) {
         binf = arity => '1' + arityb(arity) + fidb(nativef.id) + mutableb(nativef.mutable);
@@ -111,10 +111,7 @@ Object.keys(nativeEnv).forEach((key, id) => {
     nativeEnv[key].hex = hex;
 });
 nativeEnv.lambda.encoded = bodylenb => '100011' + u2b(bodylenb / 2).padStart(25, '0') + '0';
-nativeEnv.lambda.hex = bodylenb => {
-    const enc = b2h(nativeEnv.lambda.encoded(bodylenb));
-    return enc;
-}
+nativeEnv.lambda.hex = bodylenb => b2h(nativeEnv.lambda.encoded(bodylenb));
 
 // console.log('nativeEnv', nativeEnv);
 
@@ -205,5 +202,6 @@ module.exports = {
     typeid, nativeEnv,
     encode,
     expr2h,
+    funcidb,
 }
 

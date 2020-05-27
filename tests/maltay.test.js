@@ -1,5 +1,5 @@
 const { provider, signer, getMalTay } = require('./setup/fixtures.js');
-const { encode, expr2h, b2h, u2b } = require('./setup/maltay.js');
+const { encode, expr2h, b2h, u2b, u2h, funcidb } = require('./setup/maltay.js');
 
 let MalTay;
 
@@ -108,6 +108,29 @@ it('test lambda 2', async function () {
          + lambdabdy
          + lambdaRntArgs;
     
+    resp = await MalTay.call(expr);
+    expect(resp).toBe('0x0a91000400000034');
+});
+
+it('test use stored fn 1', async function () {
+    let signature, expr, exprlen, data, resp;
+
+    signature = funcidb({ mutable: false, arity: 2, id: 200 }).hex;;
+    expr = expr2h('(fn* (a b) (add a b))').substring(2);
+    exprlen = u2h(expr.length / 2).padStart(8, '0');
+    data = '0x44444444' + signature + exprlen + expr;
+    await MalTay.send(data);
+
+    resp = await MalTay.call('0x44444443' + signature);
+    expect(resp).toBe('0x980000408c0000289000000201000000000000000100000100000001');
+
+    expr = '0x' + signature + expr2h('(0x' + signature + ' 2 3)').substring(2);
+    expect(expr).toBe('0x' + signature + '0a910004000000020a91000400000003');
+    resp = await MalTay.call(expr);
+    expect(resp).toBe('0x0a91000400000005');
+    // the second signature is not included in the bytecode
+    expr = '0x' + signature + expr2h('(0x' + signature + ' (add (add (sub 7 2) 1) 41) (add 2 3))').substring(2);
+    expect(expr).toBe('0x' + signature + '9000000290000002900000040a910004000000070a910004000000020a910004000000010a91000400000029900000020a910004000000020a91000400000003');
     resp = await MalTay.call(expr);
     expect(resp).toBe('0x0a91000400000034');
 });

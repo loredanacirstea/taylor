@@ -23,6 +23,20 @@ object "malLikeTay" {
         
         let _calldata := allocate(calldatasize())
         calldatacopy(_calldata, 0, calldatasize())
+
+        // store func
+        if eq(mslice(_calldata, 4), 0x44444444) {
+            let sig := mslice(add(_calldata, 4), 4)
+            storeFn(add(_calldata, 8), sig)
+            return (0, 0)
+        }
+
+        // get func
+        if eq(mslice(_calldata, 4), 0x44444443) {
+            let sig := mslice(add(_calldata, 4), 4)
+            getFn(0, sig)
+            return (4, mslice(0, 4))
+        }
         
         let end, res := eval(_calldata, 0)
         return (res, getTypedLength(res))
@@ -71,7 +85,7 @@ object "malLikeTay" {
                 // TODO: assumes signature length is 4
                 end_ptr := add(data_ptr, 4)
 
-                let isl := isLambda(data_ptr)
+                let isl := isLambda(sig)
                 switch isl
                 case 1 {
                     // store lambda body ptr
@@ -116,7 +130,38 @@ object "malLikeTay" {
 
             // TODO: better lambda
             default {
-                result_ptr := lambda(arg_ptrs_ptr)
+                switch isLambda(fsig)
+                case 1 {
+                    result_ptr := lambda(arg_ptrs_ptr)
+                }
+                case 0 {
+                    // try storage
+                    // TODO storage cache
+                    let func_ptr := freeMemPtr()
+                    getFn(func_ptr, fsig)
+                    let len := mslice(func_ptr, 4)
+                    func_ptr := allocate(len)
+
+                    let arity := mload(arg_ptrs_ptr)
+                    let nextptr := add(func_ptr, add(len, 4))
+                    let nextarg := add(arg_ptrs_ptr, 32)
+                    
+                    for { let i := 0 } lt(i, arity) { i := add(i, 1) } {
+                        let arg_ptr := mload(nextarg)
+                        let arglen := getTypedLength(arg_ptr)
+                        mmultistore(nextptr, arg_ptr, arglen)
+                        nextptr := add(nextptr, arglen)
+                        nextarg := add(nextarg, 32)
+                        let _ := allocate(arglen)
+                    }
+                    
+                    // for some reason the above allocations are not enough,
+                    // resulting in some bytes being rewritten
+                    let _ := allocate(32)
+
+                    let _end_ptr, arg_ptr := eval(add(func_ptr, 4), 0)
+                    result_ptr := arg_ptr
+                }
             }
         }
         
@@ -133,8 +178,7 @@ object "malLikeTay" {
 
         // 10001100000000000000000000000000
         // 100000000000000000000000000
-        function isLambda(ptr) -> isl {
-            let sig := getFuncSig(ptr)
+        function isLambda(sig) -> isl {
             let func := and(sig, 0x4000000)  // 0x8c000000)
             isl := gt(func, 0)
         }
@@ -269,7 +313,7 @@ object "malLikeTay" {
                 )
                 addit := add(addit, 32)
             }
-            
+
             let end, res := eval(lambda_ptr, args_ptr)
             // TODO: end?
             _data_ptr := res
@@ -467,6 +511,87 @@ object "malLikeTay" {
         function sslicestore(storageKey, val, length) {
             let slot := 32
             sstore(storageKey, shl(mul(sub(slot, length), 8), val))
+        }
+
+        function getFn(_pointer, signature) {
+            getStoredData(_pointer, mappingFnKey(signature))
+        }
+
+        function storeFn(_pointer, signature) {
+            storeData(_pointer, mappingFnKey(signature))
+        }
+
+        function mappingFnKey(signature) -> storageKey {
+            storageKey := mappingStorageKey(1, signature)
+        }
+
+        // mapping(bytes32(max) => *)
+        function mappingStorageKey(storageIndex, key) -> storageKey {
+            mstore(0, key, storageIndex)
+            storageKey := keccak256(0, 64)
+        }
+
+        // mapping(bytes => *)
+        function mappingStorageKey2(storageIndex, key_ptr, key_len) -> storageKey {
+            mmultistore(0, key_ptr, key_len)
+            mstore(add(0, key_len), storageIndex)
+            storageKey := keccak256(0, add(key_len, 32))
+        }
+
+        function storeData(_pointer, storageKey) {
+            let slot := 32
+            let sizeBytes := add(mslice(_pointer, 4), 4)
+            let storedBytes := 0
+            let index := 0
+
+            for {} lt(storedBytes, sizeBytes) {} {
+                let remaining := sub(sizeBytes, storedBytes)
+                switch gt(remaining, 31)
+                case 1 {
+                    sstore(add(storageKey, index), mload(add(_pointer, storedBytes)))
+
+                    storedBytes := add(storedBytes, 32)
+                    index := add(index, 1)
+                }
+                case 0 {
+                    if gt(remaining, 0) {
+                        sslicestore(add(storageKey, index), mslice(add(_pointer, storedBytes), remaining), remaining)
+                        storedBytes := add(storedBytes, remaining)
+                    }
+                }
+            }
+        }
+
+        function getStoredData(_pointer, storageKey) {
+            let slot := 32
+
+            // read first storage slot, for the length
+            mstore(_pointer, sload(storageKey))
+
+            let sizeBytes := mslice(_pointer, 4)
+            let loadedData := sub(slot, 4)
+
+            if gt(sizeBytes, loadedData) {
+                sizeBytes := sub(sizeBytes, loadedData)
+                let storedBytes := 0
+                let index := 0
+
+                for {} lt(storedBytes, sizeBytes) {} {
+                    let remaining := sub(sizeBytes, storedBytes)
+                    switch gt(remaining, 31)
+                    case 1 {
+                        mstore(add(_pointer, storedBytes), sload(add(storageKey, add(index, 1))))
+                        storedBytes := add(storedBytes, 32)
+                        index := add(index, 1)
+                    }
+                    case 0 {
+                        if gt(remaining, 0) {
+                            mstore(add(_pointer, storedBytes), sload(add(storageKey, add(index, 1))))
+                            storedBytes := add(storedBytes, remaining)
+                        }
+                    }
+                }
+            }
         }
     }}
 }
