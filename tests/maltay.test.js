@@ -138,3 +138,22 @@ it('test use stored fn 1', async function () {
     resp = await MalTay.call(expr);
     expect(resp).toBe('0x0a91000400000034');
 });
+
+it('test used stored fn 2', async function () {
+    let signature, expr, exprlen, data, resp;
+
+    signature = funcidb({ mutable: false, arity: 2, id: 201 }).hex;
+    expr = expr2h('(fn* (a b) (add (mul a b ) b))').substring(2);
+    exprlen = u2h(expr.length / 2).padStart(8, '0');
+    data = '0x44444444' + signature + exprlen + expr;
+    await MalTay.send(data);
+
+    resp = await MalTay.call('0x44444443' + signature);
+    expect(resp).toBe('0x' + expr);
+
+    expr = '0x' + signature + expr2h('(0x' + signature + ' 2 3)').substring(2);
+    expect(expr).toBe('0x' + signature + '0a910004000000020a91000400000003');
+    resp = await MalTay.call(expr);
+    expect(resp).toBe('0x0a91000400000009');
+});
+

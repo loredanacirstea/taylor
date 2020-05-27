@@ -797,7 +797,6 @@ object "malLikeTay" {
         }
 
         function storeData(_pointer, storageKey) {
-            let slot := 32
             let sizeBytes := add(mslice(_pointer, 4), 4)
             let storedBytes := 0
             let index := 0
@@ -807,7 +806,6 @@ object "malLikeTay" {
                 switch gt(remaining, 31)
                 case 1 {
                     sstore(add(storageKey, index), mload(add(_pointer, storedBytes)))
-
                     storedBytes := add(storedBytes, 32)
                     index := add(index, 1)
                 }
@@ -827,27 +825,27 @@ object "malLikeTay" {
             mstore(_pointer, sload(storageKey))
 
             let sizeBytes := mslice(_pointer, 4)
-            let loadedData := sub(slot, 4)
+            let loadedBytes := sub(slot, 4)
+            _pointer := add(_pointer, 32)
 
-            if gt(sizeBytes, loadedData) {
-                sizeBytes := sub(sizeBytes, loadedData)
-                let storedBytes := 0
-                let index := 0
+            if gt(sizeBytes, loadedBytes) {
+                let index := 1
 
-                for {} lt(storedBytes, sizeBytes) {} {
-                    let remaining := sub(sizeBytes, storedBytes)
+                for {} lt(loadedBytes, sizeBytes) {} {
+                    let remaining := sub(sizeBytes, loadedBytes)
                     switch gt(remaining, 31)
                     case 1 {
-                        mstore(add(_pointer, storedBytes), sload(add(storageKey, add(index, 1))))
-                        storedBytes := add(storedBytes, 32)
+                        mstore(_pointer, sload(add(storageKey, index)))
+                        loadedBytes := add(loadedBytes, 32)
                         index := add(index, 1)
                     }
                     case 0 {
                         if gt(remaining, 0) {
-                            mstore(add(_pointer, storedBytes), sload(add(storageKey, add(index, 1))))
-                            storedBytes := add(storedBytes, remaining)
+                            mstore(_pointer, sload(add(storageKey, index)))
+                            loadedBytes := add(loadedBytes, remaining)
                         }
                     }
+                    _pointer := add(_pointer, loadedBytes)
                 }
             }
         }
