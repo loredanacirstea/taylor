@@ -119,6 +119,90 @@ object "malLikeTay" {
             case 0x90000004 {
                 result_ptr := _sub(add(arg_ptrs_ptr, 32))
             }
+            case 0x90000006 {
+                result_ptr := _mul(add(arg_ptrs_ptr, 32))
+            }
+            case 0x90000008 {
+                result_ptr := _div(add(arg_ptrs_ptr, 32))
+            }
+            case 0x9000000a {
+                result_ptr := _sdiv(add(arg_ptrs_ptr, 32))
+            }
+            case 0x9000000c {
+                result_ptr := _mod(add(arg_ptrs_ptr, 32))
+            }
+            case 0x9000000e {
+                result_ptr := _smod(add(arg_ptrs_ptr, 32))
+            }
+            case 0x90000010 {
+                result_ptr := _exp(add(arg_ptrs_ptr, 32))
+            }
+            case 0x90000012 {
+                result_ptr := _not(add(arg_ptrs_ptr, 32))
+            }
+            case 0x90000014 {
+                result_ptr := _lt(add(arg_ptrs_ptr, 32))
+            }
+            case 0x90000016 {
+                result_ptr := _gt(add(arg_ptrs_ptr, 32))
+            }
+            case 0x90000018 {
+                result_ptr := _slt(add(arg_ptrs_ptr, 32))
+            }
+            case 0x9000001a {
+                result_ptr := _sgt(add(arg_ptrs_ptr, 32))
+            }
+            case 0x9000001c {
+                result_ptr := _eq(add(arg_ptrs_ptr, 32))
+            }
+            case 0x9000001e {
+                result_ptr := _iszero(add(arg_ptrs_ptr, 32))
+            }
+            case 0x90000020 {
+                result_ptr := _and(add(arg_ptrs_ptr, 32))
+            }
+            case 0x90000022 {
+                result_ptr := _or(add(arg_ptrs_ptr, 32))
+            }
+            case 0x90000024 {
+                result_ptr := _xor(add(arg_ptrs_ptr, 32))
+            }
+            case 0x90000026 {
+                result_ptr := _byte(add(arg_ptrs_ptr, 32))
+            }
+            case 0x90000028 {
+                result_ptr := _shl(add(arg_ptrs_ptr, 32))
+            }
+            case 0x9000002a {
+                result_ptr := _shr(add(arg_ptrs_ptr, 32))
+            }
+            case 0x9000002c {
+                result_ptr := _sar(add(arg_ptrs_ptr, 32))
+            }
+            case 0x9000002e {
+                result_ptr := _addmod(add(arg_ptrs_ptr, 32))
+            }
+            case 0x90000030 {
+                result_ptr := _mulmod(add(arg_ptrs_ptr, 32))
+            }
+            case 0x90000032 {
+                result_ptr := _signextend(add(arg_ptrs_ptr, 32))
+            }
+            case 0x90000034 {
+                result_ptr := _keccak256(add(arg_ptrs_ptr, 32))
+            }
+            case 0x90000036 {
+                result_ptr := _call(add(arg_ptrs_ptr, 32))
+            }
+            case 0x90000038 {
+                result_ptr := _callcode(add(arg_ptrs_ptr, 32))
+            }
+            case 0x9000003a {
+                result_ptr := _delegatecall(add(arg_ptrs_ptr, 32))
+            }
+            case 0x9000003c {
+                result_ptr := _staticcall(add(arg_ptrs_ptr, 32))
+            }
             // list
             case 0xa800003e {
                 result_ptr := list(arg_ptrs_ptr)
@@ -163,6 +247,8 @@ object "malLikeTay" {
                     result_ptr := arg_ptr
                 }
             }
+            // TODO: search in registered contracts
+            // TODO: revert if function not found
         }
         
         function getFuncSig(ptr) -> _sig {
@@ -347,116 +433,288 @@ object "malLikeTay" {
             mslicestore(result_ptr, uconcat(getFuncSig(ptr1), c, 4), 8)
         }
         
-        function _mul(a, b) -> c {
-            c := mul(a, b)
+        function _mul(ptrs) -> result_ptr {
+            result_ptr := allocate(32)
+            let ptr1 := mload(ptrs)
+            let ptr2 := mload(add(ptrs, 32))
+            let c := mul(
+                mslice(add(ptr1, getSignatureLength(ptr1)), getValueLength(ptr1)),
+                mslice(add(ptr2, getSignatureLength(ptr2)), getValueLength(ptr2))
+            )
+            mslicestore(result_ptr, uconcat(getFuncSig(ptr1), c, 4), 8)
         }
         
-        function _div(a, b) -> c {
-            c := div(a, b)
+        function _div(ptrs) -> result_ptr {
+            result_ptr := allocate(32)
+            let ptr1 := mload(ptrs)
+            let ptr2 := mload(add(ptrs, 32))
+            let c := div(
+                mslice(add(ptr1, getSignatureLength(ptr1)), getValueLength(ptr1)),
+                mslice(add(ptr2, getSignatureLength(ptr2)), getValueLength(ptr2))
+            )
+            mslicestore(result_ptr, uconcat(getFuncSig(ptr1), c, 4), 8)
         }
         
-        function _sdiv(a, b) -> c {
-            c := sdiv(a, b)
+        function _sdiv(ptrs) -> result_ptr {
+            result_ptr := allocate(32)
+            let ptr1 := mload(ptrs)
+            let ptr2 := mload(add(ptrs, 32))
+            let c := sdiv(
+                mslice(add(ptr1, getSignatureLength(ptr1)), getValueLength(ptr1)),
+                mslice(add(ptr2, getSignatureLength(ptr2)), getValueLength(ptr2))
+            )
+            mslicestore(result_ptr, uconcat(getFuncSig(ptr1), c, 4), 8)
         }
         
-        function _mod(a, b) -> c {
-            c := mod(a, b)
+        function _mod(ptrs) -> result_ptr {
+            result_ptr := allocate(32)
+            let ptr1 := mload(ptrs)
+            let ptr2 := mload(add(ptrs, 32))
+            let c := mod(
+                mslice(add(ptr1, getSignatureLength(ptr1)), getValueLength(ptr1)),
+                mslice(add(ptr2, getSignatureLength(ptr2)), getValueLength(ptr2))
+            )
+            mslicestore(result_ptr, uconcat(getFuncSig(ptr1), c, 4), 8)
         }
         
-        function _smod(a, b) -> c {
-            c := smod(a, b)
+        function _smod(ptrs) -> result_ptr {
+            result_ptr := allocate(32)
+            let ptr1 := mload(ptrs)
+            let ptr2 := mload(add(ptrs, 32))
+            let c := smod(
+                mslice(add(ptr1, getSignatureLength(ptr1)), getValueLength(ptr1)),
+                mslice(add(ptr2, getSignatureLength(ptr2)), getValueLength(ptr2))
+            )
+            mslicestore(result_ptr, uconcat(getFuncSig(ptr1), c, 4), 8)
         }
         
-        function _exp(a, b) -> c {
-            c := exp(a, b)
+        function _exp(ptrs) -> result_ptr {
+            result_ptr := allocate(32)
+            let ptr1 := mload(ptrs)
+            let ptr2 := mload(add(ptrs, 32))
+            let c := exp(
+                mslice(add(ptr1, getSignatureLength(ptr1)), getValueLength(ptr1)),
+                mslice(add(ptr2, getSignatureLength(ptr2)), getValueLength(ptr2))
+            )
+            mslicestore(result_ptr, uconcat(getFuncSig(ptr1), c, 4), 8)
         }
         
-        function _not(a) -> c {
-            c := not(a)
+        function _not(ptrs) -> result_ptr {
+            result_ptr := allocate(32)
+            let ptr1 := mload(ptrs)
+            let c := not(
+                mslice(add(ptr1, getSignatureLength(ptr1)), getValueLength(ptr1))
+            )
+            mslicestore(result_ptr, uconcat(getFuncSig(ptr1), c, 4), 8)
         }
         
-        function _lt(a, b) -> c {
-            c := lt(a, b)
+        function _lt(ptrs) -> result_ptr {
+            result_ptr := allocate(32)
+            let ptr1 := mload(ptrs)
+            let ptr2 := mload(add(ptrs, 32))
+            let c := lt(
+                mslice(add(ptr1, getSignatureLength(ptr1)), getValueLength(ptr1)),
+                mslice(add(ptr2, getSignatureLength(ptr2)), getValueLength(ptr2))
+            )
+            mslicestore(result_ptr, uconcat(getFuncSig(ptr1), c, 4), 8)
         }
         
-        function _gt(a, b) -> c {
-            c := gt(a, b)
+        function _gt(ptrs) -> result_ptr {
+            result_ptr := allocate(32)
+            let ptr1 := mload(ptrs)
+            let ptr2 := mload(add(ptrs, 32))
+            let c := gt(
+                mslice(add(ptr1, getSignatureLength(ptr1)), getValueLength(ptr1)),
+                mslice(add(ptr2, getSignatureLength(ptr2)), getValueLength(ptr2))
+            )
+            mslicestore(result_ptr, uconcat(getFuncSig(ptr1), c, 4), 8)
         }
         
-        function _slt(a, b) -> c {
-            c := slt(a, b)
+        function _slt(ptrs) -> result_ptr {
+            result_ptr := allocate(32)
+            let ptr1 := mload(ptrs)
+            let ptr2 := mload(add(ptrs, 32))
+            let c := slt(
+                mslice(add(ptr1, getSignatureLength(ptr1)), getValueLength(ptr1)),
+                mslice(add(ptr2, getSignatureLength(ptr2)), getValueLength(ptr2))
+            )
+            mslicestore(result_ptr, uconcat(getFuncSig(ptr1), c, 4), 8)
         }
         
-        function _sgt(a, b) -> c {
-            c := sgt(a, b)
+        function _sgt(ptrs) -> result_ptr {
+            result_ptr := allocate(32)
+            let ptr1 := mload(ptrs)
+            let ptr2 := mload(add(ptrs, 32))
+            let c := sgt(
+                mslice(add(ptr1, getSignatureLength(ptr1)), getValueLength(ptr1)),
+                mslice(add(ptr2, getSignatureLength(ptr2)), getValueLength(ptr2))
+            )
+            mslicestore(result_ptr, uconcat(getFuncSig(ptr1), c, 4), 8)
         }
         
-        function _eq(a, b) -> c {
-            c := eq(a, b)
+        function _eq(ptrs) -> result_ptr {
+            result_ptr := allocate(32)
+            let ptr1 := mload(ptrs)
+            let ptr2 := mload(add(ptrs, 32))
+            let c := eq(
+                mslice(add(ptr1, getSignatureLength(ptr1)), getValueLength(ptr1)),
+                mslice(add(ptr2, getSignatureLength(ptr2)), getValueLength(ptr2))
+            )
+            mslicestore(result_ptr, uconcat(getFuncSig(ptr1), c, 4), 8)
         }
         
-        function _iszero(a) -> c {
-            c := iszero(a)
+        function _iszero(ptrs) -> result_ptr {
+            result_ptr := allocate(32)
+            let ptr1 := mload(ptrs)
+            let c := iszero(
+                mslice(add(ptr1, getSignatureLength(ptr1)), getValueLength(ptr1))
+            )
+            mslicestore(result_ptr, uconcat(getFuncSig(ptr1), c, 4), 8)
         }
         
-        function _and(a, b) -> c {
-            c := and(a, b)
+        function _and(ptrs) -> result_ptr {
+            result_ptr := allocate(32)
+            let ptr1 := mload(ptrs)
+            let ptr2 := mload(add(ptrs, 32))
+            let c := and(
+                mslice(add(ptr1, getSignatureLength(ptr1)), getValueLength(ptr1)),
+                mslice(add(ptr2, getSignatureLength(ptr2)), getValueLength(ptr2))
+            )
+            mslicestore(result_ptr, uconcat(getFuncSig(ptr1), c, 4), 8)
         }
         
-        function _or(a, b) -> c {
-            c := or(a, b)
+        function _or(ptrs) -> result_ptr {
+            result_ptr := allocate(32)
+            let ptr1 := mload(ptrs)
+            let ptr2 := mload(add(ptrs, 32))
+            let c := or(
+                mslice(add(ptr1, getSignatureLength(ptr1)), getValueLength(ptr1)),
+                mslice(add(ptr2, getSignatureLength(ptr2)), getValueLength(ptr2))
+            )
+            mslicestore(result_ptr, uconcat(getFuncSig(ptr1), c, 4), 8)
         }
         
-        function _xor(a, b) -> c {
-            c := xor(a, b)
+        function _xor(ptrs) -> result_ptr {
+            result_ptr := allocate(32)
+            let ptr1 := mload(ptrs)
+            let ptr2 := mload(add(ptrs, 32))
+            let c := xor(
+                mslice(add(ptr1, getSignatureLength(ptr1)), getValueLength(ptr1)),
+                mslice(add(ptr2, getSignatureLength(ptr2)), getValueLength(ptr2))
+            )
+            mslicestore(result_ptr, uconcat(getFuncSig(ptr1), c, 4), 8)
         }
         
-        function _byte(a, b) -> c {
-            c := byte(a, b)
+        function _byte(ptrs) -> result_ptr {
+            result_ptr := allocate(32)
+            let ptr1 := mload(ptrs)
+            let ptr2 := mload(add(ptrs, 32))
+            let c := byte(
+                mslice(add(ptr1, getSignatureLength(ptr1)), getValueLength(ptr1)),
+                mslice(add(ptr2, getSignatureLength(ptr2)), getValueLength(ptr2))
+            )
+            mslicestore(result_ptr, uconcat(getFuncSig(ptr1), c, 4), 8)
         }
         
-        function _shl(a, b) -> c {
-            c := shl(a, b)
+        function _shl(ptrs) -> result_ptr {
+            result_ptr := allocate(32)
+            let ptr1 := mload(ptrs)
+            let ptr2 := mload(add(ptrs, 32))
+            let c := shl(
+                mslice(add(ptr1, getSignatureLength(ptr1)), getValueLength(ptr1)),
+                mslice(add(ptr2, getSignatureLength(ptr2)), getValueLength(ptr2))
+            )
+            mslicestore(result_ptr, uconcat(getFuncSig(ptr1), c, 4), 8)
         }
         
-        function _shr(a, b) -> c {
-            c := shr(a, b)
+        function _shr(ptrs) -> result_ptr {
+            result_ptr := allocate(32)
+            let ptr1 := mload(ptrs)
+            let ptr2 := mload(add(ptrs, 32))
+            let c := shr(
+                mslice(add(ptr1, getSignatureLength(ptr1)), getValueLength(ptr1)),
+                mslice(add(ptr2, getSignatureLength(ptr2)), getValueLength(ptr2))
+            )
+            mslicestore(result_ptr, uconcat(getFuncSig(ptr1), c, 4), 8)
         }
         
-        function _sar(a, b) -> c {
-            c := sar(a, b)
+        function _sar(ptrs) -> result_ptr {
+            result_ptr := allocate(32)
+            let ptr1 := mload(ptrs)
+            let ptr2 := mload(add(ptrs, 32))
+            let c := sar(
+                mslice(add(ptr1, getSignatureLength(ptr1)), getValueLength(ptr1)),
+                mslice(add(ptr2, getSignatureLength(ptr2)), getValueLength(ptr2))
+            )
+            mslicestore(result_ptr, uconcat(getFuncSig(ptr1), c, 4), 8)
         }
         
-        function _addmod(a, b, m) -> c {
-            c := addmod(a, b, m)
+        function _addmod(ptrs) -> result_ptr {
+            result_ptr := allocate(32)
+            let ptr1 := mload(ptrs)
+            let ptr2 := mload(add(ptrs, 32))
+            let ptr3 := mload(add(ptrs, 64))
+            let c := addmod(
+                mslice(add(ptr1, getSignatureLength(ptr1)), getValueLength(ptr1)),
+                mslice(add(ptr2, getSignatureLength(ptr2)), getValueLength(ptr2)),
+                mslice(add(ptr3, getSignatureLength(ptr3)), getValueLength(ptr3))
+            )
+            mslicestore(result_ptr, uconcat(getFuncSig(ptr1), c, 4), 8)
         }
         
-        function _mulmod(a, b, m) -> c {
-            c := mulmod(a, b, m)
+        function _mulmod(ptrs) -> result_ptr {
+            result_ptr := allocate(32)
+            let ptr1 := mload(ptrs)
+            let ptr2 := mload(add(ptrs, 32))
+            let ptr3 := mload(add(ptrs, 64))
+            let c := mulmod(
+                mslice(add(ptr1, getSignatureLength(ptr1)), getValueLength(ptr1)),
+                mslice(add(ptr2, getSignatureLength(ptr2)), getValueLength(ptr2)),
+                mslice(add(ptr3, getSignatureLength(ptr3)), getValueLength(ptr3))
+            )
+            mslicestore(result_ptr, uconcat(getFuncSig(ptr1), c, 4), 8)
         }
         
-        function _signextend(a, b) -> c {
-            c := signextend(a, b)
+        function _signextend(ptrs) -> result_ptr {
+            result_ptr := allocate(32)
+            let ptr1 := mload(ptrs)
+            let ptr2 := mload(add(ptrs, 32))
+            let c := signextend(
+                mslice(add(ptr1, getSignatureLength(ptr1)), getValueLength(ptr1)),
+                mslice(add(ptr2, getSignatureLength(ptr2)), getValueLength(ptr2))
+            )
+            mslicestore(result_ptr, uconcat(getFuncSig(ptr1), c, 4), 8)
         }
         
-        function _keccak256(a, b) -> c {
-            c := keccak256(a, b)
+        function _keccak256(ptrs) -> result_ptr {
+            result_ptr := allocate(32)
+            let ptr1 := mload(ptrs)
+            let ptr2 := mload(add(ptrs, 32))
+            let c := keccak256(
+                mslice(add(ptr1, getSignatureLength(ptr1)), getValueLength(ptr1)),
+                mslice(add(ptr2, getSignatureLength(ptr2)), getValueLength(ptr2))
+            )
+            mslicestore(result_ptr, uconcat(getFuncSig(ptr1), c, 4), 8)
         }
         
-        function _call(a, v, inptr, insize, outptr, outsize) -> c {
-            c := call(gas(), a, v, inptr, insize, outptr, outsize)
+        function _call(ptrs) -> result_ptr {
+            // TODO
+            // c := call(gas(), a, v, inptr, insize, outptr, outsize)
         }
         
-        function _callcode(a, v, inptr, insize, outptr, outsize) -> c {
-            c := callcode(gas(), a, v, inptr, insize, outptr, outsize)
+        function _callcode(ptrs) -> result_ptr {
+            // TODO
+            // c := callcode(gas(), a, v, inptr, insize, outptr, outsize)
         }
         
-        function _delegatecall(a, inptr, insize, outptr, outsize) -> c {
-            c := delegatecall(gas(), a, inptr, insize, outptr, outsize)
+        function _delegatecall(ptrs) -> result_ptr {
+            // TODO
+            // c := delegatecall(gas(), a, inptr, insize, outptr, outsize)
         }
         
-        function _staticcall(a, inptr, insize, outptr, outsize) -> c {
-            c := staticcall(gas(), a, inptr, insize, outptr, outsize)
+        function _staticcall(ptrs) -> result_ptr {
+            // TODO
+            // c := staticcall(gas(), a, inptr, insize, outptr, outsize)
         }
 
         // function mslice(position, length) -> result {

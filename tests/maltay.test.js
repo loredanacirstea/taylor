@@ -66,6 +66,10 @@ it('test lambda', async function () {
     expect(expr).toBe('0x980000408c00002890000002010000000000000001000001000000019000000290000002900000040a910004000000070a910004000000020a910004000000010a91000400000029900000020a910004000000020a91000400000003');
     resp = await MalTay.call(expr);
     expect(resp).toBe('0x0a91000400000034');
+
+    expr = expr2h('( (fn* (a b) (add (mul a b ) b)) 2 3)');
+    resp = await MalTay.call(expr);
+    expect(resp).toBe('0x0a91000400000009');
 });
 
 it('test lambda 1', async function () {
