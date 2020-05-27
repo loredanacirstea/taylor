@@ -45,25 +45,23 @@ it('test lambda', async function () {
     // TODO: return function type?
     // expr = expr2h('(fn* (a) a)');
 
-    // expr = expr2h('( (fn* (a) a) 7)');
-    // console.log('expr1', expr);
-    // // expect(expr).toBe('0x9000000290000002900000040a910004000000070a910004000000020a910004000000010a91000400000029');
-    // resp = await MalTay.call(expr);
-    // expect(resp).toBe('0x0a91000400000007');
+    expr = expr2h('( (fn* (a) a) 7)');
+    expect(expr).toBe('0x900000408c00001001000000000000000a91000400000007');
+    resp = await MalTay.call(expr);
+    expect(resp).toBe('0x0a91000400000007');
 
-    // expr = expr2h('( (fn* (a) (add a 1)) 10)');
-    // console.log('expr2', expr);
-    // // expect(expr).toBe('0x9000000290000002900000040a910004000000070a910004000000020a910004000000010a91000400000029');
-    // resp = await MalTay.call(expr);
-    // expect(resp).toBe('0x0a9100040000000b');
+    expr = expr2h('( (fn* (a) (add a 1)) 10)');
+    expect(expr).toBe('0x900000408c0000289000000201000000000000000a910004000000010a9100040000000a');
+    resp = await MalTay.call(expr);
+    expect(resp).toBe('0x0a9100040000000b');
 
     expr = expr2h('( (fn* (a b) (add a b)) 2 3)');
-    expect(expr).toBe('0x980000408c00002890000002010000000000000001000001000000010a910004000000020a91000400000003');
+    expect(expr).toBe('0x980000408c00002890000002010000000000000001000000000000010a910004000000020a91000400000003');
     resp = await MalTay.call(expr);
     expect(resp).toBe('0x0a91000400000005');
 
     expr = expr2h('( (fn* (a b) (add a b)) (add (add (sub 7 2) 1) 41) (add 2 3))');
-    expect(expr).toBe('0x980000408c00002890000002010000000000000001000001000000019000000290000002900000040a910004000000070a910004000000020a910004000000010a91000400000029900000020a910004000000020a91000400000003');
+    expect(expr).toBe('0x980000408c00002890000002010000000000000001000000000000019000000290000002900000040a910004000000070a910004000000020a910004000000010a91000400000029900000020a910004000000020a91000400000003');
     resp = await MalTay.call(expr);
     expect(resp).toBe('0x0a91000400000034');
 
@@ -126,7 +124,7 @@ it('test use stored fn 1', async function () {
     await MalTay.send(data);
 
     resp = await MalTay.call('0x44444443' + signature);
-    expect(resp).toBe('0x980000408c0000289000000201000000000000000100000100000001');
+    expect(resp).toBe('0x980000408c0000289000000201000000000000000100000000000001');
 
     expr = '0x' + signature + expr2h('(0x' + signature + ' 2 3)').substring(2);
     expect(expr).toBe('0x' + signature + '0a910004000000020a91000400000003');
@@ -152,7 +150,6 @@ it('test used stored fn 2', async function () {
     expect(resp).toBe('0x' + expr);
 
     expr = '0x' + signature + expr2h('(0x' + signature + ' 2 3)').substring(2);
-    expect(expr).toBe('0x' + signature + '0a910004000000020a91000400000003');
     resp = await MalTay.call(expr);
     expect(resp).toBe('0x0a91000400000009');
 });

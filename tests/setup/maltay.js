@@ -33,8 +33,7 @@ const funcidb = name => {
     return { bin: binf, hex: hex || (arity => b2h(binf(arity))) }
 }
 const unknown = index => {
-    let id = b2h(typeid.unknown + u2b(index).padStart(24, '0')).padStart(8, '0');
-    // this is not used directly, but it should be
+    let id = b2h(typeid.unknown + '0'.padStart(24, '0')).padStart(8, '0');
     let value = u2h(index).padStart(8, '0');
     return id + value;
 }

@@ -56,10 +56,10 @@ object "malLikeTay" {
 
             switch isFunction(data_ptr)
             case 0 {
-                switch gt(env_ptr, 0)
+                switch and(gt(env_ptr, 0), isLambdaUnknown(mslice(data_ptr, 4)))
                 case 1 {
-                    // replace args from lambdas
-                    let index := and(mslice(data_ptr, 4), 0x3f)
+                    // replace variables from lambdas
+                    let index := mslice(add(data_ptr, 4), 4)
                     let value_ptr := add(env_ptr, mul(index, 32))
                     let size := getTypedLength(value_ptr)
                     result_ptr := value_ptr
@@ -208,17 +208,22 @@ object "malLikeTay" {
                 result_ptr := list(arg_ptrs_ptr)
             }
 
-            case 0x98000040 {
-                result_ptr := _apply(arg_ptrs_ptr)
-            }
-
-            // TODO: better lambda
             default {
-                switch isLambda(fsig)
-                case 1 {
+                let isthis := 0
+
+                isthis := isLambda(fsig)
+                if eq(isthis, 1) {
                     result_ptr := lambda(arg_ptrs_ptr)
                 }
-                case 0 {
+
+                if eq(isthis, 0) {
+                    isthis := isApply(fsig)
+                    if eq(isthis, 1) {
+                        result_ptr := _apply(arg_ptrs_ptr)
+                    }
+                }
+
+                if eq(isthis, 0) {
                     // try storage
                     // TODO storage cache
                     let func_ptr := freeMemPtr()
@@ -261,12 +266,23 @@ object "malLikeTay" {
             let func := and(sig, 2147483648) // 0x80000000)
             isf := gt(func, 0)
         }
-
         // 10001100000000000000000000000000
         // 100000000000000000000000000
         function isLambda(sig) -> isl {
-            let func := and(sig, 0x4000000)  // 0x8c000000)
+            let func := and(sig, 0x4000000)
             isl := gt(func, 0)
+        }
+        // 00000001000000000000000000000000
+        function isLambdaUnknown(vartype) -> islu {
+            let test := and(vartype, 0x1000000)
+            islu := gt(test, 0)
+        }
+        // 10000000000000000000000001000000
+        function isApply(sig) -> isapp {
+            // 00000111111111111111111111111110
+            let id := and(sig, 0x7fffffe)
+            // 1000000
+            isapp := eq(id, 0x40)
         }
 
         // 01000000000000000000000000000000
