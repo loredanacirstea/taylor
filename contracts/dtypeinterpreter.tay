@@ -960,6 +960,7 @@ object "TaylorInterpreter" {
                                 mslice(safeAdd(_ptr_source, storedBytes), remaining),
                                 remaining
                             )
+                            storedBytes := add(storedBytes, remaining)
                         }
                     }
                 }
@@ -1599,6 +1600,7 @@ object "TaylorInterpreter" {
                     case 0 {
                         if gt(remaining, 0) {
                             sslicestore(safeAdd(storageKey, index), mslice(safeAdd(_pointer, storedBytes), remaining), remaining)
+                            storedBytes := add(storedBytes, remaining)
                         }
                     }
                 }
@@ -1628,6 +1630,7 @@ object "TaylorInterpreter" {
                         case 0 {
                             if gt(remaining, 0) {
                                 mstore(safeAdd(_pointer, storedBytes), sload(safeAdd(storageKey, safeAdd(index, 1))))
+                                storedBytes := add(storedBytes, remaining)
                             }
                         }
                     }
