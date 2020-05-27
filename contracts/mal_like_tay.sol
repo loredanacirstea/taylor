@@ -1,5 +1,8 @@
 object "malLikeTay" {
     code {
+        // updateFnCounter
+        sstore(0, 100)
+        
         datacopy(0, dataoffset("Runtime"), datasize("Runtime"))
         return(0, datasize("Runtime"))
     }
@@ -24,17 +27,16 @@ object "malLikeTay" {
         let _calldata := allocate(calldatasize())
         calldatacopy(_calldata, 0, calldatasize())
 
-        // store func
-        if eq(mslice(_calldata, 4), 0x44444444) {
-            let sig := mslice(add(_calldata, 4), 4)
-            storeFn(add(_calldata, 8), sig)
-            return (0, 0)
-        }
-
         // get func
         if eq(mslice(_calldata, 4), 0x44444443) {
             let sig := mslice(add(_calldata, 4), 4)
             getFn(0, sig)
+            return (4, mslice(0, 4))
+        }
+
+        if eq(mslice(_calldata, 4), 0x44444442) {
+            let name := mload(add(_calldata, 4))
+            getFnByName(0, name)
             return (4, mslice(0, 4))
         }
         
@@ -202,6 +204,18 @@ object "malLikeTay" {
             }
             case 0x9000003c {
                 result_ptr := _staticcall(add(arg_ptrs_ptr, 32))
+            }
+            case 0x90000046 {
+                // TODO: encode mutability! 
+                let arity := mload(arg_ptrs_ptr)
+                let name := mload(mload(add(arg_ptrs_ptr, 32)))
+                let expr_ptr := add(mload(add(arg_ptrs_ptr, 32)), 32)
+
+                let signature := buildFnSig(arity, 0)
+                storeFn(name, signature, expr_ptr)
+
+                result_ptr := allocate(32)
+                mslicestore(result_ptr, uconcat(0x0a910004, signature, 4), 8)
             }
             // list
             case 0xa800003e {
@@ -787,16 +801,46 @@ object "malLikeTay" {
             sstore(storageKey, shl(mul(sub(slot, length), 8), val))
         }
 
+        function buildFnSig(arity, mutability) -> signature{
+            // signature :=  '1' * bit4 arity * bit27 id * mutability
+            let id := getFnCounter()
+            signature := add(add(exp(2, 31), shl(27, 2)), shl(1, id))
+        }
+
         function getFn(_pointer, signature) {
             getStoredData(_pointer, mappingFnKey(signature))
         }
 
-        function storeFn(_pointer, signature) {
-            storeData(_pointer, mappingFnKey(signature))
+        function getFnByName(_pointer, name) {
+            let signature := sload(mappingFnNameKey(name))
+            getFn(_pointer, signature)
+        }
+
+        function storeFn(name, signature, _expr_ptr) {
+            storeData(_expr_ptr, mappingFnKey(signature))
+            sstore(mappingFnNameKey(name), signature)
+            updateFnCounter()
+        }
+
+        function updateFnCounter() {
+            let count := getFnCounter()
+            sstore(mappingFnCountKey(), add(count, 1))
+        }
+
+        function getFnCounter() -> _count {
+            _count := sload(mappingFnCountKey())
+        }
+
+        function mappingFnCountKey() -> storageKey {
+            storageKey := 0
         }
 
         function mappingFnKey(signature) -> storageKey {
             storageKey := mappingStorageKey(1, signature)
+        }
+
+        function mappingFnNameKey(name) -> storageKey {
+            storageKey := mappingStorageKey(2, name)
         }
 
         // mapping(bytes32(max) => *)

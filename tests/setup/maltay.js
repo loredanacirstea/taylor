@@ -2,6 +2,7 @@ const ethers = require('ethers');
 const { hexStripZeros, hexZeroPad } = ethers.utils;
 const malReader = require('./mal/reader.js');
 const malTypes = require('./mal/types.js');
+require('./extensions.js');
 
 const u2b = value => value.toString(2);
 const u2h = value => value.toString(16);
@@ -17,6 +18,8 @@ const mutableb = mutable => mutable ? '1' : '0';
 const fidb = id => u2b(id).padStart(26, '0');
 const funcidb = name => {
     const nativef = typeof name === 'string' ? nativeEnv[name] : name;
+    if (nativef.hex) return nativef;
+    
     let binf, hex;
     if (!nativef.composed) {
         binf = arity => '1' + arityb(arity) + fidb(nativef.id) + mutableb(nativef.mutable);
@@ -98,6 +101,7 @@ const nativeEnv = {
     apply:        { mutable: false, arity: null },
     lambda:       { mutable: false, arity: null },
     'fn*':        { mutable: false, arity: null, composed: ['apply', 'lambda'] },
+    'def!':       { mutable: false, arity: 2 },
 }
 
 Object.keys(nativeEnv).forEach((key, id) => {
@@ -158,6 +162,12 @@ const ast2h = (ast, unkownMap={}) => {
                     return '';
                 }
                 return unkownMap[elem.value];
+            }
+            if (elem.value === 'def!') {
+                const defname = ast[1].value.hexEncode().padStart(64, '0');
+                const exprbody = ast2h(ast[2]);
+                const exprlen = u2h(exprbody.length / 2).padStart(8, '0');
+                return nativeEnv[elem.value].hex + defname + exprlen + exprbody;
             }
             if (typeof nativeEnv[elem.value].hex === 'string') {
                 return nativeEnv[elem.value].hex;

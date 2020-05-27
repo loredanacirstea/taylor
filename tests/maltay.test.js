@@ -1,3 +1,4 @@
+require('./setup/extensions.js');
 const { provider, signer, getMalTay } = require('./setup/fixtures.js');
 const { encode, expr2h, b2h, u2b, u2h, funcidb } = require('./setup/maltay.js');
 
@@ -115,17 +116,17 @@ it('test lambda 2', async function () {
 });
 
 it('test use stored fn 1', async function () {
-    let signature, expr, exprlen, data, resp;
+    let signature, expr, resp;
+    let name = 'func1'
 
-    signature = funcidb({ mutable: false, arity: 2, id: 200 }).hex;;
-    expr = expr2h('(fn* (a b) (add a b))').substring(2);
-    exprlen = u2h(expr.length / 2).padStart(8, '0');
-    data = '0x44444444' + signature + exprlen + expr;
-    await MalTay.send(data);
+    expr = '0x' + expr2h('(def! func1 (fn* (a b) (add a b)))').substring(2);
+    await MalTay.send(expr);
 
-    resp = await MalTay.call('0x44444443' + signature);
+    resp = await MalTay.call('0x44444442' + name.hexEncode().padStart(64, '0'));
     expect(resp).toBe('0x980000408c0000289000000201000000000000000100000000000001');
 
+    signature = '900000c8'
+    
     expr = '0x' + signature + expr2h('(0x' + signature + ' 2 3)').substring(2);
     expect(expr).toBe('0x' + signature + '0a910004000000020a91000400000003');
     resp = await MalTay.call(expr);
@@ -138,16 +139,16 @@ it('test use stored fn 1', async function () {
 });
 
 it('test used stored fn 2', async function () {
-    let signature, expr, exprlen, data, resp;
+    let signature, expr, resp;
+    let name = 'func2'
 
-    signature = funcidb({ mutable: false, arity: 2, id: 201 }).hex;
-    expr = expr2h('(fn* (a b) (add (add (sub a b) a) b))').substring(2);
-    exprlen = u2h(expr.length / 2).padStart(8, '0');
-    data = '0x44444444' + signature + exprlen + expr;
-    await MalTay.send(data);
+    expr = '0x' + expr2h('(def! func2 (fn* (a b) (add (add (sub a b) a) b)))').substring(2);
+    await MalTay.send(expr);
 
-    resp = await MalTay.call('0x44444443' + signature);
-    expect(resp).toBe('0x' + expr);
+    resp = await MalTay.call('0x44444442' + name.hexEncode().padStart(64, '0'));
+    expect(resp).toBe(expr2h('(fn* (a b) (add (add (sub a b) a) b))'));
+
+    signature = '900000ca'
 
     expr = '0x' + signature + expr2h('(0x' + signature + ' 5 3)').substring(2);
     resp = await MalTay.call(expr);
