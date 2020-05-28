@@ -102,6 +102,7 @@ const nativeEnv = {
     lambda:       { mutable: false, arity: null },
     'fn*':        { mutable: false, arity: null, composed: ['apply', 'lambda'] },
     'def!':       { mutable: false, arity: 2 },
+    getf:         { mutable: false, arity: null },
 }
 
 Object.keys(nativeEnv).forEach((key, id) => {
@@ -118,16 +119,21 @@ nativeEnv.lambda.hex = bodylenb => b2h(nativeEnv.lambda.encoded(bodylenb));
 
 // console.log('nativeEnv', nativeEnv);
 
+const getnumberid = size => {
+    let sizeb = u2b(size).padStart(16, '0')
+    let id = typeid.number + numberid.uint + sizeb;
+    // id = b2h(id).padStart(4, '0');
+    id = strip0x(hexZeroPad(x0(b2h(id)), 4));
+    return id;
+}
+
 // TODO: this only encodes uint
 const encode = (types, values) => {
     if (types.length !== values.length) throw new Error('Encode - different lengths.');
    return types.map((t, i) => {
         switch (t.type) {
             case 'uint':
-                let sizeb = u2b(t.size).padStart(16, '0')
-                let id = typeid.number + numberid.uint + sizeb;
-                // id = b2h(id).padStart(4, '0');
-                id = strip0x(hexZeroPad(x0(b2h(id)), 4));
+                const id = getnumberid(t.size)
                 const value = parseInt(values[i]);
                 const padded = strip0x(hexZeroPad(
                     x0(u2h(value)),
@@ -147,14 +153,23 @@ const encode = (types, values) => {
     }).join('');
 }
 
-const ast2h = (ast, unkownMap={}) => {
+const ast2h = (ast, unkownMap={}, defenv={}) => {
     // do not count the function itselt
     const arity = ast.length - 1;
     return ast.map((elem, i) => {
         // if Symbol
         if (malTypes._symbol_Q(elem)) {
             if (!nativeEnv[elem.value]) {
-                // at the moment, only lambda variables should end up here
+                // check if stored function first
+                // TODO: on-chain check
+                // const isfunc = defenv.isFunction(elem.value)
+                if (!unkownMap[elem.value] && elem.value[0] === '_') {
+                    // TODO proper type - string/bytes
+                    const encodedName = getnumberid(32) + elem.value.substring(1).hexEncode().padStart(64, '0');
+                    return nativeEnv.getf.hex(ast.length) + encodedName;
+                }
+                
+                // lambda variables should end up here
                 // lambda argument definition
                 if (!unkownMap[elem.value]) {
                     unkownMap[elem.value] = unknown(i);
@@ -165,7 +180,7 @@ const ast2h = (ast, unkownMap={}) => {
             }
             if (elem.value === 'def!') {
                 const defname = ast[1].value.hexEncode().padStart(64, '0');
-                const exprbody = ast2h(ast[2]);
+                const exprbody = ast2h(ast[2], defenv);
                 const exprlen = u2h(exprbody.length / 2).padStart(8, '0');
                 return nativeEnv[elem.value].hex + defname + exprlen + exprbody;
             }
@@ -183,7 +198,7 @@ const ast2h = (ast, unkownMap={}) => {
                 // lambda: arity 1 (for body)
 
                 const applyArity = ast[1].length + 1;
-                const lambdaBody = ast2h([ast[1], ast[2]]);
+                const lambdaBody = ast2h([ast[1], ast[2]], defenv);
 
                 return nativeEnv.apply.hex(applyArity) + nativeEnv.lambda.hex(lambdaBody.length);
                 // return nativeEnv[elem.value].hex([applyArity, lambdaBodyLen]);
@@ -192,7 +207,7 @@ const ast2h = (ast, unkownMap={}) => {
         }
 
         if (elem instanceof Array) {
-            return ast2h(elem, unkownMap);
+            return ast2h(elem, unkownMap, defenv);
         }
 
         // TODO
@@ -201,9 +216,9 @@ const ast2h = (ast, unkownMap={}) => {
     }).join('');
 }
 
-const expr2h = expression => {
+const expr2h = (expression, defenv) => {
     const ast = malReader.read_str(expression);
-    return x0(ast2h(ast));
+    return x0(ast2h(ast, {}, defenv));
 }
 
 module.exports = {

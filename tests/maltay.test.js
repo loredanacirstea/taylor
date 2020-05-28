@@ -10,6 +10,8 @@ beforeAll(() => {
   });
 });
 
+const isFunction = async name => (await MalTay.call('0x44444442' + name.hexEncode().padStart(64, '0'))).length > 2;
+
 it('test sum', async function () {
     const expr = expr2h('(add 4 7)');
     expect(expr).toBe('0x900000020a910004000000040a91000400000007');
@@ -116,24 +118,20 @@ it('test lambda 2', async function () {
 });
 
 it('test use stored fn 1', async function () {
-    let signature, expr, resp;
+    let expr, resp;
     let name = 'func1'
 
     expr = '0x' + expr2h('(def! func1 (fn* (a b) (add a b)))').substring(2);
     await MalTay.send(expr);
-
     resp = await MalTay.call('0x44444442' + name.hexEncode().padStart(64, '0'));
     expect(resp).toBe('0x980000408c0000289000000201000000000000000100000000000001');
-
-    signature = '900000c8'
     
-    expr = '0x' + signature + expr2h('(0x' + signature + ' 2 3)').substring(2);
-    expect(expr).toBe('0x' + signature + '0a910004000000020a91000400000003');
+    expr = '0x' + expr2h('(_func1 2 3)', isFunction).substring(2);
     resp = await MalTay.call(expr);
     expect(resp).toBe('0x0a91000400000005');
-    // the second signature is not included in the bytecode
-    expr = '0x' + signature + expr2h('(0x' + signature + ' (add (add (sub 7 2) 1) 41) (add 2 3))').substring(2);
-    expect(expr).toBe('0x' + signature + '9000000290000002900000040a910004000000070a910004000000020a910004000000010a91000400000029900000020a910004000000020a91000400000003');
+
+
+    expr = '0x' + expr2h('(_func1 (add (add (sub 7 2) 1) 41) (add 2 3)))', isFunction).substring(2);
     resp = await MalTay.call(expr);
     expect(resp).toBe('0x0a91000400000034');
 });
@@ -148,9 +146,7 @@ it('test used stored fn 2', async function () {
     resp = await MalTay.call('0x44444442' + name.hexEncode().padStart(64, '0'));
     expect(resp).toBe(expr2h('(fn* (a b) (add (add (sub a b) a) b))'));
 
-    signature = '900000ca'
-
-    expr = '0x' + signature + expr2h('(0x' + signature + ' 5 3)').substring(2);
+    expr = '0x' + expr2h('(_func2 5 3)', isFunction).substring(2);
     resp = await MalTay.call(expr);
     expect(resp).toBe('0x0a9100040000000a');
 });

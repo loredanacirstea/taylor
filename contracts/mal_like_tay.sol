@@ -139,7 +139,7 @@ object "malLikeTay" {
             case 0x90000010 {
                 result_ptr := _exp(add(arg_ptrs_ptr, 32))
             }
-            case 0x90000012 {
+            case 0x88000012 {
                 result_ptr := _not(add(arg_ptrs_ptr, 32))
             }
             case 0x90000014 {
@@ -157,7 +157,7 @@ object "malLikeTay" {
             case 0x9000001c {
                 result_ptr := _eq(add(arg_ptrs_ptr, 32))
             }
-            case 0x9000001e {
+            case 0x8800001e {
                 result_ptr := _iszero(add(arg_ptrs_ptr, 32))
             }
             case 0x90000020 {
@@ -236,38 +236,56 @@ object "malLikeTay" {
                         result_ptr := _apply(arg_ptrs_ptr)
                     }
                 }
+                
+                if eq(isthis, 0) {
+                    isthis := isGetByName(fsig)
+                    if eq(isthis, 1) {
+                        let name := mload(
+                            // add 4 to omit type
+                            add(mload(add(arg_ptrs_ptr, 32)), 4)
+                        )
+                        let arity := sub(mload(arg_ptrs_ptr), 1)
+                        let signature := getFnSigByName(name)
+
+                        result_ptr := executeStorageFunc(signature, arity, add(arg_ptrs_ptr, 64))
+                    }
+                }
 
                 if eq(isthis, 0) {
                     // try storage
                     // TODO storage cache
-                    let func_ptr := freeMemPtr()
-                    getFn(func_ptr, fsig)
-                    let len := mslice(func_ptr, 4)
-                    func_ptr := allocate(len)
-
                     let arity := mload(arg_ptrs_ptr)
-                    let nextptr := add(func_ptr, add(len, 4))
-                    let nextarg := add(arg_ptrs_ptr, 32)
-                    
-                    for { let i := 0 } lt(i, arity) { i := add(i, 1) } {
-                        let arg_ptr := mload(nextarg)
-                        let arglen := getTypedLength(arg_ptr)
-                        mmultistore(nextptr, arg_ptr, arglen)
-                        nextptr := add(nextptr, arglen)
-                        nextarg := add(nextarg, 32)
-                        let _ := allocate(arglen)
-                    }
-                    
-                    // for some reason the above allocations are not enough,
-                    // resulting in some bytes being rewritten
-                    let _ := allocate(32)
-
-                    let _end_ptr, arg_ptr := eval(add(func_ptr, 4), 0)
-                    result_ptr := arg_ptr
+                    result_ptr := executeStorageFunc(fsig, arity, add(arg_ptrs_ptr, 32))
                 }
             }
             // TODO: search in registered contracts
             // TODO: revert if function not found
+        }
+
+        function executeStorageFunc(fsig, arity, arg_ptrs_ptr) -> result_ptr {
+            let func_ptr := freeMemPtr()
+            getFn(func_ptr, fsig)
+            let len := mslice(func_ptr, 4)
+            func_ptr := allocate(len)
+
+            let nextptr := add(func_ptr, add(len, 4))
+            let nextarg := arg_ptrs_ptr
+            
+            for { let i := 0 } lt(i, arity) { i := add(i, 1) } {
+                let arg_ptr := mload(nextarg)
+                let arglen := getTypedLength(arg_ptr)
+                mmultistore(nextptr, arg_ptr, arglen)
+                nextptr := add(nextptr, arglen)
+                nextarg := add(nextarg, 32)
+                let _ := allocate(arglen)
+            }
+
+            // for some reason the above allocations are not enough,
+            // resulting in some bytes being rewritten
+            let _ := allocate(32)
+
+            let _end_ptr, arg_ptr := eval(add(func_ptr, 4), 0)
+            result_ptr := arg_ptr
         }
         
         function getFuncSig(ptr) -> _sig {
@@ -298,7 +316,13 @@ object "malLikeTay" {
             // 1000000
             isapp := eq(id, 0x40)
         }
-
+        // 10011000000000000000000001001000
+        function isGetByName(sig) -> isget {
+            // 00000111111111111111111111111110
+            let id := and(sig, 0x7fffffe)
+            // 1001000
+            isget := eq(id, 0x48)
+        }
         // 01000000000000000000000000000000
         function isArray(ptr) -> isa {
             let sig := getFuncSig(ptr)
@@ -812,8 +836,12 @@ object "malLikeTay" {
         }
 
         function getFnByName(_pointer, name) {
-            let signature := sload(mappingFnNameKey(name))
+            let signature := getFnSigByName(name)
             getFn(_pointer, signature)
+        }
+
+        function getFnSigByName(name) -> signature {
+            signature := sload(mappingFnNameKey(name))
         }
 
         function storeFn(name, signature, _expr_ptr) {
