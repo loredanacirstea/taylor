@@ -1,6 +1,6 @@
-require('./setup/extensions.js');
+require('../maltay/extensions.js');
 const { provider, signer, getMalTay } = require('./setup/fixtures.js');
-const { encode, expr2h, b2h, u2b, u2h, funcidb } = require('./setup/maltay.js');
+const { encode, expr2h, b2h, u2b, u2h, funcidb } = require('../maltay/maltay.js');
 
 let MalTay;
 
