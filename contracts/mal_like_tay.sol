@@ -93,20 +93,30 @@ object "malLikeTay" {
                     // store lambda body ptr
                     mstore(args_ptrs_now, end_ptr)
                     end_ptr := add(end_ptr, lambdaLength(sig))
+                    // apply function on arguments
+                    result_ptr := evalWithEnv(sig, args_ptrs)
                 }
                 case 0 {
-                    for { let i := 0 } lt(i, arity) { i := add(i, 1) } {
-                        let _end_ptr, arg_ptr := eval(end_ptr, env_ptr)
+                    let isIf := eq(sig, 0x9800004a)
+                    switch isIf
+                    case 0 {
+                        for { let i := 0 } lt(i, arity) { i := add(i, 1) } {
+                            let _end_ptr, arg_ptr := eval(end_ptr, env_ptr)
 
-                        // store pointer to argument value
-                        mstore(args_ptrs_now, arg_ptr)
+                            // store pointer to argument value
+                            mstore(args_ptrs_now, arg_ptr)
+                            end_ptr := _end_ptr
+                            args_ptrs_now := add(args_ptrs_now, 32)
+                        }
+                        // apply function on arguments
+                        result_ptr := evalWithEnv(sig, args_ptrs)
+                    }
+                    case 1 {
+                        let _end_ptr, _result_ptr := _if(end_ptr, env_ptr)
                         end_ptr := _end_ptr
-                        args_ptrs_now := add(args_ptrs_now, 32)
+                        result_ptr := _result_ptr
                     }
                 }
-                
-                // apply function on arguments
-                result_ptr := evalWithEnv(sig, args_ptrs)
             }
         }
         
@@ -217,6 +227,7 @@ object "malLikeTay" {
                 result_ptr := allocate(32)
                 mslicestore(result_ptr, uconcat(0x0a910004, signature, 4), 8)
             }
+            // 0x9800004a is _if
             // list
             case 0xa800003e {
                 result_ptr := list(arg_ptrs_ptr)
@@ -462,6 +473,23 @@ object "malLikeTay" {
         function lambda(arg_ptrs) -> _data_ptr {
             // skip arity, just point to the lambda body
             _data_ptr := add(arg_ptrs, 32)
+        }
+
+        function _if(_ptr, env_ptr) -> end_ptr, result_ptr {
+            let branch1len := mslice(_ptr, 4)
+            let branch2len := mslice(add(_ptr, 4), 4)
+
+            let cond_end, cond_answ := eval(add(_ptr, 8), env_ptr)
+            switch mslice(add(cond_answ, 4), 4)
+            case 1 {
+                let act_end, act_ptr := eval(cond_end, env_ptr)
+                result_ptr := act_ptr
+            }
+            case 0 {
+                let act_end, act_ptr := eval(add(cond_end, branch1len), env_ptr)
+                result_ptr := act_ptr
+            }
+            end_ptr := add(add(cond_end, branch1len), branch2len)
         }
        
         // TODO: auto cast if overflow

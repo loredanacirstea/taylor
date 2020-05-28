@@ -103,6 +103,7 @@ const nativeEnv = {
     'fn*':        { mutable: false, arity: null, composed: ['apply', 'lambda'] },
     'def!':       { mutable: false, arity: 2 },
     getf:         { mutable: false, arity: null },
+    if:           { mutable: false, arity: 3 },
 }
 
 Object.keys(nativeEnv).forEach((key, id) => {
@@ -230,6 +231,13 @@ const ast2h = (ast, unkownMap={}, defenv={}) => {
                 const exprbody = ast2h(ast[2], defenv);
                 const exprlen = u2h(exprbody.length / 2).padStart(8, '0');
                 return nativeEnv[elem.value].hex + defname + exprlen + exprbody;
+            }
+            if (elem.value === 'if') {
+                const action1body = ast2h([ast[2]], defenv);
+                const action2body = ast2h([ast[3]], defenv);
+                return nativeEnv[elem.value].hex
+                    + u2h(action1body.length / 2).padStart(8, '0')
+                    + u2h(action2body.length / 2).padStart(8, '0');
             }
             if (typeof nativeEnv[elem.value].hex === 'string') {
                 return nativeEnv[elem.value].hex;

@@ -121,17 +121,17 @@ it('test use stored fn 1', async function () {
     let expr, resp;
     let name = 'func1'
 
-    expr = '0x' + expr2h('(def! func1 (fn* (a b) (add a b)))').substring(2);
+    expr = expr2h('(def! func1 (fn* (a b) (add a b)))');
     await MalTay.send(expr);
     resp = await MalTay.call('0x44444442' + name.hexEncode().padStart(64, '0'));
     expect(resp).toBe('0x980000408c0000289000000201000000000000000100000000000001');
     
-    expr = '0x' + expr2h('(_func1 2 3)', isFunction).substring(2);
+    expr = expr2h('(_func1 2 3)', isFunction);
     resp = await MalTay.call(expr);
     expect(resp).toBe('0x0a91000400000005');
 
 
-    expr = '0x' + expr2h('(_func1 (add (add (sub 7 2) 1) 41) (add 2 3)))', isFunction).substring(2);
+    expr = expr2h('(_func1 (add (add (sub 7 2) 1) 41) (add 2 3)))', isFunction);
     resp = await MalTay.call(expr);
     expect(resp).toBe('0x0a91000400000034');
 });
@@ -140,13 +140,42 @@ it('test used stored fn 2', async function () {
     let signature, expr, resp;
     let name = 'func2'
 
-    expr = '0x' + expr2h('(def! func2 (fn* (a b) (add (add (sub a b) a) b)))').substring(2);
+    expr = expr2h('(def! func2 (fn* (a b) (add (add (sub a b) a) b)))');
     await MalTay.send(expr);
 
     resp = await MalTay.call('0x44444442' + name.hexEncode().padStart(64, '0'));
     expect(resp).toBe(expr2h('(fn* (a b) (add (add (sub a b) a) b))'));
 
-    expr = '0x' + expr2h('(_func2 5 3)', isFunction).substring(2);
+    expr = expr2h('(_func2 5 3)');
     resp = await MalTay.call(expr);
     expect(resp).toBe('0x0a9100040000000a');
+});
+
+it('test if', async function () {
+    expr = expr2h('(if (gt 4 1) 7 8)');
+    resp = await MalTay.call(expr);
+    expect(resp).toBe('0x0a91000400000007');
+
+    expr = expr2h('(if (gt 4 9) 7 8)');
+    resp = await MalTay.call(expr);
+    expect(resp).toBe('0x0a91000400000008');
+
+    expr = expr2h('(if (gt 4 1) (add (sub 33 2) 1) (add (sub 7 2) 1))');
+    resp = await MalTay.call(expr);
+    expect(resp).toBe('0x0a91000400000020');
+
+    expr = expr2h('(if (gt 4 9) (add (sub 33 2) 1) (add (sub 7 2) 1))');
+    resp = await MalTay.call(expr);
+    expect(resp).toBe('0x0a91000400000006');
+});
+
+// TODO: fix if with lambda
+it.skip('test if', async function () {
+    expr = expr2h('(if (gt 4 1) ((fn* (a b) (add a b)) 2 3) (add (sub 7 2) 1))');
+    resp = await MalTay.call(expr);
+    expect(resp).toBe('0x0a91000400000005');
+
+    expr = expr2h('(if (gt 4 9) ((fn* (a b) (add a b)) 2 3) (add (sub 7 2) 1))');
+    resp = await MalTay.call(expr);
+    expect(resp).toBe('0x0a91000400000006');
 });
