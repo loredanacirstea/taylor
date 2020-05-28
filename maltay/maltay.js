@@ -127,6 +127,19 @@ const getnumberid = size => {
     return id;
 }
 
+const isFunction = sig => (sig & 2147483648) > 0;
+const isLambda = sig => (sig & 0x4000000) > 0;
+const isApply = sig => (sig & 0x7fffffe) === 0x40;
+const isArray = sig => (sig & 0x40000000) > 0;
+const isStruct = sig => (sig & 0x20000000) > 0;
+const isList = sig => (sig & 0x10000000) > 0;
+const isNumber = sig => (sig & 0x8000000) > 0;
+
+const numberSize = sig => sig & 0xffff;
+const listSize = sig => sig & 0xffffff;
+const getSignatureLength = 4;
+// const getValueLength = 
+
 // TODO: this only encodes uint
 const encode = (types, values) => {
     if (types.length !== values.length) throw new Error('Encode - different lengths.');
@@ -151,6 +164,40 @@ const encode = (types, values) => {
                 throw new Error('Not implemented');
         }
     }).join('');
+}
+
+const decodeInner = (sig, data) => {
+    if (isNumber(sig)) {
+        const size = numberSize(sig);
+        result = h2u(data.substring(0, size*2));
+        data = data.substring(size*2);
+        return { result, data };
+    } else if (isList(sig)) {
+        const length = listSize(sig);
+        
+        const result = [...new Array(length)].map((_, i) => {
+            const partsig = parseInt(data.substring(0, 8), 16);
+            let result;
+            ({result, data} = decodeInner(partsig, data.substring(8)));
+            return result;
+        });
+        return { result, data };
+    } else {
+        throw new Error('decode type not supported: ' + sig);
+    }
+}
+
+const decode = data => {
+    data = strip0x(data);
+    const decoded = [];
+
+    while (data.length > 0) {
+        let result;
+        const sig = parseInt(data.substring(0, 8), 16);
+        ({result, data} = decodeInner(sig, data.substring(8)));
+        decoded.push(result);
+    }
+    return decoded;
 }
 
 const ast2h = (ast, unkownMap={}, defenv={}) => {
@@ -225,6 +272,7 @@ module.exports = {
     u2b, u2h, b2u, b2h, h2u, h2b,
     typeid, nativeEnv,
     encode,
+    decode,
     expr2h,
     funcidb,
 }
