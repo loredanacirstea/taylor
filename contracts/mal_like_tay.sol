@@ -228,6 +228,9 @@ object "malLikeTay" {
                 mslicestore(result_ptr, uconcat(0x0a910004, signature, 4), 8)
             }
             // 0x9800004a is _if
+            case 0x9000004e {
+                result_ptr := _concat(add(arg_ptrs_ptr, 32))
+            }
             // list
             case 0xa800003e {
                 result_ptr := list(arg_ptrs_ptr)
@@ -362,6 +365,13 @@ object "malLikeTay" {
             isn := gt(numb, 0)
         }
 
+        // 00000100000000000000000000000000
+        function isBytes(ptr) -> isn {
+            let sig := getFuncSig(ptr)
+            let numb := and(sig, 0x4000000)
+            isn := gt(numb, 0)
+        }
+
         // last 16 bits
         function numberSize(sig) -> _size {
             _size := and(sig, 0xffff)
@@ -370,6 +380,10 @@ object "malLikeTay" {
         // last 24 bits
         function listSize(sig) -> _size {
             _size := and(sig, 0xffffff)
+        }
+
+        function bytesSize(sig) -> _size {
+            _size := and(sig, 0x3ffffff)
         }
         
         // 11111111111111111111111110
@@ -406,6 +420,9 @@ object "malLikeTay" {
             if isNumber(ptr) {
                 _length := numberSize(sig)
             }
+            if isBytes(ptr) {
+                _length := bytesSize(sig)
+            }
         }
 
         function getTypedLength(ptr) -> _length {
@@ -416,6 +433,11 @@ object "malLikeTay" {
         // 01111000000000000000000000000000
         function getFuncArity(ptr) -> arity {
             arity := shr(27, and(getFuncSig(ptr), 0x78000000))
+        }
+
+        function buildBytesSig(length) -> signature{
+            // signature :=  '000001' * bit26 length
+            signature := add(exp(2, 26), length)
         }
         
         // function read(str) -> _str {
@@ -797,6 +819,19 @@ object "malLikeTay" {
         function _staticcall(ptrs) -> result_ptr {
             // TODO
             // c := staticcall(gas(), a, inptr, insize, outptr, outsize)
+        }
+
+        function _concat(ptrs) -> result_ptr {
+            let ptr1 := mload(ptrs)
+            let ptr2 := mload(add(ptrs, 32))
+            let len1 := bytesSize(mslice(ptr1, 4))
+            let len2 := bytesSize(mslice(ptr2, 4))
+            let newsig := buildBytesSig(add(len1, len2))
+            
+            result_ptr := allocate(add(4, add(len1, len2)))
+            mslicestore(result_ptr, newsig, 4)
+            mmultistore(add(result_ptr, 4), add(ptr1, 4), len1)
+            mmultistore(add(add(result_ptr, 4), len1), add(ptr2, 4), len2)
         }
 
         // function mslice(position, length) -> result {

@@ -13,6 +13,7 @@ const h2b = value => u2b(h2u(value));
 const x0 = value => '0x' + value;
 const strip0x = value => value.substring(0, 2) === '0x' ? value.substring(2) : value;
 
+const bytesMarker = '0x';
 const arityb = arity => u2b(arity).padStart(4, '0');
 const mutableb = mutable => mutable ? '1' : '0';
 const fidb = id => u2b(id).padStart(26, '0');
@@ -47,6 +48,8 @@ const typeid = {
     struct: '001',
     list: '0001',
     number: '00001',
+    bytelike: '000001',
+    enum: '0000001',
     unknown: '00000001'
 }
 
@@ -104,6 +107,7 @@ const nativeEnv = {
     'def!':       { mutable: false, arity: 2 },
     getf:         { mutable: false, arity: null },
     if:           { mutable: false, arity: 3 },
+    concat:       { mutable: false, arity: 2 },
 }
 
 Object.keys(nativeEnv).forEach((key, id) => {
@@ -120,13 +124,9 @@ nativeEnv.lambda.hex = bodylenb => b2h(nativeEnv.lambda.encoded(bodylenb));
 
 // console.log('nativeEnv', nativeEnv);
 
-const getnumberid = size => {
-    let sizeb = u2b(size).padStart(16, '0')
-    let id = typeid.number + numberid.uint + sizeb;
-    // id = b2h(id).padStart(4, '0');
-    id = strip0x(hexZeroPad(x0(b2h(id)), 4));
-    return id;
-}
+const formatId = id => strip0x(hexZeroPad(x0(b2h(id)), 4));
+const getnumberid = size => formatId(typeid.number + numberid.uint + u2b(size).padStart(16, '0'))
+const getbytesid = length => formatId(typeid.bytelike + u2b(length).padStart(26, '0'));
 
 const isFunction = sig => (sig & 2147483648) > 0;
 const isLambda = sig => (sig & 0x4000000) > 0;
@@ -135,9 +135,12 @@ const isArray = sig => (sig & 0x40000000) > 0;
 const isStruct = sig => (sig & 0x20000000) > 0;
 const isList = sig => (sig & 0x10000000) > 0;
 const isNumber = sig => (sig & 0x8000000) > 0;
+const isBytelike = sig => (sig & 0x4000000) > 0;
+const isEnum = sig => (sig & 0x2000000) > 0;
 
 const numberSize = sig => sig & 0xffff;
 const listSize = sig => sig & 0xffffff;
+const bytelikeSize = sig => sig & 0x3ffffff;
 const getSignatureLength = 4;
 // const getValueLength = 
 
@@ -154,6 +157,13 @@ const encode = (types, values) => {
                     t.size
                 ));
                 return id + padded;
+            case 'bytes':
+                if (!ethers.utils.isHexString(x0(values[i]))) {
+                    throw new Error('Invalid bytes literal.')
+                }
+                const val = strip0x(values[i]);
+                const length = val.length / 2;
+                return  getbytesid(length) + val;
             case 'list':
                 let len = u2b(values[i].length).padStart(24, '0');
                 let lid = typeid.list + u2b(1).padStart(4, '0') + len;
@@ -172,6 +182,11 @@ const decodeInner = (sig, data) => {
         const size = numberSize(sig);
         result = h2u(data.substring(0, size*2));
         data = data.substring(size*2);
+        return { result, data };
+    } else if (isBytelike(sig)) {
+        const length = bytelikeSize(sig);
+        result = data.substring(0, length*2)
+        data = data.substring(length*2);
         return { result, data };
     } else if (isList(sig)) {
         const length = listSize(sig);
@@ -208,6 +223,10 @@ const ast2h = (ast, unkownMap={}, defenv={}) => {
         // if Symbol
         if (malTypes._symbol_Q(elem)) {
             if (!nativeEnv[elem.value]) {
+                if (elem.value === bytesMarker) {
+                    const typeid = getbytesid(ast[i + 1].length / 2);
+                    return  typeid + ast[i + 1];
+                }
                 // check if stored function first
                 // TODO: on-chain check
                 // const isfunc = defenv.isFunction(elem.value)
@@ -266,7 +285,9 @@ const ast2h = (ast, unkownMap={}, defenv={}) => {
         }
 
         // TODO
-        if (parseInt(elem)) return encode([{type: 'uint', size: 4}], [elem]);
+        if (parseInt(elem) && (!ast[i - 1] || ast[i - 1].value !== bytesMarker)) {
+            return encode([{type: 'uint', size: 4}], [elem]);
+        }
 
     }).join('');
 }

@@ -179,3 +179,13 @@ it.skip('test if', async function () {
     resp = await MalTay.call(expr);
     expect(resp).toBe('0x0a91000400000006');
 });
+
+it('test bytes concat', async function () {
+    expr = expr2h('(concat 0x"11" 0x"22")');
+    resp = await MalTay.call(expr);
+    expect(resp).toBe('0x040000021122');
+
+    expr = expr2h('(concat 0x"11aaaabb" 0x"221111ccdd")');
+    resp = await MalTay.call(expr);
+    expect(resp).toBe('0x0400000911aaaabb221111ccdd');
+});
