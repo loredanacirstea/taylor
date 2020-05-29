@@ -103,7 +103,7 @@ const nativeEnv = {
     list:         { mutable: false, arity: null },
     apply:        { mutable: false, arity: null },
     lambda:       { mutable: false, arity: null },
-    'fn*':        { mutable: false, arity: null, composed: ['apply', 'lambda'] },
+    'fn*':        { mutable: false, arity: null },
     'def!':       { mutable: false, arity: 2 },
     getf:         { mutable: false, arity: null },
     if:           { mutable: false, arity: 3 },
@@ -217,7 +217,7 @@ const decode = data => {
     return decoded;
 }
 
-const ast2h = (ast, unkownMap={}, defenv={}) => {
+const ast2h = (ast, parent=null, unkownMap={}, defenv={}) => {
     // do not count the function itselt
     const arity = ast.length - 1;
     return ast.map((elem, i) => {
@@ -234,7 +234,12 @@ const ast2h = (ast, unkownMap={}, defenv={}) => {
                 if (!unkownMap[elem.value] && elem.value[0] === '_') {
                     // TODO proper type - string/bytes
                     const encodedName = getnumberid(32) + elem.value.substring(1).hexEncode().padStart(64, '0');
-                    return nativeEnv.getf.hex(ast.length) + encodedName;
+
+                    // if function is first arg, it is executed
+                    // otherwise, it is referenced as an argument (lambda)
+                    let arity = ast[0].value === elem.value ? ast.length : 1;
+                    // getf <fname>
+                    return nativeEnv.getf.hex(arity) + encodedName;
                 }
                 
                 // lambda variables should end up here
@@ -248,13 +253,13 @@ const ast2h = (ast, unkownMap={}, defenv={}) => {
             }
             if (elem.value === 'def!') {
                 const defname = ast[1].value.hexEncode().padStart(64, '0');
-                const exprbody = ast2h(ast[2], defenv);
+                const exprbody = ast2h(ast[2], ast, defenv);
                 const exprlen = u2h(exprbody.length / 2).padStart(8, '0');
                 return nativeEnv[elem.value].hex + defname + exprlen + exprbody;
             }
             if (elem.value === 'if') {
-                const action1body = ast2h([ast[2]], defenv);
-                const action2body = ast2h([ast[3]], defenv);
+                const action1body = ast2h([ast[2]], null, defenv);
+                const action2body = ast2h([ast[3]], null, defenv);
                 return nativeEnv[elem.value].hex
                     + u2h(action1body.length / 2).padStart(8, '0')
                     + u2h(action2body.length / 2).padStart(8, '0');
@@ -265,24 +270,28 @@ const ast2h = (ast, unkownMap={}, defenv={}) => {
             if (typeof nativeEnv[elem.value].hex !== 'function') {
                 throw new Error('Unexpected native function: ' + elem.value);
             }
-            
+
             // variadic functions
-            if (nativeEnv[elem.value].composed) {
-                // TODO: temporary fix, because only fn* is composed right now
-                // apply arity: 1 + number of args
-                // lambda: arity 1 (for body)
 
-                const applyArity = ast[1].length + 1;
-                const lambdaBody = ast2h([ast[1], ast[2]], defenv);
+            if (elem.value === 'fn*') {
+                const lambdaBody = ast2h([ast[1], ast[2]], null, defenv);
+                let encoded = nativeEnv.lambda.hex(lambdaBody.length);
+                const arity = ast[1].length;
 
-                return nativeEnv.apply.hex(applyArity) + nativeEnv.lambda.hex(lambdaBody.length);
-                // return nativeEnv[elem.value].hex([applyArity, lambdaBodyLen]);
+                // we execute it with apply only if there is a parent ast
+                // with this lambda at index 0
+                if (parent && parent[0][0] && parent[0][0].value === elem.value) {
+                    // apply arity: 1 + number of args
+                    encoded = nativeEnv.apply.hex(arity + 1) + encoded;
+                }
+                return encoded;
             }
+            
             return nativeEnv[elem.value].hex(arity);
         }
 
         if (elem instanceof Array) {
-            return ast2h(elem, unkownMap, defenv);
+            return ast2h(elem, ast, unkownMap, defenv);
         }
 
         // TODO
@@ -295,7 +304,7 @@ const ast2h = (ast, unkownMap={}, defenv={}) => {
 
 const expr2h = (expression, defenv) => {
     const ast = malReader.read_str(expression);
-    return x0(ast2h(ast, {}, defenv));
+    return x0(ast2h(ast, null, {}, defenv));
 }
 
 module.exports = {

@@ -46,7 +46,9 @@ it('test lambda', async function () {
     let expr, resp;
 
     // TODO: return function type?
-    // expr = expr2h('(fn* (a) a)');
+    expr = expr2h('(fn* (a) a)');
+    // resp = await MalTay.call(expr);
+    // expect(resp).toBe(expr);
 
     expr = expr2h('( (fn* (a) a) 7)');
     expect(expr).toBe('0x900000408c00001001000000000000000a91000400000007');
@@ -124,12 +126,11 @@ it('test use stored fn 1', async function () {
     expr = expr2h('(def! func1 (fn* (a b) (add a b)))');
     await MalTay.send(expr);
     resp = await MalTay.call('0x44444442' + name.hexEncode().padStart(64, '0'));
-    expect(resp).toBe('0x980000408c0000289000000201000000000000000100000000000001');
+    expect(resp).toBe('0x8c0000289000000201000000000000000100000000000001');
     
     expr = expr2h('(_func1 2 3)', isFunction);
     resp = await MalTay.call(expr);
     expect(resp).toBe('0x0a91000400000005');
-
 
     expr = expr2h('(_func1 (add (add (sub 7 2) 1) 41) (add 2 3)))', isFunction);
     resp = await MalTay.call(expr);
@@ -137,7 +138,7 @@ it('test use stored fn 1', async function () {
 });
 
 it('test used stored fn 2', async function () {
-    let signature, expr, resp;
+    let expr, resp;
     let name = 'func2'
 
     expr = expr2h('(def! func2 (fn* (a b) (add (add (sub a b) a) b)))');
@@ -152,6 +153,7 @@ it('test used stored fn 2', async function () {
 });
 
 it('test if', async function () {
+    let expr, resp;
     expr = expr2h('(if (gt 4 1) 7 8)');
     resp = await MalTay.call(expr);
     expect(resp).toBe('0x0a91000400000007');
@@ -170,6 +172,7 @@ it('test if', async function () {
 });
 
 it.skip('test if with lambda', async function () {
+    let expr, resp;
     expr = expr2h('(if (gt 4 1) ((fn* (a b) (add a b)) 2 3) (add (sub 7 2) 1))');
     resp = await MalTay.call(expr);
     expect(resp).toBe('0x0a91000400000005');
@@ -180,6 +183,7 @@ it.skip('test if with lambda', async function () {
 });
 
 it('test bytes concat', async function () {
+    let expr, resp;
     expr = expr2h('(concat 0x"11" 0x"22")');
     resp = await MalTay.call(expr);
     expect(resp).toBe('0x040000021122');
@@ -190,6 +194,7 @@ it('test bytes concat', async function () {
 });
 
 it('test bytes contig', async function () {
+    let expr, resp;
     expr = expr2h('(contig 4 0x"22")');
     resp = await MalTay.call(expr);
     expect(resp).toBe('0x0400000422222222');

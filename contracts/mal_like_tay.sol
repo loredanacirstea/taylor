@@ -215,6 +215,7 @@ object "malLikeTay" {
             case 0x9000003c {
                 result_ptr := _staticcall(add(arg_ptrs_ptr, 32))
             }
+            // def!
             case 0x90000046 {
                 // TODO: encode mutability! 
                 let arity := mload(arg_ptrs_ptr)
@@ -261,10 +262,26 @@ object "malLikeTay" {
                             // add 4 to omit type
                             add(mload(add(arg_ptrs_ptr, 32)), 4)
                         )
-                        let arity := sub(mload(arg_ptrs_ptr), 1)
+                        let arity := mload(arg_ptrs_ptr)
                         let signature := getFnSigByName(name)
 
-                        result_ptr := executeStorageFunc(signature, arity, add(arg_ptrs_ptr, 64))
+                        switch arity
+                        case 0 {
+                            dtrequire(false, 0xe0000011)
+                        }
+                        case 1 {
+                            result_ptr := lambdaStorage(signature)
+                        }
+                        default {
+                            // apply lambda on args
+                            let lambda_body_ptr := lambdaStorage(signature)
+                            
+                            result_ptr := _applyInner(
+                                sub(arity, 1),
+                                add(lambda_body_ptr, 4),
+                                add(arg_ptrs_ptr, 64)
+                            )
+                        }
                     }
                 }
 
@@ -272,37 +289,28 @@ object "malLikeTay" {
                     // try storage
                     // TODO storage cache
                     let arity := mload(arg_ptrs_ptr)
-                    result_ptr := executeStorageFunc(fsig, arity, add(arg_ptrs_ptr, 32))
+
+                    let lambda_body_ptr := lambdaStorage(fsig)
+                            
+                    result_ptr := _applyInner(
+                        arity,
+                        add(lambda_body_ptr, 4),
+                        add(arg_ptrs_ptr, 32)
+                    )
                 }
             }
             // TODO: search in registered contracts
             // TODO: revert if function not found
         }
 
-        function executeStorageFunc(fsig, arity, arg_ptrs_ptr) -> result_ptr {
+        function lambdaStorage(fsig) -> result_ptr {
             let func_ptr := freeMemPtr()
             getFn(func_ptr, fsig)
-            let len := mslice(func_ptr, 4)
-            func_ptr := allocate(len)
-
-            let nextptr := add(func_ptr, add(len, 4))
-            let nextarg := arg_ptrs_ptr
             
-            for { let i := 0 } lt(i, arity) { i := add(i, 1) } {
-                let arg_ptr := mload(nextarg)
-                let arglen := getTypedLength(arg_ptr)
-                mmultistore(nextptr, arg_ptr, arglen)
-                nextptr := add(nextptr, arglen)
-                nextarg := add(nextarg, 32)
-                let _ := allocate(arglen)
-            }
-
-            // for some reason the above allocations are not enough,
-            // resulting in some bytes being rewritten
-            let _ := allocate(32)
-
-            let _end_ptr, arg_ptr := eval(add(func_ptr, 4), 0)
-            result_ptr := arg_ptr
+            let len := mslice(func_ptr, 4)
+            func_ptr := allocate(add(len, 4))
+            // without length; lambda signature already has length
+            result_ptr := add(func_ptr, 4)
         }
         
         function getFuncSig(ptr) -> _sig {
@@ -442,6 +450,14 @@ object "malLikeTay" {
             // signature :=  '000001' * bit26 length
             signature := add(exp(2, 26), length)
         }
+
+        function buildLambdaSig(bodylen) -> signature{
+            // signature :=  '100011' * bit25 bodylen * 0
+            signature := add(
+                add(add(exp(2, 31), exp(2, 27)), exp(2, 26)),
+                shl(1, bodylen)
+            )
+        }
         
         // function read(str) -> _str {
         //     _str := str
@@ -475,22 +491,24 @@ object "malLikeTay" {
             let arity := mload(arg_ptrs)
             
             // lambda_ptr can be a signature or a lambda pointer
-            let lambda_ptr := mload(mload(add(arg_ptrs, 32)))
+            let lambda_body_ptr := mload(mload(add(arg_ptrs, 32)))
             
             // TODO: if signature -> call eval
-            
+
+            _data_ptr :=  _applyInner(arity, lambda_body_ptr, add(arg_ptrs, 64))
+        }
+
+        function _applyInner(arity, lambda_body_ptr, arg_ptrs) -> _data_ptr {
             let args_ptr := allocate(mul(arity, 32))
-            let source := add(arg_ptrs, 64)
             let addit := 0
             for { let i := 0 } lt(i, arity) { i := add(i, 1) } {
                 mstore(
                     add(args_ptr, addit), 
-                    mload(mload(add(source, addit)))
+                    mload(mload(add(arg_ptrs, addit)))
                 )
                 addit := add(addit, 32)
             }
-
-            let end, res := eval(lambda_ptr, args_ptr)
+            let end, res := eval(lambda_body_ptr, args_ptr)
             // TODO: end?
             _data_ptr := res
         }
@@ -883,6 +901,16 @@ object "malLikeTay" {
         function mslicestore(_ptr, val, length) {
             let slot := 32
             mstore(_ptr, shl(mul(sub(slot, length), 8), val))
+        }
+
+        // Use carefully - replaces head bytes in a byte32 chunk
+        function mstorehead(_ptr, value, length) {
+            let slot := 32
+            let temp := add(
+                mslice(add(_ptr, 4), sub(slot, 4)),
+                shl(mul(sub(slot, length), 8), value)
+            )
+            mstore(_ptr, temp)
         }
 
         function mmultistore(_ptr_target, _ptr_source, sizeBytes) {
