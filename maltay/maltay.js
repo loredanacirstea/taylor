@@ -107,6 +107,7 @@ const nativeEnv = {
     'def!':       { mutable: false, arity: 2 },
     getf:         { mutable: false, arity: null },
     if:           { mutable: false, arity: 3 },
+    contig:       { mutable: false, arity: 2 },
     concat:       { mutable: false, arity: 2 },
 }
 

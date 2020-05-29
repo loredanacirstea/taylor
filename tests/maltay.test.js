@@ -169,8 +169,7 @@ it('test if', async function () {
     expect(resp).toBe('0x0a91000400000006');
 });
 
-// TODO: fix if with lambda
-it.skip('test if', async function () {
+it.skip('test if with lambda', async function () {
     expr = expr2h('(if (gt 4 1) ((fn* (a b) (add a b)) 2 3) (add (sub 7 2) 1))');
     resp = await MalTay.call(expr);
     expect(resp).toBe('0x0a91000400000005');
@@ -188,4 +187,14 @@ it('test bytes concat', async function () {
     expr = expr2h('(concat 0x"11aaaabb" 0x"221111ccdd")');
     resp = await MalTay.call(expr);
     expect(resp).toBe('0x0400000911aaaabb221111ccdd');
+});
+
+it('test bytes contig', async function () {
+    expr = expr2h('(contig 4 0x"22")');
+    resp = await MalTay.call(expr);
+    expect(resp).toBe('0x0400000422222222');
+
+    expr = expr2h('(contig 2 0x"221111ccdd")');
+    resp = await MalTay.call(expr);
+    expect(resp).toBe('0x0400000a221111ccdd221111ccdd');
 });

@@ -228,6 +228,9 @@ object "malLikeTay" {
                 mslicestore(result_ptr, uconcat(0x0a910004, signature, 4), 8)
             }
             // 0x9800004a is _if
+            case 0x9000004c {
+                result_ptr := _contig(add(arg_ptrs_ptr, 32))
+            }
             case 0x9000004e {
                 result_ptr := _concat(add(arg_ptrs_ptr, 32))
             }
@@ -821,6 +824,29 @@ object "malLikeTay" {
             // c := staticcall(gas(), a, inptr, insize, outptr, outsize)
         }
 
+        function _contig(ptrs) -> result_ptr {
+            let ptr1 := mload(ptrs)
+            let ptr2 := mload(add(ptrs, 32))
+            dtrequire(isNumber(ptr1), 0xe010)
+            dtrequire(isBytes(ptr2), 0xe010)
+
+            let len1 := numberSize(mslice(ptr1, 4))
+            let len2 := bytesSize(mslice(ptr2, 4))
+            let times := mslice(add(ptr1, 4), len1)
+            let len := mul(times, len2)
+            let newsig := buildBytesSig(len)
+            let content := add(ptr2, 4)
+            
+            result_ptr := allocate(add(4, len))
+            mslicestore(result_ptr, newsig, 4)
+            
+            let current_ptr := add(result_ptr, 4)
+            for { let i := 0 } lt(i, times) { i := add(i, 1) } {
+                mmultistore(current_ptr, content, len2)
+                current_ptr := add(current_ptr, len2)
+            }
+        }
+
         function _concat(ptrs) -> result_ptr {
             let ptr1 := mload(ptrs)
             let ptr2 := mload(add(ptrs, 32))
@@ -998,6 +1024,13 @@ object "malLikeTay" {
                     }
                     _pointer := add(_pointer, loadedBytes)
                 }
+            }
+        }
+
+        function dtrequire(cond, error_bytes) {
+            if eq(cond, 0) {
+                mslicestore(0, error_bytes, 2)
+                revert(0, 2)
             }
         }
     }}
