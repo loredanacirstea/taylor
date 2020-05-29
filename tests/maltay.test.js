@@ -30,6 +30,9 @@ it('test sum-sub', async function () {
 
 it('test list', async function () {
     let resp;
+
+    // We have the list() function & the list type
+    // they have different ids
     const expected = '0x' + encode([{type: 'list'}], [[5, 4, 8, 3, 5]]);
     
     const exprSimple = expr2h('(list 5 4 8 3 5)');
@@ -203,3 +206,14 @@ it('test bytes contig', async function () {
     resp = await MalTay.call(expr);
     expect(resp).toBe('0x0400000a221111ccdd221111ccdd');
 });
+
+it('test map', async function () {
+    let expr, resp;
+    expr = expr2h('(def! myfunc (fn* (a) (mul (add a 1) 3)))');
+    await MalTay.send(expr);
+
+    expr = expr2h('(map _myfunc (list 5 8 2))');
+    resp = await MalTay.call(expr);
+    expect(resp).toBe('0x' + encode([{type: 'list'}], [[18, 27, 9]]));
+});
+

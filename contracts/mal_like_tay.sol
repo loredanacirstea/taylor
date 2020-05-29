@@ -102,7 +102,6 @@ object "malLikeTay" {
                     case 0 {
                         for { let i := 0 } lt(i, arity) { i := add(i, 1) } {
                             let _end_ptr, arg_ptr := eval(end_ptr, env_ptr)
-
                             // store pointer to argument value
                             mstore(args_ptrs_now, arg_ptr)
                             end_ptr := _end_ptr
@@ -235,17 +234,24 @@ object "malLikeTay" {
             case 0x9000004e {
                 result_ptr := _concat(add(arg_ptrs_ptr, 32))
             }
-            // list
-            case 0xa800003e {
-                result_ptr := list(arg_ptrs_ptr)
+            case 0x90000050 {
+                result_ptr := _map(arg_ptrs_ptr)
+            }
             }
 
             default {
                 let isthis := 0
 
-                isthis := isLambda(fsig)
+                isthis := isList(fsig)
                 if eq(isthis, 1) {
-                    result_ptr := lambda(arg_ptrs_ptr)
+                    result_ptr := _list(mload(arg_ptrs_ptr), add(arg_ptrs_ptr, 32))
+                }
+
+                if eq(isthis, 0) {
+                    isthis := isLambda(fsig)
+                    if eq(isthis, 1) {
+                        result_ptr := lambda(arg_ptrs_ptr)
+                    }
                 }
 
                 if eq(isthis, 0) {
@@ -341,6 +347,12 @@ object "malLikeTay" {
             // 1000000
             isapp := eq(id, 0x40)
         }
+        // 10000000000000000000000000111110
+        function isList(sig) -> isl {
+            // 00000111111111111111111111111110
+            let id := and(sig, 0x7fffffe)
+            isl := eq(id, 0x3e)
+        }
         // 10011000000000000000000001001000
         function isGetByName(sig) -> isget {
             // 00000111111111111111111111111110
@@ -363,8 +375,7 @@ object "malLikeTay" {
         }
 
         // 00010000000000000000000000000000
-        function isList(ptr) -> isl {
-            let sig := getFuncSig(ptr)
+        function isListType(sig) -> isl {
             let numb := and(sig, 0x10000000)
             isl := gt(numb, 0)
         }
@@ -419,7 +430,7 @@ object "malLikeTay" {
             if isStruct(ptr) {
                 // _length := structSize(ptr)
             }
-            if isList(ptr) {
+            if isListType(sig) {
                 let size := listSize(sig)
                 let ptr_now := add(ptr, getSignatureLength(ptr))
                 for { let i := 0 } lt(i, size) { i := add(i, 1) } {
@@ -471,9 +482,7 @@ object "malLikeTay" {
         //     answ := print(eval(read(line)))
         // }
 
-        function list(arg_ptrs) -> _data_ptr {
-            let arity := mload(arg_ptrs)
-            let ptrs := add(arg_ptrs, 32)
+        function _list(arity, ptrs) -> _data_ptr {
             // start with the list type id
             _data_ptr := allocate(4)
             mslicestore(_data_ptr, uconcat(0x11, arity, 3), 4)
@@ -533,6 +542,37 @@ object "malLikeTay" {
                 result_ptr := act_ptr
             }
             end_ptr := add(add(cond_end, branch1len), branch2len)
+        }
+
+        function _map(ptrs) -> result_ptr {
+            // first arg is arity = 2
+            let fptr := mload(add(ptrs, 32))
+            let list_ptr := mload(add(ptrs, 64))
+            result_ptr := _mapInner(add(fptr, 4), list_ptr)
+        }
+
+        function _mapInner(lambda_body_ptr, list_ptr) -> result_ptr {
+            // TODO: fixme: we only get the arity here, not the id
+            // it is ok here, but might be problematic later
+            let list_arity := listSize(mslice(list_ptr, 4))
+            let arg_ptr := add(list_ptr, 4)
+            let results_ptrs := allocate(mul(list_arity, 32))
+
+            // iterate over list & apply function on each arg
+            for { let i := 0 } lt(i, list_arity) { i := add(i, 1) } {
+                let end, res := eval(lambda_body_ptr, arg_ptr)
+                mstore(add(results_ptrs, mul(i, 32)), res)
+
+                let arg_len := getTypedLength(arg_ptr)
+                arg_ptr := add(arg_ptr, arg_len)
+            }
+
+            // Recreate list from result pointers
+            result_ptr := _list(list_arity, results_ptrs)
+        }
+
+        function _reduce(ptrs) -> result_ptr {
+
         }
        
         // TODO: auto cast if overflow

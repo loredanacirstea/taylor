@@ -109,6 +109,7 @@ const nativeEnv = {
     if:           { mutable: false, arity: 3 },
     contig:       { mutable: false, arity: 2 },
     concat:       { mutable: false, arity: 2 },
+    map:          { mutable: false, arity: null },
 }
 
 Object.keys(nativeEnv).forEach((key, id) => {
@@ -132,9 +133,10 @@ const getbytesid = length => formatId(typeid.bytelike + u2b(length).padStart(26,
 const isFunction = sig => (sig & 2147483648) > 0;
 const isLambda = sig => (sig & 0x4000000) > 0;
 const isApply = sig => (sig & 0x7fffffe) === 0x40;
+const isList = sig => (sig & 0x7fffffe) === 0x3e;
 const isArray = sig => (sig & 0x40000000) > 0;
 const isStruct = sig => (sig & 0x20000000) > 0;
-const isList = sig => (sig & 0x10000000) > 0;
+const isListType = sig => (sig & 0x10000000) > 0;
 const isNumber = sig => (sig & 0x8000000) > 0;
 const isBytelike = sig => (sig & 0x4000000) > 0;
 const isEnum = sig => (sig & 0x2000000) > 0;
@@ -189,7 +191,7 @@ const decodeInner = (sig, data) => {
         result = data.substring(0, length*2)
         data = data.substring(length*2);
         return { result, data };
-    } else if (isList(sig)) {
+    } else if (isListType(sig)) {
         const length = listSize(sig);
         
         const result = [...new Array(length)].map((_, i) => {
@@ -286,7 +288,7 @@ const ast2h = (ast, parent=null, unkownMap={}, defenv={}) => {
                 }
                 return encoded;
             }
-            
+
             return nativeEnv[elem.value].hex(arity);
         }
 
