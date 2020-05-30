@@ -567,7 +567,37 @@ object "malLikeTay" {
         }
 
         function _reduce(ptrs) -> result_ptr {
+            // first arg is arity = 2
+            let fptr := mload(add(ptrs, 32))
+            let list_ptr := mload(add(ptrs, 64))
+            let accum_ptr := mload(add(ptrs, 96))
+            result_ptr := _reduceInner(add(fptr, 4), list_ptr, accum_ptr)
+        }
 
+        function _reduceInner(lambda_body_ptr, list_ptr, accum_ptr) -> result_ptr {
+            let list_arity := listTypeSize(mslice(list_ptr, 4))
+            let arg_ptr := add(list_ptr, 4)
+            let accum_length := getTypedLength(accum_ptr)
+
+            // iterate over list & apply function on each arg
+            for { let i := 0 } lt(i, list_arity) { i := add(i, 1) } {
+                let arg_length := getTypedLength(arg_ptr)
+                
+                // let newargs := allocate(accum_length)
+                let newargs := allocate(32)
+                mmultistore(newargs, accum_ptr, accum_length)
+                
+                // let currentarg := allocate(arg_length)
+                let currentarg := allocate(32)
+                mmultistore(currentarg, arg_ptr, arg_length)
+                
+                let end, res := eval(lambda_body_ptr, newargs)
+  
+                mmultistore(accum_ptr, res, getTypedLength(res))
+                arg_ptr := add(arg_ptr, arg_length)
+            }
+
+            result_ptr := accum_ptr
         }
        
         // TODO: auto cast if overflow

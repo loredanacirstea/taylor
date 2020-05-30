@@ -230,3 +230,21 @@ it('test funcs', async function() {
     expect(resp).toBe('0x0a91000400000007');
 });
 
+it('test reduce', async function () {
+    let expr, resp;
+    
+    expr = expr2h('(def! myfunc2 (fn* (a b) (add a b)) )');
+    await MalTay.send(expr);
+
+    expr = expr2h('(_myfunc2 4 5)');    
+    resp = await MalTay.call(expr);
+    expect(resp).toBe('0x0a91000400000009');
+
+    resp = await MalTay.call(expr2h('(_myfunc2 0 5)'))
+    expect(resp).toBe('0x0a91000400000005');
+
+    expr = expr2h('(reduce _myfunc2 (list 5 8 2) 0)');    
+    resp = await MalTay.call(expr);
+    expect(resp).toBe('0x0a9100040000000f');
+});
+
