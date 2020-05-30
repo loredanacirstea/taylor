@@ -83,6 +83,7 @@ object "malLikeTay" {
                             end_ptr := _end_ptr
                             args_ptrs_now := add(args_ptrs_now, 32)
                         }
+
                         // apply function on arguments
                         result_ptr := evalWithEnv(sig, args_ptrs)
                     }
@@ -213,6 +214,17 @@ object "malLikeTay" {
             case 0x90000050 {
                 result_ptr := _map(arg_ptrs_ptr)
             }
+            case 0x98000052 {
+                result_ptr := _reduce(arg_ptrs_ptr)
+            }
+            case 0x90000054 {
+                result_ptr := _nth(add(arg_ptrs_ptr, 32))
+            }
+            case 0x88000056 {
+                result_ptr := _first(add(arg_ptrs_ptr, 32))
+            }
+            case 0x88000058 {
+                result_ptr := _rest(add(arg_ptrs_ptr, 32))
             }
 
             default {
@@ -376,7 +388,7 @@ object "malLikeTay" {
         }
 
         // last 24 bits
-        function listSize(sig) -> _size {
+        function listTypeSize(sig) -> _size {
             _size := and(sig, 0xffffff)
         }
 
@@ -407,7 +419,7 @@ object "malLikeTay" {
                 // _length := structSize(ptr)
             }
             if isListType(sig) {
-                let size := listSize(sig)
+                let size := listTypeSize(sig)
                 let ptr_now := add(ptr, getSignatureLength(ptr))
                 for { let i := 0 } lt(i, size) { i := add(i, 1) } {
                     let item_len := getTypedLength(ptr_now)
@@ -433,17 +445,24 @@ object "malLikeTay" {
             arity := shr(27, and(getFuncSig(ptr), 0x78000000))
         }
 
-        function buildBytesSig(length) -> signature{
+        function buildBytesSig(length) -> signature {
             // signature :=  '000001' * bit26 length
             signature := add(exp(2, 26), length)
         }
 
-        function buildLambdaSig(bodylen) -> signature{
+        function buildLambdaSig(bodylen) -> signature {
             // signature :=  '100011' * bit25 bodylen * 0
             signature := add(
                 add(add(exp(2, 31), exp(2, 27)), exp(2, 26)),
                 shl(1, bodylen)
             )
+        }
+
+        // Type list (not function)
+        // TODO type
+        function buildListTypeSig(length) -> signature {
+            // signature :=  '0001' * bit4 type * bit24 length
+            signature := add(add(exp(2, 28), exp(2, 24)), length)
         }
         
         // function read(str) -> _str {
@@ -530,7 +549,7 @@ object "malLikeTay" {
         function _mapInner(lambda_body_ptr, list_ptr) -> result_ptr {
             // TODO: fixme: we only get the arity here, not the id
             // it is ok here, but might be problematic later
-            let list_arity := listSize(mslice(list_ptr, 4))
+            let list_arity := listTypeSize(mslice(list_ptr, 4))
             let arg_ptr := add(list_ptr, 4)
             let results_ptrs := allocate(mul(list_arity, 32))
 
@@ -892,6 +911,49 @@ object "malLikeTay" {
             mslicestore(result_ptr, newsig, 4)
             mmultistore(add(result_ptr, 4), add(ptr1, 4), len1)
             mmultistore(add(add(result_ptr, 4), len1), add(ptr2, 4), len2)
+        }
+
+        function _nth(ptrs) -> result_ptr {
+            let list_ptr := mload(ptrs)
+            let index := mslice(add(mload(add(ptrs, 32)), 4), 4)
+            let list_arity := listTypeSize(mslice(list_ptr, 4))
+
+            dtrequire(lt(index, list_arity), 0xe011)
+            let nth_ptr := add(list_ptr, 4)
+
+            for { let i := 0 } lt(i, index) { i := add(i, 1) } {
+                nth_ptr := add(nth_ptr, getTypedLength(nth_ptr))
+            }
+            result_ptr := nth_ptr
+        }
+
+        function _first(ptrs) -> result_ptr {
+            let list_ptr := mload(ptrs)
+            // first item is after the list signature
+            result_ptr := add(list_ptr, 4)
+        }
+
+        function _rest(ptrs) -> result_ptr {
+            let list_ptr := mload(ptrs)
+            let list_arity := listTypeSize(mslice(list_ptr, 4))
+            let newlistid := buildListTypeSig(sub(list_arity, 1))
+            let newlist := allocate(4)
+            result_ptr := newlist
+
+            mslicestore(newlist, newlistid, 4)
+            newlist := add(newlist, 4)
+
+            // skip signature &  first item
+            list_ptr := add(list_ptr, 4)
+            let elem_length := getTypedLength(list_ptr)
+            list_ptr := add(list_ptr, elem_length)
+
+            for { let i := 0 } lt(i, sub(list_arity, 1)) { i := add(i, 1) } {
+                elem_length := getTypedLength(list_ptr)
+                mmultistore(newlist, list_ptr, elem_length)
+                list_ptr := add(list_ptr, elem_length)
+                newlist := add(newlist, elem_length)
+            }
         }
 
         // function mslice(position, length) -> result {

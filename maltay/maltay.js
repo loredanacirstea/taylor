@@ -41,6 +41,9 @@ const unknown = index => {
     let value = u2h(index).padStart(8, '0');
     return id + value;
 }
+const listTypeId = len => strip0x(hexZeroPad(x0(b2h(
+    typeid.list + u2b(1).padStart(4, '0') + len
+)), 4));
 
 const typeid = {
     function: '1',
@@ -110,6 +113,10 @@ const nativeEnv = {
     contig:       { mutable: false, arity: 2 },
     concat:       { mutable: false, arity: 2 },
     map:          { mutable: false, arity: 2 },
+    reduce:       { mutable: false, arity: 3 },
+    nth:          { mutable: false, arity: 2 },
+    first:        { mutable: false, arity: 1 },
+    rest:         { mutable: false, arity: 1 },
 }
 
 Object.keys(nativeEnv).forEach((key, id) => {
@@ -142,7 +149,7 @@ const isBytelike = sig => (sig & 0x4000000) > 0;
 const isEnum = sig => (sig & 0x2000000) > 0;
 
 const numberSize = sig => sig & 0xffff;
-const listSize = sig => sig & 0xffffff;
+const listTypeSize = sig => sig & 0xffffff;
 const bytelikeSize = sig => sig & 0x3ffffff;
 const getSignatureLength = 4;
 // const getValueLength = 
@@ -169,9 +176,8 @@ const encode = (types, values) => {
                 return  getbytesid(length) + val;
             case 'list':
                 let len = u2b(values[i].length).padStart(24, '0');
-                let lid = typeid.list + u2b(1).padStart(4, '0') + len;
-                // lid = b2h(lid).padStart(4, '0');
-                lid = strip0x(hexZeroPad(x0(b2h(lid)), 4));
+                const lid = listTypeId(len);
+
                 return lid + values[i].map(value => encode([{type: 'uint', size: 4}], [value]))
                     .join('');
             default:
@@ -192,7 +198,7 @@ const decodeInner = (sig, data) => {
         data = data.substring(length*2);
         return { result, data };
     } else if (isListType(sig)) {
-        const length = listSize(sig);
+        const length = listTypeSize(sig);
         
         const result = [...new Array(length)].map((_, i) => {
             const partsig = parseInt(data.substring(0, 8), 16);

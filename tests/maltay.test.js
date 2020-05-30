@@ -217,3 +217,16 @@ it('test map', async function () {
     expect(resp).toBe('0x' + encode([{type: 'list'}], [[18, 27, 9]]));
 });
 
+it('test funcs', async function() {
+    let expr, resp;
+
+    resp = await MalTay.call(expr2h('(first (list 5 3 7))'));
+    expect(resp).toBe('0x0a91000400000005');
+
+    resp = await MalTay.call(expr2h('(rest (list 5 3 7))'));
+    expect(resp).toBe('0x' + encode([{type: 'list'}], [[3, 7]]));
+
+    resp = await MalTay.call(expr2h('(nth (list 5 3 7) 2)'));
+    expect(resp).toBe('0x0a91000400000007');
+});
+
