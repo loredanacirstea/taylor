@@ -117,6 +117,7 @@ const nativeEnv = {
     nth:          { mutable: false, arity: 2 },
     first:        { mutable: false, arity: 1 },
     rest:         { mutable: false, arity: 1 },
+    'empty?':     { mutable: false, arity: 1 },
 }
 
 Object.keys(nativeEnv).forEach((key, id) => {

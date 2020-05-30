@@ -226,6 +226,9 @@ object "malLikeTay" {
             case 0x88000058 {
                 result_ptr := _rest(add(arg_ptrs_ptr, 32))
             }
+            case 0x8800005a {
+                result_ptr := _empty(add(arg_ptrs_ptr, 32))
+            }
 
             default {
                 let isthis := 0
@@ -959,6 +962,17 @@ object "malLikeTay" {
             mslicestore(result_ptr, newsig, 4)
             mmultistore(add(result_ptr, 4), add(ptr1, 4), len1)
             mmultistore(add(add(result_ptr, 4), len1), add(ptr2, 4), len2)
+        }
+
+        function _empty(ptrs) -> result_ptr {
+            let list_ptr := mload(ptrs)
+            let sig := mslice(list_ptr, 4)
+            let list_arity := listTypeSize(sig)
+            result_ptr := allocate(4)
+
+            mslicestore(result_ptr, buildBoolSig(
+                or(eq(sig, 0x00), eq(list_arity, 0))
+            ), 4)
         }
 
         function _nth(ptrs) -> result_ptr {

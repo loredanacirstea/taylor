@@ -220,6 +220,14 @@ it('test map', async function () {
 it('test funcs', async function() {
     let expr, resp;
 
+    resp = await MalTay.call(expr2h('(empty? (list))'));
+    expect(resp).toBe('0x0a800001');
+    resp = await MalTay.call(expr2h('(empty? (list 1))'));
+    console.log('resp', expr2h('(empty? (list 1))'))
+    expect(resp).toBe('0x0a800000');
+    resp = await MalTay.call(expr2h('(empty? (list 0))'));
+    expect(resp).toBe('0x0a800000');
+
     resp = await MalTay.call(expr2h('(first (list 5 3 7))'));
     expect(resp).toBe('0x0a91000400000005');
 
