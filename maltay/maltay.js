@@ -135,6 +135,7 @@ nativeEnv.lambda.hex = bodylenb => b2h(nativeEnv.lambda.encoded(bodylenb));
 
 const formatId = id => strip0x(hexZeroPad(x0(b2h(id)), 4));
 const getnumberid = size => formatId(typeid.number + numberid.uint + u2b(size).padStart(16, '0'))
+const getboolid = value => formatId(typeid.number + numberid.bool + u2b(value ? 1 : 0).padStart(16, '0'));
 const getbytesid = length => formatId(typeid.bytelike + u2b(length).padStart(26, '0'));
 
 const isFunction = sig => (sig & 2147483648) > 0;
@@ -145,6 +146,7 @@ const isArray = sig => (sig & 0x40000000) > 0;
 const isStruct = sig => (sig & 0x20000000) > 0;
 const isListType = sig => (sig & 0x10000000) > 0;
 const isNumber = sig => (sig & 0x8000000) > 0;
+const isBool = sig => (sig & 0x0a800000) === 0x0a800000;
 const isBytelike = sig => (sig & 0x4000000) > 0;
 const isEnum = sig => (sig & 0x2000000) > 0;
 

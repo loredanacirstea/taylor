@@ -375,6 +375,10 @@ object "malLikeTay" {
             isn := gt(numb, 0)
         }
 
+        function isBool(sig) -> isbool {
+            isbool := eq(and(sig, 0xffff0000), 0x0a800000)
+        }
+
         // 00000100000000000000000000000000
         function isBytes(ptr) -> isn {
             let sig := getFuncSig(ptr)
@@ -433,6 +437,9 @@ object "malLikeTay" {
             if isBytes(ptr) {
                 _length := bytesSize(sig)
             }
+            if isBool(sig) {
+                _length := 0
+            }
         }
 
         function getTypedLength(ptr) -> _length {
@@ -443,6 +450,17 @@ object "malLikeTay" {
         // 01111000000000000000000000000000
         function getFuncArity(ptr) -> arity {
             arity := shr(27, and(getFuncSig(ptr), 0x78000000))
+        }
+
+        // 1010100000000000000000000001
+        function buildBoolSig(value) -> signature {
+            switch value
+            case 1 {
+                signature := 0x0a800001
+            }
+            case 0 {
+                signature := 0x0a800000
+            }
         }
 
         function buildBytesSig(length) -> signature {
