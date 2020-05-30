@@ -109,7 +109,7 @@ const nativeEnv = {
     if:           { mutable: false, arity: 3 },
     contig:       { mutable: false, arity: 2 },
     concat:       { mutable: false, arity: 2 },
-    map:          { mutable: false, arity: null },
+    map:          { mutable: false, arity: 2 },
 }
 
 Object.keys(nativeEnv).forEach((key, id) => {
@@ -297,7 +297,10 @@ const ast2h = (ast, parent=null, unkownMap={}, defenv={}) => {
         }
 
         // TODO
-        if (parseInt(elem) && (!ast[i - 1] || ast[i - 1].value !== bytesMarker)) {
+        if (
+            (parseInt(elem) || parseInt(elem) === 0)
+            && (!ast[i - 1] || ast[i - 1].value !== bytesMarker)
+        ) {
             return encode([{type: 'uint', size: 4}], [elem]);
         }
 

@@ -9,21 +9,6 @@ object "malLikeTay" {
     object "Runtime" {
     code {
         
-        // function: 1 000 00000000000000000000000000 0 0
-        // - typeid, arity, id, payable, mutability
-
-        // array   : 01 000000000000000000000000000000
-        // - typeid, length
-        
-        // struct  : 001 0000 000000000000000000000000 0
-        // - typeid, arity, id, exists in storage or not -> if yes, signature follows
-        
-        // list    : 0001 0000 000000000000000000000000
-        // - typeid, list type (vector..?), size
-        
-        // number  : 00001 00000000000 0000000000000000
-        // - typeid, bit11 subtypeid, size
-        
         let _calldata := allocate(calldatasize())
         calldatacopy(_calldata, 0, calldatasize())
 
@@ -45,16 +30,6 @@ object "malLikeTay" {
         
         function eval(data_ptr, env_ptr) -> end_ptr, result_ptr {
             let sig := getFuncSig(data_ptr)
-
-            // if !list -> eval_ast(ast)
-            // if [] -> ast
-            // if list -> eval_ast(ast) ; Take the first item of the evaluated list and call it as function using the rest of the evaluated list as its arguments
-
-            // eval_ast:
-            // list: -> list(eval(item)..)
-            // vector: -> vector(eval(item)..)
-            // hash-map: -> hash-map(key => eval(value))
-            // default: return ast
 
             switch isFunction(data_ptr)
             case 0 {
@@ -102,6 +77,7 @@ object "malLikeTay" {
                     case 0 {
                         for { let i := 0 } lt(i, arity) { i := add(i, 1) } {
                             let _end_ptr, arg_ptr := eval(end_ptr, env_ptr)
+                            
                             // store pointer to argument value
                             mstore(args_ptrs_now, arg_ptr)
                             end_ptr := _end_ptr
@@ -250,7 +226,7 @@ object "malLikeTay" {
                 if eq(isthis, 0) {
                     isthis := isLambda(fsig)
                     if eq(isthis, 1) {
-                        result_ptr := lambda(arg_ptrs_ptr)
+                        result_ptr := _lambda(arg_ptrs_ptr)
                     }
                 }
 
@@ -522,7 +498,7 @@ object "malLikeTay" {
             _data_ptr := res
         }
 
-        function lambda(arg_ptrs) -> _data_ptr {
+        function _lambda(arg_ptrs) -> _data_ptr {
             // skip arity, just point to the lambda body
             _data_ptr := add(arg_ptrs, 32)
         }
