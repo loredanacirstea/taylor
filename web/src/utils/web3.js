@@ -26,9 +26,10 @@ const getWeb3 = async () => {
 };
 
 const getProvider = async () => {
-  const web3 = await getWeb3();
-  const provider = new ethers.providers.Web3Provider(web3.currentProvider);
-  const signer = provider.getSigner();
+//   const web3 = await getWeb3();
+//   const provider = new ethers.providers.Web3Provider(web3.currentProvider);
+  const provider = new ethers.providers.JsonRpcProvider('http://192.168.1.140:8545')
+  const signer = provider.getSigner(0);
   return { provider, signer };
 }
 

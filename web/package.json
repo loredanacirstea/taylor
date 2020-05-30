@@ -14,7 +14,8 @@
     "react-dom": "^16.13.1",
     "react-monaco-editor": "^0.36.0",
     "react-native-web": "^0.11.6",
-    "react-scripts": "3.4.1"
+    "react-scripts": "3.4.1",
+    "taylor": "file:../"
   },
   "scripts": {
     "start": "react-app-rewired start",

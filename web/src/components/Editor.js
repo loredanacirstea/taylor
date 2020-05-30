@@ -1,11 +1,10 @@
 import React, { Component } from 'react';
-import { ScrollView } from 'react-native';
-import { View, Text, Button, Icon } from 'native-base';
+import { View, Button, Icon } from 'native-base';
 import MonacoEditor from 'react-monaco-editor';
-import ReactJson from 'custom-react-json-view'
 import Taylor from 'taylor';
 import { editorOpts } from '../utils/config.js';
 import * as taylorUtils from '../utils/taylor.js';
+import Out from './Out.js';
 
 const getResult = (grammar, code) => {
   let result = [];
@@ -75,7 +74,7 @@ class Editor extends Component {
 
     return (
       <View style={{ ...styles, flex: 1 }}>
-        <View style={{ ...styles, height: editorHeight.height, flex: 1 }}>
+        <View style={{ ...styles, height: styles.height - editorHeight, flex: 1 }}>
           <MonacoEditor
             width={styles.width}
             height={editorHeight}
@@ -87,33 +86,11 @@ class Editor extends Component {
             editorDidMount={this.editorDidMount}
           />
         </View>
-        <ScrollView
-          horizontal={false}
-          scrollEnabled={true}
-          scrollEventThrottle={100}
-          nestedScrollEnabled={true}
-          contentContainerStyle={{width: styles.width}}
-          style={{ ...styles, height: consoleHeight.height, flex: 1 }}
-        >
-          <ScrollView
-            horizontal={true}
-            scrollEnabled={true}
-            scrollEventThrottle={100}
-            contentContainerStyle={{width: styles.width}}
-            style={{ ...styles, height: consoleHeight.height, flex: 1 }}
-          >
-            {errors
-              ? <Text style={{color: 'firebrick'}}>{errors}</Text>
-              : <ReactJson
-                src={result}
-                name="result"
-                theme="twilight"
-                collapsed={6}
-                shouldCollapse={field => field.name === 'd' }
-              />
-            }
-          </ScrollView>
-        </ScrollView>
+        <Out 
+          result={result}
+          errors={errors}
+          styles={{ ...styles, height: consoleHeight.height }}
+        />
         <Button
           small
           light

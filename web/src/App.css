@@ -3,6 +3,7 @@
 }
 html, body, .App {
   background-color: rgb(30, 30, 30);
+  margin: 0;
 }
 
 @font-face {

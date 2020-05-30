@@ -53,7 +53,7 @@ const getAddress = (chainid) => {
   let addressData = {};
   addressData.address = window.localStorage.getItem(key);
   if (!addressData.address) {
-    addressData = DEFAULT_DEPLOYMENT[chainid];
+    addressData = DEFAULT_DEPLOYMENT[chainid] || {};
     window.localStorage.setItem(STORAGE_KEY_TAYLOR_ADDRESS, addressData.address);
   }
   return { ...addressData, block: addressData.block || 0 };
