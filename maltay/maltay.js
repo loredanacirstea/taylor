@@ -118,6 +118,8 @@ const nativeEnv = {
     first:        { mutable: false, arity: 1 },
     rest:         { mutable: false, arity: 1 },
     'empty?':     { mutable: false, arity: 1 },
+    'true?':      { mutable: false, arity: 1 },
+    'false?':     { mutable: false, arity: 1 },
 }
 
 Object.keys(nativeEnv).forEach((key, id) => {
@@ -183,6 +185,8 @@ const encode = (types, values) => {
 
                 return lid + values[i].map(value => encode([{type: 'uint', size: 4}], [value]))
                     .join('');
+            case 'bool':
+                return getboolid(values[i]);
             default:
                 throw new Error('Not implemented');
         }
@@ -303,6 +307,10 @@ const ast2h = (ast, parent=null, unkownMap={}, defenv={}) => {
 
         if (elem instanceof Array) {
             return ast2h(elem, ast, unkownMap, defenv);
+        }
+
+        if (typeof elem === 'boolean') {
+            return encode([{type: 'bool'}], [elem]);
         }
 
         // TODO
