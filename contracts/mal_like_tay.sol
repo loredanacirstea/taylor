@@ -1203,6 +1203,7 @@ object "malLikeTay" {
                         mstore(_pointer, sload(add(storageKey, index)))
                         loadedBytes := add(loadedBytes, 32)
                         index := add(index, 1)
+                        _pointer := add(_pointer, slot)
                     }
                     case 0 {
                         if gt(remaining, 0) {
@@ -1210,7 +1211,6 @@ object "malLikeTay" {
                             loadedBytes := add(loadedBytes, remaining)
                         }
                     }
-                    _pointer := add(_pointer, loadedBytes)
                 }
             }
         }
