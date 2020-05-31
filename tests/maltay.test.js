@@ -290,3 +290,25 @@ it('test recursive', async function () {
     expect(resp).toBe('0x0a91000400000006');
 });
 
+it('test recursive fibonacci', async function () {
+    expr = expr2h('(def! fibonacci (fn* (n) (if (or (eq n 1) (eq n 2)) 1 (add(_fibonacci (sub n 1)) (_fibonacci (sub n 2)) ) )))');
+
+    await MalTay.send(expr);
+
+    expr = expr2h('(_fibonacci 1)');
+    resp = await MalTay.call(expr);
+    expect(resp).toBe('0x0a91000400000001');
+
+    expr = expr2h('(_fibonacci 2)');
+    resp = await MalTay.call(expr);
+    expect(resp).toBe('0x0a91000400000001');
+
+    expr = expr2h('(_fibonacci 3)');
+    resp = await MalTay.call(expr);
+    expect(resp).toBe('0x0a91000400000002');
+
+    expr = expr2h('(_fibonacci 8)');
+    resp = await MalTay.call(expr);
+    expect(resp).toBe('0x0a91000400000015');
+});
+
