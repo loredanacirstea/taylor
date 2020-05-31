@@ -136,6 +136,12 @@ nativeEnv.lambda.hex = bodylenb => b2h(nativeEnv.lambda.encoded(bodylenb));
 
 // console.log('nativeEnv', nativeEnv);
 
+const reverseNativeEnv = {};
+Object.keys(nativeEnv).forEach(key => {
+    if (typeof nativeEnv[key].hex === 'string') {
+        reverseNativeEnv[nativeEnv[key].hex] = key;
+    }
+});
 const formatId = id => strip0x(hexZeroPad(x0(b2h(id)), 4));
 const getnumberid = size => formatId(typeid.number + numberid.uint + u2b(size).padStart(16, '0'))
 const getboolid = value => formatId(typeid.number + numberid.bool + u2b(value ? 1 : 0).padStart(16, '0'));
@@ -162,6 +168,12 @@ const funcArity = sig => (sig & 0x78000000) >> 27;
 const lambdaLength = sig => (sig & 0x3fffffe) >> 1;
 const getSignatureLength = 4;
 // const getValueLength = 
+
+const tableSig = {}
+tableSig[nativeEnv['def!'].hex] = {offsets: [64, 8], aritydelta: -1}
+tableSig[nativeEnv['if'].hex] = {offsets: [8, 8], aritydelta: 0}
+tableSig['lambda'] = {offsets: lambdaLength}
+tableSig['isGetByName'] = {offsets: [64]}
 
 // TODO: this only encodes uint
 const encode = (types, values) => {
@@ -333,6 +345,90 @@ const expr2h = (expression, defenv) => {
     return x0(ast2h(ast, null, {}, defenv));
 }
 
+const expr2string = (inidata, pos=0, accum='') => {
+    let name, arity;
+    let unknownList = [];
+    let data = inidata.substring(pos);
+    const sig = data.substring(0, 8);
+    const sigu = parseInt(sig, 16);
+    data = data.substring(8);
+    pos += 8;
+
+    const isf = isFunction(sigu);
+
+    if (isf) {
+        if (reverseNativeEnv[sig]) {
+            name =  reverseNativeEnv[sig];
+            accum += '(' + name + ' ';
+            arity = funcArity(sigu);
+        }
+        
+        if (name === 'def!') {
+            const fname = data.substring(0, tableSig[sig].offsets[0]).hexDecode();
+            accum += ' ' + fname.toString() + ' ';
+            data = data.substring(tableSig[sig].offsets[0]);
+            pos += tableSig[sig].offsets[0]
+            
+            const exprlen = data.substring(0, tableSig[sig].offsets[1]);
+            data = data.substring(tableSig[sig].offsets[1]);
+            pos += tableSig[sig].offsets[1]
+
+            const res = expr2string(inidata, pos, accum);
+            pos = res.pos;
+            accum = res.accum;
+        } else if (name === 'if') {
+            const action1bodyLen = parseInt(data.substring(0, tableSig[sig].offsets[0]), 16);
+            const action2bodyLen = parseInt(data.substring(0, tableSig[sig].offsets[1]), 16);
+            
+            let res = expr2string(inidata, pos + tableSig[sig].offsets[0] + tableSig[sig].offsets[1], accum);
+            pos = res.pos;
+            accum = res.accum;
+
+            res = expr2string(inidata, pos, accum)
+            pos = res.pos;
+            accum = res.accum;
+            res = expr2string(inidata, pos, accum)
+            pos = res.pos;
+            accum = res.accum;
+
+        } else if (isLambda(sigu)) {
+            accum += '( fn* () '
+            const bodylen = tableSig.lambda.offsets(sigu);
+            const res = expr2string(inidata, pos, accum)
+            accum = res.accum;
+        } else if (isGetByName(sigu)) {
+            const fname = data.substring(8, tableSig.isGetByName.offsets[0]+8).hexDecode();
+            accum += '( _' + fname + ' '
+            pos += tableSig.isGetByName.offsets[0] + 8
+            const res = expr2string(inidata, pos, accum)
+            accum = res.accum;
+        }
+        else {
+            for(let i = 0; i < arity; i++) {
+                let res = expr2string(inidata, pos , accum)
+                pos = res.pos;
+                accum = res.accum;
+            }
+        }
+        accum += ')'
+    }
+    else if (isLambdaUnknown(sigu)) {
+        const index = parseInt(data.substring(0, 8), 16)
+        const uname = 'u_'+index + ' '
+        unknownList.push(uname);
+        accum += ' ' + uname
+        pos += 8
+    }
+    else {
+        const res = decodeInner(sigu, data)
+        accum += ' ' + res.result.toString()
+        pos = inidata.length - res.data.length;
+    }
+    return { pos, accum };
+}
+
+const expr2s = inidata => expr2string(strip0x(inidata)).accum;
+
 module.exports = {
     u2b, u2h, b2u, b2h, h2u, h2b,
     typeid, nativeEnv,
@@ -340,5 +436,6 @@ module.exports = {
     decode,
     expr2h,
     funcidb,
+    expr2s,
 }
 

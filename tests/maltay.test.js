@@ -1,6 +1,6 @@
 require('../maltay/extensions.js');
 const { provider, signer, getMalTay } = require('./setup/fixtures.js');
-const { encode, expr2h, b2h, u2b, u2h, funcidb } = require('../maltay/maltay.js');
+const { encode, decode, expr2h, b2h, u2b, expr2s } = require('../maltay/maltay.js');
 
 let MalTay;
 
@@ -15,6 +15,7 @@ const isFunction = async name => (await MalTay.call('0x44444442' + name.hexEncod
 it('test sum', async function () {
     const expr = expr2h('(add 4 7)');
     expect(expr).toBe('0x900000020a910004000000040a91000400000007');
+    expect(expr2h(expr2s(expr))).toBe(expr);
     
     const resp = await MalTay.call(expr);
     expect(resp).toBe('0x0a9100040000000b');
@@ -23,6 +24,7 @@ it('test sum', async function () {
 it('test sum-sub', async function () {
     const expr = expr2h('(add (add (sub 7 2) 1) 41)');
     expect(expr).toBe('0x9000000290000002900000040a910004000000070a910004000000020a910004000000010a91000400000029');
+    expect(expr2h(expr2s(expr))).toBe(expr);
 
     const resp = await MalTay.call(expr);
     expect(resp).toBe('0x0a9100040000002f');
@@ -41,6 +43,8 @@ it('test list', async function () {
 
     const expr = expr2h('(list 5 4 (add 6 2) 3 (sub 6 1))');
     expect(expr).toBe('0xa800003e0a910004000000050a91000400000004900000020a910004000000060a910004000000020a91000400000003900000040a910004000000060a91000400000001');
+    // expect(expr2h(expr2s(expr))).toBe(expr);
+
     resp = await MalTay.call(expr);
     expect(resp).toBe(expected);
 });
@@ -70,6 +74,7 @@ it('test lambda', async function () {
 
     expr = expr2h('( (fn* (a b) (add a b)) (add (add (sub 7 2) 1) 41) (add 2 3))');
     expect(expr).toBe('0x980000408c00002890000002010000000000000001000000000000019000000290000002900000040a910004000000070a910004000000020a910004000000010a91000400000029900000020a910004000000020a91000400000003');
+    // expect(expr2h(expr2s(expr))).toBe(expr);
     resp = await MalTay.call(expr);
     expect(resp).toBe('0x0a91000400000034');
 
@@ -136,6 +141,7 @@ it('test use stored fn 1', async function () {
     expect(resp).toBe('0x0a91000400000005');
 
     expr = expr2h('(_func1 (add (add (sub 7 2) 1) 41) (add 2 3)))', isFunction);
+    // expect(expr2h(expr2s(expr))).toBe(expr);
     resp = await MalTay.call(expr);
     expect(resp).toBe('0x0a91000400000034');
 });
@@ -145,6 +151,7 @@ it('test used stored fn 2', async function () {
     let name = 'func2'
 
     expr = expr2h('(def! func2 (fn* (a b) (add (add (sub a b) a) b)))');
+    // expect(expr2h(expr2s(expr))).toBe(expr);
     await MalTay.send(expr);
 
     resp = await MalTay.call('0x44444442' + name.hexEncode().padStart(64, '0'));
@@ -158,6 +165,7 @@ it('test used stored fn 2', async function () {
 it('test if', async function () {
     let expr, resp;
     expr = expr2h('(if (gt 4 1) 7 8)');
+    expect(expr2h(expr2s(expr))).toBe(expr);
     resp = await MalTay.call(expr);
     expect(resp).toBe('0x0a91000400000007');
 
@@ -170,6 +178,7 @@ it('test if', async function () {
     expect(resp).toBe('0x0a91000400000020');
 
     expr = expr2h('(if (gt 4 9) (add (sub 33 2) 1) (add (sub 7 2) 1))');
+    expect(expr2h(expr2s(expr))).toBe(expr);
     resp = await MalTay.call(expr);
     expect(resp).toBe('0x0a91000400000006');
 });
@@ -181,6 +190,7 @@ it.skip('test if with lambda', async function () {
     expect(resp).toBe('0x0a91000400000005');
 
     expr = expr2h('(if (gt 4 9) ((fn* (a b) (add a b)) 2 3) (add (sub 7 2) 1))');
+    // expect(expr2h(expr2s(expr))).toBe(expr);
     resp = await MalTay.call(expr);
     expect(resp).toBe('0x0a91000400000006');
 });
@@ -192,6 +202,7 @@ it('test bytes concat', async function () {
     expect(resp).toBe('0x040000021122');
 
     expr = expr2h('(concat 0x"11aaaabb" 0x"221111ccdd")');
+    // expect(expr2h(expr2s(expr))).toBe(expr);
     resp = await MalTay.call(expr);
     expect(resp).toBe('0x0400000911aaaabb221111ccdd');
 });
@@ -203,6 +214,7 @@ it('test bytes contig', async function () {
     expect(resp).toBe('0x0400000422222222');
 
     expr = expr2h('(contig 2 0x"221111ccdd")');
+    // expect(expr2h(expr2s(expr))).toBe(expr);
     resp = await MalTay.call(expr);
     expect(resp).toBe('0x0400000a221111ccdd221111ccdd');
 });

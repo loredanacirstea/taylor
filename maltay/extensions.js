@@ -15,7 +15,10 @@ String.prototype.hexDecode = function(){
     var hexes = this.match(/.{1,4}/g) || [];
     var back = "";
     for(j = 0; j<hexes.length; j++) {
-        back += String.fromCharCode(parseInt(hexes[j], 16));
+        const code = parseInt(hexes[j], 16);
+        if (code !== 0) {
+            back += String.fromCharCode(code);
+        }
     }
 
     return back;
