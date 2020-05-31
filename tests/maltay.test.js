@@ -278,3 +278,15 @@ it('test reduce', async function () {
     expect(resp).toBe('0x0a9100040000000f');
 });
 
+it('test recursive', async function () {
+    let expr, resp;
+    
+    expr = expr2h('(def! recursive (fn* (n) (if (gt n 5) n (_recursive (add n 1)) ) ) )');
+    // expect(expr2h(expr2s(expr))).toBe(expr);
+    await MalTay.send(expr);
+    
+    expr = expr2h('(_recursive 2)');
+    resp = await MalTay.call(expr);
+    expect(resp).toBe('0x0a91000400000006');
+});
+
