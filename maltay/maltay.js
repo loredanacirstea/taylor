@@ -141,21 +141,25 @@ const getnumberid = size => formatId(typeid.number + numberid.uint + u2b(size).p
 const getboolid = value => formatId(typeid.number + numberid.bool + u2b(value ? 1 : 0).padStart(16, '0'));
 const getbytesid = length => formatId(typeid.bytelike + u2b(length).padStart(26, '0'));
 
-const isFunction = sig => (sig & 2147483648) > 0;
-const isLambda = sig => (sig & 0x4000000) > 0;
+const isFunction = sig => (sig & 2147483648) !== 0;
+const isLambda = sig => (sig & 0x4000000) !== 0;
 const isApply = sig => (sig & 0x7fffffe) === 0x40;
 const isList = sig => (sig & 0x7fffffe) === 0x3e;
-const isArray = sig => (sig & 0x40000000) > 0;
-const isStruct = sig => (sig & 0x20000000) > 0;
-const isListType = sig => (sig & 0x10000000) > 0;
-const isNumber = sig => (sig & 0x8000000) > 0;
+const isArray = sig => (sig & 0x40000000) !== 0;
+const isStruct = sig => (sig & 0x20000000) !== 0;
+const isListType = sig => (sig & 0x10000000) !== 0;
+const isNumber = sig => (sig & 0x8000000) !== 0;
 const isBool = sig => (sig & 0x0a800000) === 0x0a800000;
-const isBytelike = sig => (sig & 0x4000000) > 0;
-const isEnum = sig => (sig & 0x2000000) > 0;
+const isBytelike = sig => (sig & 0x4000000) !== 0;
+const isEnum = sig => (sig & 0x2000000) !== 0;
+const isLambdaUnknown = sig => (sig & 0x1000000) !== 0;
+const isGetByName = sig => (sig & 0x7fffffe) === 0x48;
 
 const numberSize = sig => sig & 0xffff;
 const listTypeSize = sig => sig & 0xffffff;
 const bytelikeSize = sig => sig & 0x3ffffff;
+const funcArity = sig => (sig & 0x78000000) >> 27;
+const lambdaLength = sig => (sig & 0x3fffffe) >> 1;
 const getSignatureLength = 4;
 // const getValueLength = 
 

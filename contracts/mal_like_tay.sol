@@ -323,19 +323,19 @@ object "malLikeTay" {
         // function 10000000000000000000000000000000
         function isFunction(ptr) -> isf {
             let sig := getFuncSig(ptr)
-            let func := and(sig, 2147483648) // 0x80000000)
-            isf := gt(func, 0)
+            let func := and(sig, 0x80000000)
+            isf := eq(iszero(func), 0)
         }
         // 10001100000000000000000000000000
         // 100000000000000000000000000
         function isLambda(sig) -> isl {
             let func := and(sig, 0x4000000)
-            isl := gt(func, 0)
+            isl := eq(iszero(func), 0)
         }
         // 00000001000000000000000000000000
         function isLambdaUnknown(vartype) -> islu {
             let test := and(vartype, 0x1000000)
-            islu := gt(test, 0)
+            islu := eq(iszero(test), 0)
         }
         // 10000000000000000000000001000000
         function isApply(sig) -> isapp {
@@ -361,27 +361,27 @@ object "malLikeTay" {
         function isArray(ptr) -> isa {
             let sig := getFuncSig(ptr)
             let numb := and(sig, 0x40000000)
-            isa := gt(numb, 0)
+            isa := eq(iszero(numb), 0)
         }
 
         // 00100000000000000000000000000000
         function isStruct(ptr) -> iss {
             let sig := getFuncSig(ptr)
             let numb := and(sig, 0x20000000)
-            iss := gt(numb, 0)
+            iss := eq(iszero(numb), 0)
         }
 
         // 00010000000000000000000000000000
         function isListType(sig) -> isl {
             let numb := and(sig, 0x10000000)
-            isl := gt(numb, 0)
+            isl := eq(iszero(numb), 0)
         }
 
         // 00001000000000000000000000000000
         function isNumber(ptr) -> isn {
             let sig := getFuncSig(ptr)
             let numb := and(sig, 0x8000000)
-            isn := gt(numb, 0)
+            isn := eq(iszero(numb), 0)
         }
 
         function isBool(sig) -> isbool {
@@ -392,7 +392,7 @@ object "malLikeTay" {
         function isBytes(ptr) -> isn {
             let sig := getFuncSig(ptr)
             let numb := and(sig, 0x4000000)
-            isn := gt(numb, 0)
+            isn := eq(iszero(numb), 0)
         }
 
         // last 16 bits
