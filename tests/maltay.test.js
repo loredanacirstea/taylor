@@ -312,3 +312,16 @@ it('test recursive fibonacci', async function () {
     expect(resp).toBe('0x0a91000400000015');
 });
 
+it('test reduce recursive', async function () {
+    let expr, resp;
+
+    expr = expr2h('(def! myfunc3 (fn* (a b) (add a b)) )');
+    await MalTay.send(expr);
+
+    expr = expr2h('(def! reduce (fn* (f init xs) (if (empty? xs) init (reduce f (f init (first xs)) (rest xs)))))');
+    await MalTay.send(expr);
+
+    resp = await MalTay.call(expr2h('(reduce _myfunc3 (list 5 8 2) 0 )'));
+    expect(resp).toBe('0x0a9100040000000f');
+});
+
