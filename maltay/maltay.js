@@ -251,6 +251,14 @@ const decode = data => {
 const ast2h = (ast, parent=null, unkownMap={}, defenv={}) => {
     // do not count the function itselt
     const arity = ast.length - 1;
+
+    if (ast[0] && ast[0].value === 'def!') {
+        const elem = ast[0];
+        const defname = ast[1].value.hexEncode().padStart(64, '0');
+        const exprbody = ast2h(ast[2], ast, defenv);
+        const exprlen = u2h(exprbody.length / 2).padStart(8, '0');
+        return nativeEnv[elem.value].hex + defname + exprlen + exprbody;
+    }
     return ast.map((elem, i) => {
         // if Symbol
         if (malTypes._symbol_Q(elem)) {
@@ -281,12 +289,6 @@ const ast2h = (ast, parent=null, unkownMap={}, defenv={}) => {
                     return '';
                 }
                 return unkownMap[elem.value];
-            }
-            if (elem.value === 'def!') {
-                const defname = ast[1].value.hexEncode().padStart(64, '0');
-                const exprbody = ast2h(ast[2], ast, defenv);
-                const exprlen = u2h(exprbody.length / 2).padStart(8, '0');
-                return nativeEnv[elem.value].hex + defname + exprlen + exprbody;
             }
             if (elem.value === 'if') {
                 const action1body = ast2h([ast[2]], null, defenv);
