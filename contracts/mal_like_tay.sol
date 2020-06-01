@@ -235,6 +235,17 @@ object "malLikeTay" {
             case 0x8800005e {
                 result_ptr := _false(add(arg_ptrs_ptr, 32))
             }
+            case 0x880000be {
+                result_ptr := allocate(32)
+                let index := storeRegAddress(mload(add(arg_ptrs_ptr, 32)))
+            }
+            case 0x880000c0 {
+                result_ptr := allocate(32)
+                // TODO check type
+                let index := mslice(add(mload(add(arg_ptrs_ptr, 32)), 4), 4)
+                let addr := getRegAddress(index)
+                mstore(result_ptr, addr)
+            }
 
             default {
                 let isthis := 0
@@ -261,6 +272,7 @@ object "malLikeTay" {
                 if eq(isthis, 0) {
                     isthis := isGetByName(fsig)
                     if eq(isthis, 1) {
+                        isthis := 0
                         let name := mload(
                             // add 4 to omit type
                             add(mload(add(arg_ptrs_ptr, 32)), 4)
@@ -274,16 +286,22 @@ object "malLikeTay" {
                         }
                         case 1 {
                             result_ptr := lambdaStorage(signature)
+                            if isFunction(result_ptr) {
+                                isthis := 1
+                            }
                         }
                         default {
                             // apply lambda on args
                             let lambda_body_ptr := lambdaStorage(signature)
-                            
-                            result_ptr := _applyInner(
-                                sub(arity, 1),
-                                add(lambda_body_ptr, 4),
-                                add(arg_ptrs_ptr, 64)
-                            )
+
+                            if isFunction(lambda_body_ptr) {
+                                result_ptr := _applyInner(
+                                    sub(arity, 1),
+                                    add(lambda_body_ptr, 4),
+                                    add(arg_ptrs_ptr, 64)
+                                )
+                                isthis := 1
+                            }
                         }
                     }
                 }
@@ -294,13 +312,23 @@ object "malLikeTay" {
                     let arity := mload(arg_ptrs_ptr)
 
                     let lambda_body_ptr := lambdaStorage(fsig)
-                            
-                    result_ptr := _applyInner(
-                        arity,
-                        add(lambda_body_ptr, 4),
-                        add(arg_ptrs_ptr, 32)
-                    )
+                    
+                    if isFunction(lambda_body_ptr) {
+                        result_ptr := _applyInner(
+                            arity,
+                            add(lambda_body_ptr, 4),
+                            add(arg_ptrs_ptr, 32)
+                        )
+                        isthis := 1
+                    }
                 }
+
+                if eq(isthis, 0) {
+                    // try other registered Taylor contracts
+                    result_ptr, isthis := tryRegistered(fsig, arg_ptrs_ptr)
+                }
+
+                dtrequire(eq(isthis, 1), 0xe013)
             }
             // TODO: search in registered contracts
             // TODO: revert if function not found
@@ -314,6 +342,45 @@ object "malLikeTay" {
             func_ptr := allocate(add(len, 4))
             // without length; lambda signature already has length
             result_ptr := add(func_ptr, 4)
+        }
+
+        function tryRegistered(fsig, arg_ptrs_ptr) -> result_ptr, success {
+            let arity := mload(arg_ptrs_ptr)
+            
+            let joined_args_ptr := freeMemPtr()
+            mslicestore(joined_args_ptr, fsig, 4)
+            
+            let args_len := _join_ptrs2(
+                arity,
+                add(arg_ptrs_ptr, 32),
+                add(joined_args_ptr, 4)
+            )
+            args_len := add(args_len, 4)
+            joined_args_ptr := allocate(args_len)
+
+            let count := getRegCounter()
+            let loop_again := true
+
+            if gt(count, 0) {
+                for { let i := 1 } loop_again { i := add(i, 1) } {
+                    let typeless_addr := shr(96, shl(32, getRegAddress(i)))
+
+                    if gt(typeless_addr, 0) {
+                        let callSuccess := staticcall(gas(), typeless_addr, joined_args_ptr, args_len, 0, 0)
+
+                        if eq(callSuccess, 1) {
+                            result_ptr := allocate(returndatasize())
+                            returndatacopy(result_ptr, 0, returndatasize())
+                            loop_again := false
+                            success := true
+                        }
+                    }
+
+                    if eq(lt(i, count), false) {
+                        loop_again := false
+                    }
+                }
+            }
         }
         
         function getFuncSig(ptr) -> _sig {
@@ -530,23 +597,44 @@ object "malLikeTay" {
         }
 
         function _applyInner(arity, lambda_body_ptr, arg_ptrs) -> _data_ptr {
-            let args_ptr := allocate(mul(arity, 32))
-            let addit := 0
-            for { let i := 0 } lt(i, arity) { i := add(i, 1) } {
-                mstore(
-                    add(args_ptr, addit), 
-                    mload(mload(add(arg_ptrs, addit)))
-                )
-                addit := add(addit, 32)
-            }
+            let args_ptr := _join_ptrs(arity, arg_ptrs)
             let end, res := eval(lambda_body_ptr, args_ptr)
-            // TODO: end?
             _data_ptr := res
         }
 
         function _lambda(arg_ptrs) -> _data_ptr {
             // skip arity, just point to the lambda body
             _data_ptr := add(arg_ptrs, 32)
+        }
+
+        // TODO: mmultistore
+        function _join_ptrs(arity, arg_ptrs) -> _data_ptr {
+            _data_ptr := allocate(mul(arity, 32))
+            let addit := 0
+            for { let i := 0 } lt(i, arity) { i := add(i, 1) } {
+                mstore(
+                    add(_data_ptr, addit), 
+                    mload(mload(add(arg_ptrs, addit)))
+                )
+                addit := add(addit, 32)
+            }
+        }
+
+        function _join_ptrs2(arity, arg_ptrs, output_ptr) -> data_length {
+            data_length := 0
+            let ptr_offset := 0
+            
+            for { let i := 0 } lt(i, arity) { i := add(i, 1) } {
+                let item_ptr := mload(add(arg_ptrs, ptr_offset))
+                let item_length := getTypedLength(item_ptr)
+                mmultistore(
+                    add(output_ptr, data_length), 
+                    item_ptr,
+                    item_length
+                )
+                ptr_offset := add(ptr_offset, 32)
+                data_length := add(data_length, item_length)
+            }
         }
 
         function _if(_ptr, env_ptr) -> end_ptr, result_ptr {
@@ -1136,6 +1224,28 @@ object "malLikeTay" {
             _count := sload(mappingFnCountKey())
         }
 
+        function updateRegCounter() {
+            let count := getRegCounter()
+            sstore(mappingRegCountKey(), add(count, 1))
+        }
+
+        function getRegCounter() -> _count {
+            _count := sload(mappingRegCountKey())
+        }
+
+        // expects a length before the type
+        function storeRegAddress(_pointer) -> index {
+            // TODO: check if type is valid
+            index := add(getRegCounter(), 1)
+            sstore(mappingRegKey(index), mslice(_pointer, 24))
+            updateRegCounter()
+        }
+
+        function getRegAddress(index) -> addr {
+            addr := shl(64, sload(mappingRegKey(index)))
+            // TODO check if type_ids are the same & content is valid
+        }
+
         function mappingFnCountKey() -> storageKey {
             storageKey := 0
         }
@@ -1146,6 +1256,14 @@ object "malLikeTay" {
 
         function mappingFnNameKey(name) -> storageKey {
             storageKey := mappingStorageKey(2, name)
+        }
+
+        function mappingRegCountKey() -> storageKey {
+            storageKey := 6
+        }
+
+        function mappingRegKey(index) -> storageKey {
+            storageKey := mappingStorageKey(7, index)
         }
 
         // mapping(bytes32(max) => *)

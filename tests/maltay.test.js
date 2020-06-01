@@ -325,3 +325,46 @@ it('test reduce recursive', async function () {
     expect(resp).toBe('0x0a9100040000000f');
 });
 
+it('test registration & executing from root contract', async function () {
+    let expr, resp;
+
+    const maltay2 = await getMalTay();
+    const maltay3 = await getMalTay();
+
+    // Register
+    // TODO: type integer
+    expr = expr2h('(register! 0x"' + maltay2.address.substring(2) + '")');
+    await MalTay.send(expr);
+    expr = expr2h('(register! 0x"' + maltay3.address.substring(2) + '")');
+    await MalTay.send(expr);
+
+    // Check if registered correctly
+    expr = expr2h('(getregistered 1)');
+    resp = await MalTay.call(expr);
+    expect(resp).toBe('0x04000014' + maltay2.address.substring(2).toLowerCase());
+
+    expr = expr2h('(getregistered 2)');
+    resp = await MalTay.call(expr);
+    expect(resp).toBe('0x04000014' + maltay3.address.substring(2).toLowerCase());
+
+    // def! & store in maltay2
+    expr = expr2h('(def! loref (fn* (a) (mul (add a a) 2) ) )');
+    await maltay2.send(expr);
+
+    // use function directly in maltay2
+    resp = await maltay2.call(expr2h('(_loref 5)'));
+    expect(resp).toBe('0x0a91000400000014');
+
+    // def! & store in maltay3
+    expr = expr2h('(def! fibonacci2 (fn* (n) (if (or (eq n 1) (eq n 2)) 1 (add(_fibonacci2 (sub n 1)) (_fibonacci2 (sub n 2)) ) )))');
+    await maltay3.send(expr);
+
+    // use function directly in maltay3
+    resp = await maltay3.call(expr2h('(_fibonacci2 8)'));
+    expect(resp).toBe('0x0a91000400000015');
+    
+    // test functions through MalTay root contract
+    resp = await MalTay.call(expr2h('(_fibonacci2 (_loref 2) )'));
+    expect(resp).toBe('0x0a91000400000015');
+}, 20000);
+

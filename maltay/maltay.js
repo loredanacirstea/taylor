@@ -170,6 +170,9 @@ const nativeEnv = {
     println:      { mutable: false, arity: null },
     readline:     { mutable: false, arity: 1 },
     
+    // Taylor specific
+    'register!':  { mutable: false, arity: 1 },
+    'getregistered':  { mutable: false, arity: 1 },
 }
 
 Object.keys(nativeEnv).forEach((key, id) => {
