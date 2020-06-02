@@ -4,8 +4,6 @@ const ethers = require('ethers');
 const yulp = require('yulp');
 
 const PROVIDER_URL = 'http://192.168.1.140:8545';
-const CPATH = './contracts/dtypeinterpreter.tay';
-const CPATH2 = './tests/dtypeinterpreter_2.tay';
 const MALLT_PATH = './contracts/mal_like_tay.sol';
 
 
@@ -56,6 +54,7 @@ const sendTransaction = signer => address => async data => {
     gasLimit: 1000000,
     value: 0,
     to: address,
+    gasPrice: 10
   };
   const response = await signer.sendTransaction(transaction);
   const receipt = await response.wait();
@@ -73,29 +72,7 @@ const call = provider => address => async data => {
   return await provider.call(transaction);
 }
 
-const deployTaylor = (instance_type = 0) => {
-  switch (instance_type) {
-    case 0:
-      return deployContract(signer)(CPATH);
-    case 1:
-      return deployContract(signer)(CPATH2);
-    default:
-      throw new Error('No other Taylor instances found.');
-  }
-}
-
-const getTaylor = async (instance_type = 0) => {
-  const taylorAddress = await deployTaylor(instance_type);
-  return {
-    address: taylorAddress.toLowerCase(),
-    send: sendTransaction(signer)(taylorAddress),
-    call: call(provider)(taylorAddress),
-    storeType: data => sendTransaction(signer)(taylorAddress)('0xfffffffe' + data),
-    register: address => sendTransaction(signer)(taylorAddress)('0xfffffff9' + '11000014' + address.substring(2)),
-  }
-}
-
-const getMalTay = async () => {
+const getTaylor = async () => {
   const address = await deployContract(signer)(MALLT_PATH);
   return {
     address: address.toLowerCase(),
@@ -110,7 +87,5 @@ module.exports = {
   signer,
   compileContract,
   deployContract,
-  deployTaylor,
   getTaylor,
-  getMalTay,
 }

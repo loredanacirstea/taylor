@@ -1,5 +1,5 @@
 import React, { Component } from 'react';
-import { Dimensions, StyleSheet, ScrollView } from 'react-native';
+import { Dimensions, ScrollView } from 'react-native';
 import { View, Button, Icon } from 'native-base';
 import MonacoEditor from 'react-monaco-editor';
 import { editorOpts } from '../utils/config.js';
@@ -18,7 +18,7 @@ function getPageSize(noOfPages, {width, height}) {
   return {width: width / noOfPages, height};
 }
 
-class Taylor2 extends Component {
+class TaylorEditor extends Component {
   constructor(props) {
     super(props);
 
@@ -51,7 +51,6 @@ class Taylor2 extends Component {
 
   async setWeb3() {
     const { provider, signer } = await getProvider();
-    const chainid = (await provider.getNetwork()).chainId;
     this.setState({ provider, signer });
     this.onRootChange();
   }
@@ -181,4 +180,4 @@ class Taylor2 extends Component {
   }
 }
 
-export default Taylor2;
+export default TaylorEditor;

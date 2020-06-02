@@ -1,11 +1,11 @@
 require('../maltay/extensions.js');
-const { provider, signer, getMalTay } = require('./setup/fixtures.js');
+const { provider, signer, getTaylor } = require('./setup/fixtures.js');
 const { encode, decode, expr2h, b2h, u2b, expr2s } = require('../maltay/maltay.js');
 
 let MalTay;
 
 beforeAll(() => {
-  return getMalTay().then(t => {
+  return getTaylor().then(t => {
     MalTay = t;
   });
 });
