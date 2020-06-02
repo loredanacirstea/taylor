@@ -1,33 +1,16 @@
-import TAYLOR_GRAMMAR from 'taylor/taylor/taylor.ne';
-
-const DEFAULT_CODE = '(add (mul 2 1 34 (add 13 56)) 9000)';
-
-const STORAGE_KEY = 'TaylorGrammar';
+const DEFAULT_CODE = '(add (mul 2 (add 13 56)) 9000)';
 const STORAGE_KEY_CODE = 'TaylorCode';
 const STORAGE_KEY_TAYLOR_ADDRESS = 'TaylorInterpreterAddress';
 
 const DEFAULT_DEPLOYMENT = {
   5777: {
-    address: '0xCFF8dc8A5e2Af7fcc6BE124d3C91FA50186A8c96',
-    block: 0,
+    contract1: '0xCFF8dc8A5e2Af7fcc6BE124d3C91FA50186A8c96',
+    root: 'contract1'
   },
   3: {
-    address: '0x7D4150f492f93e2eDD7FC0Fc62c9193b322f75e5',
-    block: 0,
+    contract1: '0x7D4150f492f93e2eDD7FC0Fc62c9193b322f75e5',
+    root: 'contract1',
   },
-}
-
-const storeGrammar = source => {
-  window.localStorage.setItem(STORAGE_KEY, source);
-}
-
-const getGrammar = () => {
-  let source = window.localStorage.getItem(STORAGE_KEY);
-  if (!source) {
-    source = TAYLOR_GRAMMAR;
-    window.localStorage.setItem(STORAGE_KEY, source);
-  }
-  return source;
 }
 
 const storeCode = source => {
@@ -43,35 +26,26 @@ const getCode = () => {
   return source;
 }
 
-const storeAddress = (chainid, address) => {
-  const key = STORAGE_KEY_TAYLOR_ADDRESS + '_' + chainid;
-  window.localStorage.setItem(key, address);
-}
+const addressKey = chainid => STORAGE_KEY_TAYLOR_ADDRESS + '_' + chainid;
 
-const getAddress = (chainid) => {
-  const key = STORAGE_KEY_TAYLOR_ADDRESS + '_' + chainid;
-  let addressData = {};
-  addressData.address = window.localStorage.getItem(key);
-  if (!addressData.address) {
-    addressData = DEFAULT_DEPLOYMENT[chainid] || {};
-    window.localStorage.setItem(STORAGE_KEY_TAYLOR_ADDRESS, addressData.address);
-  }
-  return { ...addressData, block: addressData.block || 0 };
-}
-
-const MALTAY_KEY = 'MalTayAddresses';
 const addAddress = (chainid, address, name) => {
-  const key = MALTAY_KEY + '_' + chainid;
+  const key = addressKey(chainid);
   const addresses = getAddresses(chainid);
   addresses[name] = address;
   addresses.root = name;
-  window.localStorage.setItem(key, JSON.stringify(addresses));
+  localStorage.setItem(key, JSON.stringify(addresses));
 }
 
 const getAddresses = (chainid) => {
-  const key = MALTAY_KEY + '_' + chainid;
-  const addresses = localStorage.getItem(key) || '{}';
-  return JSON.parse(addresses);
+  const key = addressKey(chainid);
+  let addresses = localStorage.getItem(key);
+  if (addresses) {
+    addresses = JSON.parse(addresses);
+  } else {
+    addresses = DEFAULT_DEPLOYMENT[chainid] || {};
+    localStorage.setItem(key, JSON.stringify(addresses));
+  }
+  return addresses;
 }
 
 const getNamedAddress = (chainid, name) => {
@@ -80,17 +54,13 @@ const getNamedAddress = (chainid, name) => {
 }
 
 const clearAddresses = (chainid) => {
-  const key = MALTAY_KEY + '_' + chainid;
+  const key = addressKey(chainid);
   localStorage.setItem(key, '{}');
 }
 
 export {
-  getGrammar,
-  storeGrammar,
   storeCode,
   getCode,
-  storeAddress,
-  getAddress,
   addAddress,
   getAddresses,
   getNamedAddress,

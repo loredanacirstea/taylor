@@ -24,11 +24,10 @@
   },
   "homepage": "https://github.com/loredanacirstea/taylor#readme",
   "devDependencies": {
-    "jest": "^25.5.4"
+    "jest": "^24"
   },
   "dependencies": {
     "ethers": "^4.0.47",
-    "nearley": "^2.19.3",
     "solc": "0.5.7"
   }
 }
