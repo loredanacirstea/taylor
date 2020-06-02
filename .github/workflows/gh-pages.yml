@@ -5,6 +5,10 @@ on:
     branches:
       - master
 
+defaults:
+  run:
+    working-directory: web
+
 jobs:
   deploy:
     runs-on: ubuntu-18.04
@@ -27,9 +31,8 @@ jobs:
           key: ${{ runner.os }}-yarn-${{ hashFiles('**/yarn.lock') }}
           restore-keys: |
             ${{ runner.os }}-yarn-
-      
-      - run: cd web
-      - run: yarn install --frozen-lockfile
+      - run: ls
+      - run: yarn
       - run: yarn build
 
       - name: Deploy
