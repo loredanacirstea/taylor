@@ -9,41 +9,10 @@ import MalTayContract from '../components/MalTayContract.js';
 import * as taylorUtils from '../utils/taylor.js';
 import maltay from 'taylor/maltay/maltay.js';
 
-console.log('maltay', maltay);
-
-const MalTayAddress = '0x5469b58d296a04e1f38e849a6970eaecaaca3c18';
-
-// ropsten
-// const MalTayAddress = '0xbB8a87C53811Da984a1d716936fB3e2B9A3Ce45e';
-
-// goerli
-// const MalTayAddress = '0x172Bf95cf3fdd2d5B4C69c315fe517f08D868F65';
-
-const call = provider => address => async data => {
-    let transaction = {
-      to: address,
-      data
-    }
-    return await provider.call(transaction);
-  }
-
-const sendTransaction = signer => address => async data => {
-    const transaction = {
-      data,
-      gasLimit: 1000000,
-      value: 0,
-      to: address,
-      gasPrice: 21,
-    };
-    const response = await signer.sendTransaction(transaction);
-    return response;
-  }
-
 
 const MIN_WIDTH = 800;
 
 function getPageSize(noOfPages, {width, height}) {
-  // console.log('--dimensions', noOfPages, {width, height});
   if (width < MIN_WIDTH) return {minWidth: width, minHeight: height};
 
   return {width: width / noOfPages, height};
@@ -66,12 +35,16 @@ class Taylor2 extends Component {
       errors: '',
       provider: null,
       signer: null,
+      rootAddress: null,
+      taycall: null,
+      taysend: null,
     }
 
     this.onContentSizeChange = this.onContentSizeChange.bind(this);
     this.getWindowDimensions = this.getWindowDimensions.bind(this);
     this.onTextChange = this.onTextChange.bind(this);
     this.execute = this.execute.bind(this);
+    this.onRootChange = this.onRootChange.bind(this);
 
     this.setWeb3();
   }
@@ -80,9 +53,14 @@ class Taylor2 extends Component {
     const { provider, signer } = await getProvider();
     const chainid = (await provider.getNetwork()).chainId;
     this.setState({ provider, signer });
+    this.onRootChange();
+  }
 
-    this.taycall = call(provider)(MalTayAddress);
-    this.taysend = sendTransaction(signer)(MalTayAddress);
+  onRootChange(taycall, taysend) {
+    this.setState({
+        taycall,
+        taysend,
+    });
     this.execute();
   }
 
@@ -93,7 +71,7 @@ class Taylor2 extends Component {
       if (!isTransaction) {
         let encoded;
         try {
-            encoded = await this.taycall(encdata);
+            encoded = await this.state.taycall(encdata);
         } catch (e) {}
         let result;
         try {
@@ -103,7 +81,7 @@ class Taylor2 extends Component {
       } else if (force) {
           let response, receipt = {};
           try {
-            response = await this.taysend(encdata);
+            response = await this.state.taysend(encdata);
             this.setState({ result: [{ receipt: response }] });
             receipt = await response.wait();
           } catch (e) {}
@@ -155,7 +133,7 @@ class Taylor2 extends Component {
     const consoleStyles = { ...styles, width: styles.width * 2, height: styles.height - editorStyles.height }
     const panelStyles = { ...styles }
 
-    const {code, result, errors} = this.state;
+    const {code, result, errors, taycall, taysend} = this.state;
 
     return (
         <ScrollView
@@ -193,8 +171,10 @@ class Taylor2 extends Component {
                 <Icon type="FontAwesome" name='play' />
             </Button>
             <MalTayContract
-                currentGraph={null}
+                taycall={taycall}
+                taysend={taysend}
                 styles={{...panelStyles}}
+                onRootChange={this.onRootChange}
             />
         </ScrollView>
     );

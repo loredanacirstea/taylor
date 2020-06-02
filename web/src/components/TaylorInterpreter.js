@@ -34,7 +34,6 @@ class TaylorInterpreter extends Component {
     const { provider, signer } = await getProvider();
     const chainid = (await provider.getNetwork()).chainId;
     const addressData = getAddress(chainid);
-    console.log('chainid', chainid, addressData);
     this.setState({ addressData, provider, signer });
 
     const types = await this.getStoredTypes(provider, addressData);
@@ -49,7 +48,6 @@ class TaylorInterpreter extends Component {
   }
 
   async onChangeAddress(address) {
-    console.log('onChangeAddress', address);
     const { provider  } = this.state;
     const chainid = (await provider.getNetwork()).chainId;
     storeAddress(chainid, address);
@@ -93,6 +91,7 @@ class TaylorInterpreter extends Component {
   async onTypeSave() {
     const { currentType, signer, addressData } = this.state;
     const { result, errors } = this.props.currentGraph;
+
     let encodedData;
     if (result.result) {
       const { steps, tr } = result.result[0];
@@ -108,7 +107,6 @@ class TaylorInterpreter extends Component {
     const {styles} = this.props;
     const { types, addressData, executeAnswer } = this.state;
     const { result, errors } = this.props.currentGraph || {};
-
     const tfunctions = result && result.result && result.result[0] ? result.result[0].tr : {};
 
     return (

@@ -59,6 +59,31 @@ const getAddress = (chainid) => {
   return { ...addressData, block: addressData.block || 0 };
 }
 
+const MALTAY_KEY = 'MalTayAddresses';
+const addAddress = (chainid, address, name) => {
+  const key = MALTAY_KEY + '_' + chainid;
+  const addresses = getAddresses(chainid);
+  addresses[name] = address;
+  addresses.root = name;
+  window.localStorage.setItem(key, JSON.stringify(addresses));
+}
+
+const getAddresses = (chainid) => {
+  const key = MALTAY_KEY + '_' + chainid;
+  const addresses = localStorage.getItem(key) || '{}';
+  return JSON.parse(addresses);
+}
+
+const getNamedAddress = (chainid, name) => {
+  const addresses = getAddresses(chainid);
+  return addresses[name];
+}
+
+const clearAddresses = (chainid) => {
+  const key = MALTAY_KEY + '_' + chainid;
+  localStorage.setItem(key, '{}');
+}
+
 export {
   getGrammar,
   storeGrammar,
@@ -66,4 +91,8 @@ export {
   getCode,
   storeAddress,
   getAddress,
+  addAddress,
+  getAddresses,
+  getNamedAddress,
+  clearAddresses,
 }

@@ -1,11 +1,31 @@
 import React, { Component } from 'react';
 import { View, Item, Input, Text, Button, Icon, Picker } from 'native-base';
 import { getProvider } from '../utils/web3.js';
-import { getStoredTypes, saveType, executeType } from '../utils/interpreter.js';
-import { storeAddress, getAddress } from '../utils/taylor.js';
-import * as taylorUtils from 'taylor/taylor/interpreter.js';
+import { addAddress, getAddresses } from '../utils/taylor.js';
+import maltay from 'taylor/maltay/maltay.js';
 
 const MalTay = '0xebbe8e1d1f0e63185fdff556aaad031682924ab5';
+
+const call = provider => address => async data => {
+  let transaction = {
+    to: address,
+    data
+  }
+  return await provider.call(transaction);
+}
+
+const sendTransaction = signer => address => async data => {
+  const transaction = {
+    data,
+    gasLimit: 1000000,
+    value: 0,
+    to: address,
+    gasPrice: 21,
+  };
+  const response = await signer.sendTransaction(transaction);
+  return response;
+}
+
 
 class MalTayContract extends Component {
   constructor(props) {
@@ -14,173 +34,208 @@ class MalTayContract extends Component {
     this.state = {
       provider: null,
       signer: null,
-      addressData: null,
-      types: [],
-      currentType: {},
-      currentUserInputs: null,
-      currentSignature: null,
+      rootAddress: {},
+      addresses: {},
+      rootFunctions: [],
+      addrToBeRegistered: null,
+      registered: {},
     }
 
     this.onChangeAddress = this.onChangeAddress.bind(this);
-    this.changeCurrentName = this.changeCurrentName.bind(this);
-    this.changeCurrentSig = this.changeCurrentSig.bind(this);
-    this.onTypeSave = this.onTypeSave.bind(this);
-    this.changeUserInputs = this.changeUserInputs.bind(this);
-    this.onExecute = this.onExecute.bind(this);
-    this.changeCurrentSig2 = this.changeCurrentSig2.bind(this);
-
+    this.onChangeCurrentName = this.onChangeCurrentName.bind(this);
+    this.onAddressSave = this.onAddressSave.bind(this);
+    this.onChangeRootAddress = this.onChangeRootAddress.bind(this);
+    this.onChangeRegisteredAddress = this.onChangeRegisteredAddress.bind(this);
+    this.onRegister = this.onRegister.bind(this);
+  
     this.setWeb3();
   }
 
   async setWeb3() {
     const { provider, signer } = await getProvider();
     const chainid = (await provider.getNetwork()).chainId;
-    const addressData = getAddress(chainid);
-    console.log('chainid', chainid, addressData);
-    this.setState({ addressData, provider, signer });
-
-    const types = await this.getStoredTypes(provider, addressData);
-    this.setState({ types });
+    const addresses = getAddresses(chainid);
+    const rootAddress = {name: addresses.root, address: addresses[addresses.root]};
+    this.setState({ addresses, rootAddress, provider, signer });
+    
+    this._taycall = call(provider);
+    this._taysend = sendTransaction(signer);
+    this.setContract(rootAddress.address);
+    this.setRegistered(rootAddress.address);
   }
 
-  getStoredTypes(provider, addressData) {
-    if (!provider || !addressData) {
-      ({ provider, addressData } = this.state);
+  setContract(address) {
+    address = address || this.state.rootAddress;
+    if(!address) {
+        this.taycall = null;
+        this.taysend = null
+    } else {
+      this.taycall = this._taycall(address);
+      this.taysend = this._taysend(address);
+      this.props.onRootChange(this.taycall, this.taysend);
     }
-    return getStoredTypes(provider)(addressData);
   }
+
+  async setRegistered(address) {
+    address = address || this.state.rootAddress.address;
+    if (!address) return;
+
+    let count = await this.taycall('0x44444440');
+    count = parseInt(count, 16);
+    let registered = {};
+
+    for (let i = 1; i <= count; i++) {
+      const expr = maltay.expr2h('(getregistered ' + i + ')');
+      let raddr = await this.props.taycall(expr);
+      raddr = '0x' + raddr.substring(10);
+      registered[raddr] = raddr;
+    }
+    this.setState({ registered });
+  }
+
+  // async setFunctions(address) {
+  //   address = address || this.state.rootAddress.address;
+  //   if (!address) return;
+
+  //   let rootFunctions = [];
+    
+  //   let count = await this.taycall('0x44444441');
+  //   console.log('count', count);
+  //   // count = parseInt(count, 16);
+  //   // let registered = {};
+
+  //   // for (let i = 1; i <= count; i++) {
+  //   //   const expr = maltay.expr2h('(getregistered ' + i + ')');
+  //   //   let raddr = await this.props.taycall(expr);
+  //   //   raddr = '0x' + raddr.substring(10);
+  //   //   registered[raddr] = raddr;
+  //   // }
+
+  //   // this.setState({ rootFunctions });
+  // }
 
   async onChangeAddress(address) {
-    console.log('onChangeAddress', address);
+    const { rootAddress } = this.state;
+    rootAddress.address = address;
+    this.setState({ rootAddress });
+  }
+
+  onChangeCurrentName(name) {
+    const { rootAddress } = this.state;
+    rootAddress.name = name;
+    this.setState({ rootAddress });
+  }
+
+  async onAddressSave() {
+    const { rootAddress } = this.state;
     const { provider  } = this.state;
     const chainid = (await provider.getNetwork()).chainId;
-    storeAddress(chainid, address);
-    const addressData = { address, block: 0 };
 
-    this.setState({ addressData })
-    const types = await this.getStoredTypes(provider, addressData);
-    this.setState({ types });
+    addAddress(chainid, rootAddress.address, rootAddress.name);
+    this.setContract(rootAddress.address);
+    this.setRegistered(rootAddress);
   }
 
-  changeCurrentName(name) {
-    const { currentType } = this.state;
-    currentType.name = name;
-    this.setState({ currentType });
+  onChangeRootAddress(newval) {
+    const { addresses } = this.state;
+    const name = Object.keys(addresses).find(name => addresses[name] === newval);
+    const rootAddress = { name, address: newval};
+    this.setState({ rootAddress });
+    this.setContract(rootAddress.address);
+    this.setRegistered(newval);
   }
 
-  changeCurrentSig(signature) {
-    const { currentType } = this.state;
-    currentType.signature = signature;
-    this.setState({ currentType });
+  onChangeRegisteredAddress(newval) {
+    this.setState({ addrToBeRegistered: newval });
   }
 
-  changeCurrentSig2(currentSignature) {
-    console.log('changeCurrentSig2', currentSignature);
-    this.setState({ currentSignature });
-  }
+  async onRegister() {
+    const { addrToBeRegistered } = this.state;
+    
+    const expr = maltay.expr2h('(register! 0x"' + addrToBeRegistered.substring(2) + '")');
+    const fin = await this.taysend(expr);
 
-  changeUserInputs(currentUserInputs) {
-    this.setState({ currentUserInputs });
-  }
-
-  async onExecute() {
-    const { currentUserInputs, currentType, provider, addressData, currentSignature } = this.state;
-    let args = (currentUserInputs || '').split(',');
-    args = taylorUtils.encodeInput(args);
-    args = taylorUtils.strip0x(currentSignature || currentType.signature) + args;
-
-    const executeAnswer = await executeType(provider)(addressData.address)(args);
-    console.log('executeAnswer', executeAnswer)
-    this.setState({ executeAnswer });
-  }
-
-  async onTypeSave() {
-    const { currentType, signer, addressData } = this.state;
-    const { result, errors } = this.props.currentGraph;
-    console.log('onTypeSave', currentType, this.props.currentGraph);
-    let encodedData;
-    if (result.result) {
-      const { steps, tr } = result.result[0];
-      const {hadc_inputs, user_inputs, prog_steps} = taylorUtils.buildInputs(steps, tr);
-      console.log('--- buildInputs ', hadc_inputs, user_inputs, prog_steps);
-
-      encodedData = taylorUtils.buildType(currentType.name, currentType.signature, {hadc_inputs, user_inputs, prog_steps});
-      console.log('-----encodedData', encodedData);
-
-      saveType(signer)(addressData.address)(encodedData.encoded);
-    }
+    // TODO check receipt for success;
+    this.setRegistered();
   }
 
   render() {
     const {styles} = this.props;
-    const { types, addressData, executeAnswer } = this.state;
-    const { result, errors } = this.props.currentGraph || {};
-
-    // console.log('types', types);
-    const tfunctions = result && result.result && result.result[0] ? result.result[0].tr : {};
+    const { rootAddress, addresses, rootFunctions, registered } = this.state;
 
     return (
-      <View style={{ ...styles}}>
+      <View style={{ ...styles, fontSize: 18}}>
         <View style={{ ...styles, flex: 1 }}>
+          <Item style={{ width: styles.width }}>
+            <Input
+              style={{ color: 'white' }}
+              placeholder='address'
+              label='address'
+              onChangeText={this.onChangeAddress}
+            />
+          </Item>
           <Item style={{ width: styles.width }}>
             <Input
               style={{ color: 'white' }}
               placeholder='name'
               label='name'
-              onChangeText={this.changeCurrentName}
+              onChangeText={this.onChangeCurrentName}
             />
           </Item>
-          <Item style={{ width: styles.width }}>
-            <Input
-              style={{ color: 'white' }}
-              placeholder='signature'
-              label='signature'
-              onChangeText={this.changeCurrentSig}
-            />
-          </Item>
-          <Button small light onClick={this.onTypeSave}>
+          <Button small light onClick={this.onAddressSave}>
             <Icon name='save' />
           </Button>
         </View>
         <View style={{ ...styles, flex: 1 }}>
-          <Item style={{ width: styles.width }}>
-            <Input
-              value={ addressData ? addressData.address : '' }
-              style={{ color: 'white' }}
-              placeholder='interpreter address'
-              onChangeText={this.onChangeAddress}
-            />
-          </Item>
-          <Text style={{ color: 'grey' }}>{JSON.stringify(types)}</Text>
-
           <Item picker>
             <Picker
               mode="dropdown"
               style={{ width: styles.width, backgroundColor: 'rgb(169, 169, 169)' }}
-              selectedValue={this.state.currentSignature}
-              onValueChange={this.changeCurrentSig2}
+              selectedValue={this.state.rootAddress.name}
+              onValueChange={this.onChangeRootAddress}
             >
-              <Picker.Item label="select signature" value={''} />
+              <Picker.Item label="select root" value={''} />
               {
-                Object.keys(tfunctions).map(name => {
-                  return <Picker.Item label={name} value={tfunctions[name].sig} key={tfunctions[name].sig}/>
+                Object.keys(addresses).map(name => {
+                  return <Picker.Item label={name} value={addresses[name]} key={name}/>
                 })
               }
             </Picker>
           </Item>
-
+          <View style={{ width: styles.width, flex: 1, paddingTop: 10 }}>
+            <Text style={{ color: 'beige', fontSize: 18 }}>Root Contract</Text>
+            <br></br>
+            <Text style={{ color: 'beige', fontSize: 18 }}>{ rootAddress.name || '-' } - { rootAddress.address || '-' }</Text>
+          </View>
+          <Item picker>
+            <Picker
+              mode="dropdown"
+              style={{ width: styles.width, backgroundColor: 'rgb(169, 169, 169)' }}
+              selectedValue={this.state.rootAddress.name}
+              onValueChange={this.onChangeRootAddress}
+            >
+              <Picker.Item label="select registered contract" value={''} />
+              {
+                Object.keys(registered).map(name => {
+                  return <Picker.Item label={name} value={addresses[name]} key={name}/>
+                })
+              }
+            </Picker>
+          </Item>
           <Item style={{ width: styles.width }}>
             <Input
               style={{ color: 'white' }}
-              placeholder='input'
-              label='input'
-              onChangeText={this.changeUserInputs}
+              placeholder='address'
+              label='address'
+              onChangeText={this.onChangeRegisteredAddress}
             />
           </Item>
-          <Button small light onClick={this.onExecute}>
-            <Icon name='play' />
+          <Button small light onClick={this.onRegister}>
+            <Text>register</Text>
           </Button>
-          <Text style={{ color: 'grey' }}>{JSON.stringify(executeAnswer)}</Text>
+          <View>
+              <Text></Text>
+          </View>
         </View>
       </View>
     );
