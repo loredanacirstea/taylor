@@ -4,8 +4,6 @@ import { getProvider } from '../utils/web3.js';
 import { addAddress, getAddresses } from '../utils/taylor.js';
 import maltay from 'taylor/maltay/maltay.js';
 
-const MalTay = '0xebbe8e1d1f0e63185fdff556aaad031682924ab5';
-
 const call = provider => address => async data => {
   let transaction = {
     to: address,
@@ -153,7 +151,7 @@ class MalTayContract extends Component {
     const { addrToBeRegistered } = this.state;
     
     const expr = maltay.expr2h('(register! 0x"' + addrToBeRegistered.substring(2) + '")');
-    const fin = await this.taysend(expr);
+    await this.taysend(expr);
 
     // TODO check receipt for success;
     this.setRegistered();
@@ -161,7 +159,7 @@ class MalTayContract extends Component {
 
   render() {
     const {styles} = this.props;
-    const { rootAddress, addresses, rootFunctions, registered } = this.state;
+    const { rootAddress, addresses, registered } = this.state;
 
     return (
       <View style={{ ...styles, fontSize: 18}}>
