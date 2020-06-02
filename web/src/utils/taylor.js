@@ -4,12 +4,12 @@ const STORAGE_KEY_TAYLOR_ADDRESS = 'TaylorInterpreterAddress';
 
 const DEFAULT_DEPLOYMENT = {
   5777: {
-    address: '0xCFF8dc8A5e2Af7fcc6BE124d3C91FA50186A8c96',
-    block: 0,
+    contract1: '0xCFF8dc8A5e2Af7fcc6BE124d3C91FA50186A8c96',
+    root: 'contract1'
   },
   3: {
-    address: '0x7D4150f492f93e2eDD7FC0Fc62c9193b322f75e5',
-    block: 0,
+    contract1: '0x7D4150f492f93e2eDD7FC0Fc62c9193b322f75e5',
+    root: 'contract1',
   },
 }
 
