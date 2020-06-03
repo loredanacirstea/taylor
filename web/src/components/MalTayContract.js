@@ -4,6 +4,17 @@ import { getProvider } from '../utils/web3.js';
 import { addAddress, getAddresses } from '../utils/taylor.js';
 import maltay from 'taylor/maltay/maltay.js';
 import { web3util } from '../utils/contract.js';
+import { editorOpts } from '../utils/config.js';
+
+const textStyle = {
+  color: 'beige',
+  fontSize: editorOpts.fontSize,
+  fontFamily: 'monospace',
+}
+
+const pickerStyle = {
+  backgroundColor: 'rgb(169, 169, 169)',
+}
 
 class MalTayContract extends Component {
   constructor(props) {
@@ -102,13 +113,18 @@ class MalTayContract extends Component {
     this.setRegistered(rootAddress);
   }
 
-  onChangeRootAddress(newval) {
+  onChangeRootAddress(newaddress) {
     const { addresses } = this.state;
-    const name = Object.keys(addresses).find(name => addresses[name] === newval);
-    const rootAddress = { name, address: newval};
+    const name = Object.keys(addresses).find(name => addresses[name] === newaddress) || newaddress;
+
+    const rootAddress = { name, address: newaddress};
+    if (!addresses[name]) {
+      addresses[name] = newaddress;
+      this.setState({ addresses });
+    }
     this.setState({ rootAddress });
     this.setContract(rootAddress.address);
-    this.setRegistered(newval);
+    this.setRegistered(newaddress);
   }
 
   onChangeRegisteredAddress(newval) {
@@ -127,22 +143,91 @@ class MalTayContract extends Component {
 
   render() {
     const {styles} = this.props;
+    styles.width -= 5;
     const { rootAddress, addresses, registered, rootFunctions } = this.state;
 
+    const addrs = Object.assign({}, addresses);
+    delete addrs.root;
+    const rootOptions = Object.keys(addrs)
+      .map(name => {
+        return <Picker.Item label={name} value={addresses[name]} key={name}/>
+      })
+
     return (
-      <View style={{ ...styles, fontSize: 18}}>
         <View style={{ ...styles, flex: 1 }}>
+          <Text style={textStyle}>load Root:</Text>
+
+          <Picker
+            mode="dropdown"
+            style={{ width: styles.width, height: 30, ...pickerStyle }}
+            selectedValue={this.state.rootAddress.name}
+            onValueChange={this.onChangeRootAddress}
+          >
+            { rootOptions }
+          </Picker>
+
+          <br></br><br></br>
+          <Text style={{...textStyle, fontWeight: 'bold', fontSize: textStyle.fontSize + 2}}>Address: { rootAddress.address || '-' }</Text>
+          <br></br>
+          <Text style={textStyle}>registered contracts:</Text>
+
+          <Picker
+            mode="dropdown"
+            style={{ width: styles.width, ...pickerStyle }}
+            selectedValue={this.state.rootAddress.name}
+            onValueChange={this.onChangeRootAddress}
+          >
+            <Picker.Item label="..." value={''} />
+            {
+              Object.keys(registered).map(name => {
+                return <Picker.Item label={name} value={addresses[name]} key={name}/>
+              })
+            }
+          </Picker>
+
+          <br></br>
+          <Text style={textStyle}>environment functions:</Text>
+
+          <Picker
+            mode="dropdown"
+            style={{ width: styles.width, ...pickerStyle }}
+          >
+            <Picker.Item label="..." value={''} />
+            {
+              rootFunctions.map((name, i) => {
+                return <Picker.Item label={name} value={name} key={i}/>
+              })
+            }
+          </Picker>
+
+          <br></br><br></br><br></br><br></br>
+          <Text style={textStyle}>register new Taylor contract in Root:</Text>
           <Item style={{ width: styles.width }}>
             <Input
-              style={{ color: 'white' }}
+              style={textStyle}
+              placeholder='address'
+              label='address'
+              onChangeText={this.onChangeRegisteredAddress}
+            />
+            <Button small light onClick={this.onRegister}>
+              <Icon name='save' type='FontAwesome' />
+            </Button>
+          </Item>
+          
+          
+          <br></br><br></br><br></br>
+          <Text style={textStyle}>load/save Taylor contract:</Text>
+          <Item style={{ width: styles.width }}>
+            <Input
+              style={textStyle}
               placeholder='address'
               label='address'
               onChangeText={this.onChangeAddress}
             />
           </Item>
-          <Item style={{ width: styles.width }}>
+          <Item style={{ width: styles.width, marginBottom: 5 }}>
             <Input
-              style={{ color: 'white' }}
+              style={textStyle}
               placeholder='name'
               label='name'
               onChangeText={this.onChangeCurrentName}
@@ -152,73 +237,6 @@ class MalTayContract extends Component {
             <Icon name='save' />
           </Button>
         </View>
-        <View style={{ ...styles, flex: 1 }}>
-          <Item picker>
-            <Picker
-              mode="dropdown"
-              style={{ width: styles.width, backgroundColor: 'rgb(169, 169, 169)' }}
-              selectedValue={this.state.rootAddress.name}
-              onValueChange={this.onChangeRootAddress}
-            >
-              <Picker.Item label="select root" value={''} />
-              {
-                Object.keys(addresses).map(name => {
-                  return <Picker.Item label={name} value={addresses[name]} key={name}/>
-                })
-              }
-            </Picker>
-          </Item>
-          <View style={{ width: styles.width, flex: 1, paddingTop: 10 }}>
-            <Text style={{ color: 'beige', fontSize: 18 }}>Root Contract</Text>
-            <br></br>
-            <Text style={{ color: 'beige', fontSize: 18 }}>{ rootAddress.name || '-' } - { rootAddress.address || '-' }</Text>
-          </View>
-          <Item picker>
-            <Picker
-              mode="dropdown"
-              style={{ width: styles.width, backgroundColor: 'rgb(169, 169, 169)' }}
-              selectedValue={this.state.rootAddress.name}
-              onValueChange={this.onChangeRootAddress}
-            >
-              <Picker.Item label="select registered contract" value={''} />
-              {
-                Object.keys(registered).map(name => {
-                  return <Picker.Item label={name} value={addresses[name]} key={name}/>
-                })
-              }
-            </Picker>
-          </Item>
-          <Item style={{ width: styles.width }}>
-            <Input
-              style={{ color: 'white' }}
-              placeholder='address'
-              label='address'
-              onChangeText={this.onChangeRegisteredAddress}
-            />
-          </Item>
-          <Button small light onClick={this.onRegister}>
-            <Text>register</Text>
-          </Button>
-          <View>
-              <Text></Text>
-          </View>
-        </View>
-        <View style={{ ...styles, flex: 1 }}>
-          <Item picker>
-            <Picker
-              mode="dropdown"
-              style={{ width: styles.width, backgroundColor: 'rgb(169, 169, 169)' }}
-            >
-              <Picker.Item label="available functions" value={''} />
-              {
-                rootFunctions.map(name => {
-                  return <Picker.Item label={name} value={name} key={name}/>
-                })
-              }
-            </Picker>
-          </Item>
-        </View>
-      </View>
     );
   }
 }
