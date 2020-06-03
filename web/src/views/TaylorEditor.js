@@ -8,6 +8,7 @@ import { getProvider } from '../utils/web3.js';
 import MalTayContract from '../components/MalTayContract.js';
 import * as taylorUtils from '../utils/taylor.js';
 import maltay from 'taylor/maltay/maltay.js';
+import { monacoTaylorExtension } from '../utils/taylor_editor.js';
 
 
 const MIN_WIDTH = 800;
@@ -112,6 +113,10 @@ class TaylorEditor extends Component {
     editor.focus();
   }
 
+  editorWillMount(monaco) {
+    monacoTaylorExtension(monaco, maltay.nativeEnv);
+  }
+
   onTextChange(code) {
       try {
         const encoded = maltay.expr2h(code);
@@ -148,11 +153,12 @@ class TaylorEditor extends Component {
                 <MonacoEditor
                     width={editorStyles.width}
                     height={editorStyles.height}
-                    language="javascript"
+                    language="taylor"
                     theme="vs-dark"
                     value={code}
                     options={editorOpts}
                     onChange={this.onTextChange}
+                    editorWillMount={this.editorWillMount}
                     editorDidMount={this.editorDidMount}
                 />
                 <Out 

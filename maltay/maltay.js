@@ -2,6 +2,7 @@ const ethers = require('ethers');
 const { hexStripZeros, hexZeroPad } = ethers.utils;
 const malReader = require('./mal/reader.js');
 const malTypes = require('./mal/types.js');
+const _nativeEnv = require('./native.js');
 require('./extensions.js');
 
 const u2b = value => value.toString(2);
@@ -69,112 +70,7 @@ const numberid = {
     uint: '01010010001',
 }
 
-const _nativeEnv = {
-    // EVM specific
-    add:          { mutable: false, arity: 2 },
-    sub:          { mutable: false, arity: 2 },
-    mul:          { mutable: false, arity: 2 },
-    div:          { mutable: false, arity: 2 },
-    sdiv:         { mutable: false, arity: 2 },
-    mod:          { mutable: false, arity: 2 },
-    smod:         { mutable: false, arity: 2 },
-    exp:          { mutable: false, arity: 2 },
-    not:          { mutable: false, arity: 1 },
-    lt:           { mutable: false, arity: 2 },
-    gt:           { mutable: false, arity: 2 },
-    slt:          { mutable: false, arity: 2 },
-    sgt:          { mutable: false, arity: 2 },
-    eq:           { mutable: false, arity: 2 },
-    iszero:       { mutable: false, arity: 1 },
-    and:          { mutable: false, arity: 2 },
-    or:           { mutable: false, arity: 2 },
-    xor:          { mutable: false, arity: 2 },
-    byte:         { mutable: false, arity: 2 },
-    shl:          { mutable: false, arity: 2 },
-    shr:          { mutable: false, arity: 2 },
-    sar:          { mutable: false, arity: 2 },
-    addmod:       { mutable: false, arity: 3 },
-    mulmod:       { mutable: false, arity: 3 },
-    signextend:   { mutable: false, arity: 2 },
-    keccak256:    { mutable: false, arity: 2 },
-    call:         { mutable: true, arity: 2 },
-    callcode:     { mutable: true, arity: 2 },
-    delegatecall: { mutable: true, arity: 2 },
-    staticcall:   { mutable: false, arity: 2 },
-    
-    // Mal specific
-    list:         { mutable: false, arity: null },
-    apply:        { mutable: false, arity: null },
-    lambda:       { mutable: false, arity: null },
-    'fn*':        { mutable: false, arity: null },
-    'def!':       { mutable: false, arity: 2 },
-    getf:         { mutable: false, arity: null },
-    if:           { mutable: false, arity: 3 },
-    contig:       { mutable: false, arity: 2 },
-    concat:       { mutable: false, arity: 2 },
-    map:          { mutable: false, arity: 2 },
-    reduce:       { mutable: false, arity: 3 },
-    nth:          { mutable: false, arity: 2 },
-    first:        { mutable: false, arity: 1 },
-    rest:         { mutable: false, arity: 1 },
-    'empty?':     { mutable: false, arity: 1 },
-    'true?':      { mutable: false, arity: 1 },
-    'false?':     { mutable: false, arity: 1 },
-    "let*":       { mutable: false, arity: 2 },
 
-    // Mal specific - unimplemented, just placeholders
-    cons:         { mutable: false, arity: 2, notimp: true },  // prepend item to list
-    concat2:      { mutable: false, arity: null, notimp: true },  // concats lists
-    'nil?':       { mutable: false, arity: 1, notimp: true },
-    'list?':      { mutable: false, arity: 1, notimp: true },
-    vector:       { mutable: false, arity: null, notimp: true },
-    'vector?':    { mutable: false, arity: 1, notimp: true },
-    'sequential?':{ mutable: false, arity: 1, notimp: true },
-    'hash-map':   { mutable: false, arity: null, notimp: true },
-    'map?':       { mutable: false, arity: 1, notimp: true },
-    assoc:        { mutable: false, arity: null, notimp: true },
-    dissoc:       { mutable: false, arity: 2, notimp: true },
-    get:          { mutable: false, arity: 2, notimp: true },
-    'contains?':  { mutable: false, arity: 2, notimp: true },
-    keys:         { mutable: false, arity: 1, notimp: true },
-    vals:         { mutable: false, arity: 1, notimp: true },
-    'fn?':        { mutable: false, arity: 1, notimp: true },
-    'string?':    { mutable: false, arity: 1, notimp: true },
-    'number?':    { mutable: false, arity: 1, notimp: true },
-    seq:          { mutable: false, arity: 1, notimp: true },
-    conj:         { mutable: false, arity: 1, notimp: true },
-    symbol:       { mutable: false, arity: 1, notimp: true },
-    'symbol?':    { mutable: false, arity: 1, notimp: true },
-    keyword:      { mutable: false, arity: 1, notimp: true },
-    'keyword?':   { mutable: false, arity: 1, notimp: true },
-    count:        { mutable: false, arity: 1, notimp: true },
-    do:           { mutable: false, arity: 1, notimp: true },
-    'try*':       { mutable: false, arity: 2, notimp: true },
-    'catch*':     { mutable: false, arity: 2, notimp: true },
-    throw:        { mutable: false, arity: 1, notimp: true },
-    'defmacro!':  { mutable: false, arity: 2, notimp: true },
-    is_macro_call:{ mutable: false, arity: 2, notimp: true },
-    macroexpand:  { mutable: false, arity: 2, notimp: true },
-    atom:         { mutable: false, arity: 1, notimp: true },
-    'atom?':      { mutable: false, arity: 1, notimp: true },
-    deref:        { mutable: false, arity: 1, notimp: true },
-    'swap!':      { mutable: false, arity: null, notimp: true },
-    'reset!':     { mutable: false, arity: 1, notimp: true },
-    'time-ms':    { mutable: false, arity: 0, notimp: true },
-    meta:         { mutable: false, arity: 1, notimp: true },
-    'with-meta':  { mutable: false, arity: 2, notimp: true },
-    quote:        { mutable: false, arity: null, notimp: true },
-    quasiquote:   { mutable: false, arity: null, notimp: true },
-    prn:          { mutable: false, arity: null, notimp: true },
-    'pr-str':     { mutable: false, arity: null, notimp: true },
-    str:          { mutable: false, arity: null, notimp: true },
-    println:      { mutable: false, arity: null, notimp: true },
-    readline:     { mutable: false, arity: 1, notimp: true },
-    
-    // Taylor specific
-    'register!':  { mutable: false, arity: 1 },
-    'getregistered':  { mutable: false, arity: 1 },
-}
 
 const nativeEnv = {};
 Object.keys(_nativeEnv).forEach((key, id) => {
