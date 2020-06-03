@@ -156,49 +156,54 @@ class MalTayContract extends Component {
     return (
         <View style={{ ...styles, flex: 1 }}>
           <Text style={textStyle}>load Root:</Text>
-
-          <Picker
-            mode="dropdown"
-            style={{ width: styles.width, height: 30, ...pickerStyle }}
-            selectedValue={this.state.rootAddress.name}
-            onValueChange={this.onChangeRootAddress}
-          >
-            { rootOptions }
-          </Picker>
+          <Item picker style={{ borderColor: false}}>
+            <Picker
+              mode="dropdown"
+              style={{ width: styles.width, ...pickerStyle }}
+              selectedValue={this.state.rootAddress.name}
+              onValueChange={this.onChangeRootAddress}
+            >
+              { rootOptions }
+            </Picker>
+          </Item>
 
           <br></br><br></br>
           <Text style={{...textStyle, fontWeight: 'bold', fontSize: textStyle.fontSize + 2}}>Address: { rootAddress.address || '-' }</Text>
           <br></br>
           <Text style={textStyle}>registered contracts:</Text>
 
-          <Picker
-            mode="dropdown"
-            style={{ width: styles.width, ...pickerStyle }}
-            selectedValue={this.state.rootAddress.name}
-            onValueChange={this.onChangeRootAddress}
-          >
-            <Picker.Item label="..." value={''} />
-            {
-              Object.keys(registered).map(name => {
-                return <Picker.Item label={name} value={addresses[name]} key={name}/>
-              })
-            }
-          </Picker>
+          <Item picker style={{ borderColor: false}}>
+            <Picker
+              mode="dropdown"
+              style={{ width: styles.width, ...pickerStyle }}
+              selectedValue={this.state.rootAddress.name}
+              onValueChange={this.onChangeRootAddress}
+            >
+              <Picker.Item label="..." value={''} />
+              {
+                Object.keys(registered).map(name => {
+                  return <Picker.Item label={name} value={addresses[name]} key={name}/>
+                })
+              }
+            </Picker>
+          </Item>
 
           <br></br>
           <Text style={textStyle}>environment functions:</Text>
-
-          <Picker
-            mode="dropdown"
-            style={{ width: styles.width, ...pickerStyle }}
-          >
-            <Picker.Item label="..." value={''} />
-            {
-              rootFunctions.map((name, i) => {
-                return <Picker.Item label={name} value={name} key={i}/>
-              })
-            }
-          </Picker>
+          
+          <Item picker style={{ borderColor: false}}>
+            <Picker
+              mode="dropdown"
+              style={{ width: styles.width, ...pickerStyle }}
+            >
+              <Picker.Item label="..." value={''} />
+              {
+                rootFunctions.map((name, i) => {
+                  return <Picker.Item label={name} value={name} key={i}/>
+                })
+              }
+            </Picker>
+          </Item>
 
           <br></br><br></br><br></br><br></br>
           <Text style={textStyle}>register new Taylor contract in Root:</Text>
