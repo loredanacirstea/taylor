@@ -2,6 +2,7 @@ const fs = require('fs')
 const solc = require('solc')
 const ethers = require('ethers');
 const yulp = require('yulp');
+require('../../maltay/extensions.js');
 
 const PROVIDER_URL = 'http://192.168.1.140:8545';
 const MALLT_PATH = './contracts/mal_like_tay.sol';
@@ -72,12 +73,35 @@ const call = provider => address => async data => {
   return await provider.call(transaction);
 }
 
+const getLogs = provider => address => async topic => {
+  const filter = {
+    address: address,
+    topics: [ topic ],
+    fromBlock: 0,
+    toBlock: 'latest',
+  }
+  return provider.getLogs(filter);
+}
+
+const getStoredFunctions = getLogs => async () => {
+  const topic = '0x00000000000000000000000000000000000000000000000000000000ffffffff';
+  const logs = await getLogs(topic);
+
+  return logs.map(log => {
+    log.name = log.topics[1].substring(2).hexDecode();
+    log.signature = '0x' + log.topics[2].substring(58);
+    return log;
+  });
+}
+
 const getTaylor = async () => {
   const address = await deployContract(signer)(MALLT_PATH);
   return {
     address: address.toLowerCase(),
     send: sendTransaction(signer)(address),
     call: call(provider)(address),
+    getLogs: getLogs(provider)(address),
+    getStoredFunctions: getStoredFunctions(getLogs(provider)(address)),
   }
 }
 

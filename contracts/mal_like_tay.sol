@@ -24,6 +24,20 @@ object "malLikeTay" {
             getFnByName(0, name)
             return (4, mslice(0, 4))
         }
+
+        // get function count
+        if eq(mslice(_calldata, 4), 0x44444441) {
+            let count := getFnCounter()
+            mstore(0, count)
+            return (0, 32)
+        }
+
+        // get registered count
+        if eq(mslice(_calldata, 4), 0x44444440) {
+            let count := getRegCounter()
+            mstore(0, count)
+            return (0, 32)
+        }
         
         let end, res := eval(_calldata, 0)
         return (res, getTypedLength(res))
@@ -1213,6 +1227,7 @@ object "malLikeTay" {
             storeData(_expr_ptr, mappingFnKey(signature))
             sstore(mappingFnNameKey(name), signature)
             updateFnCounter()
+            log3(0, 0, 0xffffffff, name, signature)
         }
 
         function updateFnCounter() {
