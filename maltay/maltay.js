@@ -69,7 +69,7 @@ const numberid = {
     uint: '01010010001',
 }
 
-const nativeEnv = {
+const _nativeEnv = {
     // EVM specific
     add:          { mutable: false, arity: 2 },
     sub:          { mutable: false, arity: 2 },
@@ -120,62 +120,66 @@ const nativeEnv = {
     'empty?':     { mutable: false, arity: 1 },
     'true?':      { mutable: false, arity: 1 },
     'false?':     { mutable: false, arity: 1 },
+    "let*":       { mutable: false, arity: 2 },
 
     // Mal specific - unimplemented, just placeholders
-    cons:         { mutable: false, arity: 2 },  // prepend item to list
-    concat2:      { mutable: false, arity: null },  // concats lists
-    'nil?':       { mutable: false, arity: 1 },
-    'list?':      { mutable: false, arity: 1 },
-    vector:       { mutable: false, arity: null },
-    'vector?':    { mutable: false, arity: 1 },
-    'sequential?':{ mutable: false, arity: 1 },
-    'hash-map':   { mutable: false, arity: null },
-    'map?':       { mutable: false, arity: 1 },
-    assoc:        { mutable: false, arity: null },
-    dissoc:       { mutable: false, arity: 2 },
-    get:          { mutable: false, arity: 2 },
-    'contains?':  { mutable: false, arity: 2 },
-    keys:         { mutable: false, arity: 1 },
-    vals:         { mutable: false, arity: 1 },
-    'fn?':        { mutable: false, arity: 1 },
-    'string?':    { mutable: false, arity: 1 },
-    'number?':    { mutable: false, arity: 1 },
-    seq:          { mutable: false, arity: 1 },
-    conj:         { mutable: false, arity: 1 },
-    symbol:       { mutable: false, arity: 1 },
-    'symbol?':    { mutable: false, arity: 1 },
-    keyword:      { mutable: false, arity: 1 },
-    'keyword?':   { mutable: false, arity: 1 },
-    count:        { mutable: false, arity: 1 },
-    do:           { mutable: false, arity: 1 },
-    'try*':       { mutable: false, arity: 2 },
-    'catch*':     { mutable: false, arity: 2 },
-    throw:        { mutable: false, arity: 1 },
-    'defmacro!':  { mutable: false, arity: 2 },
-    is_macro_call:{ mutable: false, arity: 2 },
-    macroexpand:  { mutable: false, arity: 2 },
-    atom:         { mutable: false, arity: 1 },
-    'atom?':      { mutable: false, arity: 1 },
-    deref:        { mutable: false, arity: 1 },
-    'swap!':      { mutable: false, arity: null },
-    'reset!':     { mutable: false, arity: 1 },
-    'time-ms':    { mutable: false, arity: 0 },
-    meta:         { mutable: false, arity: 1 },
-    'with-meta':  { mutable: false, arity: 2 },
-    quote:        { mutable: false, arity: null },
-    quasiquote:   { mutable: false, arity: null },
-    prn:          { mutable: false, arity: null },
-    'pr-str':     { mutable: false, arity: null },
-    str:          { mutable: false, arity: null },
-    println:      { mutable: false, arity: null },
-    readline:     { mutable: false, arity: 1 },
+    cons:         { mutable: false, arity: 2, notimp: true },  // prepend item to list
+    concat2:      { mutable: false, arity: null, notimp: true },  // concats lists
+    'nil?':       { mutable: false, arity: 1, notimp: true },
+    'list?':      { mutable: false, arity: 1, notimp: true },
+    vector:       { mutable: false, arity: null, notimp: true },
+    'vector?':    { mutable: false, arity: 1, notimp: true },
+    'sequential?':{ mutable: false, arity: 1, notimp: true },
+    'hash-map':   { mutable: false, arity: null, notimp: true },
+    'map?':       { mutable: false, arity: 1, notimp: true },
+    assoc:        { mutable: false, arity: null, notimp: true },
+    dissoc:       { mutable: false, arity: 2, notimp: true },
+    get:          { mutable: false, arity: 2, notimp: true },
+    'contains?':  { mutable: false, arity: 2, notimp: true },
+    keys:         { mutable: false, arity: 1, notimp: true },
+    vals:         { mutable: false, arity: 1, notimp: true },
+    'fn?':        { mutable: false, arity: 1, notimp: true },
+    'string?':    { mutable: false, arity: 1, notimp: true },
+    'number?':    { mutable: false, arity: 1, notimp: true },
+    seq:          { mutable: false, arity: 1, notimp: true },
+    conj:         { mutable: false, arity: 1, notimp: true },
+    symbol:       { mutable: false, arity: 1, notimp: true },
+    'symbol?':    { mutable: false, arity: 1, notimp: true },
+    keyword:      { mutable: false, arity: 1, notimp: true },
+    'keyword?':   { mutable: false, arity: 1, notimp: true },
+    count:        { mutable: false, arity: 1, notimp: true },
+    do:           { mutable: false, arity: 1, notimp: true },
+    'try*':       { mutable: false, arity: 2, notimp: true },
+    'catch*':     { mutable: false, arity: 2, notimp: true },
+    throw:        { mutable: false, arity: 1, notimp: true },
+    'defmacro!':  { mutable: false, arity: 2, notimp: true },
+    is_macro_call:{ mutable: false, arity: 2, notimp: true },
+    macroexpand:  { mutable: false, arity: 2, notimp: true },
+    atom:         { mutable: false, arity: 1, notimp: true },
+    'atom?':      { mutable: false, arity: 1, notimp: true },
+    deref:        { mutable: false, arity: 1, notimp: true },
+    'swap!':      { mutable: false, arity: null, notimp: true },
+    'reset!':     { mutable: false, arity: 1, notimp: true },
+    'time-ms':    { mutable: false, arity: 0, notimp: true },
+    meta:         { mutable: false, arity: 1, notimp: true },
+    'with-meta':  { mutable: false, arity: 2, notimp: true },
+    quote:        { mutable: false, arity: null, notimp: true },
+    quasiquote:   { mutable: false, arity: null, notimp: true },
+    prn:          { mutable: false, arity: null, notimp: true },
+    'pr-str':     { mutable: false, arity: null, notimp: true },
+    str:          { mutable: false, arity: null, notimp: true },
+    println:      { mutable: false, arity: null, notimp: true },
+    readline:     { mutable: false, arity: 1, notimp: true },
     
     // Taylor specific
     'register!':  { mutable: false, arity: 1 },
     'getregistered':  { mutable: false, arity: 1 },
 }
 
-Object.keys(nativeEnv).forEach((key, id) => {
+const nativeEnv = {};
+Object.keys(_nativeEnv).forEach((key, id) => {
+    if (_nativeEnv[key].notimp) return;
+    nativeEnv[key] = _nativeEnv[key];
     nativeEnv[key].id = id + 1;
     nativeEnv[key].idb = fidb(nativeEnv[key].id);
     nativeEnv[key].idmask = '10000' + nativeEnv[key].idb + '0';
@@ -486,7 +490,7 @@ const expr2s = inidata => expr2string(strip0x(inidata)).accum;
 
 module.exports = {
     u2b, u2h, b2u, b2h, h2u, h2b,
-    typeid, nativeEnv,
+    typeid, nativeEnv, reverseNativeEnv,
     encode,
     decode,
     expr2h,

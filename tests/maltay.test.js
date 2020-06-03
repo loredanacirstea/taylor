@@ -144,6 +144,10 @@ it('test use stored fn 1', async function () {
     // expect(expr2h(expr2s(expr))).toBe(expr);
     resp = await MalTay.call(expr);
     expect(resp).toBe('0x0a91000400000034');
+
+    resp = await MalTay.getStoredFunctions();
+    expect(resp.length).toBe(1);
+    expect(resp[0].name).toBe('func1');
 });
 
 it('test used stored fn 2', async function () {
@@ -160,6 +164,11 @@ it('test used stored fn 2', async function () {
     expr = expr2h('(_func2 5 3)');
     resp = await MalTay.call(expr);
     expect(resp).toBe('0x0a9100040000000a');
+
+    resp = await MalTay.getStoredFunctions();
+    expect(resp.length).toBe(2);
+    expect(resp[0].name).toBe('func1');
+    expect(resp[1].name).toBe('func2');
 });
 
 it('test if', async function () {
@@ -223,14 +232,18 @@ it('test map', async function () {
     let expr, resp;
     expr = expr2h('(def! myfunc (fn* (a) (mul (add a 1) 3)))');
     await MalTay.send(expr);
-
+    
     expr = expr2h('(map _myfunc (list 5 8 2))');
     resp = await MalTay.call(expr);
     expect(resp).toBe('0x' + encode([{type: 'list'}], [[18, 27, 9]]));
+    
+    resp = await MalTay.getStoredFunctions();
+    expect(resp.length).toBe(3);
+    expect(resp[2].name).toBe('myfunc');
 });
 
 it('test funcs', async function() {
-    let expr, resp;
+    let resp;
 
     resp = await MalTay.call(expr2h('(empty? (list))'));
     expect(resp).toBe('0x0a800001');
@@ -328,8 +341,8 @@ it('test reduce recursive', async function () {
 it('test registration & executing from root contract', async function () {
     let expr, resp;
 
-    const maltay2 = await getMalTay();
-    const maltay3 = await getMalTay();
+    const maltay2 = await getTaylor();
+    const maltay3 = await getTaylor();
 
     // Register
     // TODO: type integer
@@ -348,23 +361,31 @@ it('test registration & executing from root contract', async function () {
     expect(resp).toBe('0x04000014' + maltay3.address.substring(2).toLowerCase());
 
     // def! & store in maltay2
-    expr = expr2h('(def! loref (fn* (a) (mul (add a a) 2) ) )');
+    expr = expr2h('(def! quad (fn* (a) (mul (add a a) 2) ) )');
     await maltay2.send(expr);
 
     // use function directly in maltay2
-    resp = await maltay2.call(expr2h('(_loref 5)'));
+    resp = await maltay2.call(expr2h('(_quad 5)'));
     expect(resp).toBe('0x0a91000400000014');
 
     // def! & store in maltay3
-    expr = expr2h('(def! fibonacci2 (fn* (n) (if (or (eq n 1) (eq n 2)) 1 (add(_fibonacci2 (sub n 1)) (_fibonacci2 (sub n 2)) ) )))');
+    expr = expr2h('(def! fib (fn* (n) (if (or (eq n 1) (eq n 2)) 1 (add(_fib (sub n 1)) (_fib (sub n 2)) ) )))');
     await maltay3.send(expr);
 
     // use function directly in maltay3
-    resp = await maltay3.call(expr2h('(_fibonacci2 8)'));
+    resp = await maltay3.call(expr2h('(_fib 8)'));
     expect(resp).toBe('0x0a91000400000015');
     
     // test functions through MalTay root contract
-    resp = await MalTay.call(expr2h('(_fibonacci2 (_loref 2) )'));
+    resp = await MalTay.call(expr2h('(_fib (_quad 2) )'));
     expect(resp).toBe('0x0a91000400000015');
+
+    resp = await MalTay.call('0x44444440');
+    expect(parseInt(resp, 16)).toBe(2);
 }, 20000);
+
+it('test logs', async function() {
+    const resp = await MalTay.getStoredFunctions();
+    expect(resp.length).toBe(8);
+});
 

@@ -3,27 +3,7 @@ import { View, Item, Input, Text, Button, Icon, Picker } from 'native-base';
 import { getProvider } from '../utils/web3.js';
 import { addAddress, getAddresses } from '../utils/taylor.js';
 import maltay from 'taylor/maltay/maltay.js';
-
-const call = provider => address => async data => {
-  let transaction = {
-    to: address,
-    data
-  }
-  return await provider.call(transaction);
-}
-
-const sendTransaction = signer => address => async data => {
-  const transaction = {
-    data,
-    gasLimit: 1000000,
-    value: 0,
-    to: address,
-    gasPrice: 21,
-  };
-  const response = await signer.sendTransaction(transaction);
-  return response;
-}
-
+import { web3util } from '../utils/contract.js';
 
 class MalTayContract extends Component {
   constructor(props) {
@@ -56,8 +36,7 @@ class MalTayContract extends Component {
     const rootAddress = {name: addresses.root, address: addresses[addresses.root]};
     this.setState({ addresses, rootAddress, provider, signer });
     
-    this._taycall = call(provider);
-    this._taysend = sendTransaction(signer);
+    this._web3util = web3util(provider, signer);
     this.setContract(rootAddress.address);
     this.setRegistered(rootAddress.address);
   }
@@ -65,12 +44,12 @@ class MalTayContract extends Component {
   setContract(address) {
     address = address || this.state.rootAddress;
     if(!address) {
-        this.taycall = null;
-        this.taysend = null
+        this.web3util = null;
     } else {
-      this.taycall = this._taycall(address);
-      this.taysend = this._taysend(address);
-      this.props.onRootChange(this.taycall, this.taysend);
+      this.web3util = this._web3util(address);
+      this.props.onRootChange(this.web3util.call, this.web3util.send);
+
+      this.setFunctions(address);
     }
   }
 
@@ -78,39 +57,28 @@ class MalTayContract extends Component {
     address = address || this.state.rootAddress.address;
     if (!address) return;
 
-    let count = await this.taycall('0x44444440');
+    let count = await this.web3util.call('0x44444440');
     count = parseInt(count, 16);
     let registered = {};
 
     for (let i = 1; i <= count; i++) {
       const expr = maltay.expr2h('(getregistered ' + i + ')');
-      let raddr = await this.props.taycall(expr);
+      let raddr = await this.web3util.call(expr);
       raddr = '0x' + raddr.substring(10);
       registered[raddr] = raddr;
     }
     this.setState({ registered });
   }
 
-  // async setFunctions(address) {
-  //   address = address || this.state.rootAddress.address;
-  //   if (!address) return;
+  async setFunctions(address) {
+    address = address || this.state.rootAddress.address;
+    if (!address) return;
 
-  //   let rootFunctions = [];
-    
-  //   let count = await this.taycall('0x44444441');
-  //   console.log('count', count);
-  //   // count = parseInt(count, 16);
-  //   // let registered = {};
-
-  //   // for (let i = 1; i <= count; i++) {
-  //   //   const expr = maltay.expr2h('(getregistered ' + i + ')');
-  //   //   let raddr = await this.props.taycall(expr);
-  //   //   raddr = '0x' + raddr.substring(10);
-  //   //   registered[raddr] = raddr;
-  //   // }
-
-  //   // this.setState({ rootFunctions });
-  // }
+    let logs = await this.web3util.getFns();
+    let rootFunctions = logs.map(log => log.name)
+      .concat(Object.keys(maltay.nativeEnv));
+    this.setState({ rootFunctions });
+  }
 
   async onChangeAddress(address) {
     const { rootAddress } = this.state;
@@ -151,7 +119,7 @@ class MalTayContract extends Component {
     const { addrToBeRegistered } = this.state;
     
     const expr = maltay.expr2h('(register! 0x"' + addrToBeRegistered.substring(2) + '")');
-    await this.taysend(expr);
+    await this.web3util.send(expr);
 
     // TODO check receipt for success;
     this.setRegistered();
@@ -159,7 +127,7 @@ class MalTayContract extends Component {
 
   render() {
     const {styles} = this.props;
-    const { rootAddress, addresses, registered } = this.state;
+    const { rootAddress, addresses, registered, rootFunctions } = this.state;
 
     return (
       <View style={{ ...styles, fontSize: 18}}>
@@ -234,6 +202,21 @@ class MalTayContract extends Component {
           <View>
               <Text></Text>
           </View>
+        </View>
+        <View style={{ ...styles, flex: 1 }}>
+          <Item picker>
+            <Picker
+              mode="dropdown"
+              style={{ width: styles.width, backgroundColor: 'rgb(169, 169, 169)' }}
+            >
+              <Picker.Item label="available functions" value={''} />
+              {
+                rootFunctions.map(name => {
+                  return <Picker.Item label={name} value={name} key={name}/>
+                })
+              }
+            </Picker>
+          </Item>
         </View>
       </View>
     );

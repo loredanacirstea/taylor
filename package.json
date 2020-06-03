@@ -2,7 +2,7 @@
   "name": "taylor",
   "version": "1.0.0",
   "description": "",
-  "main": "index.js",
+  "main": "maltay/maltay.js",
   "directories": {
     "test": "tests"
   },
