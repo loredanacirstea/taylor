@@ -1,14 +1,17 @@
 const defaultValues = {
-    uint: 1,
+    uint: 123,
     bool: true,
     address: `0x""`,
     bytes: `0x""`,
+    symbol: 'name',
+    list: '123 234',
+    any: 'somename',
 }
 
 const monacoTaylorExtension = (monaco, taylorFunctions) => {
     monaco.languages.register({ id: 'taylor' });
 
-    const funcSuggestions = Object.keys(taylorFunctions).map(name => {
+    const funcSuggestions = (range) => Object.keys(taylorFunctions).map(name => {
         const func = taylorFunctions[name];
         let argsdetail = '';
         if (func.inputs) argsdetail = func.inputs.map(inp => inp.type).join(',')
@@ -19,8 +22,10 @@ const monacoTaylorExtension = (monaco, taylorFunctions) => {
 
         let insertText = func.construct;
         if (!insertText) {
-            // TODO: args
             insertText = name;
+            if (func.inputs) {
+                insertText += ' ' + func.inputs.map(inp => defaultValues[inp.type]).join(' ');
+            }
         }
         return {
             label: name,
@@ -28,38 +33,23 @@ const monacoTaylorExtension = (monaco, taylorFunctions) => {
             insertText: insertText + ')',
             detail: '(' + argsdetail + ')',
             documentation: func.docs,
+            range
           }
     });
 
     // Register a completion item provider for the new language
     monaco.languages.registerCompletionItemProvider('taylor', {
       triggerCharacters: ['('],
-      provideCompletionItems: () => {
-        
-        var suggestions = [{
-          label: 'simpleText',
-          kind: monaco.languages.CompletionItemKind.Text,
-          insertText: 'simpleText'
-        }, {
-          label: 'testing',
-          kind: monaco.languages.CompletionItemKind.Keyword,
-          insertText: 'testing(${1:condition})',
-          insertTextRules: monaco.languages.CompletionItemInsertTextRule.InsertAsSnippet
-        }, {
-          label: 'ifelse',
-          kind: monaco.languages.CompletionItemKind.Snippet,
-          insertText: [
-            'if (${1:condition}) {',
-            '\t$0',
-            '} else {',
-            '\t',
-            '}'
-          ].join('\n'),
-          insertTextRules: monaco.languages.CompletionItemInsertTextRule.InsertAsSnippet,
-          documentation: 'If-Else Statement'
-        }];
-        
-        return { suggestions: funcSuggestions };
+      provideCompletionItems: (model, position) => {
+
+        let word = model.getWordUntilPosition(position);
+        let range = {
+            startLineNumber: position.lineNumber,
+            endLineNumber: position.lineNumber,
+            startColumn: word.startColumn,
+            endColumn: word.endColumn
+        };
+        return { suggestions: funcSuggestions(range) };
       }
     });
 }

@@ -3,7 +3,7 @@ const editorOpts = {
   minimap: {enabled: false},
   wordWrap: 'on',
   wordWrapColumn: 80,
-  fontSize: 14,
+  fontSize: 18,
 }
 
 export {
