@@ -1,14 +1,15 @@
 import React, { Component } from 'react';
 import { Dimensions, ScrollView } from 'react-native';
-import { View, Button, Icon } from 'native-base';
+import { View, Button, Icon, Text } from 'native-base';
 import MonacoEditor from 'react-monaco-editor';
 import { editorOpts } from '../utils/config.js';
-import Out from '../components/Out.js';
 import { getProvider } from '../utils/web3.js';
 import MalTayContract from '../components/MalTayContract.js';
 import * as taylorUtils from '../utils/taylor.js';
 import maltay from 'taylor/maltay/maltay.js';
 import { monacoTaylorExtension } from '../utils/taylor_editor.js';
+
+import ReactJson from 'custom-react-json-view'
 
 const MIN_WIDTH = 800;
 
@@ -39,6 +40,10 @@ class TaylorEditor extends Component {
     this.onTextChange = this.onTextChange.bind(this);
     this.execute = this.execute.bind(this);
     this.onRootChange = this.onRootChange.bind(this);
+
+    Dimensions.addEventListener('change', () => {
+      this.onContentSizeChange();
+    });
 
     this.setWeb3();
   }
@@ -140,48 +145,80 @@ class TaylorEditor extends Component {
     const {code, result, errors, taycall, taysend} = this.state;
 
     return (
-        <ScrollView
-            horizontal={true}
-            pagingEnabled={true}
+      <ScrollView
+          horizontal={true}
+          pagingEnabled={true}
+          scrollEnabled={true}
+          scrollEventThrottle={100}
+          nestedScrollEnabled={true}
+          contentContainerStyle={{width: "100%"}}
+          onContentSizeChange={this.onContentSizeChange}
+      >
+           
+        <MonacoEditor
+            width={editorStyles.width}
+            height={editorStyles.height}
+            language="taylor"
+            theme="vs-dark"
+            value={code}
+            options={editorOpts}
+            onChange={this.onTextChange}
+            editorWillMount={this.editorWillMount}
+            editorDidMount={this.editorDidMount}
+        />
+        <View
+        style={{ ...consoleStyles, position: 'fixed', bottom: '0px', left: '0px' }}
+        >
+          <ScrollView
+            horizontal={false}
             scrollEnabled={true}
             scrollEventThrottle={100}
             nestedScrollEnabled={true}
-            contentContainerStyle={{width: "100%"}}
-            onContentSizeChange={this.onContentSizeChange}
-        >
-            <View style={{ ...editorStyles, flex: 1}}>
-                <MonacoEditor
-                    width={editorStyles.width}
-                    height={editorStyles.height}
-                    language="taylor"
-                    theme="vs-dark"
-                    value={code}
-                    options={editorOpts}
-                    onChange={this.onTextChange}
-                    editorWillMount={this.editorWillMount}
-                    editorDidMount={this.editorDidMount}
-                />
-                <Out 
-                    result={result}
-                    errors={errors}
-                    styles={{ ...consoleStyles }}
-                />
-            </View>
-            <Button
-                small
-                light
-                style={{ position: 'fixed', top: '0px', left: '0px', backgroundColor: 'white',  opacity: this.state.autocompile ? 0.5 : 0.2 }}
-                onClick={() => this.execute({force: true})}
+            contentContainerStyle={{ ...consoleStyles, maxHeight: consoleStyles.height, minHeight: consoleStyles.heigth }}
+          >
+            <ScrollView
+              horizontal={true}
+              scrollEnabled={true}
+              scrollEventThrottle={100}
+              contentContainerStyle={{ ...consoleStyles, maxHeight: consoleStyles.height, minHeight: consoleStyles.heigth }}
             >
-                <Icon type="FontAwesome" name='play' />
-            </Button>
-            <MalTayContract
-                taycall={taycall}
-                taysend={taysend}
-                styles={{...panelStyles}}
-                onRootChange={this.onRootChange}
-            />
+              {errors
+                  ? <Text style={{color: 'firebrick', fontSize: editorOpts.fontSize }}>{errors}</Text>
+                  : <ReactJson
+                  src={result}
+                  name="result"
+                  theme="twilight"
+                  collapsed={6}
+                  shouldCollapse={field => field.name === 'd' }
+                  style={{ ...consoleStyles, fontSize: editorOpts.fontSize }}
+                  />
+              }
+            </ScrollView>
+          </ScrollView>
+        </View>
+        <Button
+            small
+            light
+            style={{ position: 'fixed', top: '0px', left: '0px', backgroundColor: 'white',  opacity: this.state.autocompile ? 0.5 : 0.2 }}
+            onClick={() => this.execute({force: true})}
+        >
+            <Icon type="FontAwesome" name='play' />
+        </Button>
+        <ScrollView
+          horizontal={false}
+          scrollEnabled={true}
+          scrollEventThrottle={100}
+          nestedScrollEnabled={true}
+          contentContainerStyle={panelStyles}
+        >
+          <MalTayContract
+              taycall={taycall}
+              taysend={taysend}
+              styles={{...panelStyles}}
+              onRootChange={this.onRootChange}
+          />
         </ScrollView>
+      </ScrollView>
     );
   }
 }
