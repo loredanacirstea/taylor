@@ -27,9 +27,12 @@ const getWeb3 = async () => {
 
 const getProvider = async () => {
   const web3 = await getWeb3();
-  const provider = new ethers.providers.Web3Provider(web3.currentProvider);
-  const signer = provider.getSigner(0);
-  return { provider, signer };
+  if (web3) {
+    const provider = new ethers.providers.Web3Provider(web3.currentProvider);
+    const signer = provider.getSigner(0);
+    return { provider, signer };
+  }
+  return {};
 }
 
 export {

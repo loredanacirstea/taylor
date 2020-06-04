@@ -42,6 +42,10 @@ class MalTayContract extends Component {
 
   async setWeb3() {
     const { provider, signer } = await getProvider();
+    if (!provider) {
+      this.props.onRootChange(null, null);
+      return;
+    }
     const chainid = (await provider.getNetwork()).chainId;
     const addresses = getAddresses(chainid);
     const rootAddress = {name: addresses.root, address: addresses[addresses.root]};
@@ -155,7 +159,7 @@ class MalTayContract extends Component {
 
     return (
         <View style={{ ...styles, flex: 1 }}>
-          <Text style={textStyle}>load Root:</Text>
+          <Text style={textStyle}>select root Taylor contract:</Text>
           <Item picker style={{ borderColor: false}}>
             <Picker
               mode="dropdown"
@@ -168,9 +172,9 @@ class MalTayContract extends Component {
           </Item>
 
           <br></br><br></br>
-          <Text style={{...textStyle, fontWeight: 'bold', fontSize: textStyle.fontSize + 2}}>Address: { rootAddress.address || '-' }</Text>
+          <Text style={{...textStyle, fontWeight: 'bold', fontSize: textStyle.fontSize + 2}}>@root address: { rootAddress.address || '-' }</Text>
           <br></br>
-          <Text style={textStyle}>registered contracts:</Text>
+          <Text style={textStyle}>registered contracts @root:</Text>
 
           <Item picker style={{ borderColor: false}}>
             <Picker
@@ -189,7 +193,7 @@ class MalTayContract extends Component {
           </Item>
 
           <br></br>
-          <Text style={textStyle}>environment functions:</Text>
+          <Text style={textStyle}>@root functions:</Text>
           
           <Item picker style={{ borderColor: false}}>
             <Picker
@@ -206,7 +210,7 @@ class MalTayContract extends Component {
           </Item>
 
           <br></br><br></br><br></br><br></br>
-          <Text style={textStyle}>register new Taylor contract in Root:</Text>
+          <Text style={textStyle}>register a Taylor contract @root:</Text>
           <Item style={{ width: styles.width }}>
             <Input
               style={textStyle}
@@ -215,35 +219,36 @@ class MalTayContract extends Component {
               onChangeText={this.onChangeRegisteredAddress}
             />
             <Button small light onClick={this.onRegister}>
-              <Icon name='save' type='FontAwesome' />
+              <Icon name='save' />
             </Button>
           </Item>
-          
-          
-          <br></br><br></br><br></br>
-          <Text style={textStyle}>load/save Taylor contract:</Text>
-          <Item style={{ width: styles.width }}>
-            <Input
-              style={textStyle}
-              placeholder='address'
-              label='address'
-              onChangeText={this.onChangeAddress}
-            />
-          </Item>
-          <Item style={{ width: styles.width, marginBottom: 5 }}>
-            <Input
-              style={textStyle}
-              placeholder='name'
-              label='name'
-              onChangeText={this.onChangeCurrentName}
-            />
-          </Item>
-          <Button small light onClick={this.onAddressSave}>
-            <Icon name='save' />
-          </Button>
+
+          <br></br><br></br>
         </View>
     );
   }
 }
 
 export default MalTayContract;
+
+//           <br></br><br></br><br></br>
+//           <Text style={textStyle}>declare another Taylor root:</Text>
+//           <Item style={{ width: styles.width }}>
+//             <Input
+//               style={textStyle}
+//               placeholder='address'
+//               label='address'
+//               onChangeText={this.onChangeAddress}
+//             />
+//           </Item>
+//           <Item style={{ width: styles.width, marginBottom: 5 }}>
+//             <Input
+//               style={textStyle}
+//               placeholder='name'
+//               label='name'
+//               onChangeText={this.onChangeCurrentName}
+//             />
+//             <Button small light onClick={this.onAddressSave}>
+//               <Icon name='save' />
+//             </Button>
+//           </Item>

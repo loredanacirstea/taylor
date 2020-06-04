@@ -3,7 +3,6 @@ import { Dimensions, ScrollView } from 'react-native';
 import { View, Button, Icon, Text } from 'native-base';
 import MonacoEditor from 'react-monaco-editor';
 import { editorOpts } from '../utils/config.js';
-import { getProvider } from '../utils/web3.js';
 import MalTayContract from '../components/MalTayContract.js';
 import * as taylorUtils from '../utils/taylor.js';
 import maltay from 'taylor/maltay/maltay.js';
@@ -28,8 +27,6 @@ class TaylorEditor extends Component {
       encoded,
       result: [{data: encoded}],
       errors: '',
-      provider: null,
-      signer: null,
       rootAddress: null,
       taycall: null,
       taysend: null,
@@ -44,14 +41,6 @@ class TaylorEditor extends Component {
     Dimensions.addEventListener('change', () => {
       this.onContentSizeChange();
     });
-
-    this.setWeb3();
-  }
-
-  async setWeb3() {
-    const { provider, signer } = await getProvider();
-    this.setState({ provider, signer });
-    this.onRootChange();
   }
 
   onRootChange(taycall, taysend) {
@@ -59,7 +48,12 @@ class TaylorEditor extends Component {
         taycall,
         taysend,
     });
-    this.execute();
+    if (!taycall) {
+      const errors = "No web3 provider found. Please connect to one (e.g. Metamask).";
+      this.setState({ errors });
+    } else {
+      this.execute();
+    }
   }
 
   async execute({encdata, code, force=false}={}) {

@@ -4,7 +4,7 @@ const STORAGE_KEY_TAYLOR_ADDRESS = 'TaylorInterpreterAddress';
 
 const DEFAULT_DEPLOYMENT = {
   5777: {
-    contract1: '0x5d771b65d845e383c5ecbe76681979c323ce3590',
+    contract1: '0xcff8dc8a5e2af7fcc6be124d3c91fa50186a8c96',
     root: 'contract1'
   },
   3: {
@@ -38,13 +38,15 @@ const addAddress = (chainid, address, name) => {
 
 const getAddresses = (chainid) => {
   const key = addressKey(chainid);
-  let addresses = localStorage.getItem(key);
-  if (addresses) {
-    addresses = JSON.parse(addresses);
-  } else {
+  let addresses;
+  // let addresses = localStorage.getItem(key);
+  // if (addresses) {
+  //   addresses = JSON.parse(addresses);
+  //   addresses = Object.assign((DEFAULT_DEPLOYMENT[chainid] || {}), addresses);
+  // } else {
     addresses = DEFAULT_DEPLOYMENT[chainid] || {};
     localStorage.setItem(key, JSON.stringify(addresses));
-  }
+  // }
   return addresses;
 }
 
