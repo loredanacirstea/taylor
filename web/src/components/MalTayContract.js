@@ -143,7 +143,7 @@ class MalTayContract extends Component {
 
   render() {
     const {styles} = this.props;
-    styles.width -= 5;
+    styles.width -= 10;
     const { rootAddress, addresses, registered, rootFunctions } = this.state;
 
     const addrs = Object.assign({}, addresses);

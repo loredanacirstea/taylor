@@ -10,14 +10,7 @@ import * as taylorUtils from '../utils/taylor.js';
 import maltay from 'taylor/maltay/maltay.js';
 import { monacoTaylorExtension } from '../utils/taylor_editor.js';
 
-
 const MIN_WIDTH = 800;
-
-function getPageSize(noOfPages, {width, height}) {
-  if (width < MIN_WIDTH) return {minWidth: width, minHeight: height};
-
-  return {width: width / noOfPages, height};
-}
 
 class TaylorEditor extends Component {
   constructor(props) {
@@ -131,11 +124,18 @@ class TaylorEditor extends Component {
       width,
       height,
     } = this.state;
-    const styles = getPageSize(this.state.pageNumber, { width, height });
 
-    const editorStyles = { ...styles, width: styles.width * 2, height: styles.height * 2 / 5 }
-    const consoleStyles = { ...styles, width: styles.width * 2, height: styles.height - editorStyles.height }
-    const panelStyles = { ...styles }
+    let editorStyles, consoleStyles, panelStyles;
+    if (width > MIN_WIDTH) {
+      const page = width / 3;
+      editorStyles = { width: page * 2, height: height * 2 / 3 };
+      consoleStyles = { width: page * 2, height: height - editorStyles.height };
+      panelStyles = { width: page, height };
+    } else {
+      editorStyles = { width, height: height * 2 / 3 };
+      consoleStyles = { width, height: height - editorStyles.height };
+      panelStyles = { width, height };
+    }
 
     const {code, result, errors, taycall, taysend} = this.state;
 
