@@ -22,7 +22,6 @@ class TaylorEditor extends Component {
     this.state = {
       ...this.getWindowDimensions(),
       pageNumber: 3,
-      autocompile: true,
       code,
       encoded,
       result: [{data: encoded}],
@@ -193,10 +192,10 @@ class TaylorEditor extends Component {
         <Button
             small
             light
-            style={{ position: 'fixed', top: '0px', left: '0px', backgroundColor: 'white',  opacity: this.state.autocompile ? 0.5 : 0.2 }}
+            style={{ position: 'fixed', top: '0px', left: '0px', backgroundColor: 'white',  opacity: 0.5 }}
             onClick={() => this.execute({force: true})}
         >
-            <Icon type="FontAwesome" name='play' />
+            <Icon style={{ marginLeft: '10px', marginRight: '10px'}} type="FontAwesome" name='play' />
         </Button>
         <ScrollView
           horizontal={false}

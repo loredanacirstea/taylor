@@ -5,6 +5,7 @@ import { addAddress, getAddresses } from '../utils/taylor.js';
 import maltay from 'taylor/maltay/maltay.js';
 import { web3util } from '../utils/contract.js';
 import { editorOpts } from '../utils/config.js';
+import { argsDisplay } from '../utils/taylor_editor.js';
 
 const textStyle = {
   color: 'beige',
@@ -15,6 +16,8 @@ const textStyle = {
 const pickerStyle = {
   backgroundColor: 'rgb(169, 169, 169)',
 }
+
+const btniconStyle = { marginLeft: '10px', marginRight: '10px'}
 
 class MalTayContract extends Component {
   constructor(props) {
@@ -90,8 +93,10 @@ class MalTayContract extends Component {
     if (!address) return;
 
     let logs = await this.web3util.getFns();
-    let rootFunctions = logs.map(log => log.name)
-      .concat(Object.keys(maltay.nativeEnv));
+    let rootFunctions = logs.map(log => '(' + log.name + ' ... )')
+      .concat(Object.keys(maltay.nativeEnv).map(name => {
+        return '(' + name + ' ' + argsDisplay(maltay.nativeEnv[name]) + ')';
+      }));
     this.setState({ rootFunctions });
   }
 
@@ -159,6 +164,7 @@ class MalTayContract extends Component {
 
     return (
         <View style={{ ...styles, flex: 1 }}>
+          <br></br><br></br>
           <Text style={textStyle}>select root Taylor contract:</Text>
           <Item picker style={{ borderColor: false}}>
             <Picker
@@ -172,7 +178,8 @@ class MalTayContract extends Component {
           </Item>
 
           <br></br><br></br>
-          <Text style={{...textStyle, fontWeight: 'bold', fontSize: textStyle.fontSize + 2}}>@root address: { rootAddress.address || '-' }</Text>
+          <Text style={textStyle}>@root address:</Text>
+          <Text style={{...textStyle, fontWeight: 'bold', fontSize: textStyle.fontSize + 2}}>{ rootAddress.address || '-' }</Text>
           <br></br>
           <Text style={textStyle}>registered contracts @root:</Text>
 
@@ -192,7 +199,7 @@ class MalTayContract extends Component {
             </Picker>
           </Item>
 
-          <br></br>
+          <br></br><br></br>
           <Text style={textStyle}>@root functions:</Text>
           
           <Item picker style={{ borderColor: false}}>
@@ -209,7 +216,7 @@ class MalTayContract extends Component {
             </Picker>
           </Item>
 
-          <br></br><br></br><br></br><br></br>
+          <br></br><br></br>
           <Text style={textStyle}>register a Taylor contract @root:</Text>
           <Item style={{ width: styles.width }}>
             <Input
@@ -219,7 +226,7 @@ class MalTayContract extends Component {
               onChangeText={this.onChangeRegisteredAddress}
             />
             <Button small light onClick={this.onRegister}>
-              <Icon name='save' />
+              <Icon name='save' style={btniconStyle} />
             </Button>
           </Item>
 

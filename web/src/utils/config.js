@@ -4,6 +4,8 @@ const editorOpts = {
   wordWrap: 'on',
   wordWrapColumn: 80,
   fontSize: 18,
+  lineNumbersMinChars: 2,
+  lineDecorationsWidth: 0,
 }
 
 export {
