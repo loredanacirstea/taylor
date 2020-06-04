@@ -389,3 +389,15 @@ it('test logs', async function() {
     expect(resp.length).toBe(8);
 });
 
+it('test evm functions', async function() {
+    let resp;
+    resp = await MalTay.call(expr2h('(gas)'));
+    expect(resp.substring(0, 10)).toBe('0x0a910020');
+
+    resp = await MalTay.call(expr2h('(address)'));
+    expect(resp).toBe('0x0a910014' + MalTay.address.substring(2));
+
+    resp = await MalTay.call(expr2h('(callvalue)'));
+    expect(resp).toBe('0x0a910020' + '0'.padStart(64, '0'));
+})
+

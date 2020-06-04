@@ -205,6 +205,132 @@ object "malLikeTay" {
             case 0x9000003c {
                 result_ptr := _staticcall(add(arg_ptrs_ptr, 32))
             }
+            case 0x800000c6 {
+                result_ptr := allocate(36)
+                mslicestore(result_ptr, buildUintSig(32), 4)
+                mstore(add(result_ptr, 4), gas())
+            }
+            // address
+            case 0x800000c8 {
+                result_ptr := allocate(32)
+                mslicestore(result_ptr, uconcat(buildUintSig(20), address(), 20), 24)
+            }
+            // balance ; TODO address
+            case 0x880000ca {
+                result_ptr := allocate(36)
+                let addr_ptr := mload(add(arg_ptrs_ptr, 32))
+                let addr := mslice(add(addr_ptr, 4), getValueLength(addr_ptr))
+
+                mslicestore(result_ptr, buildUintSig(32), 4)
+                mstore(add(result_ptr, 4), balance(addr))
+            }
+            // caller ; TODO address
+            case 0x800000cc {
+                result_ptr := allocate(32)
+                mslicestore(result_ptr, uconcat(buildUintSig(20), caller(), 20), 24)
+            }
+            case 0x800000ce {
+                result_ptr := allocate(36)
+                mslicestore(result_ptr, buildUintSig(32), 4)
+                mstore(add(result_ptr, 4), callvalue())
+            }
+            case 0x800000d0 {
+                // calldataload
+            }
+            case 0x800000d2 {
+                result_ptr := allocate(36)
+                mslicestore(result_ptr, buildUintSig(32), 4)
+                mstore(add(result_ptr, 4), calldatasize())
+            }
+            case 0x980000d4 {
+                // calldatacopy
+            }
+            case 0x800000d6 {
+                result_ptr := allocate(36)
+                mslicestore(result_ptr, buildUintSig(32), 4)
+                mstore(add(result_ptr, 4), codesize())
+            }
+            case 0x980000d8 {
+                // codecopy
+            }
+            case 0x880000da {
+                result_ptr := allocate(36)
+                let addr_ptr := mload(add(arg_ptrs_ptr, 32))
+                let addr := mslice(add(addr_ptr, 4), getValueLength(addr_ptr))
+                
+                mslicestore(result_ptr, buildUintSig(32), 4)
+                mstore(add(result_ptr, 4), extcodesize(addr))
+            }
+            case 0xa00000dc {
+                // extcodecopy
+            }
+            case 0x800000de {
+                result_ptr := allocate(36)
+                mslicestore(result_ptr, buildUintSig(32), 4)
+                mstore(add(result_ptr, 4), returndatasize())
+            }
+            case 0x980000e4 {
+                // create
+            }
+            case 0xa00000e6 {
+                // create2
+            }
+            // TODO: logs should be under 1 function: log(data, list(..topics))
+            case 0x900000e8 {
+                // log0
+            }
+            case 0x980000ea {
+                // log1
+            }
+            case 0xa00000ec {
+                // log2
+            }
+            case 0xa80000ee {
+                // log3
+            }
+            case 0xb00000f0 {
+                // log4
+            }
+            // case 0x800000f2 {
+            //     result_ptr := allocate(32)
+            //     mslicestore(result_ptr, uconcat(buildUintSig(4), chainid(), 4), 8)
+            // }
+            // origin ; TODO address
+            case 0x800000f4 {
+                result_ptr := allocate(32)
+                mslicestore(result_ptr, uconcat(buildUintSig(20), origin(), 20), 24)
+            }
+            case 0x800000f6 {
+                result_ptr := allocate(36)
+                let number_ptr := mload(add(arg_ptrs_ptr, 32))
+                let block_number := mslice(add(number_ptr, 4), getValueLength(number_ptr))
+                mslicestore(result_ptr, buildBytesSig(32), 4)
+                mstore(add(result_ptr, 4), blockhash(block_number))
+            }
+            case 0x800000f8 {
+                result_ptr := allocate(32)
+                mslicestore(result_ptr, uconcat(buildUintSig(20), coinbase(), 20), 24)
+            }
+            case 0x800000fa {
+                result_ptr := allocate(36)
+                mslicestore(result_ptr, buildUintSig(32), 4)
+                mstore(add(result_ptr, 4), timestamp())
+            }
+            case 0x800000fc {
+                result_ptr := allocate(36)
+                mslicestore(result_ptr, buildUintSig(32), 4)
+                mstore(add(result_ptr, 4), number())
+            }
+            case 0x800000fe {
+                result_ptr := allocate(36)
+                mslicestore(result_ptr, buildUintSig(32), 4)
+                mstore(add(result_ptr, 4), difficulty())
+            }
+            case 0x80000100 {
+                result_ptr := allocate(36)
+                mslicestore(result_ptr, buildUintSig(32), 4)
+                mstore(add(result_ptr, 4), gaslimit())
+            }
             // def!
             case 0x90000046 {
                 // TODO: encode mutability! 
@@ -571,6 +697,12 @@ object "malLikeTay" {
         function buildListTypeSig(length) -> signature {
             // signature :=  '0001' * bit4 type * bit24 length
             signature := add(add(exp(2, 28), exp(2, 24)), length)
+        }
+
+        function buildUintSig(size) -> signature {
+            // typeid.number + numberid.uint + bit16 size
+            // 00001 * 01010010001 * 0000000000000000
+            signature := add(0xa910000, size)
         }
         
         // function read(str) -> _str {
