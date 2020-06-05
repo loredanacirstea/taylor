@@ -1,4 +1,4 @@
-object "malLikeTay" {
+object "Taylor" {
     code {
         // updateFnCounter
         sstore(0, 100)

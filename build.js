@@ -2,9 +2,8 @@ const fs = require('fs')
 const solc = require('solc')
 const yulp = require('yulp');
 
-const CPATH = './contracts/dtypeinterpreter.tay';
-const MALLT_PATH = './contracts/mal_like_tay.sol';
-const BUILD_ROOT = './build/dtypeinterpreter';
+const CPATH = './contracts/mal_like_tay.sol';
+const BUILD_ROOT = './build/maltay';
 
 const solcData = yulsource => JSON.stringify({
   language: 'Yul',
@@ -32,4 +31,3 @@ const build = (filePath, buildRoot) => {
 }
 
 build(CPATH, BUILD_ROOT);
-build(MALLT_PATH, './build/maltay');

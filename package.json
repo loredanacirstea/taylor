@@ -9,9 +9,7 @@
   "scripts": {
     "build": "webpack --watch",
     "build_interpreter": "node build.js",
-    "test": "jest tests",
-    "test_tay": "jest tests/interpreter.test.js",
-    "test_maltay": "jest tests/maltay.test.js"
+    "test": "jest tests"
   },
   "repository": {
     "type": "git",

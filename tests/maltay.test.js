@@ -248,7 +248,7 @@ it('test funcs', async function() {
     resp = await MalTay.call(expr2h('(empty? (list))'));
     expect(resp).toBe('0x0a800001');
     resp = await MalTay.call(expr2h('(empty? (list 1))'));
-    console.log('resp', expr2h('(empty? (list 1))'))
+
     expect(resp).toBe('0x0a800000');
     resp = await MalTay.call(expr2h('(empty? (list 0))'));
     expect(resp).toBe('0x0a800000');

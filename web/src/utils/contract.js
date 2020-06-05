@@ -1,8 +1,10 @@
+const { DEPL_BLOCKS } = require('./taylor.js');
+
 const getLogs = provider => address => async topic => {
     const filter = {
         address: address,
         topics: [ topic ],
-        fromBlock: 0,
+        fromBlock: DEPL_BLOCKS[provider._network.chainId] || 0,
         toBlock: 'latest',
     }
     return provider.getLogs(filter);

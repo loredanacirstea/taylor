@@ -4,13 +4,33 @@ const STORAGE_KEY_TAYLOR_ADDRESS = 'TaylorInterpreterAddress';
 
 const DEFAULT_DEPLOYMENT = {
   5777: {
-    contract1: '0xcff8dc8a5e2af7fcc6be124d3c91fa50186a8c96',
+    contract1: '0x04d37378feb94dee3f6a07c1feb3ca630149d6d5',
     root: 'contract1'
   },
   3: {
-    contract1: '0x7D4150f492f93e2eDD7FC0Fc62c9193b322f75e5',
+    contract1: '0xc6743db47ce3702599820282940c3561b2269556',
     root: 'contract1',
   },
+  42: {
+    contract1: '0xee0c10d568c9772892aab27c3fc14d7033658833',
+    root: 'contract1',
+  },
+  4: {
+    contract1: '0x19c08c750420af47059e68888b0f6a32698d0928',
+    root: 'contract1',
+  },
+  5: {
+    contract1: '0x5d6aa1a248655f76917bb97a7fef24dd40aa2b6d',
+    root: 'contract1',
+  },
+}
+
+const DEPL_BLOCKS = {
+  5777: 0,
+  3: 8036099,
+  42: 18899976,
+  4: 6616106,
+  5: 2823431,
 }
 
 const storeCode = source => {
@@ -67,4 +87,6 @@ export {
   getAddresses,
   getNamedAddress,
   clearAddresses,
+  DEPL_BLOCKS,
+  DEFAULT_DEPLOYMENT,
 }
