@@ -181,10 +181,10 @@ object "malLikeTay" {
             case 0x9000002c {
                 result_ptr := _sar(add(arg_ptrs_ptr, 32))
             }
-            case 0x9000002e {
+            case 0x9800002e {
                 result_ptr := _addmod(add(arg_ptrs_ptr, 32))
             }
-            case 0x90000030 {
+            case 0x98000030 {
                 result_ptr := _mulmod(add(arg_ptrs_ptr, 32))
             }
             case 0x90000032 {

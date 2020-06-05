@@ -391,13 +391,139 @@ it('test logs', async function() {
 
 it('test evm functions', async function() {
     let resp;
+
+    resp = await MalTay.call(expr2h('(sub 9 3)'));
+    expect(resp).toBe('0x0a91000400000006');
+
+    resp = await MalTay.call(expr2h('(div 9 3)'));
+    expect(resp).toBe('0x0a91000400000003');
+
+    resp = await MalTay.call(expr2h('(sdiv 12 3)'));
+    expect(resp).toBe('0x0a91000400000004');
+
+    resp = await MalTay.call(expr2h('(mod 12 3)'));
+    expect(resp).toBe('0x0a91000400000000');
+
+    resp = await MalTay.call(expr2h('(smod 12 3)'));
+    expect(resp).toBe('0x0a91000400000000');
+
+    resp = await MalTay.call(expr2h('(exp 2 8)'));
+    expect(resp).toBe('0x0a91000400000100');
+
+    // resp = await MalTay.call(expr2h('(not (not 12))'));
+    // expect(resp).toBe('0x0a9100040000000c');
+
+    resp = await MalTay.call(expr2h('(lt 3 7)'));
+    expect(resp).toBe('0x0a91000400000001');
+
+    resp = await MalTay.call(expr2h('(gt 3 7)'));
+    expect(resp).toBe('0x0a91000400000000');
+
+    resp = await MalTay.call(expr2h('(slt 3 7)'));
+    expect(resp).toBe('0x0a91000400000001');
+
+    resp = await MalTay.call(expr2h('(sgt 7 7)'));
+    expect(resp).toBe('0x0a91000400000000');
+
+    resp = await MalTay.call(expr2h('(eq 7 7)'));
+    expect(resp).toBe('0x0a91000400000001');
+
+    resp = await MalTay.call(expr2h('(iszero 4)'));
+    expect(resp).toBe('0x0a91000400000000');
+
+    resp = await MalTay.call(expr2h('(and (iszero 0) (gt 9 7))'));
+    expect(resp).toBe('0x0a91000400000001');
+
+    resp = await MalTay.call(expr2h('(or (iszero 5) (gt 9 7))'));
+    expect(resp).toBe('0x0a91000400000001');
+
+    resp = await MalTay.call(expr2h('(xor (iszero 0) (gt 9 7))'));
+    expect(resp).toBe('0x0a91000400000000');
+
+    // resp = await MalTay.call(expr2h('(byte 2 0x"11445566")'));
+    // expect(resp).toBe('0x0a91000400000044');
+
+    resp = await MalTay.call(expr2h('(shl 2 12)'));
+    expect(resp).toBe('0x0a91000400000030');
+
+    resp = await MalTay.call(expr2h('(shr 2 12)'));
+    expect(resp).toBe('0x0a91000400000003');
+
+    resp = await MalTay.call(expr2h('(sar 2 12)'));
+    expect(resp).toBe('0x0a91000400000003');
+
+    resp = await MalTay.call(expr2h('(addmod 10, 5, 4)'));
+    expect(resp).toBe('0x0a91000400000003');
+
+    resp = await MalTay.call(expr2h('(mulmod 10, 5, 4)'));
+    expect(resp).toBe('0x0a91000400000002');
+
+    resp = await MalTay.call(expr2h('(signextend 2 12)'));
+    expect(resp).toBe('0x0a9100040000000c');
+
+    // resp = await MalTay.call(expr2h('(keccak256 2 12)'));
+    // expect(resp).toBe('0x0a91000400000030');
+
+    // TODO calls
+
     resp = await MalTay.call(expr2h('(gas)'));
     expect(resp.substring(0, 10)).toBe('0x0a910020');
 
     resp = await MalTay.call(expr2h('(address)'));
     expect(resp).toBe('0x0a910014' + MalTay.address.substring(2));
 
+    resp = await MalTay.call(expr2h('(balance 0x"fffFd05c2b12cfE3c74464531f88349e159785ea")'));
+    expect(resp).toBe('0x0a9100200000000000000000000000000000000000000000000000056bc75e2d63100000');
+
+    resp = await MalTay.call(expr2h('(caller)'));
+    expect(resp).toBe('0x0a910014' + MalTay.signer._address.substring(2).toLowerCase());
+
     resp = await MalTay.call(expr2h('(callvalue)'));
     expect(resp).toBe('0x0a910020' + '0'.padStart(64, '0'));
+
+    // TODO calldataload
+    
+    resp = await MalTay.call(expr2h('(calldatasize)'));
+    expect(resp).toBe('0x0a9100200000000000000000000000000000000000000000000000000000000000000004');
+
+    resp = await MalTay.call(expr2h('(codesize)'));
+    expect(resp.substring(0, 10)).toBe('0x0a910020');
+    expect(parseInt(resp.substring(10), 16)).toBeGreaterThan(0);
+
+    // resp = await MalTay.call(expr2h('(extcodesize 0x"' + MalTay.signer._address.substring(2) + '")'));
+    // expect(resp.substring(0, 10)).toBe('0x0a910020');
+    // expect(parseInt(resp.substring(10), 16)).toBeGreaterThan(0);
+
+    // TODO extcodecopy
+    // returndatasize
+    // create
+    // create2
+    // logs
+    // chainid
+
+    resp = await MalTay.call(expr2h('(origin)'));
+    expect(resp).toBe('0x0a910014' + MalTay.signer._address.substring(2).toLowerCase());
+
+    resp = await MalTay.call(expr2h('(blockhash 1)'));
+    expect(resp.substring(0, 10)).toBe('0x04000020');
+    expect(parseInt(resp.substring(10), 16)).toBeGreaterThan(0);
+
+    resp = await MalTay.call(expr2h('(coinbase)'));
+    expect(resp).toBe('0x0a9100140000000000000000000000000000000000000000');
+
+    resp = await MalTay.call(expr2h('(timestamp)'));
+    expect(resp.substring(0, 10)).toBe('0x0a910020');
+    expect(parseInt(resp.substring(10), 16)).toBeGreaterThan(0);
+
+    resp = await MalTay.call(expr2h('(number)'));
+    expect(resp.substring(0, 10)).toBe('0x0a910020');
+    expect(parseInt(resp.substring(10), 16)).toBeGreaterThan(0);
+
+    resp = await MalTay.call(expr2h('(difficulty)'));
+    expect(resp.substring(0, 10)).toBe('0x0a910020');
+
+    resp = await MalTay.call(expr2h('(gaslimit)'));
+    expect(resp.substring(0, 10)).toBe('0x0a910020');
+    expect(parseInt(resp.substring(10), 16)).toBeGreaterThan(0);
 })
 

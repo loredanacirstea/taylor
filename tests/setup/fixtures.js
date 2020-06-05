@@ -102,6 +102,8 @@ const getTaylor = async () => {
     call: call(provider)(address),
     getLogs: getLogs(provider)(address),
     getStoredFunctions: getStoredFunctions(getLogs(provider)(address)),
+    provider,
+    signer,
   }
 }
 
