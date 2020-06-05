@@ -1,7 +1,7 @@
 {
-  "name": "taylor",
-  "version": "1.0.0",
-  "description": "",
+  "name": "@pipeos/taylor",
+  "version": "0.0.1",
+  "description": "Lisp-like functional language, interpreted by WebAssembly & the Ethereum Virtual Machine",
   "main": "maltay/maltay.js",
   "directories": {
     "test": "tests"
@@ -15,7 +15,7 @@
     "type": "git",
     "url": "git+https://github.com/loredanacirstea/taylor.git"
   },
-  "author": "",
+  "author": "Loredana Cirstea <loredana.cirstea@gmail.com>",
   "license": "GPL-3.0-or-later",
   "bugs": {
     "url": "https://github.com/loredanacirstea/taylor/issues"
@@ -27,5 +27,12 @@
   "dependencies": {
     "ethers": "^4.0.47",
     "solc": "0.5.7"
-  }
+  },
+  "publishConfig": {
+    "access": "public"
+  },
+  "files": [
+    "contracts/*",
+    "maltay/*"
+  ]
 }
