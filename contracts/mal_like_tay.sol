@@ -375,11 +375,11 @@ object "malLikeTay" {
             case 0x8800005e {
                 result_ptr := _false(add(arg_ptrs_ptr, 32))
             }
-            case 0x880000be {
+            case 0x880000c0 {
                 result_ptr := allocate(32)
                 let index := storeRegAddress(mload(add(arg_ptrs_ptr, 32)))
             }
-            case 0x880000c0 {
+            case 0x880000c2 {
                 result_ptr := allocate(32)
                 // TODO check type
                 let index := mslice(add(mload(add(arg_ptrs_ptr, 32)), 4), 4)
@@ -843,6 +843,9 @@ object "malLikeTay" {
             // iterate over list & apply function on each arg
             for { let i := 0 } lt(i, list_arity) { i := add(i, 1) } {
                 let arg_length := getTypedLength(arg_ptr)
+
+                // TODO: fixme - use the actual lengths
+                // the bytes32 slots come from 
                 
                 // let newargs := allocate(accum_length)
                 let newargs := allocate(32)
@@ -947,6 +950,8 @@ object "malLikeTay" {
                 mslice(add(ptr1, getSignatureLength(ptr1)), getValueLength(ptr1)),
                 mslice(add(ptr2, getSignatureLength(ptr2)), getValueLength(ptr2))
             )
+            // get max sig size
+            // exp - size: 
             mslicestore(result_ptr, uconcat(getFuncSig(ptr1), c, 4), 8)
         }
         
