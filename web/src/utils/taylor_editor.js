@@ -1,10 +1,10 @@
 const defaultValues = {
-    uint: 123,
+    uint: 12,
     bool: true,
-    address: `0x""`,
-    bytes: `0x""`,
+    address: `0x"0000000000000000000000000000000000000000"`,
+    bytes: `0x"00"`,
     symbol: 'name',
-    list: '123 234',
+    list: '12 13',
     any: 'somename',
 }
 
