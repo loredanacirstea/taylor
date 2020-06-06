@@ -3,13 +3,13 @@
     "static/js/0.4840f332.chunk.js": "/taylor/static/js/0.4840f332.chunk.js",
     "static/js/0.4840f332.chunk.js.map": "/taylor/static/js/0.4840f332.chunk.js.map",
     "main.css": "/taylor/static/css/main.27af826f.chunk.css",
-    "main.js": "/taylor/static/js/main.bfdeef02.chunk.js",
-    "main.js.map": "/taylor/static/js/main.bfdeef02.chunk.js.map",
+    "main.js": "/taylor/static/js/main.58abb365.chunk.js",
+    "main.js.map": "/taylor/static/js/main.58abb365.chunk.js.map",
     "runtime-main.js": "/taylor/static/js/runtime-main.af56a682.js",
     "runtime-main.js.map": "/taylor/static/js/runtime-main.af56a682.js.map",
     "static/css/3.b3dd2153.chunk.css": "/taylor/static/css/3.b3dd2153.chunk.css",
-    "static/js/3.1f601ed4.chunk.js": "/taylor/static/js/3.1f601ed4.chunk.js",
-    "static/js/3.1f601ed4.chunk.js.map": "/taylor/static/js/3.1f601ed4.chunk.js.map",
+    "static/js/3.507081fa.chunk.js": "/taylor/static/js/3.507081fa.chunk.js",
+    "static/js/3.507081fa.chunk.js.map": "/taylor/static/js/3.507081fa.chunk.js.map",
     "static/js/4.558b2e18.chunk.js": "/taylor/static/js/4.558b2e18.chunk.js",
     "static/js/4.558b2e18.chunk.js.map": "/taylor/static/js/4.558b2e18.chunk.js.map",
     "static/js/5.183667f4.chunk.js": "/taylor/static/js/5.183667f4.chunk.js",
@@ -145,11 +145,11 @@
     "index.html": "/taylor/index.html",
     "json.worker.js": "/taylor/json.worker.js",
     "json.worker.js.map": "/taylor/json.worker.js.map",
-    "precache-manifest.13a702ce89959385489f116de28a5325.js": "/taylor/precache-manifest.13a702ce89959385489f116de28a5325.js",
+    "precache-manifest.395e5d71fb9ed03189cc9e2753968cf0.js": "/taylor/precache-manifest.395e5d71fb9ed03189cc9e2753968cf0.js",
     "service-worker.js": "/taylor/service-worker.js",
     "static/css/3.b3dd2153.chunk.css.map": "/taylor/static/css/3.b3dd2153.chunk.css.map",
     "static/css/main.27af826f.chunk.css.map": "/taylor/static/css/main.27af826f.chunk.css.map",
-    "static/js/3.1f601ed4.chunk.js.LICENSE.txt": "/taylor/static/js/3.1f601ed4.chunk.js.LICENSE.txt",
+    "static/js/3.507081fa.chunk.js.LICENSE.txt": "/taylor/static/js/3.507081fa.chunk.js.LICENSE.txt",
     "static/js/59.b131d1a2.chunk.js.LICENSE.txt": "/taylor/static/js/59.b131d1a2.chunk.js.LICENSE.txt",
     "static/media/App.css": "/taylor/static/media/Zocial.5cdf883b.ttf",
     "static/media/codicon.css": "/taylor/static/media/codicon.a609dc0f.ttf",
@@ -160,8 +160,8 @@
   "entrypoints": [
     "static/js/runtime-main.af56a682.js",
     "static/css/3.b3dd2153.chunk.css",
-    "static/js/3.1f601ed4.chunk.js",
+    "static/js/3.507081fa.chunk.js",
     "static/css/main.27af826f.chunk.css",
-    "static/js/main.bfdeef02.chunk.js"
+    "static/js/main.58abb365.chunk.js"
   ]
 }
