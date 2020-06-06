@@ -5,7 +5,7 @@ import MonacoEditor from 'react-monaco-editor';
 import { editorOpts } from '../utils/config.js';
 import MalTayContract from '../components/MalTayContract.js';
 import * as taylorUtils from '../utils/taylor.js';
-import maltay from 'taylor/maltay/maltay.js';
+import maltay from '@pipeos/taylor';
 import { monacoTaylorExtension } from '../utils/taylor_editor.js';
 
 import ReactJson from 'custom-react-json-view'

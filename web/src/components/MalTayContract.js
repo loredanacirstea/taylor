@@ -2,7 +2,7 @@ import React, { Component } from 'react';
 import { View, Item, Input, Text, Button, Icon, Picker } from 'native-base';
 import { getProvider } from '../utils/web3.js';
 import { addAddress, getAddresses } from '../utils/taylor.js';
-import maltay from 'taylor/maltay/maltay.js';
+import maltay from '@pipeos/taylor';
 import { web3util } from '../utils/contract.js';
 import { editorOpts } from '../utils/config.js';
 import { argsDisplay } from '../utils/taylor_editor.js';
