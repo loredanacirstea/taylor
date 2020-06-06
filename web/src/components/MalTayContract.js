@@ -164,6 +164,12 @@ class MalTayContract extends Component {
 
     return (
         <View style={{ ...styles, flex: 1 }}>
+        <Button small light
+          style={{ position: 'fixed', top: '10px', right: '30px' }}
+          onClick={() => window.open('https://github.com/loredanacirstea/taylor', '_blank')}
+        >
+          <Icon name='info' type="FontAwesome" style={btniconStyle} />
+        </Button>
           <br></br><br></br>
           <Text style={textStyle}>select root Taylor contract:</Text>
           <Item picker style={{ borderColor: false}}>

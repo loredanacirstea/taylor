@@ -2,7 +2,7 @@ const fs = require('fs')
 const solc = require('solc')
 const ethers = require('ethers');
 const yulp = require('yulp');
-require('../../maltay/extensions.js');
+require('../../src/extensions.js');
 
 const PROVIDER_URL = 'http://192.168.1.140:8545';
 const MALLT_PATH = './contracts/mal_like_tay.sol';
