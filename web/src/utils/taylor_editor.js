@@ -61,7 +61,7 @@ const monacoTaylorExtension = (monaco, taylorFunctions) => {
     });
 }
 
-module.exports = {
+export {
     monacoTaylorExtension,
     argsDisplay,
 }

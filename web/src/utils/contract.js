@@ -1,4 +1,4 @@
-const { DEPL_BLOCKS } = require('./taylor.js');
+import { DEPL_BLOCKS } from './taylor.js';
 
 const getLogs = provider => address => async topic => {
     const filter = {
@@ -53,7 +53,7 @@ const web3util = (provider, signer) => {
     }
 }
 
-module.exports = {
+export {
     getLogs,
     getStoredFunctions,
     call,

@@ -58,7 +58,8 @@ class TaylorEditor extends Component {
   async execute({encdata, code, force=false}={}) {
       encdata = encdata || this.state.encoded;
       code = code || this.state.code;
-      const isTransaction = code && code.includes("def!");
+      const isTransaction = code && code.includes("!");
+
       if (!isTransaction) {
         let encoded;
         try {
@@ -75,7 +76,9 @@ class TaylorEditor extends Component {
             response = await this.state.taysend(encdata);
             this.setState({ result: [{ receipt: response }] });
             receipt = await response.wait();
-          } catch (e) {}
+          } catch (e) {
+            console.log(e);
+          }
         
         if (receipt.status === 0) {
             throw new Error('Transaction failed');
