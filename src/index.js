@@ -54,7 +54,17 @@ const typeid = {
     number: '00001',
     bytelike: '000001',
     enum: '0000001',
-    unknown: '00000001'
+    unknown: '00000001',
+}
+const fulltypeidHex = {
+    // nil shorthand for empty list
+    Nil: listTypeId(0),
+    None: '',
+    // unit - equivalent to void, for functions without return type
+    Unit: '',
+    // trait
+    Nothing: b2h('00000000000000000000000000000000'),
+    Any: b2h('00000000000000000000000000000001'),
 }
 
 const numberid = {
@@ -68,6 +78,7 @@ const numberid = {
     int: '01010001001',
     biguint: '01010010000',
     uint: '01010010001',
+    rational: '', // TODO
 }
 
 
@@ -95,6 +106,8 @@ Object.keys(nativeEnv).forEach(key => {
         reverseNativeEnv[nativeEnv[key].hex] = key;
     }
 });
+// console.log('reverseNativeEnv', reverseNativeEnv)
+
 const formatId = id => strip0x(hexZeroPad(x0(b2h(id)), 4));
 const getnumberid = size => formatId(typeid.number + numberid.uint + u2b(size).padStart(16, '0'))
 const getboolid = value => formatId(typeid.number + numberid.bool + u2b(value ? 1 : 0).padStart(16, '0'));

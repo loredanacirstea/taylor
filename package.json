@@ -2,7 +2,7 @@
   "name": "@pipeos/taylor",
   "version": "0.0.1",
   "description": "Lisp-like functional language, interpreted by WebAssembly & the Ethereum Virtual Machine",
-  "main": "maltay/maltay.js",
+  "main": "src/index.js",
   "directories": {
     "test": "tests"
   },
@@ -33,6 +33,7 @@
   },
   "files": [
     "contracts/*",
-    "maltay/*"
+    "src/*",
+    "build.js"
   ]
 }
