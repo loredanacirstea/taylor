@@ -1,9 +1,9 @@
 require('../src/extensions.js');
-const { getTaylor } = require('./setup/fixtures.js');
+const { getTaylor, getMalBackend } = require('./setup/fixtures.js');
 const { decode, encode, expr2h, b2h, u2b, expr2s } = require('../src/index.js');
-const mal = require('../src/mal_extension.js');
 
 let MalTay;
+let MalB = getMalBackend();
 
 beforeAll(() => {
   return getTaylor().then(t => {
@@ -15,52 +15,6 @@ beforeAll(() => {
 const evenHex = value => value.length % 2 === 1 ? '0' + value : value;
 const toHex = value => '0x' + evenHex(Math.floor(value).toString(16));
 const bnToHex = value => '0x' + evenHex(value.toString(16));
-
-it('js_backend', () => {
-    let resp;
-
-    resp = mal.re('(add (add 4 7) 10)');
-    expect(resp._hex).toBe(toHex(21));
-
-    resp = mal.re('(div (sub (mul (add 4 7) 10) 44) 5)');
-    expect(resp._hex).toBe(toHex( ((4 + 7) * 10 - 44) / 5 ));
-
-    resp = mal.re('(mod 10 3)');
-    expect(resp._hex).toBe(toHex(1));
-
-    resp = mal.re('(exp 2 8)');
-    expect(resp._hex).toBe(toHex(Math.pow(2, 8)));
-
-    resp = mal.re('(lt 10 3)');
-    expect(resp._hex).toBe(toHex(0));
-
-    resp = mal.re('(gt 10 3)');
-    expect(resp._hex).toBe(toHex(1));
-
-    resp = mal.re('(eq 10 10)');
-    expect(resp._hex).toBe(toHex(1));
-
-    resp = mal.re('(iszero 0)');
-    expect(resp._hex).toBe(toHex(1));
-    
-    resp = mal.re('(not (not 12))');
-    expect(resp._hex).toBe(toHex(12));
-    
-    resp = mal.re('(and (iszero 0) (gt 9 7))');
-    expect(resp._hex).toBe(toHex(1));
-
-    resp = mal.re('(or (iszero 5) (gt 9 7))');
-    expect(resp._hex).toBe(toHex(1));
-
-    resp = mal.re('(xor (iszero 0) (gt 9 7))');
-    expect(resp._hex).toBe(toHex(0));
-
-    // resp = mal.re('(shl 2 12)');
-    // expect(resp._hex).toBe(toHex(0x30));
-
-    // resp = mal.re('(shr 2 12)');
-    // expect(resp._hex).toBe(toHex(3));
-});
 
 it('test expr2h', async function () {
     
@@ -422,6 +376,8 @@ it('test evm functions', async function() {
 
     resp = await MalTay.call('(mod 12 3)');
     expect(resp).toBe(0);
+    resp = await MalTay.call('(mod 10 3)');
+    expect(resp).toBe(1);
 
     resp = await MalTay.call('(smod 12 3)');
     expect(resp).toBe(0);
@@ -548,3 +504,52 @@ it('test evm functions', async function() {
     expect(parseInt(resp.substring(10), 16)).toBeGreaterThan(0);
 })
 
+it('js_backend', () => {
+    let resp;
+
+    resp = MalB.call('(add (add 4 7) 10)');
+    expect(resp).toBe(21);
+
+    resp = MalB.call('(div (sub (mul (add 4 7) 10) 44) 5)');
+    expect(resp).toBe(Math.floor(((4 + 7) * 10 - 44) / 5 ));
+
+    resp = MalB.call('(mod 10 3)');
+    expect(resp).toBe(1);
+    resp = MalB.call('(mod 12 3)');
+    expect(resp).toBe(0);
+
+    resp = MalB.call('(exp 2 8)');
+    expect(resp).toBe(Math.pow(2, 8));
+
+    resp = MalB.call('(lt 3 7)');
+    expect(resp).toBe(1);
+
+    resp = MalB.call('(gt 3 7)');
+    expect(resp).toBe(0);
+
+    resp = MalB.call('(eq 7 7)');
+    expect(resp).toBe(1);
+
+    resp = MalB.call('(iszero 0)');
+    expect(resp).toBe(1);
+    resp = MalB.call('(iszero 4)');
+    expect(resp).toBe(0);
+    
+    resp = MalB.call('(not (not 12))');
+    expect(resp).toBe(12);
+    
+    resp = MalB.call('(and (iszero 0) (gt 9 7))');
+    expect(resp).toBe(1);
+
+    resp = MalB.call('(or (iszero 5) (gt 9 7))');
+    expect(resp).toBe(1);
+
+    resp = MalB.call('(xor (iszero 0) (gt 9 7))');
+    expect(resp).toBe(0);
+
+    // resp = MalB.call('(shl 2 12)');
+    // expect(resp).toBe(0x30);
+
+    // resp = MalB.call('(shr 2 12)');
+    // expect(resp).toBe(3);
+});

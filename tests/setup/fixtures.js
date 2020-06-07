@@ -2,8 +2,10 @@ const fs = require('fs')
 const solc = require('solc')
 const ethers = require('ethers');
 const yulp = require('yulp');
+const BN = require('bn.js');
 require('../../src/extensions.js');
 const { decode, expr2h } = require('../../src/index.js');
+const mal = require('../../src/mal_extension.js');
 
 const PROVIDER_URL = 'http://192.168.1.140:8545';
 const MALLT_PATH = './contracts/mal_like_tay.sol';
@@ -113,10 +115,21 @@ const getTaylor = async () => {
   return interpreter;
 }
 
+const getMalBackend = () => {
+  const dec = bnval => {
+    bnval = new BN(bnval._hex.substring(2), 16);
+    return bnval.lt(new BN(2).pow(new BN(16))) ? bnval.toNumber() : bnval;
+  }
+  return {
+    call: mal_expression => dec(mal.re(mal_expression)),
+  }
+}
+
 module.exports = {
   provider,
   signer,
   compileContract,
   deployContract,
   getTaylor,
+  getMalBackend,
 }
