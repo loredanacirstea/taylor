@@ -3,6 +3,7 @@ const solc = require('solc')
 const ethers = require('ethers');
 const yulp = require('yulp');
 require('../../src/extensions.js');
+const { encode, decode, expr2h, b2h, u2b, expr2s } = require('../../src/index.js');
 
 const PROVIDER_URL = 'http://192.168.1.140:8545';
 const MALLT_PATH = './contracts/mal_like_tay.sol';
@@ -96,17 +97,21 @@ const getStoredFunctions = getLogs => async () => {
 
 const getTaylor = async () => {
   const address = await deployContract(signer)(MALLT_PATH);
-  return {
+  const interpreter = {
     address: address.toLowerCase(),
-    send: sendTransaction(signer)(address),
-    call: call(provider)(address),
+    send_raw: sendTransaction(signer)(address),
+    call_raw: call(provider)(address),
     getLogs: getLogs(provider)(address),
     getStoredFunctions: getStoredFunctions(getLogs(provider)(address)),
     provider,
     signer,
   }
-}
 
+  interpreter.call = mal_expression => interpreter.call_raw(expr2h(mal_expression));
+  interpreter.send = mal_expression => interpreter.send_raw(expr2h(mal_expression));
+
+  return interpreter;
+}
 
 module.exports = {
   provider,
