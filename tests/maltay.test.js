@@ -1,6 +1,7 @@
 require('../src/extensions.js');
 const { provider, signer, getTaylor } = require('./setup/fixtures.js');
 const { encode, decode, expr2h, b2h, u2b, expr2s } = require('../src/index.js');
+const mal = require('../src/mal_extension.js');
 
 let MalTay;
 
@@ -11,6 +12,58 @@ beforeAll(() => {
 });
 
 const isFunction = async name => (await MalTay.call('0x44444442' + name.hexEncode().padStart(64, '0'))).length > 2;
+
+const toHex = value => {
+    let hex = Math.floor(value).toString(16)
+    if (hex.length % 2 === 1) hex = '0' + hex;
+    return '0x' + hex;
+};
+
+it('js_backend', () => {
+    let resp;
+
+    resp = mal.re('(add (add 4 7) 10)');
+    expect(resp._hex).toBe(toHex(21));
+
+    resp = mal.re('(div (sub (mul (add 4 7) 10) 44) 5)');
+    expect(resp._hex).toBe(toHex( ((4 + 7) * 10 - 44) / 5 ));
+
+    resp = mal.re('(mod 10 3)');
+    expect(resp._hex).toBe(toHex(1));
+
+    resp = mal.re('(exp 2 8)');
+    expect(resp._hex).toBe(toHex(Math.pow(2, 8)));
+
+    resp = mal.re('(lt 10 3)');
+    expect(resp._hex).toBe(toHex(0));
+
+    resp = mal.re('(gt 10 3)');
+    expect(resp._hex).toBe(toHex(1));
+
+    resp = mal.re('(eq 10 10)');
+    expect(resp._hex).toBe(toHex(1));
+
+    resp = mal.re('(iszero 0)');
+    expect(resp._hex).toBe(toHex(1));
+    
+    resp = mal.re('(not (not 12))');
+    expect(resp._hex).toBe(toHex(12));
+    
+    resp = mal.re('(and (iszero 0) (gt 9 7))');
+    expect(resp._hex).toBe(toHex(1));
+
+    resp = mal.re('(or (iszero 5) (gt 9 7))');
+    expect(resp._hex).toBe(toHex(1));
+
+    resp = mal.re('(xor (iszero 0) (gt 9 7))');
+    expect(resp._hex).toBe(toHex(0));
+
+    // resp = mal.re('(shl 2 12)');
+    // expect(resp._hex).toBe(toHex(0x30));
+
+    // resp = mal.re('(shr 2 12)');
+    // expect(resp._hex).toBe(toHex(3));
+});
 
 it('test sum', async function () {
     const expr = expr2h('(add 4 7)');

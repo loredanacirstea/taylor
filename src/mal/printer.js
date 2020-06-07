@@ -9,10 +9,11 @@ if (typeof module !== 'undefined') {
 }
 
 function _pr_str(obj, print_readably) {
-    console.log('_pr_str', obj, print_readably)
     if (typeof print_readably === 'undefined') { print_readably = true; }
     var _r = print_readably;
     var ot = types._obj_type(obj);
+
+    if (ot === 'hash-map' && obj._hex) ot = 'BigNumber';
     switch (ot) {
     case 'list':
         var ret = obj.map(function(e) { return _pr_str(e,_r); });
@@ -42,6 +43,12 @@ function _pr_str(obj, print_readably) {
         return "nil";
     case 'atom':
         return "(atom " + _pr_str(obj.val,_r) + ")";
+    // TAYLOR fix for BigNumber
+    case 'BigNumber':
+        return 'utils.BN("' + obj._hex + '")';
+    case 'number':
+        // TAYLOR fix for BigNumber
+        return 'utils.BN(' + obj.toString() + ')';
     default:
         return obj.toString();
     }
