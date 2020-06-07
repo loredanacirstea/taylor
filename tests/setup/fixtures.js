@@ -3,7 +3,7 @@ const solc = require('solc')
 const ethers = require('ethers');
 const yulp = require('yulp');
 require('../../src/extensions.js');
-const { encode, decode, expr2h, b2h, u2b, expr2s } = require('../../src/index.js');
+const { decode, expr2h } = require('../../src/index.js');
 
 const PROVIDER_URL = 'http://192.168.1.140:8545';
 const MALLT_PATH = './contracts/mal_like_tay.sol';
@@ -50,14 +50,14 @@ const deployContract = signer => async filePath => {
   return receipt.contractAddress;
 }
 
-const sendTransaction = signer => address => async data => {
-  const transaction = {
+const sendTransaction = signer => address => async (data, txObj = {}) => {
+  const transaction = Object.assign({
     data,
     gasLimit: 1000000,
     value: 0,
     to: address,
     gasPrice: 10
-  };
+  }, txObj);
   const response = await signer.sendTransaction(transaction);
   const receipt = await response.wait();
   if (receipt.status === 0) {
@@ -66,11 +66,11 @@ const sendTransaction = signer => address => async data => {
   return receipt;
 }
 
-const call = provider => address => async data => {
-  let transaction = {
+const call = provider => address => async (data, txObj = {}) => {
+  const transaction = Object.assign({
     to: address,
     data
-  }
+  }, txObj);
   return await provider.call(transaction);
 }
 
@@ -107,8 +107,8 @@ const getTaylor = async () => {
     signer,
   }
 
-  interpreter.call = mal_expression => interpreter.call_raw(expr2h(mal_expression));
-  interpreter.send = mal_expression => interpreter.send_raw(expr2h(mal_expression));
+  interpreter.call = async mal_expression => decode(await interpreter.call_raw(expr2h(mal_expression)));
+  interpreter.send = async mal_expression => interpreter.send_raw(expr2h(mal_expression));
 
   return interpreter;
 }

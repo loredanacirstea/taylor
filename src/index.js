@@ -4,6 +4,7 @@ const malReader = require('./mal/reader.js');
 const malTypes = require('./mal/types.js');
 const _nativeEnv = require('./native.js');
 require('./extensions.js');
+const BN = require('bn.js');
 
 const u2b = value => value.toString(2);
 const u2h = value => value.toString(16);
@@ -121,7 +122,7 @@ const isArray = sig => (sig & 0x40000000) !== 0;
 const isStruct = sig => (sig & 0x20000000) !== 0;
 const isListType = sig => (sig & 0x10000000) !== 0;
 const isNumber = sig => (sig & 0x8000000) !== 0;
-const isBool = sig => (sig & 0x0a800000) === 0x0a800000;
+const isBool = sig => (sig & 0xffff0000) === 0x0a800000;
 const isBytelike = sig => (sig & 0x4000000) !== 0;
 const isEnum = sig => (sig & 0x2000000) !== 0;
 const isLambdaUnknown = sig => (sig & 0x1000000) !== 0;
@@ -141,8 +142,7 @@ tableSig[nativeEnv['if'].hex] = {offsets: [8, 8], aritydelta: 0}
 tableSig['lambda'] = {offsets: lambdaLength}
 tableSig['isGetByName'] = {offsets: [64]}
 
-// TODO: this only encodes uint
-const encode = (types, values) => {
+const encodeInner = (types, values) => {
     if (types.length !== values.length) throw new Error('Encode - different lengths.');
    return types.map((t, i) => {
         switch (t.type) {
@@ -155,7 +155,7 @@ const encode = (types, values) => {
                 ));
                 return id + padded;
             case 'bytes':
-                if (!ethers.utils.isHexString(x0(values[i]))) {
+                if (!ethers.utils.isHexString(x0(strip0x(values[i])))) {
                     throw new Error('Invalid bytes literal.')
                 }
                 const val = strip0x(values[i]);
@@ -165,7 +165,7 @@ const encode = (types, values) => {
                 let len = u2b(values[i].length).padStart(24, '0');
                 const lid = listTypeId(len);
 
-                return lid + values[i].map(value => encode([{type: 'uint', size: 4}], [value]))
+                return lid + values[i].map(value => encodeInner([{type: 'uint', size: 4}], [value]))
                     .join('');
             case 'bool':
                 return getboolid(values[i]);
@@ -175,15 +175,29 @@ const encode = (types, values) => {
     }).join('');
 }
 
+const encode = (types, values) => {
+    return '0x' + encodeInner(types, values);
+}
+
 const decodeInner = (sig, data) => {
+    let result;
+    if (isBool(sig)) {
+        if (sig === 0x0a800001) result = true;
+        else if (sig === 0x0a800000) result = false;
+        else throw new Error('Bool is not bool.');
+        return { result, data };
+    }
     if (isNumber(sig)) {
         const size = numberSize(sig);
-        result = h2u(data.substring(0, size*2));
+        result = new BN(data.substring(0, size*2), 16);
+        if (size && size <= 16) {
+            result = result.toNumber();
+        }
         data = data.substring(size*2);
         return { result, data };
     } else if (isBytelike(sig)) {
         const length = bytelikeSize(sig);
-        result = data.substring(0, length*2)
+        result = '0x' + data.substring(0, length*2)
         data = data.substring(length*2);
         return { result, data };
     } else if (isListType(sig)) {
@@ -211,7 +225,7 @@ const decode = data => {
         ({result, data} = decodeInner(sig, data.substring(8)));
         decoded.push(result);
     }
-    return decoded;
+    return decoded.length > 1 ? decoded : decoded[0];
 }
 
 const ast2h = (ast, parent=null, unkownMap={}, defenv={}) => {
@@ -294,7 +308,7 @@ const ast2h = (ast, parent=null, unkownMap={}, defenv={}) => {
         }
 
         if (typeof elem === 'boolean') {
-            return encode([{type: 'bool'}], [elem]);
+            return encodeInner([{type: 'bool'}], [elem]);
         }
 
         // TODO
@@ -302,7 +316,7 @@ const ast2h = (ast, parent=null, unkownMap={}, defenv={}) => {
             (parseInt(elem) || parseInt(elem) === 0)
             && (!ast[i - 1] || ast[i - 1].value !== bytesMarker)
         ) {
-            return encode([{type: 'uint', size: 4}], [elem]);
+            return encodeInner([{type: 'uint', size: 4}], [elem]);
         }
 
     }).join('');
