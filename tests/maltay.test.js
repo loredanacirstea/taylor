@@ -143,7 +143,7 @@ it('test use stored fn 1', async function () {
     resp = await MalTay.call('(_func1 (add (add (sub 7 2) 1) 41) (add 2 3)))');
     expect(resp).toBe(52);
 
-    resp = await MalTay.getStoredFunctions();
+    resp = await MalTay.getFns();
     expect(resp.length).toBe(1);
     expect(resp[0].name).toBe('func1');
 });
@@ -160,7 +160,7 @@ it('test used stored fn 2', async function () {
     resp = await MalTay.call('(_func2 5 3)');
     expect(resp).toBe(10);
 
-    resp = await MalTay.getStoredFunctions();
+    resp = await MalTay.getFns();
     expect(resp.length).toBe(2);
     expect(resp[0].name).toBe('func1');
     expect(resp[1].name).toBe('func2');
@@ -220,7 +220,7 @@ it('test map', async function () {
     resp = await MalTay.call('(map _myfunc (list 5 8 2))');
     expect(resp).toEqual([18, 27, 9]);
     
-    resp = await MalTay.getStoredFunctions();
+    resp = await MalTay.getFns();
     expect(resp.length).toBe(3);
     expect(resp[2].name).toBe('myfunc');
 });
@@ -346,7 +346,7 @@ it('test registration & executing from root contract', async function () {
 }, 20000);
 
 it('test logs', async function() {
-    const resp = await MalTay.getStoredFunctions();
+    const resp = await MalTay.getFns();
     expect(resp.length).toBe(8);
 });
 
