@@ -546,10 +546,10 @@ describe.each([
         expect(resp).toBe(Math.floor(((4 + 7) * 10 - 44) / 5 ));
     });
     
-    // test(`keccak256`, async () => {
-        // resp = await instance.call('(keccak256 2 12)');
-        // expect(resp).toBe('0x0a91000400000030');
-    // });
+    test.skip(`keccak256`, async () => {
+        resp = await instance.call('(keccak256 2 12)');
+        expect(resp).toBe('0x0a91000400000030');
+    });
 
     test(`gas`, async () => {
         resp = await instance.call('(gas)', {gasLimit: 200000});
@@ -566,6 +566,11 @@ describe.each([
         expect(resp.toNumber()).toBe(100);
     });
 
+    test.skip(`selfbalance`, async () => {
+        resp = await instance.call('(selfbalance)');
+        expect(resp.toNumber()).toBe(100);
+    });
+
     test(`caller`, async () => {
         resp = await instance.call('(caller)');
         expect(resp.toLowerCase()).toBe(instance.signer._address.toLowerCase());
@@ -576,9 +581,17 @@ describe.each([
         expect(resp).toBe(20000);
     });
 
+    test.skip(`calldataload`, async () => {
+        resp = await instance.call('(calldataload 10)');
+    });
+
     test(`calldatasize`, async () => {
         resp = await instance.call('(calldatasize)');
         expect(resp).toBe(4);
+    });
+
+    test.skip(`calldatacopy`, async () => {
+        resp = await instance.call('(calldatacopy 3 7 8)');
     });
 
     test(`codesize`, async () => {
@@ -586,19 +599,67 @@ describe.each([
         expect(resp).toBeGreaterThan(4);
     });
 
+    test.skip(`codecopy`, async () => {
+        resp = await instance.call('(codecopy 3 7 8)');
+    });
+
     test.skip(`extcodesize`, async () => {
         resp = await instance.call('(extcodesize 0x"' + MalTay.signer._address.substring(2) + '")');
         expect(resp).toBeGreaterThan(4);
     });
 
-    test(`origin`, async () => {
-        resp = await instance.call('(origin)');
-        expect(resp.toLowerCase()).toBe(instance.signer._address.toLowerCase());
+    test.skip(`extcodecopy`, async () => {
+        resp = await instance.call('(extcodecopy 3 7 8)');
+    });
+
+    test.skip(`returndatasize`, async () => {
+        resp = await instance.call('(returndatasize)');
+    });
+
+    test.skip(`returndatacopy`, async () => {
+        resp = await instance.call('(returndatacopy 3 7 8)');
+    });
+
+    test.skip(`extcodehash`, async () => {
+        resp = await instance.call('(extcodehash "0x000000")');
+    });
+
+    test.skip(`create`, async () => {
+        resp = await instance.call('(create 100000 64 64)');
+    });
+
+    test.skip(`create2`, async () => {
+        resp = await instance.call('(create 100000 64 64 88)');
+    });
+
+    test.skip(`call`, async () => {
+        resp = await instance.call('(call )');
+    });
+
+    test.skip(`callcode`, async () => {
+        resp = await instance.call('(call )');
+    });
+
+    test.skip(`delegatecall`, async () => {
+        resp = await instance.call('(call )');
+    });
+
+    test.skip(`staticcall`, async () => {
+        resp = await instance.call('(call )');
+    });
+
+    test.skip(`log0, log1, log2, log3, log4`, async () => {
+        resp = await instance.call('(log0 )');
     });
 
     test.skip(`chainid`, async () => {
         resp = await instance.call('(chainid)');
         expect(resp).toBe(3);
+    });
+
+    test(`origin`, async () => {
+        resp = await instance.call('(origin)');
+        expect(resp.toLowerCase()).toBe(instance.signer._address.toLowerCase());
     });
 
     // TODO: implement on chain
@@ -636,4 +697,17 @@ describe.each([
         resp = await instance.call('(gaslimit)',  {gasLimit: 200000});
         expect(resp.toNumber()).toBe(200000);
     });
+
+    // TBD
+    // stop
+    // pc
+    // pop
+    // mload
+    // mstore
+    // mstore8
+    // sload
+    // sstore
+    // msize
+    // return
+    // revert
 });
