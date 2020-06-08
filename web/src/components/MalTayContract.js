@@ -30,7 +30,7 @@ class MalTayContract extends Component {
       rootFunctions: [],
       addrToBeRegistered: null,
       registered: {},
-      backend: 'javascript',
+      backend: 'injected',
     }
 
     this.onChangeAddress = this.onChangeAddress.bind(this);
@@ -47,7 +47,8 @@ class MalTayContract extends Component {
   async setWeb3() {
     const { provider, signer } = await getProvider();
     if (!provider) {
-      this.props.onRootChange(this.state.backend, this.web3util, maltay.malBackend.getBackend());
+      this.setState({ backend: 'javascript' })
+      this.props.onRootChange('javascript', this.web3util, maltay.malBackend.getBackend());
       return;
     }
     const chainid = (await provider.getNetwork()).chainId;
