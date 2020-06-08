@@ -190,9 +190,9 @@ const decodeInner = (sig, data) => {
     if (isNumber(sig)) {
         const size = numberSize(sig);
         result = new BN(data.substring(0, size*2), 16);
-        if (size && size <= 16) {
-            result = result.toNumber();
-        }
+
+        result = result.lt(new BN(2).pow(new BN(16))) ? result.toNumber() : result;
+
         data = data.substring(size*2);
         return { result, data };
     } else if (isBytelike(sig)) {

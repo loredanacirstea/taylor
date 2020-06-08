@@ -213,7 +213,7 @@ object "Taylor" {
             // address
             case 0x800000c8 {
                 result_ptr := allocate(32)
-                mslicestore(result_ptr, uconcat(buildUintSig(20), address(), 20), 24)
+                mslicestore(result_ptr, uconcat(buildBytesSig(20), address(), 20), 24)
             }
             // balance ; TODO address
             case 0x880000ca {
@@ -227,7 +227,7 @@ object "Taylor" {
             // caller ; TODO address
             case 0x800000cc {
                 result_ptr := allocate(32)
-                mslicestore(result_ptr, uconcat(buildUintSig(20), caller(), 20), 24)
+                mslicestore(result_ptr, uconcat(buildBytesSig(20), caller(), 20), 24)
             }
             case 0x800000ce {
                 result_ptr := allocate(36)
@@ -298,7 +298,7 @@ object "Taylor" {
             // origin ; TODO address
             case 0x800000f4 {
                 result_ptr := allocate(32)
-                mslicestore(result_ptr, uconcat(buildUintSig(20), origin(), 20), 24)
+                mslicestore(result_ptr, uconcat(buildBytesSig(20), origin(), 20), 24)
             }
             case 0x800000f6 {
                 result_ptr := allocate(36)
@@ -309,7 +309,7 @@ object "Taylor" {
             }
             case 0x800000f8 {
                 result_ptr := allocate(32)
-                mslicestore(result_ptr, uconcat(buildUintSig(20), coinbase(), 20), 24)
+                mslicestore(result_ptr, uconcat(buildBytesSig(20), coinbase(), 20), 24)
             }
             case 0x800000fa {
                 result_ptr := allocate(36)

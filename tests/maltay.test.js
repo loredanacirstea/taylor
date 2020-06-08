@@ -1,6 +1,7 @@
 require('../src/extensions.js');
 const { getTaylor, getMalBackend } = require('./setup/fixtures.js');
 const { decode, encode, expr2h, b2h, u2b, expr2s } = require('../src/index.js');
+const BN = require('bn.js');
 
 let MalTay;
 let MalB = getMalBackend();
@@ -365,34 +366,10 @@ it('test printer', async function () {
 it('test evm functions', async function() {
     let resp;
 
-    resp = await MalTay.call('(sub 9 3)');
-    expect(resp).toBe(6);
-
-    resp = await MalTay.call('(div 9 3)');
-    expect(resp).toBe(3);
-
     resp = await MalTay.call('(sdiv 12 3)');
     expect(resp).toBe(4);
 
-    resp = await MalTay.call('(mod 12 3)');
-    expect(resp).toBe(0);
-    resp = await MalTay.call('(mod 10 3)');
-    expect(resp).toBe(1);
-
     resp = await MalTay.call('(smod 12 3)');
-    expect(resp).toBe(0);
-
-    resp = await MalTay.call('(exp 2 8)');
-    expect(resp).toBe(256);
-
-    // resp = await MalTay.call('(not (not 12))');
-    // expect(resp).toBe('0x0a9100040000000c');
-
-    // TODO bool?
-    resp = await MalTay.call('(lt 3 7)');
-    expect(resp).toBe(1);
-
-    resp = await MalTay.call('(gt 3 7)');
     expect(resp).toBe(0);
 
     resp = await MalTay.call('(slt 3 7)');
@@ -400,30 +377,6 @@ it('test evm functions', async function() {
 
     resp = await MalTay.call('(sgt 7 7)');
     expect(resp).toBe(0);
-
-    resp = await MalTay.call('(eq 7 7)');
-    expect(resp).toBe(1);
-
-    resp = await MalTay.call('(iszero 4)');
-    expect(resp).toBe(0);
-
-    resp = await MalTay.call('(and (iszero 0) (gt 9 7))');
-    expect(resp).toBe(1);
-
-    resp = await MalTay.call('(or (iszero 5) (gt 9 7))');
-    expect(resp).toBe(1);
-
-    resp = await MalTay.call('(xor (iszero 0) (gt 9 7))');
-    expect(resp).toBe(0);
-
-    // resp = await MalTay.call('(byte 2 0x"11445566")');
-    // expect(resp).toBe('0x0a91000400000044');
-
-    resp = await MalTay.call('(shl 2 12)');
-    expect(resp).toBe(0x30);
-
-    resp = await MalTay.call('(shr 2 12)');
-    expect(resp).toBe(3);
 
     resp = await MalTay.call('(sar 2 12)');
     expect(resp).toBe(3);
@@ -437,119 +390,250 @@ it('test evm functions', async function() {
     resp = await MalTay.call('(signextend 2 12)');
     expect(resp).toBe(0xc);
 
-    // resp = await MalTay.call('(keccak256 2 12)');
-    // expect(resp).toBe('0x0a91000400000030');
-
     // TODO calls
-
-    resp = await MalTay.call_raw(expr2h('(gas)'));
-    expect(resp.substring(0, 10)).toBe('0x0a910020');
-
-    resp = await MalTay.call('(address)');
-    expect(bnToHex(resp)).toBe(MalTay.address);
 
     resp = await MalTay.call_raw(expr2h('(balance 0x"fffFd05c2b12cfE3c74464531f88349e159785ea")'));
     expect(resp).toBe('0x0a9100200000000000000000000000000000000000000000000000056bc75e2d63100000');
-
-    resp = await MalTay.call('(caller)');
-    expect(bnToHex(resp)).toBe(MalTay.signer._address.toLowerCase());
-
-    resp = await MalTay.call('(callvalue)');
-    expect(resp.toNumber()).toBe(0);
-
-    // TODO calldataload
-    
-    resp = await MalTay.call('(calldatasize)');
-    expect(resp.toNumber()).toBe(4);
 
     resp = await MalTay.call_raw(expr2h('(codesize)'));
     expect(resp.substring(0, 10)).toBe('0x0a910020');
     expect(parseInt(resp.substring(10), 16)).toBeGreaterThan(0);
 
-    // resp = await MalTay.call('(extcodesize 0x"' + MalTay.signer._address.substring(2) + '")');
-    // expect(resp.substring(0, 10)).toBe('0x0a910020');
-    // expect(parseInt(resp.substring(10), 16)).toBeGreaterThan(0);
-
-    // TODO extcodecopy
-    // returndatasize
-    // create
-    // create2
-    // logs
-    // chainid
-
-    resp = await MalTay.call('(origin)');
-    expect(bnToHex(resp)).toBe(MalTay.signer._address.toLowerCase());
-
-    // TODO fixme
-    // resp = await MalTay.call_raw(expr2h('(blockhash 1)'));
-    // expect(resp.substring(0, 10)).toBe('0x04000020');
-    // expect(parseInt(resp.substring(10), 16)).toBeGreaterThan(0);
-
-    resp = await MalTay.call_raw(expr2h('(coinbase)'));
-    expect(resp).toBe('0x0a9100140000000000000000000000000000000000000000');
-
-    resp = await MalTay.call_raw(expr2h('(timestamp)'));
-    expect(resp.substring(0, 10)).toBe('0x0a910020');
-    expect(parseInt(resp.substring(10), 16)).toBeGreaterThan(0);
-
-    resp = await MalTay.call_raw(expr2h('(number)'));
-    expect(resp.substring(0, 10)).toBe('0x0a910020');
-    expect(parseInt(resp.substring(10), 16)).toBeGreaterThan(0);
-
-    resp = await MalTay.call_raw(expr2h('(difficulty)'));
-    expect(resp.substring(0, 10)).toBe('0x0a910020');
-
-    resp = await MalTay.call_raw(expr2h('(gaslimit)'));
+    resp = await MalTay.call_raw(expr2h('(extcodesize 0x"' + MalTay.address.substring(2) + '")'));
     expect(resp.substring(0, 10)).toBe('0x0a910020');
     expect(parseInt(resp.substring(10), 16)).toBeGreaterThan(0);
 })
 
-it('js_backend', () => {
-    let resp;
-
-    resp = MalB.call('(add (add 4 7) 10)');
-    expect(resp).toBe(21);
-
-    resp = MalB.call('(div (sub (mul (add 4 7) 10) 44) 5)');
-    expect(resp).toBe(Math.floor(((4 + 7) * 10 - 44) / 5 ));
-
-    resp = MalB.call('(mod 10 3)');
-    expect(resp).toBe(1);
-    resp = MalB.call('(mod 12 3)');
-    expect(resp).toBe(0);
-
-    resp = MalB.call('(exp 2 8)');
-    expect(resp).toBe(Math.pow(2, 8));
-
-    resp = MalB.call('(lt 3 7)');
-    expect(resp).toBe(1);
-
-    resp = MalB.call('(gt 3 7)');
-    expect(resp).toBe(0);
-
-    resp = MalB.call('(eq 7 7)');
-    expect(resp).toBe(1);
-
-    resp = MalB.call('(iszero 0)');
-    expect(resp).toBe(1);
-    resp = MalB.call('(iszero 4)');
-    expect(resp).toBe(0);
+describe.each([
+    ['chain', MalTay],
+    ['mal', MalB],
+])(' (%s)', (backendname, instance) => {
+    if (backendname === 'chain') {
+        beforeAll(() => {
+            return getTaylor().then(t => {
+                instance = t;
+              console.log('****MalTay', MalTay.address);
+            });
+        });
+    }
+    test(`add`, async () => {
+        resp = await instance.call('(add 9 3)');
+        expect(resp).toBe(12);
+    });
     
-    resp = MalB.call('(not (not 12))');
-    expect(resp).toBe(12);
+    test(`sub`, async () => {
+        resp = await instance.call('(sub 9 3)');
+        expect(resp).toBe(6);
+    });
+
+    test(`div`, async () => {
+        resp = await instance.call('(div 9 3)');
+        expect(resp).toBe(3);
+    });
+
+    test.skip(`sdiv`, async () => {
+        resp = await instance.call('(sdiv 12 3)');
+        expect(resp).toBe(4);
+    });
+
+    test(`mod`, async () => {
+        resp = await instance.call('(mod 12 3)');
+        expect(resp).toBe(0);
+        resp = await instance.call('(mod 10 3)');
+        expect(resp).toBe(1);
+    });
+
+    test.skip(`smod`, async () => {
+        resp = await instance.call('(smod 12 3)');
+        expect(resp).toBe(0);
+    });
+
+    test(`exp`, async () => {
+        resp = await instance.call('(exp 2 8)');
+        expect(resp).toBe(256);
+    });
+
+    test.skip(`not`, async () => {
+        resp = await instance.call('(not (not 12))');
+        expect(resp).toBe(12);
+    });
+
+    test(`lt`, async () => {
+        resp = await instance.call('(lt 3 7)');
+        expect(resp).toBe(1);
+    });
     
-    resp = MalB.call('(and (iszero 0) (gt 9 7))');
-    expect(resp).toBe(1);
+    test(`gt`, async () => {
+        resp = await instance.call('(gt 3 7)');
+        expect(resp).toBe(0);
+    });
+    
+    test.skip(`slt`, async () => {
+        resp = await instance.call('(slt 3 7)');
+        expect(resp).toBe(1);
+    });
+    
+    test.skip(`sgt`, async () => {
+        resp = await instance.call('(sgt 7 7)');
+        expect(resp).toBe(0);
+    });
+    
+    test(`eq`, async () => {
+        resp = await instance.call('(eq 7 7)');
+        expect(resp).toBe(1);
+    });
+    
+    test(`iszero`, async () => {
+        resp = await instance.call('(iszero 4)');
+        expect(resp).toBe(0);
+    });
+    
+    test(`and`, async () => {
+        resp = await instance.call('(and (iszero 0) (gt 9 7))');
+        expect(resp).toBe(1);
+    });
+    
+    test(`or`, async () => {
+        resp = await instance.call('(or (iszero 5) (gt 9 7))');
+        expect(resp).toBe(1);
+    });
+    
+    test(`xor`, async () => {
+        resp = await instance.call('(xor (iszero 0) (gt 9 7))');
+        expect(resp).toBe(0);
+    });
+    
+    test.skip(`byte`, async () => {
+        resp = await instance.call('(byte 2 0x"11445566")');
+        expect(resp).toBe('0x44');
+    });
+    
+    test(`shl`, async () => {
+        resp = await instance.call('(shl 2 12)');
+        expect(resp).toBe(0x30);
+    });
+    
+    test(`shr`, async () => {
+        resp = await instance.call('(shr 2 12)');
+        expect(resp).toBe(3);
+    });
+    
+    test.skip(`sar`, async () => {
+        resp = await instance.call('(sar 2 12)');
+        expect(resp).toBe(3);
+    });
+    
+    test.skip(`addmod`, async () => {
+        resp = await instance.call('(addmod 10, 5, 4)');
+        expect(resp).toBe(3);
+    });
+    
+    test.skip(`mulmod`, async () => {
+        resp = await instance.call('(mulmod 10, 5, 4)');
+        expect(resp).toBe(2);
+    });
+    
+    test.skip(`signextend`, async () => {
+        resp = await instance.call('(signextend 2 12)');
+        expect(resp).toBe(0xc);
+    });
 
-    resp = MalB.call('(or (iszero 5) (gt 9 7))');
-    expect(resp).toBe(1);
+    test(`math`, async () => {
+        resp = await instance.call('(add (add 4 7) 10)');
+        expect(resp).toBe(21);
 
-    resp = MalB.call('(xor (iszero 0) (gt 9 7))');
-    expect(resp).toBe(0);
+        resp = await instance.call('(div (sub (mul (add 4 7) 10) 44) 5)');
+        expect(resp).toBe(Math.floor(((4 + 7) * 10 - 44) / 5 ));
+    });
+    
+    // test(`keccak256`, async () => {
+        // resp = await instance.call('(keccak256 2 12)');
+        // expect(resp).toBe('0x0a91000400000030');
+    // });
 
-    // resp = MalB.call('(shl 2 12)');
-    // expect(resp).toBe(0x30);
+    test(`gas`, async () => {
+        resp = await instance.call('(gas)', {gasLimit: 200000});
+        expect(resp.toNumber()).toBeGreaterThan(170000);
+    });
 
-    // resp = MalB.call('(shr 2 12)');
-    // expect(resp).toBe(3);
+    test(`address`, async () => {
+        resp = await instance.call('(address)');
+        expect(resp).toBe(instance.address);
+    });
+
+    test.skip(`balance`, async () => {
+        resp = await instance.call('(balance 0x"fffFd05c2b12cfE3c74464531f88349e159785ea")');
+        expect(resp.toNumber()).toBe(100);
+    });
+
+    test(`caller`, async () => {
+        resp = await instance.call('(caller)');
+        expect(resp.toLowerCase()).toBe(instance.signer._address.toLowerCase());
+    });
+
+    test(`callvalue`, async () => {
+        resp = await instance.call('(callvalue)', {value: 20000});
+        expect(resp).toBe(20000);
+    });
+
+    test(`calldatasize`, async () => {
+        resp = await instance.call('(calldatasize)');
+        expect(resp).toBe(4);
+    });
+
+    test(`codesize`, async () => {
+        resp = await instance.call('(codesize)');
+        expect(resp).toBeGreaterThan(4);
+    });
+
+    test.skip(`extcodesize`, async () => {
+        resp = await instance.call('(extcodesize 0x"' + MalTay.signer._address.substring(2) + '")');
+        expect(resp).toBeGreaterThan(4);
+    });
+
+    test(`origin`, async () => {
+        resp = await instance.call('(origin)');
+        expect(resp.toLowerCase()).toBe(instance.signer._address.toLowerCase());
+    });
+
+    test.skip(`chainid`, async () => {
+        resp = await instance.call('(chainid)');
+        expect(resp).toBe(3);
+    });
+
+    // TODO: implement on chain
+    test.skip(`gasprice`, async () => {
+        resp = await instance.call('(gasprice)', {gasPrice: 40});
+        expect(resp).toBe(40);
+    });
+
+    test.skip(`blockhash`, async () => {
+        resp = await instance.call('(blockhash)');
+        // expect(bnToHex(resp)).toBe(instance.signer._address.toLowerCase());
+    });
+
+    test(`coinbase`, async () => {
+        resp = await instance.call('(coinbase)');
+        expect(resp.toLowerCase()).toBe('0x0000000000000000000000000000000000000000');
+    });
+
+    test(`timestamp`, async () => {
+        resp = await instance.call('(timestamp)');
+        expect(resp.toNumber()).toBeGreaterThan(1000000);
+    });
+
+    test(`number`, async () => {
+        resp = await instance.call('(number)');
+        expect(resp).toBeGreaterThan(0);
+    });
+
+    test(`difficulty`, async () => {
+        resp = await instance.call('(difficulty)');
+        // expect(BN.isBN(resp)).toBe(true);
+    });
+
+    test(`gaslimit`, async () => {
+        resp = await instance.call('(gaslimit)',  {gasLimit: 200000});
+        expect(resp.toNumber()).toBe(200000);
+    });
 });

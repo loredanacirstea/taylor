@@ -46,9 +46,6 @@ function _pr_str(obj, print_readably) {
     // TAYLOR fix for BigNumber
     case 'BigNumber':
         return 'utils.BN("' + obj._hex + '")';
-    case 'number':
-        // TAYLOR fix for BigNumber
-        return 'utils.BN(' + obj.toString() + ')';
     default:
         return obj.toString();
     }

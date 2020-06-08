@@ -4,6 +4,10 @@ const interop = require('../src/mal/interop');
 const BN = require('bn.js');
 
 mal.re = str => mal.EVAL(mal.READ(str), mal.repl_env)
+mal.reps = lines => lines.split('\n\n')
+    .map(line => line.replace('\n', ''))
+    .filter(line => line.length > 4 && !line.includes(';'))
+    .map(line => mal.rep(line));
 
 const modifyEnv = (name, func) => {
     const orig_func =  mal.repl_env.get(malTypes._symbol(name));
@@ -18,7 +22,6 @@ const toHex = bnval => {
 }
 
 modifyEnv('js-eval', (orig_func, str) => {
-    // console.log('js-eval', str);
     const utils = {
         BN: n => {
             if (typeof n === 'string' && n.substring(0, 2) === '0x') {
@@ -37,39 +40,110 @@ modifyEnv('js-eval', (orig_func, str) => {
 
 /* EVM */
 
-mal.rep('(def! add (fn* (a b) (js-eval (str a ".add(" b ")"))))')
-mal.rep('(def! sub (fn* (a b) (js-eval (str a ".sub(" b ")"))))')
-mal.rep('(def! mul (fn* (a b) (js-eval (str a ".mul(" b ")"))))')
-mal.rep('(def! div (fn* (a b) (js-eval (str a ".div(" b ")"))))')
-// sdiv
-mal.rep('(def! mod (fn* (a b) (js-eval (str a ".mod(" b ")"))))')
-// smod
-// exp
-mal.rep('(def! exp (fn* (a b) (js-eval (str a ".pow(" b ")"))))')
-mal.rep('(def! lt (fn* (a b) (js-eval (str a ".lt(" b ")"))))')
-mal.rep('(def! gt (fn* (a b) (js-eval (str a ".gt(" b ")"))))')
-// sgt
-// slt
-mal.rep('(def! eq (fn* (a b) (js-eval (str a ".eq(" b ")"))))')
-mal.rep('(def! iszero (fn* (a) (js-eval (str a ".isZero()"))))')
-mal.rep('(def! not (fn* (a) (js-eval (str a ".notn(256)")) ) )')
-mal.rep('(def! and (fn* (a b) (js-eval (str a ".and(" b ")")) ) )')
-mal.rep('(def! or (fn* (a b) (js-eval (str a ".or(" b ")")) ) )')
-mal.rep('(def! xor (fn* (a b) (js-eval (str a ".xor(" b ")")) ) )')
-// byte nth x
-mal.rep('(def! shl (fn* (a b) (js-eval (str b ".shln(" a ")")) ) )')
-mal.rep('(def! shr (fn* (a b) (js-eval (str b ".shrn(" a ")")) ) )')
-// mal.rep('(def! sar (fn* (a b) (js-eval (str b ">>>" a)) ) )')
+mal.reps(`
+(def! add (fn* (a b) (js-eval (str "utils.BN(" a ").add(utils.BN(" b "))"))))
+
+(def! sub (fn* (a b) (js-eval (str "utils.BN(" a ").sub(utils.BN(" b "))"))))
+
+(def! mul (fn* (a b) (js-eval (str "utils.BN(" a ").mul(utils.BN(" b "))"))))
+
+(def! div (fn* (a b) (js-eval (str "utils.BN(" a ").div(utils.BN(" b "))"))))
+
+;sdiv
+
+(def! mod (fn* (a b) (js-eval (str "utils.BN(" a ").mod(utils.BN(" b "))"))))
+
+;smod
+
+(def! exp (fn* (a b) (js-eval (str "utils.BN(" a ").pow(utils.BN(" b "))"))))
+
+(def! lt (fn* (a b) (js-eval (str "utils.BN(" a ").lt(utils.BN(" b "))"))))
+
+(def! gt (fn* (a b) (js-eval (str "utils.BN(" a ").gt(utils.BN(" b "))"))))
+
+;sgt
+
+;slt
+
+(def! eq (fn* (a b) (js-eval (str "utils.BN(" a ").eq(utils.BN(" b "))"))))
+
+(def! iszero (fn* (a) (js-eval (str "utils.BN(" a ").isZero()"))))
+
+(def! not (fn* (a) (js-eval (str "utils.BN(" a ").notn(256)")) ) )
+
+(def! and (fn* (a b) (js-eval (str "utils.BN(" a ").and(utils.BN(" b "))")) ) )
+
+(def! or (fn* (a b) (js-eval (str "utils.BN(" a ").or(utils.BN(" b "))")) ) )
+
+(def! xor (fn* (a b) (js-eval (str "utils.BN(" a ").xor(utils.BN(" b "))")) ) )
+
+(def! byte (fn* (nth b) (js-eval (str "utils.BN(" b ").substring(2).substring(" nth "*2, " nth "*2 + 2)" )) ) )
+
+(def! shl (fn* (a b) (js-eval (str "utils.BN(" b ").shln(" a ")")) ) )
+
+(def! shr (fn* (a b) (js-eval (str "utils.BN(" b ").shrn(" a ")")) ) )
+
+`)
+
+mal.reps(`
+(def! balances {})
+
+(def! gas (fn* () (get cenv "gas")))
+
+(def! address (fn* () (get cenv "address")))
+
+(def! balance (fn* (addr) (get balances addr)))
+
+(def! selfbalance (fn* () (get balances (address))))
+
+(def! caller (fn* (address) (get cenv "caller" )))
+
+(def! callvalue (fn* (address) (get cenv "callvalue" )))
+
+(def! calldatasize (fn* () 4))
+
+(def! codesize (fn* () 134 ))
+
+(def! extcodesize (fn* (address) 134 ))
+
+(def! returndatasize (fn* () 134 ))
+
+(def! extcodehash (fn* () 1343322 ))
+
+(def! chainid (fn* () (get cenv "chainid" )))
+
+(def! origin (fn* () (get cenv "origin" )))
+
+(def! gasprice (fn* () (get cenv "gasPrice" )))
+
+(def! blockhash (fn* () (get cenv "blockhash" )))
+
+(def! coinbase (fn* () (get cenv "coinbase" )))
+
+(def! timestamp (fn* (a b) (js-eval "new Date().getTime()") ) )
+
+(def! number (fn* () (get cenv "number" )))
+
+(def! difficulty (fn* () (get cenv "difficulty" )))
+
+(def! gaslimit (fn* () (get cenv "gasLimit" )))
+
+`)
+
 // addmod
 // mulmod
 // signextend
 // keccak256
+// calldataload
+// calldatacopy
+// codecopy
+// extcodecopy
+// create
+// create2
 // call
 // callcode
 // delegatecall
 // staticcall
-// gas
-//address
-mal.rep('(def! timestamp (fn* (a b) (js-eval "new Date().getTime()") ) )')
+// logs
 
 module.exports = mal;
