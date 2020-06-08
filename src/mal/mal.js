@@ -126,7 +126,7 @@ function _EVAL(ast, env) {
         break;
     case "if":
         var cond = EVAL(a1, env);
-        if (cond === null || cond === false) {
+        if (cond === null || cond === false || cond === 0 || (cond._hex && parseInt(cond._hex, 16) === 0)) {
             ast = (typeof a3 !== "undefined") ? a3 : null;
         } else {
             ast = a2;
