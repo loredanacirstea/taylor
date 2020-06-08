@@ -171,9 +171,10 @@ mal.getBackend = (address) => {
   
     const from = '0xfCbCE2e4d0E19642d3a2412D84088F24bFB33a48';
   
-    return {
+    const interpreter = {
       address,
       call: (mal_expression, txObj) => {
+        mal_expression = mal_expression.replace(/_/g, '');
         txObj = Object.assign({ from }, DEFAULT_TXOBJ, txObj);
   
         mal.rep(`(def! cenv {
@@ -195,6 +196,8 @@ mal.getBackend = (address) => {
       },
       signer: { _address: from },
     }
+    interpreter.send = interpreter.call;
+    return interpreter;
 }
 
 module.exports = mal;

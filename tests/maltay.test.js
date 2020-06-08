@@ -95,43 +95,6 @@ it('test lambda 2', async function () {
     expect(resp).toBe('0x0a91000400000034');
 });
 
-it('test use stored fn 1', async function () {
-    let resp;
-    let name = 'func1'
-
-    await MalTay.send('(def! func1 (fn* (a b) (add a b)))');
-    resp = await MalTay.call_raw('0x44444442' + name.hexEncode().padStart(64, '0'));
-    expect(resp).toBe('0x8c0000289000000201000000000000000100000000000001');
-    
-    resp = await MalTay.call('(_func1 2 3)');
-    expect(resp).toBe(5);
-
-    resp = await MalTay.call('(_func1 (add (add (sub 7 2) 1) 41) (add 2 3)))');
-    expect(resp).toBe(52);
-
-    resp = await MalTay.getFns();
-    expect(resp.length).toBe(1);
-    expect(resp[0].name).toBe('func1');
-});
-
-it('test used stored fn 2', async function () {
-    let expr, resp;
-    let name = 'func2'
-
-    await MalTay.send('(def! func2 (fn* (a b) (add (add (sub a b) a) b)))');
-
-    resp = await MalTay.call_raw('0x44444442' + name.hexEncode().padStart(64, '0'));
-    expect(resp).toBe(expr2h('(fn* (a b) (add (add (sub a b) a) b))'));
-
-    resp = await MalTay.call('(_func2 5 3)');
-    expect(resp).toBe(10);
-
-    resp = await MalTay.getFns();
-    expect(resp.length).toBe(2);
-    expect(resp[0].name).toBe('func1');
-    expect(resp[1].name).toBe('func2');
-});
-
 it.skip('test if with lambda', async function () {
     let resp;
 
@@ -160,19 +123,6 @@ it('test bytes contig', async function () {
 
     resp = await MalTay.call('(contig 2 0x"221111ccdd")');
     expect(resp).toBe('0x221111ccdd221111ccdd');
-});
-
-it('test map', async function () {
-    let resp;
-
-    await MalTay.send('(def! myfunc (fn* (a) (mul (add a 1) 3)))');
-    
-    resp = await MalTay.call('(map _myfunc (list 5 8 2))');
-    expect(resp).toEqual([18, 27, 9]);
-    
-    resp = await MalTay.getFns();
-    expect(resp.length).toBe(3);
-    expect(resp[2].name).toBe('myfunc');
 });
 
 it('test reduce', async function () {
@@ -264,11 +214,6 @@ it('test registration & executing from root contract', async function () {
     resp = await MalTay.call_raw('0x44444440');
     expect(parseInt(resp, 16)).toBe(2);
 }, 20000);
-
-it('test logs', async function() {
-    const resp = await MalTay.getFns();
-    expect(resp.length).toBe(8);
-});
 
 it('test printer', async function () {
     let expr;
@@ -420,6 +365,67 @@ describe.each([
     
         resp = await instance.call('(nth (list 5 3 7) 2)');
         expect(resp).toBe(7);
+    });
+
+    it('test use stored fn 1', async function () {
+        let resp;
+        let name = 'func1'
+    
+        await instance.send('(def! func1 (fn* (a b) (add a b)))');
+        
+        if (backendname === 'chain') {
+            resp = await instance.call_raw('0x44444442' + name.hexEncode().padStart(64, '0'));
+            expect(resp).toBe('0x8c0000289000000201000000000000000100000000000001');
+        }
+        
+        resp = await instance.call('(_func1 2 3)');
+        expect(resp).toBe(5);
+    
+        resp = await instance.call('(_func1 (add (add (sub 7 2) 1) 41) (add 2 3)))');
+        expect(resp).toBe(52);
+
+        if (backendname === 'chain') {
+            resp = await instance.getFns();
+            expect(resp.length).toBe(1);
+            expect(resp[0].name).toBe('func1');
+        }
+    });
+
+    it('test used stored fn 2', async function () {
+        let expr, resp;
+        let name = 'func2'
+    
+        await instance.send('(def! func2 (fn* (a b) (add (add (sub a b) a) b)))');
+        
+        if (backendname === 'chain') {
+            resp = await instance.call_raw('0x44444442' + name.hexEncode().padStart(64, '0'));
+            expect(resp).toBe(expr2h('(fn* (a b) (add (add (sub a b) a) b))'));
+        }
+
+        resp = await instance.call('(_func2 5 3)');
+        expect(resp).toBe(10);
+        
+        if (backendname === 'chain') {
+            resp = await instance.getFns();
+            expect(resp.length).toBe(2);
+            expect(resp[0].name).toBe('func1');
+            expect(resp[1].name).toBe('func2');
+        }
+    });
+
+    it('test map', async function () {
+        let resp;
+    
+        await instance.send('(def! myfunc (fn* (a) (mul (add a 1) 3)))');
+        
+        resp = await instance.call('(map _myfunc (list 5 8 2))');
+        expect(resp).toEqual([18, 27, 9]);
+
+        if (backendname === 'chain') {
+            resp = await instance.getFns();
+            expect(resp.length).toBe(3);
+            expect(resp[2].name).toBe('myfunc');
+        }
     });
 
     test(`add`, async () => {
@@ -722,4 +728,12 @@ describe.each([
     // msize
     // return
     // revert
+
+    it('test logs', async function() {
+        if (backendname === 'chain') {
+            const resp = await instance.getFns();
+            expect(resp.length).toBe(3);
+        }
+    });
 });
+
