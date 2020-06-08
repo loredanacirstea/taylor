@@ -572,7 +572,7 @@ describe.each([
     });
 
     test(`caller`, async () => {
-        resp = await instance.call('(caller)');
+        resp = await instance.call('(caller)', {from: instance.signer._address});
         expect(resp.toLowerCase()).toBe(instance.signer._address.toLowerCase());
     });
 
@@ -658,7 +658,7 @@ describe.each([
     });
 
     test(`origin`, async () => {
-        resp = await instance.call('(origin)');
+        resp = await instance.call('(origin)', {from: instance.signer._address});
         expect(resp.toLowerCase()).toBe(instance.signer._address.toLowerCase());
     });
 

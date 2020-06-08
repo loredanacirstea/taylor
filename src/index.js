@@ -1,8 +1,9 @@
 const ethers = require('ethers');
-const { hexStripZeros, hexZeroPad } = ethers.utils;
+const { hexZeroPad } = ethers.utils;
 const malReader = require('./mal/reader.js');
 const malTypes = require('./mal/types.js');
 const _nativeEnv = require('./native.js');
+const malBackend = require('./mal_backend.js');
 require('./extensions.js');
 const BN = require('bn.js');
 
@@ -411,6 +412,72 @@ const expr2string = (inidata, pos=0, accum='') => {
 
 const expr2s = inidata => expr2string(strip0x(inidata)).accum;
 
+
+const DEFAULT_TXOBJ = {
+    gasLimit: 1000000,
+    value: 0,
+    gasPrice: 10
+}
+  
+const sendTransaction = signer => address => async (data, txObj = {}) => {
+    const transaction = Object.assign({}, DEFAULT_TXOBJ, txObj, {
+        data,
+        to: address,
+    });
+    const response = await signer.sendTransaction(transaction);
+    const receipt = await response.wait();
+    if (receipt.status === 0) {
+        throw new Error('Transaction failed');
+    }
+    return receipt;
+}
+  
+const call = provider => address => async (data, txObj = {}) => {
+    const transaction = Object.assign({
+        to: address,
+        data,
+    }, txObj);
+    return await provider.call(transaction);
+}
+  
+const getLogs = provider => address => async topic => {
+    const filter = {
+        address: address,
+        topics: [ topic ],
+        fromBlock: 0,
+        toBlock: 'latest',
+    }
+    return provider.getLogs(filter);
+}
+  
+const getStoredFunctions = getLogs => async () => {
+    const topic = '0x00000000000000000000000000000000000000000000000000000000ffffffff';
+    const logs = await getLogs(topic);
+  
+    return logs.map(log => {
+        log.name = log.topics[1].substring(2).hexDecode();
+        log.signature = '0x' + log.topics[2].substring(58);
+        return log;
+    });
+}  
+
+const getTaylor = (provider, signer) => address => {
+    const interpreter = {
+        address: address.toLowerCase(),
+        send_raw: sendTransaction(signer)(address),
+        call_raw: call(provider)(address),
+        getLogs: getLogs(provider)(address),
+        getStoredFunctions: getStoredFunctions(getLogs(provider)(address)),
+        provider,
+        signer,
+    }
+    
+    interpreter.call = async (mal_expression, txObj) => decode(await interpreter.call_raw(expr2h(mal_expression), txObj));
+    interpreter.send = async (mal_expression, txObj) => interpreter.send_raw(expr2h(mal_expression), txObj);
+
+    return interpreter;
+}
+
 module.exports = {
     u2b, u2h, b2u, b2h, h2u, h2b,
     typeid, nativeEnv, reverseNativeEnv,
@@ -419,5 +486,7 @@ module.exports = {
     expr2h,
     funcidb,
     expr2s,
+    malBackend,
+    getTaylor,
 }
 

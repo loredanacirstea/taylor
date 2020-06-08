@@ -1,6 +1,6 @@
-const mal = require('../src/mal/mal.js');
-const malTypes = require('../src/mal/types.js');
-const interop = require('../src/mal/interop');
+const mal = require('./mal/mal.js');
+const malTypes = require('./mal/types.js');
+const interop = require('./mal/interop');
 const BN = require('bn.js');
 
 mal.re = str => mal.EVAL(mal.READ(str), mal.repl_env)
@@ -145,5 +145,52 @@ mal.reps(`
 // delegatecall
 // staticcall
 // logs
+
+const DEFAULT_TXOBJ = {
+    gasLimit: 1000000,
+    value: 0,
+    gasPrice: 10
+}
+
+mal.getBackend = (address) => {
+    address = address || '0x81bD2984bE297E18F310BAef6b895ea089484968';
+    const dec = bnval => {
+      if (typeof bnval === 'string') return bnval;
+      if (typeof bnval === 'object') {
+        bnval = new BN(bnval._hex.substring(2), 16);
+      } else {
+        bnval = new BN(bnval);
+      }
+  
+      return bnval.lt(new BN(2).pow(new BN(16))) ? bnval.toNumber() : bnval;
+    }
+  
+    const from = '0xfCbCE2e4d0E19642d3a2412D84088F24bFB33a48';
+  
+    return {
+      address,
+      call: (mal_expression, txObj) => {
+        txObj = Object.assign({ from }, DEFAULT_TXOBJ, txObj);
+  
+        mal.rep(`(def! cenv {
+          "gas" 176000
+          "gasLimit" ${txObj.gasLimit}
+          "address" (str "${address}")
+          "callvalue" (js-eval "utils.BN(${txObj.value})")
+          "gasPrice" (js-eval "utils.BN(${txObj.gasPrice})")
+          "caller" (str "${txObj.from}")
+          "number" (js-eval "utils.BN(3)")
+          "coinbase" (str "0x0000000000000000000000000000000000000000")
+          "blockhash" (str "0x37b89115ab3653201f2f995d2d0c50cb99b65251f530ed496470b9102e035d5f")
+          "origin" (str "${txObj.from}")
+          "difficulty" (js-eval "utils.BN(300)")
+          "chainid" 3
+        })`);
+  
+        return dec(mal.re(mal_expression));
+      },
+      signer: { _address: from },
+    }
+}
 
 module.exports = mal;
