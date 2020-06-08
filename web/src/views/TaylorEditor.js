@@ -47,11 +47,11 @@ class TaylorEditor extends Component {
 
   onRootChange(backend, tayinterpreter, malbackend) {
     this.setState({ backend, tayinterpreter, malbackend });
-    if (!tayinterpreter) {
+    if (!tayinterpreter && backend !== 'javascript') {
       const errors = "No web3 provider found. Please connect to one (e.g. Metamask).";
       this.setState({ errors });
     } else {
-      this.execute({ backend, tayinterpreter, malbackend });
+      this.execute({ backend, tayinterpreter, malbackend, errors: '' });
     }
   }
 

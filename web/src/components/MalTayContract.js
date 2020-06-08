@@ -118,6 +118,11 @@ class MalTayContract extends Component {
   }
 
   onChangeBackend(backend) {
+    if (backend !== 'javascript' && !this.state.provider) {
+      this.setWeb3();
+      return;
+    }
+    
     this.setState({ backend });
     this.props.onRootChange(backend, this.web3util, maltay.malBackend.getBackend());
   }
