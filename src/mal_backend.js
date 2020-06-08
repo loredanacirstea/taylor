@@ -155,14 +155,18 @@ const DEFAULT_TXOBJ = {
 mal.getBackend = (address) => {
     address = address || '0x81bD2984bE297E18F310BAef6b895ea089484968';
     const dec = bnval => {
-      if (typeof bnval === 'string') return bnval;
-      if (typeof bnval === 'object') {
-        bnval = new BN(bnval._hex.substring(2), 16);
-      } else {
-        bnval = new BN(bnval);
-      }
-  
-      return bnval.lt(new BN(2).pow(new BN(16))) ? bnval.toNumber() : bnval;
+        if (typeof bnval === 'number') {
+            bnval = new BN(bnval);
+        } else if (typeof bnval === 'object' && bnval._hex) {
+            bnval = new BN(bnval._hex.substring(2), 16);
+        } else if (bnval instanceof Array) {
+            return bnval.map(val => dec(val));
+        }
+        
+        if (BN.isBN(bnval)) {
+            return bnval.lt(new BN(2).pow(new BN(16))) ? bnval.toNumber() : bnval;
+        }
+        return bnval;
     }
   
     const from = '0xfCbCE2e4d0E19642d3a2412D84088F24bFB33a48';

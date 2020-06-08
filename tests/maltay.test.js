@@ -51,16 +51,6 @@ it('test encoding & decoding', function () {
     expect(decode(encode([{type: 'bool'}], [false]))).toEqual(false);
 });
 
-it('test list', async function () {
-    let resp;
-
-    resp = await MalTay.call('(list 5 4 8 3 5)');
-    expect(resp).toEqual([5, 4, 8, 3, 5]);
-
-    resp = await MalTay.call('(list 5 4 (add 6 5) 3 (sub 6 1))');
-    expect(resp).toEqual([5, 4, 11, 3, 5]);
-});
-
 it('test lambda', async function () {
     let resp;
 
@@ -416,6 +406,15 @@ describe.each([
             });
         });
     }
+
+    test(`list`, async () => {
+        resp = await instance.call('(list 5 4 8 3 5)');
+        expect(resp).toEqual([5, 4, 8, 3, 5]);
+
+        resp = await instance.call('(list 5 4 (add 6 5) 3 (sub 6 1))');
+        expect(resp).toEqual([5, 4, 11, 3, 5]);
+    });
+
     test(`add`, async () => {
         resp = await instance.call('(add 9 3)');
         expect(resp).toBe(12);
