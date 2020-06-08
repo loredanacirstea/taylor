@@ -2,7 +2,10 @@ const fs = require('fs')
 const solc = require('solc')
 const ethers = require('ethers');
 const yulp = require('yulp');
+const BN = require('bn.js');
 require('../../src/extensions.js');
+const { decode, expr2h, getTaylor } = require('../../src/index.js');
+const mal = require('../../src/mal_backend.js');
 
 const PROVIDER_URL = 'http://192.168.1.140:8545';
 const MALLT_PATH = './contracts/mal_like_tay.sol';
@@ -49,62 +52,9 @@ const deployContract = signer => async filePath => {
   return receipt.contractAddress;
 }
 
-const sendTransaction = signer => address => async data => {
-  const transaction = {
-    data,
-    gasLimit: 1000000,
-    value: 0,
-    to: address,
-    gasPrice: 10
-  };
-  const response = await signer.sendTransaction(transaction);
-  const receipt = await response.wait();
-  if (receipt.status === 0) {
-    throw new Error('Transaction failed');
-  }
-  return receipt;
-}
-
-const call = provider => address => async data => {
-  let transaction = {
-    to: address,
-    data
-  }
-  return await provider.call(transaction);
-}
-
-const getLogs = provider => address => async topic => {
-  const filter = {
-    address: address,
-    topics: [ topic ],
-    fromBlock: 0,
-    toBlock: 'latest',
-  }
-  return provider.getLogs(filter);
-}
-
-const getStoredFunctions = getLogs => async () => {
-  const topic = '0x00000000000000000000000000000000000000000000000000000000ffffffff';
-  const logs = await getLogs(topic);
-
-  return logs.map(log => {
-    log.name = log.topics[1].substring(2).hexDecode();
-    log.signature = '0x' + log.topics[2].substring(58);
-    return log;
-  });
-}
-
-const getTaylor = async () => {
+const _getTaylor = async () => {
   const address = await deployContract(signer)(MALLT_PATH);
-  return {
-    address: address.toLowerCase(),
-    send: sendTransaction(signer)(address),
-    call: call(provider)(address),
-    getLogs: getLogs(provider)(address),
-    getStoredFunctions: getStoredFunctions(getLogs(provider)(address)),
-    provider,
-    signer,
-  }
+  return getTaylor(provider, signer)(address);
 }
 
 
@@ -113,5 +63,6 @@ module.exports = {
   signer,
   compileContract,
   deployContract,
-  getTaylor,
+  getTaylor: _getTaylor,
+  getMalBackend: mal.getBackend,
 }
