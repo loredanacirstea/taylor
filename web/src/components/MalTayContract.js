@@ -1,9 +1,8 @@
 import React, { Component } from 'react';
-import { View, Item, Input, Text, Button, Icon, Picker } from 'native-base';
+import { View, Item, Input, Text, Button, Icon, Picker, TabHeading } from 'native-base';
 import { getProvider } from '../utils/web3.js';
-import { addAddress, getAddresses } from '../utils/taylor.js';
+import { addAddress, getAddresses, DEPL_BLOCKS } from '../utils/taylor.js';
 import maltay from '@pipeos/taylor';
-import { web3util } from '../utils/contract.js';
 import { editorOpts } from '../utils/config.js';
 import { argsDisplay } from '../utils/taylor_editor.js';
 
@@ -31,6 +30,7 @@ class MalTayContract extends Component {
       rootFunctions: [],
       addrToBeRegistered: null,
       registered: {},
+      backend: 'javascript',
     }
 
     this.onChangeAddress = this.onChangeAddress.bind(this);
@@ -39,6 +39,7 @@ class MalTayContract extends Component {
     this.onChangeRootAddress = this.onChangeRootAddress.bind(this);
     this.onChangeRegisteredAddress = this.onChangeRegisteredAddress.bind(this);
     this.onRegister = this.onRegister.bind(this);
+    this.onChangeBackend = this.onChangeBackend.bind(this);
   
     this.setWeb3();
   }
@@ -46,7 +47,7 @@ class MalTayContract extends Component {
   async setWeb3() {
     const { provider, signer } = await getProvider();
     if (!provider) {
-      this.props.onRootChange(null, null);
+      this.props.onRootChange(this.state.backend, this.web3util, maltay.malBackend.getBackend());
       return;
     }
     const chainid = (await provider.getNetwork()).chainId;
@@ -54,18 +55,19 @@ class MalTayContract extends Component {
     const rootAddress = {name: addresses.root, address: addresses[addresses.root]};
     this.setState({ addresses, rootAddress, provider, signer });
     
-    this._web3util = web3util(provider, signer);
+    this._web3util = maltay.getTaylor(provider, signer);
     this.setContract(rootAddress.address);
     this.setRegistered(rootAddress.address);
   }
 
   setContract(address) {
+    const { backend } = this.state;
     address = address || this.state.rootAddress;
-    if(!address) {
+    if(!address && backend !== 'javascript') {
         this.web3util = null;
     } else {
       this.web3util = this._web3util(address);
-      this.props.onRootChange(this.web3util.call, this.web3util.send);
+      this.props.onRootChange(backend, this.web3util, maltay.malBackend.getBackend());
 
       this.setFunctions(address);
     }
@@ -75,13 +77,13 @@ class MalTayContract extends Component {
     address = address || this.state.rootAddress.address;
     if (!address) return;
 
-    let count = await this.web3util.call('0x44444440');
+    let count = await this.web3util.call_raw('0x44444440');
     count = parseInt(count, 16);
     let registered = {};
 
     for (let i = 1; i <= count; i++) {
       const expr = maltay.expr2h('(getregistered ' + i + ')');
-      let raddr = await this.web3util.call(expr);
+      let raddr = await this.web3util.call_raw(expr);
       raddr = '0x' + raddr.substring(10);
       registered[raddr] = raddr;
     }
@@ -92,7 +94,9 @@ class MalTayContract extends Component {
     address = address || this.state.rootAddress.address;
     if (!address) return;
 
-    let logs = await this.web3util.getFns();
+    let logs = await this.web3util.getFns({
+      fromBlock: DEPL_BLOCKS[this.state.provider._network.chainId] || 0,
+    });
     let rootFunctions = logs.map(log => '(' + log.name + ' ... )')
       .concat(Object.keys(maltay.nativeEnv).map(name => {
         return '(' + name + ' ' + argsDisplay(maltay.nativeEnv[name]) + ')';
@@ -110,6 +114,11 @@ class MalTayContract extends Component {
     const { rootAddress } = this.state;
     rootAddress.name = name;
     this.setState({ rootAddress });
+  }
+
+  onChangeBackend(backend) {
+    this.setState({ backend });
+    this.props.onRootChange(backend, this.web3util, maltay.malBackend.getBackend());
   }
 
   async onAddressSave() {
@@ -163,13 +172,28 @@ class MalTayContract extends Component {
       })
 
     return (
-        <View style={{ ...styles, flex: 1 }}>
-        <Button small light
-          style={{ position: 'fixed', top: '10px', right: '30px' }}
-          onClick={() => window.open('https://github.com/loredanacirstea/taylor', '_blank')}
-        >
-          <Icon name='info' type="FontAwesome" style={btniconStyle} />
-        </Button>
+      <View style={{ ...styles, flex: 1 }}>
+          <Button small light
+            style={{ position: 'fixed', top: '10px', right: '26px' }}
+            onClick={() => window.open('https://github.com/loredanacirstea/taylor', '_blank')}
+          >
+            <Icon name='info' type="FontAwesome" style={btniconStyle} />
+          </Button>
+          
+          <Text style={textStyle}>select backend:</Text>
+          <Item picker style={{ borderColor: false, marginRight: '60px' }}>
+            <Picker
+              mode="dropdown"
+              style={{ width: styles.width, ...pickerStyle }}
+              selectedValue={this.state.backend}
+              onValueChange={this.onChangeBackend}
+            >
+              <Picker.Item label="javascript" value="javascript" key="javascript"/>
+              <Picker.Item label="injected web3 provider" value="injected" key="injected"/>
+              <Picker.Item label="both" value="both" key="both"/>
+            </Picker>
+          </Item>
+          
           <br></br><br></br>
           <Text style={textStyle}>select root Taylor contract:</Text>
           <Item picker style={{ borderColor: false}}>

@@ -440,19 +440,19 @@ const call = provider => address => async (data, txObj = {}) => {
     return await provider.call(transaction);
 }
   
-const getLogs = provider => address => async topic => {
-    const filter = {
+const getLogs = provider => address => async (topic, filter = {} ) => {
+    filter = Object.assign({
         address: address,
         topics: [ topic ],
         fromBlock: 0,
         toBlock: 'latest',
-    }
+    }, filter);
     return provider.getLogs(filter);
 }
   
-const getStoredFunctions = getLogs => async () => {
+const getStoredFunctions = getLogs => async (filter) => {
     const topic = '0x00000000000000000000000000000000000000000000000000000000ffffffff';
-    const logs = await getLogs(topic);
+    const logs = await getLogs(topic, filter);
   
     return logs.map(log => {
         log.name = log.topics[1].substring(2).hexDecode();
@@ -467,7 +467,7 @@ const getTaylor = (provider, signer) => address => {
         send_raw: sendTransaction(signer)(address),
         call_raw: call(provider)(address),
         getLogs: getLogs(provider)(address),
-        getStoredFunctions: getStoredFunctions(getLogs(provider)(address)),
+        getFns: getStoredFunctions(getLogs(provider)(address)),
         provider,
         signer,
     }

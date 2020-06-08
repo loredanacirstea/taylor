@@ -26,9 +26,12 @@ class TaylorEditor extends Component {
       encoded,
       result: [{data: encoded}],
       errors: '',
+      result2: null,
+      errors2: '',
       rootAddress: null,
-      taycall: null,
-      taysend: null,
+      tayinterpreter: null,
+      malbackend: null,
+      backend: 'javascript',
     }
 
     this.onContentSizeChange = this.onContentSizeChange.bind(this);
@@ -42,50 +45,86 @@ class TaylorEditor extends Component {
     });
   }
 
-  onRootChange(taycall, taysend) {
-    this.setState({
-        taycall,
-        taysend,
-    });
-    if (!taycall) {
+  onRootChange(backend, tayinterpreter, malbackend) {
+    this.setState({ backend, tayinterpreter, malbackend });
+    if (!tayinterpreter) {
       const errors = "No web3 provider found. Please connect to one (e.g. Metamask).";
       this.setState({ errors });
     } else {
-      this.execute();
+      this.execute({ backend, tayinterpreter, malbackend });
     }
   }
 
-  async execute({encdata, code, force=false}={}) {
+  async executeInner(interpreter, callback, {encdata, code, force=false}={}) {
       encdata = encdata || this.state.encoded;
       code = code || this.state.code;
       const isTransaction = code && code.includes("!");
 
       if (!isTransaction) {
-        let encoded;
+        let result, error;
         try {
-            encoded = await this.state.taycall(encdata);
-        } catch (e) {}
-        let result;
-        try {
-            result = maltay.decode(encoded);
-        } catch(e) {}
-        this.setState({ result: [{ result, encoded, data: encdata }] });
-      } else if (force) {
-          let response, receipt = {};
-          try {
-            response = await this.state.taysend(encdata);
-            this.setState({ result: [{ receipt: response }] });
-            receipt = await response.wait();
-          } catch (e) {
-            console.log(e);
-          }
-        
-        if (receipt.status === 0) {
-            throw new Error('Transaction failed');
+          result = await interpreter.call(code);
+        } catch (e) {
+          error = e;
         }
-        this.setState({ result: [{ receipt }] });
+        callback({ result, error, encdata })
+      
+      } else if (force) {
+        let response, error, receipt = {};
 
+        try {
+          response = await interpreter.send(code);
+          callback({ receipt: response })
+
+          receipt = await response.wait();
+        } catch (e) {
+          error = e;
+          callback({ error, encdata })
+        }
+  
+        if (receipt.status === 0) {
+          callback({ error: 'Transaction failed', receipt, encdata })
+        } else {
+          callback({ receipt })
+        }
       }
+  }
+
+  async execute({backend, tayinterpreter, malbackend, encdata, code, force=false}={}) {
+    backend = backend || this.state.backend;
+    let interpreters = {
+      javascript: malbackend || this.state.malbackend,
+      injected: tayinterpreter || this.state.tayinterpreter,
+    }
+
+    const getResult =  ({ result, receipt, encdata, errors, backend }) => {
+      const resultObj = {};
+      if (result) resultObj.result = result;
+      if (receipt) resultObj.receipt = receipt;
+      if (encdata) resultObj.data = encdata;
+      if (backend) resultObj.backend = backend;
+      return { resultObj, errors };
+    }
+
+    let callb = {
+      main: btype => (data) => {
+        data.backend = btype;
+        const { resultObj, errors } = getResult(data);
+        this.setState({ result: resultObj, errors });
+      },
+      second: btype => (data) => {
+        data.backend = btype;
+        const { resultObj, errors } = getResult(data);
+        this.setState({ result2: resultObj, errors2: errors });
+      },
+    }
+
+    if (interpreters[backend]) {
+      this.executeInner(interpreters[backend], callb.main(), {encdata, code, force});
+    } else if (backend === 'both') {
+      this.executeInner(interpreters.javascript, callb.main('javascript'), {encdata, code, force});
+      this.executeInner(interpreters.injected, callb.second('web3 provider'), {encdata, code, force});
+    }
   }
 
   onContentSizeChange() {
@@ -125,20 +164,23 @@ class TaylorEditor extends Component {
       width,
       height,
     } = this.state;
+    const {code, result, result2, errors, errors2, backend} = this.state;
 
-    let editorStyles, consoleStyles, panelStyles;
+    let editorStyles = { width, height: height * 4 / 7 };
+    let consoleStyles = { width, height: height - editorStyles.height };
+    let panelStyles = { width, height };
+    
     if (width > MIN_WIDTH) {
       const page = width / 3;
-      editorStyles = { width: page * 2, height: height * 2 / 3 };
-      consoleStyles = { width: page * 2, height: height - editorStyles.height };
-      panelStyles = { width: page, height };
-    } else {
-      editorStyles = { width, height: height * 2 / 3 };
-      consoleStyles = { width, height: height - editorStyles.height };
-      panelStyles = { width, height };
+      editorStyles.width = page * 2;
+      consoleStyles.width = page * 2;
+      panelStyles.width = page;
     }
 
-    const {code, result, errors, taycall, taysend} = this.state;
+    let resultFlexDirection = 'row';
+    if (backend === 'both' && width <= MIN_WIDTH) {
+      resultFlexDirection = 'column';
+    }
 
     return (
       <ScrollView
@@ -150,7 +192,6 @@ class TaylorEditor extends Component {
           contentContainerStyle={{width: "100%"}}
           onContentSizeChange={this.onContentSizeChange}
       >
-           
         <MonacoEditor
             width={editorStyles.width}
             height={editorStyles.height}
@@ -162,35 +203,59 @@ class TaylorEditor extends Component {
             editorWillMount={this.editorWillMount}
             editorDidMount={this.editorDidMount}
         />
-        <View
-        style={{ ...consoleStyles, position: 'fixed', bottom: '0px', left: '0px' }}
-        >
-          <ScrollView
-            horizontal={false}
-            scrollEnabled={true}
-            scrollEventThrottle={100}
-            nestedScrollEnabled={true}
-            contentContainerStyle={{ ...consoleStyles, maxHeight: consoleStyles.height, minHeight: consoleStyles.heigth }}
-          >
+        <View style={{
+          ...consoleStyles,
+          flex: 1,
+          position: 'fixed',
+          bottom: '0px',
+          left: '0px'
+        }}>
+          <Text style={{color: 'firebrick', fontSize: editorOpts.fontSize }}>{errors}</Text>
+          <View style={{
+            flexDirection: resultFlexDirection,
+            justifyContent: "space-between",
+            alignItems: "center",
+          }}>
             <ScrollView
-              horizontal={true}
+              horizontal={false}
               scrollEnabled={true}
               scrollEventThrottle={100}
-              contentContainerStyle={{ ...consoleStyles, maxHeight: consoleStyles.height, minHeight: consoleStyles.heigth }}
+              nestedScrollEnabled={true}
             >
               {errors
                   ? <Text style={{color: 'firebrick', fontSize: editorOpts.fontSize }}>{errors}</Text>
                   : <ReactJson
-                  src={result}
-                  name="result"
+                  src={result || {}}
+                  name="output"
                   theme="twilight"
                   collapsed={6}
                   shouldCollapse={field => field.name === 'd' }
-                  style={{ ...consoleStyles, fontSize: editorOpts.fontSize }}
+                  style={{ fontSize: editorOpts.fontSize }}
                   />
               }
             </ScrollView>
-          </ScrollView>
+            <ScrollView
+              horizontal={false}
+              scrollEnabled={true}
+              scrollEventThrottle={100}
+              nestedScrollEnabled={true}
+            >
+              {backend === 'both'
+                ? (errors2
+                    ? <Text style={{color: 'firebrick', fontSize: editorOpts.fontSize }}>{errors}</Text>
+                    : <ReactJson
+                    src={result2 || {}}
+                    name="output"
+                    theme="twilight"
+                    collapsed={6}
+                    shouldCollapse={field => field.name === 'd' }
+                    style={{  fontSize: editorOpts.fontSize }}
+                    />
+                  )
+                : <div></div>
+              }
+            </ScrollView>
+          </View>
         </View>
         <Button
             small
@@ -208,8 +273,6 @@ class TaylorEditor extends Component {
           contentContainerStyle={panelStyles}
         >
           <MalTayContract
-              taycall={taycall}
-              taysend={taysend}
               styles={{...panelStyles}}
               onRootChange={this.onRootChange}
           />
