@@ -55,12 +55,12 @@ class TaylorEditor extends Component {
     }
   }
 
-  async executeInner(interpreter, callback, {encdata, code, force=false}={}) {
+  async executeInner(backend, interpreter, callback, {encdata, code, force=false}={}) {
       encdata = encdata || this.state.encoded;
       code = code || this.state.code;
       const isTransaction = code && code.includes("!");
 
-      if (!isTransaction) {
+      if (!isTransaction || backend === 'javascript') {
         let result, error;
         try {
           result = await interpreter.call(code);
@@ -120,10 +120,10 @@ class TaylorEditor extends Component {
     }
 
     if (interpreters[backend]) {
-      this.executeInner(interpreters[backend], callb.main(), {encdata, code, force});
+      this.executeInner(backend, interpreters[backend], callb.main(), {encdata, code, force});
     } else if (backend === 'both') {
-      this.executeInner(interpreters.javascript, callb.main('javascript'), {encdata, code, force});
-      this.executeInner(interpreters.injected, callb.second('web3 provider'), {encdata, code, force});
+      this.executeInner(backend, interpreters.javascript, callb.main('javascript'), {encdata, code, force});
+      this.executeInner(backend, interpreters.injected, callb.second('web3 provider'), {encdata, code, force});
     }
   }
 
@@ -210,7 +210,17 @@ class TaylorEditor extends Component {
           bottom: '0px',
           left: '0px'
         }}>
-          <Text style={{color: 'firebrick', fontSize: editorOpts.fontSize }}>{errors}</Text>
+          {backend === 'both'
+            ? <Icon
+                name='circle-o'
+                type="FontAwesome"
+                style={{
+                  color: result && result2 && JSON.stringify(result.result) === JSON.stringify(result2.result) ? 'green' : 'red',
+                  fontWeight: 'bold', position: 'relative', left: '50%' 
+                }}
+              />
+            : <div></div>
+          }
           <View style={{
             flexDirection: resultFlexDirection,
             justifyContent: "space-between",
@@ -226,7 +236,7 @@ class TaylorEditor extends Component {
                   ? <Text style={{color: 'firebrick', fontSize: editorOpts.fontSize }}>{errors}</Text>
                   : <ReactJson
                   src={result || {}}
-                  name="output"
+                  name={null}
                   theme="twilight"
                   collapsed={6}
                   shouldCollapse={field => field.name === 'd' }
@@ -245,7 +255,7 @@ class TaylorEditor extends Component {
                     ? <Text style={{color: 'firebrick', fontSize: editorOpts.fontSize }}>{errors}</Text>
                     : <ReactJson
                     src={result2 || {}}
-                    name="output"
+                    name={null}
                     theme="twilight"
                     collapsed={6}
                     shouldCollapse={field => field.name === 'd' }
