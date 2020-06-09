@@ -12,7 +12,7 @@ self.__precacheManifest = (self.__precacheManifest || []).concat([
     "url": "/taylor/html.worker.js"
   },
   {
-    "revision": "a067ecd870bb61e3ae15e490837f745f",
+    "revision": "f3ac8096678802bfd56f432926b321a6",
     "url": "/taylor/index.html"
   },
   {
@@ -24,7 +24,7 @@ self.__precacheManifest = (self.__precacheManifest || []).concat([
     "url": "/taylor/static/css/3.4e4ab415.chunk.css"
   },
   {
-    "revision": "b13d2f815d8ba72bd38a",
+    "revision": "6872d1ef59cd87576a1f",
     "url": "/taylor/static/css/main.11a6195b.chunk.css"
   },
   {
@@ -296,8 +296,8 @@ self.__precacheManifest = (self.__precacheManifest || []).concat([
     "url": "/taylor/static/js/9.40e9ef61.chunk.js"
   },
   {
-    "revision": "b13d2f815d8ba72bd38a",
-    "url": "/taylor/static/js/main.a3454510.chunk.js"
+    "revision": "6872d1ef59cd87576a1f",
+    "url": "/taylor/static/js/main.006318a6.chunk.js"
   },
   {
     "revision": "7cbde688a5e8e0910f59",
