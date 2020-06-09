@@ -122,8 +122,8 @@ class TaylorEditor extends Component {
     if (interpreters[backend]) {
       this.executeInner(backend, interpreters[backend], callb.main(), {encdata, code, force});
     } else if (backend === 'both') {
-      this.executeInner(backend, interpreters.javascript, callb.main('javascript'), {encdata, code, force});
-      this.executeInner(backend, interpreters.injected, callb.second('web3 provider'), {encdata, code, force});
+      this.executeInner('javascript', interpreters.javascript, callb.main('javascript'), {encdata, code, force});
+      this.executeInner('injected', interpreters.injected, callb.second('web3 provider'), {encdata, code, force});
     }
   }
 
