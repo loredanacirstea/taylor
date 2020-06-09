@@ -3,6 +3,7 @@
   "version": "0.1.0",
   "private": true,
   "dependencies": {
+    "@pipeos/taylor": "^0.0.2",
     "@testing-library/jest-dom": "^4.2.4",
     "@testing-library/react": "^9.3.2",
     "@testing-library/user-event": "^7.1.2",
@@ -14,8 +15,7 @@
     "react-dom": "^16.13.1",
     "react-monaco-editor": "^0.36.0",
     "react-native-web": "^0.11.6",
-    "react-scripts": "3.4.1",
-    "@pipeos/taylor": "0.0.1"
+    "react-scripts": "3.4.1"
   },
   "scripts": {
     "start": "react-app-rewired start",

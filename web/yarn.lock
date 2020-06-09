@@ -1241,10 +1241,10 @@
   resolved "https://registry.yarnpkg.com/@nodelib/fs.stat/-/fs.stat-1.1.3.tgz#2b5a3ab3f918cca48a8c754c08168e3f03eba61b"
   integrity sha512-shAmDyaQC4H92APFoIaVDHCx5bStIocgvbwQyxPRrbUY20V1EYTbSDchWbuwlMG3V17cprZhA6+78JfB+3DTPw==
 
-"@pipeos/taylor@0.0.1":
-  version "0.0.1"
-  resolved "https://registry.yarnpkg.com/@pipeos/taylor/-/taylor-0.0.1.tgz#9fafd4e87e2a106b604c181cf51bda9f9d1bff9f"
-  integrity sha512-hxhDnAJ56mTxcXyPb7+Ie+8uPhIEHlcC8t9P4T5Yaz334HbClpChqIIZVYhS5veRkO33kUqxO8TdTw8TUjzLNA==
+"@pipeos/taylor@^0.0.2":
+  version "0.0.2"
+  resolved "https://registry.yarnpkg.com/@pipeos/taylor/-/taylor-0.0.2.tgz#dba83b9ec1c3deaeabdfd1d78856379c7a564069"
+  integrity sha512-jRup0hFJ1uNyINCJ1Sw53gV8qWXl/7/avrVKwMZWMQRt63UtguvrK3xhSPsC1QddXMKOAToi9mbH270efXYXDQ==
   dependencies:
     ethers "^4.0.47"
     solc "0.5.7"
