@@ -1,5 +1,5 @@
 import React, { Component } from 'react';
-import { View, Item, Input, Text, Button, Icon, Picker, TabHeading } from 'native-base';
+import { View, Item, Input, Text, Button, Icon, Picker } from 'native-base';
 import { getProvider } from '../utils/web3.js';
 import { addAddress, getAddresses, DEPL_BLOCKS } from '../utils/taylor.js';
 import maltay from '@pipeos/taylor';
