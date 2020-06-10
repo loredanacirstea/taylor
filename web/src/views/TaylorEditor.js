@@ -39,6 +39,11 @@ class TaylorEditor extends Component {
     this.onTextChange = this.onTextChange.bind(this);
     this.execute = this.execute.bind(this);
     this.onRootChange = this.onRootChange.bind(this);
+    this.onFunctionsChange = this.onFunctionsChange.bind(this);
+    this.editorDidMount = this.editorDidMount.bind(this);
+
+    this.editor = null;
+    this.monaco = null;
 
     Dimensions.addEventListener('change', () => {
       this.onContentSizeChange();
@@ -52,7 +57,15 @@ class TaylorEditor extends Component {
       this.setState({ errors });
     } else {
       this.execute({ backend, tayinterpreter, malbackend, errors: '' });
+
+      if (this.monaco) {
+        this.onFunctionsChange(tayinterpreter.functions);
+      }
     }
+  }
+
+  onFunctionsChange(functions={}) {
+    monacoTaylorExtension(this.monaco, Object.assign({}, functions, maltay.nativeEnv));
   }
 
   async executeInner(backend, interpreter, callback, {encdata, code, force=false}={}) {
@@ -144,6 +157,8 @@ class TaylorEditor extends Component {
 
   editorDidMount(editor, monaco) {
     editor.focus();
+    this.editor = editor;
+    this.monaco = monaco;
   }
 
   editorWillMount(monaco) {
@@ -285,6 +300,7 @@ class TaylorEditor extends Component {
           <MalTayContract
               styles={{...panelStyles}}
               onRootChange={this.onRootChange}
+              onFunctionsChange={this.onFunctionsChange}
           />
         </ScrollView>
       </ScrollView>

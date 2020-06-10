@@ -236,10 +236,15 @@ const ast2h = (ast, parent=null, unkownMap={}, defenv={}) => {
     if (ast[0] && ast[0].value === 'def!') {
         const elem = ast[0];
         const defname = ast[1].value.hexEncode().padStart(64, '0');
-        const exprbody = ast2h(ast[2], ast, defenv);
+        // We add the function as an already stored function
+        // -> the contract loads the recursive function from storage each time 
+        const newdefenv = Object.assign({}, defenv);
+        newdefenv[ast[1].value] = true;
+        const exprbody = ast2h(ast[2], ast, unkownMap, newdefenv);
         const exprlen = u2h(exprbody.length / 2).padStart(8, '0');
         return nativeEnv[elem.value].hex + defname + exprlen + exprbody;
     }
+
     return ast.map((elem, i) => {
         // if Symbol
         if (malTypes._symbol_Q(elem)) {
@@ -248,12 +253,11 @@ const ast2h = (ast, parent=null, unkownMap={}, defenv={}) => {
                     const typeid = getbytesid(ast[i + 1].length / 2);
                     return  typeid + ast[i + 1];
                 }
+                
                 // check if stored function first
-                // TODO: on-chain check
-                // const isfunc = defenv.isFunction(elem.value)
-                if (!unkownMap[elem.value] && elem.value[0] === '_') {
+                if (!unkownMap[elem.value] && defenv[elem.value]) {
                     // TODO proper type - string/bytes
-                    const encodedName = getnumberid(32) + elem.value.substring(1).hexEncode().padStart(64, '0');
+                    const encodedName = getnumberid(32) + elem.value.hexEncode().padStart(64, '0');
 
                     // if function is first arg, it is executed
                     // otherwise, it is referenced as an argument (lambda)
@@ -272,8 +276,8 @@ const ast2h = (ast, parent=null, unkownMap={}, defenv={}) => {
                 return unkownMap[elem.value];
             }
             if (elem.value === 'if') {
-                const action1body = ast2h([ast[2]], null, defenv);
-                const action2body = ast2h([ast[3]], null, defenv);
+                const action1body = ast2h([ast[2]], null, unkownMap, defenv);
+                const action2body = ast2h([ast[3]], null, unkownMap, defenv);
                 return nativeEnv[elem.value].hex
                     + u2h(action1body.length / 2).padStart(8, '0')
                     + u2h(action2body.length / 2).padStart(8, '0');
@@ -288,7 +292,7 @@ const ast2h = (ast, parent=null, unkownMap={}, defenv={}) => {
             // variadic functions
 
             if (elem.value === 'fn*') {
-                const lambdaBody = ast2h([ast[1], ast[2]], null, defenv);
+                const lambdaBody = ast2h([ast[1], ast[2]], null, {}, defenv);
                 let encoded = nativeEnv.lambda.hex(lambdaBody.length);
                 const arity = ast[1].length;
 
@@ -425,11 +429,12 @@ const sendTransaction = signer => address => async (data, txObj = {}) => {
         to: address,
     });
     const response = await signer.sendTransaction(transaction);
-    const receipt = await response.wait();
-    if (receipt.status === 0) {
-        throw new Error('Transaction failed');
-    }
-    return receipt;
+    response.wait().then(receipt => {
+        if (receipt.status === 0) {
+            throw new Error('Transaction failed');
+        }
+    })
+    return response;
 }
   
 const call = provider => address => async (data, txObj = {}) => {
@@ -445,7 +450,7 @@ const getLogs = provider => address => async (topic, filter = {} ) => {
         address: address,
         topics: [ topic ],
         fromBlock: 0,
-        toBlock: 'latest',
+        toBlock: 'pending',
     }, filter);
     return provider.getLogs(filter);
 }
@@ -459,21 +464,122 @@ const getStoredFunctions = getLogs => async (filter) => {
         log.signature = '0x' + log.topics[2].substring(58);
         return log;
     });
-}  
+}
 
-const getTaylor = (provider, signer) => address => {
+const getRegisteredContracts = call_raw => async () => {
+    let count = await call_raw('0x44444440');
+    count = parseInt(count, 16);
+    let registered = new Set();
+
+    for (let i = 1; i <= count; i ++) {
+      const expr = expr2h('(getregistered ' + i + ')');
+      let raddr = await call_raw(expr);
+      raddr = '0x' + raddr.substring(10);
+      registered.add(raddr);
+    }
+
+    return [...registered];
+}
+
+const getTaylor = (provider, signer) => (address, deploymentBlock = 0) => {
     const interpreter = {
         address: address.toLowerCase(),
         send_raw: sendTransaction(signer)(address),
         call_raw: call(provider)(address),
+        fromBlock: deploymentBlock,
         getLogs: getLogs(provider)(address),
         getFns: getStoredFunctions(getLogs(provider)(address)),
+        functions: {},
+        registered: {},
         provider,
         signer,
     }
     
-    interpreter.call = async (mal_expression, txObj) => decode(await interpreter.call_raw(expr2h(mal_expression), txObj));
-    interpreter.send = async (mal_expression, txObj) => interpreter.send_raw(expr2h(mal_expression), txObj);
+    interpreter.call = async (mal_expression, txObj) => decode(await interpreter.call_raw(expr2h(mal_expression, interpreter.functions), txObj));
+    interpreter.send = async (mal_expression, txObj) => interpreter.send_raw(expr2h(mal_expression, interpreter.functions), txObj);
+
+    interpreter.getregistered = getRegisteredContracts(interpreter.call_raw);
+
+    interpreter.setOwnFunctions = async () => {
+        let functions = await interpreter.getFns({fromBlock: interpreter.fromBlock, toBlock: 'pending'});
+        functions.forEach(f => {
+            interpreter.functions[f.name] = { signature: f.signature, own: true };
+
+        });
+    }
+    
+    interpreter.setRegistered = async () => {
+        const raddrs = await interpreter.getregistered();
+        for (let raddr of raddrs) {
+            const rinstance = getTaylor(provider, signer)(raddr);
+            await rinstance.init();
+            interpreter.registered[raddr] = rinstance;
+            Object.keys(rinstance.functions).forEach(key => {
+                if (!interpreter.functions[key]) {
+                    interpreter.functions[key] = rinstance.functions[key];
+                    interpreter.functions[key].registered = true;
+                }
+            });
+        }
+    }
+
+    interpreter.sendAndWait = async (mal_expression, txObj) => {
+        let receipt = await interpreter.send(mal_expression, txObj);
+        if (receipt.wait) {
+            receipt = await receipt.wait();
+        }
+
+        // TODO: make this more efficient - wait for the last log and include it
+        // instead of getting all the data from scratch
+        if (mal_expression.includes('def!')) {
+            await interpreter.setOwnFunctions();
+        }
+
+        if (mal_expression.includes('register!')) {
+            await interpreter.setRegistered();
+        }
+        return receipt;
+    }
+
+    // populates with all functions, including those stored in registered contracts
+    interpreter.init = async () => {
+        await interpreter.setOwnFunctions();
+        await interpreter.setRegistered();
+    }
+
+    const funcsFilter = { address, topics: ['0x00000000000000000000000000000000000000000000000000000000ffffffff']}
+    const registeredTopic = { address, topics: ['0x00000000000000000000000000000000000000000000000000000000fffffffe']}
+    const funccb = callb => log => {
+        log.name = log.topics[1].substring(2).hexDecode();
+        log.signature = '0x' + log.topics[2].substring(58);
+
+        interpreter.functions[log.name] = { signature: log.signature, own: true };
+        if (callb) callb({logtype: 'function', log});
+    }
+    const regcb = callb => log => {
+        log.address =  '0x' + log.topics[1].substring(26);
+
+        const inst = getTaylor(provider, signer)(log.address);
+        interpreter.registered[log.address] = inst;
+        inst.init();
+        if (callb) callb({logtype: 'registered', log});
+    }
+    let watchers = {};
+
+    interpreter.watch = callb => {
+        if (watchers.funcs) return;
+        watchers.funcs = funccb(callb);
+        watchers.reg = regcb(callb);
+        provider.on(funcsFilter, watchers.funcs);
+        provider.on(registeredTopic, watchers.reg);
+    }
+
+    interpreter.unwatch = () => {
+        provider.removeListener(funcsFilter, watchers.funcs);
+        provider.removeListener(registeredTopic, watchers.reg);
+        delete watchers.funcs;
+        delete watchers.reg;
+    }
 
     return interpreter;
 }

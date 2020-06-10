@@ -197,6 +197,7 @@ mal.getBackend = (address) => {
       signer: { _address: from },
     }
     interpreter.send = interpreter.call;
+    interpreter.sendAndWait = interpreter.send;
     return interpreter;
 }
 

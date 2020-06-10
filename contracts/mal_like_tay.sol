@@ -1389,8 +1389,10 @@ object "Taylor" {
         function storeRegAddress(_pointer) -> index {
             // TODO: check if type is valid
             index := add(getRegCounter(), 1)
-            sstore(mappingRegKey(index), mslice(_pointer, 24))
+            let addr :=  mslice(_pointer, 24)
+            sstore(mappingRegKey(index), addr)
             updateRegCounter()
+            log2(0, 0, 0xfffffffe, addr)
         }
 
         function getRegAddress(index) -> addr {
