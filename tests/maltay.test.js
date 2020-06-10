@@ -148,25 +148,25 @@ it('test reduce', async function () {
 it('test recursive', async function () {
     let resp;
     
-    await MalTay.sendAndWait('(def! recursive (fn* (n) (if (gt n 5) n (_recursive (add n 1)) ) ) )');
+    await MalTay.sendAndWait('(def! recursivefn (fn* (n) (if (gt n 5) n (recursivefn (add n 1)) ) ) )');
     
-    resp = await MalTay.call('(_recursive 2)');
+    resp = await MalTay.call('(recursivefn 2)');
     expect(resp).toBe(6);
 });
 
 it('test recursive fibonacci', async function () {
-    await MalTay.sendAndWait('(def! fibonacci (fn* (n) (if (or (eq n 1) (eq n 2)) 1 (add(_fibonacci (sub n 1)) (_fibonacci (sub n 2)) ) )))');
+    await MalTay.sendAndWait('(def! fibonacci (fn* (n) (if (or (eq n 1) (eq n 2)) 1 (add(fibonacci (sub n 1)) (fibonacci (sub n 2)) ) )))');
 
-    resp = await MalTay.call('(_fibonacci 1)');
+    resp = await MalTay.call('(fibonacci 1)');
     expect(resp).toBe(1);
 
-    resp = await MalTay.call('(_fibonacci 2)');
+    resp = await MalTay.call('(fibonacci 2)');
     expect(resp).toBe(1);
 
-    resp = await MalTay.call('(_fibonacci 3)');
+    resp = await MalTay.call('(fibonacci 3)');
     expect(resp).toBe(2);
 
-    resp = await MalTay.call('(_fibonacci 8)');
+    resp = await MalTay.call('(fibonacci 8)');
     expect(resp).toBe(21);
 });
 
@@ -176,7 +176,7 @@ it('test reduce recursive', async function () {
     await MalTay.sendAndWait('(def! myfunc3 (fn* (a b) (add a b)) )');
     await MalTay.sendAndWait('(def! reduce (fn* (f init xs) (if (empty? xs) init (reduce f (f init (first xs)) (rest xs)))))');
 
-    resp = await MalTay.call('(reduce _myfunc3 (list 5 8 2) 0 )');
+    resp = await MalTay.call('(reduce myfunc3 (list 5 8 2) 0 )');
     expect(resp).toBe(15);
 });
 
@@ -206,14 +206,14 @@ it('test registration & executing from root contract', async function () {
     expect(resp).toBe(20);
 
     // def! & store in maltay3
-    await maltay3.sendAndWait('(def! fib (fn* (n) (if (or (eq n 1) (eq n 2)) 1 (add(_fib (sub n 1)) (_fib (sub n 2)) ) )))');
+    await maltay3.sendAndWait('(def! fib (fn* (n) (if (or (eq n 1) (eq n 2)) 1 (add(fib (sub n 1)) (fib (sub n 2)) ) )))');
 
     // use function directly in maltay3
-    resp = await maltay3.call('(_fib 8)');
+    resp = await maltay3.call('(fib 8)');
     expect(resp).toBe(21);
     
     // test functions through MalTay root contract
-    resp = await MalTay.call('(_fib (_quad 2) )');
+    resp = await MalTay.call('(fib (quad 2) )');
     expect(resp).toBe(21);
 
     resp = await MalTay.call_raw('0x44444440');

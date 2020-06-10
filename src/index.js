@@ -236,7 +236,11 @@ const ast2h = (ast, parent=null, unkownMap={}, defenv={}) => {
     if (ast[0] && ast[0].value === 'def!') {
         const elem = ast[0];
         const defname = ast[1].value.hexEncode().padStart(64, '0');
-        const exprbody = ast2h(ast[2], ast, unkownMap, defenv);
+        // We add the function as an already stored function
+        // -> the contract loads the recursive function from storage each time 
+        const newdefenv = Object.assign({}, defenv);
+        newdefenv[ast[1].value] = true;
+        const exprbody = ast2h(ast[2], ast, unkownMap, newdefenv);
         const exprlen = u2h(exprbody.length / 2).padStart(8, '0');
         return nativeEnv[elem.value].hex + defname + exprlen + exprbody;
     }
