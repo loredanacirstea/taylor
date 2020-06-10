@@ -236,10 +236,11 @@ const ast2h = (ast, parent=null, unkownMap={}, defenv={}) => {
     if (ast[0] && ast[0].value === 'def!') {
         const elem = ast[0];
         const defname = ast[1].value.hexEncode().padStart(64, '0');
-        const exprbody = ast2h(ast[2], ast, defenv);
+        const exprbody = ast2h(ast[2], ast, unkownMap, defenv);
         const exprlen = u2h(exprbody.length / 2).padStart(8, '0');
         return nativeEnv[elem.value].hex + defname + exprlen + exprbody;
     }
+
     return ast.map((elem, i) => {
         // if Symbol
         if (malTypes._symbol_Q(elem)) {
@@ -248,12 +249,11 @@ const ast2h = (ast, parent=null, unkownMap={}, defenv={}) => {
                     const typeid = getbytesid(ast[i + 1].length / 2);
                     return  typeid + ast[i + 1];
                 }
+                
                 // check if stored function first
-                // TODO: on-chain check
-                // const isfunc = defenv.isFunction(elem.value)
-                if (!unkownMap[elem.value] && elem.value[0] === '_') {
+                if (!unkownMap[elem.value] && defenv[elem.value]) {
                     // TODO proper type - string/bytes
-                    const encodedName = getnumberid(32) + elem.value.substring(1).hexEncode().padStart(64, '0');
+                    const encodedName = getnumberid(32) + elem.value.hexEncode().padStart(64, '0');
 
                     // if function is first arg, it is executed
                     // otherwise, it is referenced as an argument (lambda)
@@ -272,8 +272,8 @@ const ast2h = (ast, parent=null, unkownMap={}, defenv={}) => {
                 return unkownMap[elem.value];
             }
             if (elem.value === 'if') {
-                const action1body = ast2h([ast[2]], null, defenv);
-                const action2body = ast2h([ast[3]], null, defenv);
+                const action1body = ast2h([ast[2]], null, unkownMap, defenv);
+                const action2body = ast2h([ast[3]], null, unkownMap, defenv);
                 return nativeEnv[elem.value].hex
                     + u2h(action1body.length / 2).padStart(8, '0')
                     + u2h(action2body.length / 2).padStart(8, '0');
@@ -288,7 +288,7 @@ const ast2h = (ast, parent=null, unkownMap={}, defenv={}) => {
             // variadic functions
 
             if (elem.value === 'fn*') {
-                const lambdaBody = ast2h([ast[1], ast[2]], null, defenv);
+                const lambdaBody = ast2h([ast[1], ast[2]], null, {}, defenv);
                 let encoded = nativeEnv.lambda.hex(lambdaBody.length);
                 const arity = ast[1].length;
 
@@ -459,21 +459,102 @@ const getStoredFunctions = getLogs => async (filter) => {
         log.signature = '0x' + log.topics[2].substring(58);
         return log;
     });
-}  
+}
 
-const getTaylor = (provider, signer) => address => {
+const getRegisteredContracts = call_raw => async () => {
+    let count = await call_raw('0x44444440');
+    count = parseInt(count, 16);
+    let registered = new Set();
+
+    for (let i = 1; i <= count; i ++) {
+      const expr = expr2h('(getregistered ' + i + ')');
+      let raddr = await call_raw(expr);
+      raddr = '0x' + raddr.substring(10);
+      registered.add(raddr);
+    }
+
+    return [...registered];
+}
+
+const getTaylor = (provider, signer) => (address, deploymentBlock = 0) => {
     const interpreter = {
         address: address.toLowerCase(),
         send_raw: sendTransaction(signer)(address),
         call_raw: call(provider)(address),
+        fromBlock: deploymentBlock,
         getLogs: getLogs(provider)(address),
         getFns: getStoredFunctions(getLogs(provider)(address)),
+        functions: {},
+        registered: [],
         provider,
         signer,
     }
     
-    interpreter.call = async (mal_expression, txObj) => decode(await interpreter.call_raw(expr2h(mal_expression), txObj));
-    interpreter.send = async (mal_expression, txObj) => interpreter.send_raw(expr2h(mal_expression), txObj);
+    interpreter.call = async (mal_expression, txObj) => decode(await interpreter.call_raw(expr2h(mal_expression, interpreter.functions), txObj));
+    interpreter.send = async (mal_expression, txObj) => interpreter.send_raw(expr2h(mal_expression, interpreter.functions), txObj);
+
+    interpreter.sendAndWait = async (mal_expression, txObj) => {
+        let receipt = await interpreter.send(mal_expression, txObj);
+        if (receipt.wait) {
+            receipt = await receipt.wait();
+        }
+        
+        if (mal_expression.includes('def!')) {
+            let functions = await interpreter.getFns({fromBlock: interpreter.fromBlock, toBlock: 'pending'});
+            functions.forEach(f => interpreter.functions[f.name] = f.signature);
+        }
+        return receipt;
+    }
+
+    interpreter.getregistered = getRegisteredContracts(interpreter.call_raw);
+
+    // populates with all functions, including those stored in registered contracts
+    interpreter.init = async () => {
+        let functions = await interpreter.getFns({fromBlock: interpreter.fromBlock, toBlock: 'pending'});
+
+        const registered = await interpreter.getregistered();
+        for (let raddr of registered) {
+            const rinstance = getTaylor(provider, signer)(raddr);
+            await rinstance.init();
+            functions = interpreter.functions.concat(rinstance.functions);
+            interpreter.registered.push(rinstance);
+        }
+        functions.forEach(f => interpreter.functions[f.name] = f.signature);
+    }
+
+    const funcsFilter = { address, topics: ['0x00000000000000000000000000000000000000000000000000000000ffffffff']}
+    const registeredTopic = { address, topics: ['0x00000000000000000000000000000000000000000000000000000000fffffffe']}
+    const funccb = callb => log => {
+        log.name = log.topics[1].substring(2).hexDecode();
+        log.signature = '0x' + log.topics[2].substring(58);
+
+        interpreter.functions[log.name] = log.signature;
+        if (callb) callb({type: 'function', log});
+    }
+    const regcb = callb => log => {
+        log.address =  '0x' + log.topics[2].substring(46);
+
+        const inst = getTaylor(provider, signer)(log.address);
+        interpreter.registered.push(inst);
+        inst.init();
+        if (callb) callb({type: 'registered', log});
+    }
+    let watchers = {};
+
+    interpreter.watch = callb => {
+        if (watchers.funcs) return;
+        watchers.funcs = funccb(callb);
+        watchers.reg = regcb(callb);
+        provider.on(funcsFilter, watchers.funcs);
+        provider.on(registeredTopic, watchers.reg);
+    }
+
+    interpreter.unwatch = () => {
+        provider.removeListener(funcsFilter, watchers.funcs);
+        provider.removeListener(registeredTopic, watchers.reg);
+        delete watchers.funcs;
+        delete watchers.reg;
+    }
 
     return interpreter;
 }

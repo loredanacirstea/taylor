@@ -10,7 +10,12 @@ beforeAll(() => {
   return getTaylor().then(t => {
     MalTay = t;
     console.log('****MalTay', MalTay.address);
-  });
+    return MalTay.init();
+  }).then(() => MalTay.watch());
+});
+
+afterAll(() => {
+    return MalTay.unwatch();
 });
 
 const evenHex = value => value.length % 2 === 1 ? '0' + value : value;
@@ -128,29 +133,29 @@ it('test bytes contig', async function () {
 it('test reduce', async function () {
     let resp;
     
-    await MalTay.send('(def! myfunc2 (fn* (a b) (add a b)) )');
+    await MalTay.sendAndWait('(def! myfunc2 (fn* (a b) (add a b)) )');
 
-    resp = await MalTay.call('(_myfunc2 4 5)'); 
+    resp = await MalTay.call('(myfunc2 4 5)'); 
     expect(resp).toBe(9);
 
-    resp = await MalTay.call('(_myfunc2 0 5)');
+    resp = await MalTay.call('(myfunc2 0 5)');
     expect(resp).toBe(5);
   
-    resp = await MalTay.call('(reduce _myfunc2 (list 5 8 2) 0)');
+    resp = await MalTay.call('(reduce myfunc2 (list 5 8 2) 0)');
     expect(resp).toBe(15);
 });
 
 it('test recursive', async function () {
     let resp;
     
-    await MalTay.send('(def! recursive (fn* (n) (if (gt n 5) n (_recursive (add n 1)) ) ) )');
+    await MalTay.sendAndWait('(def! recursive (fn* (n) (if (gt n 5) n (_recursive (add n 1)) ) ) )');
     
     resp = await MalTay.call('(_recursive 2)');
     expect(resp).toBe(6);
 });
 
 it('test recursive fibonacci', async function () {
-    await MalTay.send('(def! fibonacci (fn* (n) (if (or (eq n 1) (eq n 2)) 1 (add(_fibonacci (sub n 1)) (_fibonacci (sub n 2)) ) )))');
+    await MalTay.sendAndWait('(def! fibonacci (fn* (n) (if (or (eq n 1) (eq n 2)) 1 (add(_fibonacci (sub n 1)) (_fibonacci (sub n 2)) ) )))');
 
     resp = await MalTay.call('(_fibonacci 1)');
     expect(resp).toBe(1);
@@ -168,8 +173,8 @@ it('test recursive fibonacci', async function () {
 it('test reduce recursive', async function () {
     let expr, resp;
 
-    await MalTay.send('(def! myfunc3 (fn* (a b) (add a b)) )');
-    await MalTay.send('(def! reduce (fn* (f init xs) (if (empty? xs) init (reduce f (f init (first xs)) (rest xs)))))');
+    await MalTay.sendAndWait('(def! myfunc3 (fn* (a b) (add a b)) )');
+    await MalTay.sendAndWait('(def! reduce (fn* (f init xs) (if (empty? xs) init (reduce f (f init (first xs)) (rest xs)))))');
 
     resp = await MalTay.call('(reduce _myfunc3 (list 5 8 2) 0 )');
     expect(resp).toBe(15);
@@ -194,14 +199,14 @@ it('test registration & executing from root contract', async function () {
     expect(resp).toBe(maltay3.address.toLowerCase());
 
     // def! & store in maltay2
-    await maltay2.send('(def! quad (fn* (a) (mul (add a a) 2) ) )');
+    await maltay2.sendAndWait('(def! quad (fn* (a) (mul (add a a) 2) ) )');
 
     // use function directly in maltay2
-    resp = await maltay2.call('(_quad 5)');
+    resp = await maltay2.call('(quad 5)');
     expect(resp).toBe(20);
 
     // def! & store in maltay3
-    await maltay3.send('(def! fib (fn* (n) (if (or (eq n 1) (eq n 2)) 1 (add(_fib (sub n 1)) (_fib (sub n 2)) ) )))');
+    await maltay3.sendAndWait('(def! fib (fn* (n) (if (or (eq n 1) (eq n 2)) 1 (add(_fib (sub n 1)) (_fib (sub n 2)) ) )))');
 
     // use function directly in maltay3
     resp = await maltay3.call('(_fib 8)');
@@ -371,17 +376,17 @@ describe.each([
         let resp;
         let name = 'func1'
     
-        await instance.send('(def! func1 (fn* (a b) (add a b)))');
+        await instance.sendAndWait('(def! func1 (fn* (a b) (add a b)))');
         
         if (backendname === 'chain') {
             resp = await instance.call_raw('0x44444442' + name.hexEncode().padStart(64, '0'));
             expect(resp).toBe('0x8c0000289000000201000000000000000100000000000001');
         }
         
-        resp = await instance.call('(_func1 2 3)');
+        resp = await instance.call('(func1 2 3)');
         expect(resp).toBe(5);
     
-        resp = await instance.call('(_func1 (add (add (sub 7 2) 1) 41) (add 2 3)))');
+        resp = await instance.call('(func1 (add (add (sub 7 2) 1) 41) (add 2 3)))');
         expect(resp).toBe(52);
 
         if (backendname === 'chain') {
@@ -395,14 +400,14 @@ describe.each([
         let expr, resp;
         let name = 'func2'
     
-        await instance.send('(def! func2 (fn* (a b) (add (add (sub a b) a) b)))');
+        await instance.sendAndWait('(def! func2 (fn* (a b) (add (add (sub a b) a) b)))');
         
         if (backendname === 'chain') {
             resp = await instance.call_raw('0x44444442' + name.hexEncode().padStart(64, '0'));
             expect(resp).toBe(expr2h('(fn* (a b) (add (add (sub a b) a) b))'));
         }
 
-        resp = await instance.call('(_func2 5 3)');
+        resp = await instance.call('(func2 5 3)');
         expect(resp).toBe(10);
         
         if (backendname === 'chain') {
@@ -416,9 +421,9 @@ describe.each([
     it('test map', async function () {
         let resp;
     
-        await instance.send('(def! myfunc (fn* (a) (mul (add a 1) 3)))');
+        await instance.sendAndWait('(def! myfunc (fn* (a) (mul (add a 1) 3)))');
         
-        resp = await instance.call('(map _myfunc (list 5 8 2))');
+        resp = await instance.call('(map myfunc (list 5 8 2))');
         expect(resp).toEqual([18, 27, 9]);
 
         if (backendname === 'chain') {
