@@ -421,6 +421,9 @@ describe.each([
 
     it('test map', async function () {
         let resp;
+
+        resp = await instance.call('(map iszero (list 5 0 2))');
+        expect(resp).toEqual([0, 1, 0]);
     
         await instance.sendAndWait('(def! myfunc (fn* (a) (mul (add a 1) 3)))');
         

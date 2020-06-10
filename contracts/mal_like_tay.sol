@@ -804,10 +804,41 @@ object "Taylor" {
             // first arg is arity = 2
             let fptr := mload(add(ptrs, 32))
             let list_ptr := mload(add(ptrs, 64))
-            result_ptr := _mapInner(add(fptr, 4), list_ptr)
+
+            let sigsig := mslice(fptr, 4)
+            switch sigsig
+            case 0x04000004 {
+                result_ptr := _mapInnerNative(mslice(add(fptr, 4), 4), list_ptr)
+            }
+            default {
+                result_ptr := _mapInnerLambda(add(fptr, 4), list_ptr)
+            }
         }
 
-        function _mapInner(lambda_body_ptr, list_ptr) -> result_ptr {
+        function _mapInnerNative(sig, list_ptr) -> result_ptr {
+            let list_arity := listTypeSize(mslice(list_ptr, 4))
+            let arg_ptr := add(list_ptr, 4)
+            let results_ptrs := allocate(mul(list_arity, 32))
+
+            // iterate over list & apply function on each arg
+            for { let i := 0 } lt(i, list_arity) { i := add(i, 1) } {
+                let arglen := getTypedLength(arg_ptr)
+                let dataptr := allocate(add(4, arglen))
+                mslicestore(dataptr, sig, 4)
+                mmultistore(add(dataptr, 4), arg_ptr, arglen)
+
+                let end, res := eval(dataptr, 0)
+                mstore(add(results_ptrs, mul(i, 32)), res)
+
+                let arg_len := getTypedLength(arg_ptr)
+                arg_ptr := add(arg_ptr, arg_len)
+            }
+
+            // Recreate list from result pointers
+            result_ptr := _list(list_arity, results_ptrs)
+        }
+
+        function _mapInnerLambda(lambda_body_ptr, list_ptr) -> result_ptr {
             // TODO: fixme: we only get the arity here, not the id
             // it is ok here, but might be problematic later
             let list_arity := listTypeSize(mslice(list_ptr, 4))

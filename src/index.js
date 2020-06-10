@@ -282,14 +282,6 @@ const ast2h = (ast, parent=null, unkownMap={}, defenv={}) => {
                     + u2h(action1body.length / 2).padStart(8, '0')
                     + u2h(action2body.length / 2).padStart(8, '0');
             }
-            if (typeof nativeEnv[elem.value].hex === 'string') {
-                return nativeEnv[elem.value].hex;
-            }
-            if (typeof nativeEnv[elem.value].hex !== 'function') {
-                throw new Error('Unexpected native function: ' + elem.value);
-            }
-
-            // variadic functions
 
             if (elem.value === 'fn*') {
                 const lambdaBody = ast2h([ast[1], ast[2]], null, {}, defenv);
@@ -305,7 +297,18 @@ const ast2h = (ast, parent=null, unkownMap={}, defenv={}) => {
                 return encoded;
             }
 
-            return nativeEnv[elem.value].hex(arity);
+            let encoded;
+            if (typeof nativeEnv[elem.value].hex === 'string') {
+                encoded = nativeEnv[elem.value].hex;
+            }
+            if (typeof nativeEnv[elem.value].hex === 'function') {
+                encoded = nativeEnv[elem.value].hex(arity);
+            }
+
+            if (ast[0].value === elem.value) return encoded;
+            else return getbytesid(4) + encoded;
+
+            throw new Error('Unexpected native function: ' + elem.value);
         }
 
         if (elem instanceof Array) {
