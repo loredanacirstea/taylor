@@ -863,10 +863,40 @@ object "Taylor" {
             let fptr := mload(add(ptrs, 32))
             let list_ptr := mload(add(ptrs, 64))
             let accum_ptr := mload(add(ptrs, 96))
-            result_ptr := _reduceInner(add(fptr, 4), list_ptr, accum_ptr)
+
+            let sigsig := mslice(fptr, 4)
+            switch sigsig
+            case 0x04000004 {
+                result_ptr := _reduceInnerNative(mslice(add(fptr, 4), 4), list_ptr, accum_ptr)
+            }
+            default {
+                result_ptr := _reduceInnerLambda(add(fptr, 4), list_ptr, accum_ptr)
+            }
         }
 
-        function _reduceInner(lambda_body_ptr, list_ptr, accum_ptr) -> result_ptr {
+        function _reduceInnerNative(sig, list_ptr, accum_ptr) -> result_ptr {
+            let list_arity := listTypeSize(mslice(list_ptr, 4))
+            let arg_ptr := add(list_ptr, 4)
+            let accum_length := getTypedLength(accum_ptr)
+
+            // iterate over list & apply function on each arg
+            for { let i := 0 } lt(i, list_arity) { i := add(i, 1) } {
+                let arg_length := getTypedLength(arg_ptr)
+                let dataptr := allocate(add(add(4, arg_length), accum_length))
+                mslicestore(dataptr, sig, 4)
+                mmultistore(add(dataptr, 4), accum_ptr, accum_length)
+                mmultistore(add(add(dataptr, 4), accum_length), arg_ptr, arg_length)
+
+                let end, res := eval(dataptr, 0)
+
+                mmultistore(accum_ptr, res, getTypedLength(res))
+                arg_ptr := add(arg_ptr, arg_length)
+            }
+
+            result_ptr := accum_ptr
+        }
+
+        function _reduceInnerLambda(lambda_body_ptr, list_ptr, accum_ptr) -> result_ptr {
             let list_arity := listTypeSize(mslice(list_ptr, 4))
             let arg_ptr := add(list_ptr, 4)
             let accum_length := getTypedLength(accum_ptr)

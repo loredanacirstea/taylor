@@ -38,6 +38,12 @@ modifyEnv('js-eval', (orig_func, str) => {
     return interop.js_to_mal(answ);
 })
 
+/* Taylor */
+
+mal.reps(`
+(def! reduce (fn* (f xs init) (if (empty? xs) init (reduce f (rest xs) (f init (first xs)) ))))
+`)
+
 /* EVM */
 
 mal.reps(`

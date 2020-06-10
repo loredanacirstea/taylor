@@ -130,21 +130,6 @@ it('test bytes contig', async function () {
     expect(resp).toBe('0x221111ccdd221111ccdd');
 });
 
-it('test reduce', async function () {
-    let resp;
-    
-    await MalTay.sendAndWait('(def! myfunc2 (fn* (a b) (add a b)) )');
-
-    resp = await MalTay.call('(myfunc2 4 5)'); 
-    expect(resp).toBe(9);
-
-    resp = await MalTay.call('(myfunc2 0 5)');
-    expect(resp).toBe(5);
-  
-    resp = await MalTay.call('(reduce myfunc2 (list 5 8 2) 0)');
-    expect(resp).toBe(15);
-});
-
 it('test recursive', async function () {
     let resp;
     
@@ -170,7 +155,7 @@ it('test recursive fibonacci', async function () {
     expect(resp).toBe(21);
 });
 
-it('test reduce recursive', async function () {
+it.skip('test reduce recursive', async function () {
     let expr, resp;
 
     await MalTay.sendAndWait('(def! myfunc3 (fn* (a b) (add a b)) )');
@@ -435,6 +420,30 @@ describe.each([
             expect(resp.length).toBe(3);
             expect(resp[2].name).toBe('myfunc');
         }
+    });
+
+    it('test reduce', async function () {
+        let resp;
+
+        resp = await instance.call('(reduce add (list) 2)');
+        expect(resp).toBe(2);
+    
+        resp = await instance.call('(reduce add (list 5 8 2) 0)');
+        expect(resp).toBe(15);
+    
+        resp = await instance.call('(reduce sub (list 45 8 2) 100)');
+        expect(resp).toBe(45);
+        
+        await instance.sendAndWait('(def! myfunc2 (fn* (a b) (add a b)) )');
+    
+        resp = await instance.call('(myfunc2 4 5)'); 
+        expect(resp).toBe(9);
+    
+        resp = await instance.call('(myfunc2 0 5)');
+        expect(resp).toBe(5);
+      
+        resp = await instance.call('(reduce myfunc2 (list 5 8 2) 0)');
+        expect(resp).toBe(15);
     });
 
     test(`add`, async () => {
@@ -741,7 +750,7 @@ describe.each([
     it('test logs', async function() {
         if (backendname === 'chain') {
             const resp = await instance.getFns();
-            expect(resp.length).toBe(3);
+            expect(resp.length).toBe(4);
         }
     });
 });
