@@ -15,8 +15,14 @@ const argsDisplay = func => {
     else argsdetail = [...new Array(func.arity || 0)]
         .map((_, i) => 'arg_' + i)
         .join(' ');
-    if (!func.arity) argsdetail = 'a b ...';
     
+    if (typeof func.arity !== 'undefined') {
+        if (!func.arity) {
+            argsdetail = 'a b ...';
+        }
+    } else {
+        argsdetail = '';
+    }
     return argsdetail;
 }
 
@@ -35,7 +41,7 @@ const monacoTaylorExtension = (monaco, taylorFunctions) => {
             }
         }
         return {
-            label: name,
+            label: name + (func.own ? ' *' : (func.registered ? ' **' : '')),
             kind: monaco.languages.CompletionItemKind.Function,
             insertText: insertText + ')',
             detail: '(' + argsdetail + ')',

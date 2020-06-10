@@ -28,6 +28,7 @@ class MalTayContract extends Component {
       rootAddress: {},
       addresses: {},
       rootFunctions: [],
+      nativeFunctions: maltay.nativeEnv,
       addrToBeRegistered: null,
       registered: {},
       backend: 'injected',
@@ -57,52 +58,36 @@ class MalTayContract extends Component {
     this.setState({ addresses, rootAddress, provider, signer });
     
     this._web3util = maltay.getTaylor(provider, signer);
-    this.setContract(rootAddress.address);
-    this.setRegistered(rootAddress.address);
+    await this.setContract(rootAddress.address);
   }
 
-  setContract(address) {
+  async setContract(address) {
     const { backend } = this.state;
     address = address || this.state.rootAddress;
+    if (this.web3util) {
+      this.web3util.unwatch();
+    }
     if(!address && backend !== 'javascript') {
         this.web3util = null;
     } else {
       this.web3util = this._web3util(address);
+      await this.web3util.init();
+
+      this.setState({ registered: this.web3util.registered });
+      this.setState({ rootFunctions: this.web3util.functions });
+      
       this.props.onRootChange(backend, this.web3util, maltay.malBackend.getBackend());
 
-      this.setFunctions(address);
+      this.web3util.watch(({ logtype, log }) => {
+        if (logtype === 'function') {
+          this.setState({ rootFunctions: this.web3util.functions });
+        } else {
+          this.setState({ registered: this.web3util.registered });
+        }
+
+        this.props.onFunctionsChange(this.web3util.functions);
+      });
     }
-  }
-
-  async setRegistered(address) {
-    address = address || this.state.rootAddress.address;
-    if (!address) return;
-
-    let count = await this.web3util.call_raw('0x44444440');
-    count = parseInt(count, 16);
-    let registered = {};
-
-    for (let i = 1; i <= count; i++) {
-      const expr = maltay.expr2h('(getregistered ' + i + ')');
-      let raddr = await this.web3util.call_raw(expr);
-      raddr = '0x' + raddr.substring(10);
-      registered[raddr] = raddr;
-    }
-    this.setState({ registered });
-  }
-
-  async setFunctions(address) {
-    address = address || this.state.rootAddress.address;
-    if (!address) return;
-
-    let logs = await this.web3util.getFns({
-      fromBlock: DEPL_BLOCKS[this.state.provider._network.chainId] || 0,
-    });
-    let rootFunctions = logs.map(log => '(' + log.name + ' ... )')
-      .concat(Object.keys(maltay.nativeEnv).map(name => {
-        return '(' + name + ' ' + argsDisplay(maltay.nativeEnv[name]) + ')';
-      }));
-    this.setState({ rootFunctions });
   }
 
   async onChangeAddress(address) {
@@ -134,7 +119,6 @@ class MalTayContract extends Component {
 
     addAddress(chainid, rootAddress.address, rootAddress.name);
     this.setContract(rootAddress.address);
-    this.setRegistered(rootAddress);
   }
 
   onChangeRootAddress(newaddress) {
@@ -148,7 +132,6 @@ class MalTayContract extends Component {
     }
     this.setState({ rootAddress });
     this.setContract(rootAddress.address);
-    this.setRegistered(newaddress);
   }
 
   onChangeRegisteredAddress(newval) {
@@ -159,16 +142,13 @@ class MalTayContract extends Component {
     const { addrToBeRegistered } = this.state;
     
     const expr = maltay.expr2h('(register! 0x"' + addrToBeRegistered.substring(2) + '")');
-    await this.web3util.send(expr);
-
-    // TODO check receipt for success;
-    this.setRegistered();
+    await this.web3util.sendAndWait(expr);
   }
 
   render() {
     const {styles} = this.props;
     styles.width -= 10;
-    const { rootAddress, addresses, registered, rootFunctions } = this.state;
+    const { rootAddress, addresses, registered, rootFunctions, nativeFunctions } = this.state;
 
     const addrs = Object.assign({}, addresses);
     delete addrs.root;
@@ -245,8 +225,14 @@ class MalTayContract extends Component {
             >
               <Picker.Item label="..." value={''} />
               {
-                rootFunctions.map((name, i) => {
-                  return <Picker.Item label={name} value={name} key={i}/>
+                Object.keys(rootFunctions).map((name, i) => {
+                  return <Picker.Item label={'(' + name + ' ...) ' + (rootFunctions[name].registered ? '**' : '*')} value={name} key={i}/>
+                })
+                
+              }
+              {
+                Object.keys(nativeFunctions).map((name, i) => {
+                  return <Picker.Item label={'(' + name + ' ' + argsDisplay(nativeFunctions[name]) + ')'} value={name} key={i}/>
                 })
               }
             </Picker>

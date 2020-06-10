@@ -429,11 +429,12 @@ const sendTransaction = signer => address => async (data, txObj = {}) => {
         to: address,
     });
     const response = await signer.sendTransaction(transaction);
-    const receipt = await response.wait();
-    if (receipt.status === 0) {
-        throw new Error('Transaction failed');
-    }
-    return receipt;
+    response.wait().then(receipt => {
+        if (receipt.status === 0) {
+            throw new Error('Transaction failed');
+        }
+    })
+    return response;
 }
   
 const call = provider => address => async (data, txObj = {}) => {
@@ -449,7 +450,7 @@ const getLogs = provider => address => async (topic, filter = {} ) => {
         address: address,
         topics: [ topic ],
         fromBlock: 0,
-        toBlock: 'latest',
+        toBlock: 'pending',
     }, filter);
     return provider.getLogs(filter);
 }
@@ -489,7 +490,7 @@ const getTaylor = (provider, signer) => (address, deploymentBlock = 0) => {
         getLogs: getLogs(provider)(address),
         getFns: getStoredFunctions(getLogs(provider)(address)),
         functions: {},
-        registered: [],
+        registered: {},
         provider,
         signer,
     }
@@ -501,19 +502,25 @@ const getTaylor = (provider, signer) => (address, deploymentBlock = 0) => {
 
     interpreter.setOwnFunctions = async () => {
         let functions = await interpreter.getFns({fromBlock: interpreter.fromBlock, toBlock: 'pending'});
-        functions.forEach(f => interpreter.functions[f.name] = f.signature);
+        functions.forEach(f => {
+            interpreter.functions[f.name] = { signature: f.signature, own: true };
+
+        });
     }
     
     interpreter.setRegistered = async () => {
-        let registered = [];
         const raddrs = await interpreter.getregistered();
         for (let raddr of raddrs) {
             const rinstance = getTaylor(provider, signer)(raddr);
             await rinstance.init();
-            interpreter.functions = Object.assign(interpreter.functions, rinstance.functions);
-            registered.push(rinstance);
+            interpreter.registered[raddr] = rinstance;
+            Object.keys(rinstance.functions).forEach(key => {
+                if (!interpreter.functions[key]) {
+                    interpreter.functions[key] = rinstance.functions[key];
+                    interpreter.functions[key].registered = true;
+                }
+            });
         }
-        interpreter.registered = registered;
     }
 
     interpreter.sendAndWait = async (mal_expression, txObj) => {
@@ -546,16 +553,16 @@ const getTaylor = (provider, signer) => (address, deploymentBlock = 0) => {
         log.name = log.topics[1].substring(2).hexDecode();
         log.signature = '0x' + log.topics[2].substring(58);
 
-        interpreter.functions[log.name] = log.signature;
-        if (callb) callb({type: 'function', log});
+        interpreter.functions[log.name] = { signature: log.signature, own: true };
+        if (callb) callb({logtype: 'function', log});
     }
     const regcb = callb => log => {
         log.address =  '0x' + log.topics[1].substring(26);
 
         const inst = getTaylor(provider, signer)(log.address);
-        interpreter.registered.push(inst);
+        interpreter.registered[log.address] = inst;
         inst.init();
-        if (callb) callb({type: 'registered', log});
+        if (callb) callb({logtype: 'registered', log});
     }
     let watchers = {};
 
