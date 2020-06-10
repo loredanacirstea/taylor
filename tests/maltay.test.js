@@ -188,8 +188,8 @@ it('test registration & executing from root contract', async function () {
 
     // Register
     // TODO: type integer
-    await MalTay.send('(register! 0x"' + maltay2.address.substring(2) + '")');
-    await MalTay.send('(register! 0x"' + maltay3.address.substring(2) + '")');
+    await MalTay.sendAndWait('(register! 0x"' + maltay2.address.substring(2) + '")');
+    await MalTay.sendAndWait('(register! 0x"' + maltay3.address.substring(2) + '")');
 
     // Check if registered correctly
     resp = await MalTay.call('(getregistered 1)');
@@ -213,6 +213,7 @@ it('test registration & executing from root contract', async function () {
     expect(resp).toBe(21);
     
     // test functions through MalTay root contract
+    await MalTay.init();
     resp = await MalTay.call('(fib (quad 2) )');
     expect(resp).toBe(21);
 

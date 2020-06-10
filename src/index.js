@@ -497,33 +497,47 @@ const getTaylor = (provider, signer) => (address, deploymentBlock = 0) => {
     interpreter.call = async (mal_expression, txObj) => decode(await interpreter.call_raw(expr2h(mal_expression, interpreter.functions), txObj));
     interpreter.send = async (mal_expression, txObj) => interpreter.send_raw(expr2h(mal_expression, interpreter.functions), txObj);
 
+    interpreter.getregistered = getRegisteredContracts(interpreter.call_raw);
+
+    interpreter.setOwnFunctions = async () => {
+        let functions = await interpreter.getFns({fromBlock: interpreter.fromBlock, toBlock: 'pending'});
+        functions.forEach(f => interpreter.functions[f.name] = f.signature);
+    }
+    
+    interpreter.setRegistered = async () => {
+        let registered = [];
+        const raddrs = await interpreter.getregistered();
+        for (let raddr of raddrs) {
+            const rinstance = getTaylor(provider, signer)(raddr);
+            await rinstance.init();
+            interpreter.functions = Object.assign(interpreter.functions, rinstance.functions);
+            registered.push(rinstance);
+        }
+        interpreter.registered = registered;
+    }
+
     interpreter.sendAndWait = async (mal_expression, txObj) => {
         let receipt = await interpreter.send(mal_expression, txObj);
         if (receipt.wait) {
             receipt = await receipt.wait();
         }
-        
+
+        // TODO: make this more efficient - wait for the last log and include it
+        // instead of getting all the data from scratch
         if (mal_expression.includes('def!')) {
-            let functions = await interpreter.getFns({fromBlock: interpreter.fromBlock, toBlock: 'pending'});
-            functions.forEach(f => interpreter.functions[f.name] = f.signature);
+            await interpreter.setOwnFunctions();
+        }
+
+        if (mal_expression.includes('register!')) {
+            await interpreter.setRegistered();
         }
         return receipt;
     }
 
-    interpreter.getregistered = getRegisteredContracts(interpreter.call_raw);
-
     // populates with all functions, including those stored in registered contracts
     interpreter.init = async () => {
-        let functions = await interpreter.getFns({fromBlock: interpreter.fromBlock, toBlock: 'pending'});
-
-        const registered = await interpreter.getregistered();
-        for (let raddr of registered) {
-            const rinstance = getTaylor(provider, signer)(raddr);
-            await rinstance.init();
-            functions = interpreter.functions.concat(rinstance.functions);
-            interpreter.registered.push(rinstance);
-        }
-        functions.forEach(f => interpreter.functions[f.name] = f.signature);
+        await interpreter.setOwnFunctions();
+        await interpreter.setRegistered();
     }
 
     const funcsFilter = { address, topics: ['0x00000000000000000000000000000000000000000000000000000000ffffffff']}
@@ -536,7 +550,7 @@ const getTaylor = (provider, signer) => (address, deploymentBlock = 0) => {
         if (callb) callb({type: 'function', log});
     }
     const regcb = callb => log => {
-        log.address =  '0x' + log.topics[2].substring(46);
+        log.address =  '0x' + log.topics[1].substring(26);
 
         const inst = getTaylor(provider, signer)(log.address);
         interpreter.registered.push(inst);
