@@ -502,6 +502,7 @@ const getTaylor = (provider, signer) => (address, deploymentBlock = 0) => {
         registered: {},
         provider,
         signer,
+        expr2h: expression => expr2h(expression, interpreter.functions),
     }
     
     interpreter.call = async (mal_expression, txObj) => decode(await interpreter.call_raw(expr2h(mal_expression, interpreter.functions), txObj));

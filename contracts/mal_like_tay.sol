@@ -15,14 +15,14 @@ object "Taylor" {
         // get func
         if eq(mslice(_calldata, 4), 0x44444443) {
             let sig := mslice(add(_calldata, 4), 4)
-            getFn(0, sig)
-            return (4, mslice(0, 4))
+            let ptr := getFn(sig)
+            return (add(ptr, 4), mslice(ptr, 4))
         }
 
         if eq(mslice(_calldata, 4), 0x44444442) {
             let name := mload(add(_calldata, 4))
-            getFnByName(0, name)
-            return (4, mslice(0, 4))
+            let ptr := getFnByName(name)
+            return (add(ptr, 4), mslice(ptr, 4))
         }
 
         // get function count
@@ -431,6 +431,7 @@ object "Taylor" {
                             dtrequire(false, 0xe0000011)
                         }
                         case 1 {
+                            // The function is used in a HOF
                             result_ptr := lambdaStorage(signature)
                             if isFunction(result_ptr) {
                                 isthis := 1
@@ -481,11 +482,8 @@ object "Taylor" {
         }
 
         function lambdaStorage(fsig) -> result_ptr {
-            let func_ptr := freeMemPtr()
-            getFn(func_ptr, fsig)
+            let func_ptr := getFn(fsig)
             
-            let len := mslice(func_ptr, 4)
-            func_ptr := allocate(add(len, 4))
             // without length; lambda signature already has length
             result_ptr := add(func_ptr, 4)
         }
@@ -1660,13 +1658,19 @@ object "Taylor" {
             signature := add(add(exp(2, 31), shl(27, 2)), shl(1, id))
         }
 
-        function getFn(_pointer, signature) {
-            getStoredData(_pointer, mappingFnKey(signature))
+        function getFn(signature) -> _pointer {
+            // The following does memory allocations, so we do it first
+            let key := mappingFnKey(signature)
+            _pointer := freeMemPtr()
+            getStoredData(_pointer, key)
+
+            let len := mslice(_pointer, 4)
+            _pointer := allocate(add(len, 4))
         }
 
-        function getFnByName(_pointer, name) {
+        function getFnByName(name) -> _pointer {
             let signature := getFnSigByName(name)
-            getFn(_pointer, signature)
+            _pointer := getFn(signature)
         }
 
         function getFnSigByName(name) -> signature {
@@ -1803,30 +1807,30 @@ object "Taylor" {
             mstore(_pointer, sload(storageKey))
 
             let sizeBytes := mslice(_pointer, 4)
-            _pointer := add(_pointer, 32)
-            getStoredDataInner(_pointer, storageKey, sizeBytes, sub(slot, 4))
+            let loadedBytes := sub(slot, 4)
+
+            if gt(sizeBytes, loadedBytes) {
+                getStoredDataInner(add(_pointer, 32), storageKey, sizeBytes, loadedBytes)
+            }
         }
 
         function getStoredDataInner(_pointer, storageKey, sizeBytes, loadedBytes) {
             let slot := 32
+            let index := 1
 
-            if gt(sizeBytes, loadedBytes) {
-                let index := 1
-
-                for {} lt(loadedBytes, sizeBytes) {} {
-                    let remaining := sub(sizeBytes, loadedBytes)
-                    switch gt(remaining, 31)
-                    case 1 {
+            for {} lt(loadedBytes, sizeBytes) {} {
+                let remaining := sub(sizeBytes, loadedBytes)
+                switch gt(remaining, 31)
+                case 1 {
+                    mstore(_pointer, sload(add(storageKey, index)))
+                    loadedBytes := add(loadedBytes, 32)
+                    index := add(index, 1)
+                    _pointer := add(_pointer, slot)
+                }
+                case 0 {
+                    if gt(remaining, 0) {
                         mstore(_pointer, sload(add(storageKey, index)))
-                        loadedBytes := add(loadedBytes, 32)
-                        index := add(index, 1)
-                        _pointer := add(_pointer, slot)
-                    }
-                    case 0 {
-                        if gt(remaining, 0) {
-                            mstore(_pointer, sload(add(storageKey, index)))
-                            loadedBytes := add(loadedBytes, remaining)
-                        }
+                        loadedBytes := add(loadedBytes, remaining)
                     }
                 }
             }

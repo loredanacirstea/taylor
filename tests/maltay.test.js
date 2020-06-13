@@ -206,7 +206,7 @@ it('test registration & executing from root contract', async function () {
 
     resp = await MalTay.call_raw('0x44444440');
     expect(parseInt(resp, 16)).toBe(2);
-}, 20000);
+}, 30000);
 
 it('test printer', async function () {
     let expr;
@@ -300,8 +300,8 @@ describe.each([
             expect(resp).toEqual(exampleArr[index]);
         }
         console.log(`static storage gasaverage: (${size})(${count})`, gasaverage / exampleArr.length);
-    });
-});
+    }, 50000);
+}, 50000);
 
 describe.each([
     ['chain', MalTay],
@@ -404,17 +404,17 @@ describe.each([
     it('test use stored fn 1', async function () {
         let resp;
         let name = 'func1'
-    
+
         await instance.sendAndWait('(def! func1 (fn* (a b) (add a b)))');
-        
+
         if (backendname === 'chain') {
             resp = await instance.call_raw('0x44444442' + name.hexEncode().padStart(64, '0'));
             expect(resp).toBe('0x8c0000289000000201000000000000000100000000000001');
         }
-        
+
         resp = await instance.call('(func1 2 3)');
         expect(resp).toBe(5);
-    
+
         resp = await instance.call('(func1 (add (add (sub 7 2) 1) 41) (add 2 3)))');
         expect(resp).toBe(52);
 
