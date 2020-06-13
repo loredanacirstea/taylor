@@ -138,7 +138,7 @@ const _nativeEnv = {
     gaslimit:   {mutable: false, arity: 0, inputs: [], outputs: [] },
 
     // Taylor
-    'insertinto!':  { mutable: false, arity: 2 },
+    'save!':  { mutable: false, arity: 2 },
     getfrom:     { mutable: false, arity: 2 },
 
     // TODO: curry

@@ -375,10 +375,12 @@ object "Taylor" {
             case 0x8800005e {
                 result_ptr := _false(add(arg_ptrs_ptr, 32))
             }
+            // register!
             case 0x880000c0 {
                 result_ptr := allocate(32)
                 let index := storeRegAddress(mload(add(arg_ptrs_ptr, 32)))
             }
+            // getregistered
             case 0x880000c2 {
                 result_ptr := allocate(32)
                 // TODO check type
@@ -387,7 +389,7 @@ object "Taylor" {
                 mstore(result_ptr, addr)
             }
             case 0x90000102 {
-                result_ptr := _insertinto(add(arg_ptrs_ptr, 32))
+                result_ptr := _save(add(arg_ptrs_ptr, 32))
             }
             case 0x90000104 {
                 result_ptr := _getfrom(add(arg_ptrs_ptr, 32))
@@ -1351,14 +1353,17 @@ object "Taylor" {
             }
         }
 
-        function _insertinto(ptrs) -> result_ptr {
-            let typename_ptr := add(mload(ptrs), 4)
-            
+        function _save(ptrs) -> result_ptr {
             // pointer to data that has to be inserted
-            let data_ptr := mload(add(ptrs, 32))
+            let data_ptr := mload(ptrs)
+
+            let typename_ptr := add(mload(add(ptrs, 32)), 4)
             
             // type signature - data is of this type
             let typesig := mslice(typename_ptr, 4)
+            if eq(typesig, 0) {
+                typesig := mslice(data_ptr, getSignatureLength(data_ptr))
+            }
 
             // get last inserted index - i
             let last_index := getStorageCount(typesig)

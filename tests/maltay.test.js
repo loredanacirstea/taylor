@@ -264,11 +264,14 @@ it('test evm functions', async function() {
 
 it('test compact dynamic storage', async function () {
     let resp, receipt;
-    const exampleArrLengths = [...new Array(36)].map(() => getRandomInt(80))
+    const count = 36;
+    const maxLength = 80;
+    
+    const exampleArrLengths = [...new Array(count)].map(() => getRandomInt(maxLength))
     const exampleArr = exampleArrLengths.map(len => '0x' + [...new Array(len)].map((_, i) => (i+1).toString(16).padStart(2, '0')).join(''))
 
     for (item of exampleArr) {
-        receipt = await MalTay.send(`(insertinto! "0x04000000" "${item}" )`);
+        receipt = await MalTay.send(`(save! "${item}" "0x04000000" )`);
         receipt =  await receipt.wait();
     }
 
@@ -279,8 +282,9 @@ it('test compact dynamic storage', async function () {
 }, 50000);
 
 describe.each([
-    [6, 32, '0x04000006'],
-    [8, 32, '0x04000008'],
+    [6, 36, '0x04000006'],
+    [8, 36, '0x04000008'],
+    [8, 36, null],
 ])('test compact static storage: (%s)(%s)(%s)', (size, count, typeid) => {
     let resp;
 
@@ -290,10 +294,13 @@ describe.each([
         let gasaverage = 0;
 
         for (item of exampleArr) {
-            receipt = await MalTay.send(`(insertinto! "${typeid}" "${item}" )`);
+            const expr = typeid ? `(save! "${item}")` : `(save! "${item}" "${typeid}" )`;
+            receipt = await MalTay.send(expr);
             receipt =  await receipt.wait();
             gasaverage += parseInt(receipt.gasUsed._hex.substring(2), 16);
         }
+
+        typeid = typeid || ('0x04' + size.toString(16).padStart(6, '0'));
 
         for (index in exampleArr) {
             resp = await MalTay.call(`(getfrom "${typeid}" ${index})`);
