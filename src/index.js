@@ -311,6 +311,12 @@ const ast2h = (ast, parent=null, unkownMap={}, defenv={}) => {
             throw new Error('Unexpected native function: ' + elem.value);
         }
 
+        if (typeof elem === 'string' && elem.substring(0, 2) === bytesMarker) {
+            const val = elem.substring(2);
+            const typeid = getbytesid(val.length / 2);
+            return  typeid + val;
+        }
+
         if (elem instanceof Array) {
             return ast2h(elem, ast, unkownMap, defenv);
         }
@@ -496,6 +502,7 @@ const getTaylor = (provider, signer) => (address, deploymentBlock = 0) => {
         registered: {},
         provider,
         signer,
+        expr2h: expression => expr2h(expression, interpreter.functions),
     }
     
     interpreter.call = async (mal_expression, txObj) => decode(await interpreter.call_raw(expr2h(mal_expression, interpreter.functions), txObj));

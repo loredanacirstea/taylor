@@ -137,6 +137,10 @@ const _nativeEnv = {
     difficulty: {mutable: false, arity: 0, inputs: [], outputs: [] },
     gaslimit:   {mutable: false, arity: 0, inputs: [], outputs: [] },
 
+    // Taylor
+    'insertinto!':  { mutable: false, arity: 2 },
+    getfrom:     { mutable: false, arity: 2 },
+
     // TODO: curry
     // TODO: pay
 }

@@ -15,14 +15,14 @@ object "Taylor" {
         // get func
         if eq(mslice(_calldata, 4), 0x44444443) {
             let sig := mslice(add(_calldata, 4), 4)
-            getFn(0, sig)
-            return (4, mslice(0, 4))
+            let ptr := getFn(sig)
+            return (add(ptr, 4), mslice(ptr, 4))
         }
 
         if eq(mslice(_calldata, 4), 0x44444442) {
             let name := mload(add(_calldata, 4))
-            getFnByName(0, name)
-            return (4, mslice(0, 4))
+            let ptr := getFnByName(name)
+            return (add(ptr, 4), mslice(ptr, 4))
         }
 
         // get function count
@@ -386,6 +386,12 @@ object "Taylor" {
                 let addr := getRegAddress(index)
                 mstore(result_ptr, addr)
             }
+            case 0x90000102 {
+                result_ptr := _insertinto(add(arg_ptrs_ptr, 32))
+            }
+            case 0x90000104 {
+                result_ptr := _getfrom(add(arg_ptrs_ptr, 32))
+            }
 
             default {
                 let isthis := 0
@@ -425,6 +431,7 @@ object "Taylor" {
                             dtrequire(false, 0xe0000011)
                         }
                         case 1 {
+                            // The function is used in a HOF
                             result_ptr := lambdaStorage(signature)
                             if isFunction(result_ptr) {
                                 isthis := 1
@@ -475,11 +482,8 @@ object "Taylor" {
         }
 
         function lambdaStorage(fsig) -> result_ptr {
-            let func_ptr := freeMemPtr()
-            getFn(func_ptr, fsig)
+            let func_ptr := getFn(fsig)
             
-            let len := mslice(func_ptr, 4)
-            func_ptr := allocate(add(len, 4))
             // without length; lambda signature already has length
             result_ptr := add(func_ptr, 4)
         }
@@ -564,8 +568,12 @@ object "Taylor" {
             // 1001000
             isget := eq(id, 0x48)
         }
+        function isArray(sig) -> isa {
+            let id := and(sig, 0x7fffffe)
+            isa := eq(id, 0x102)
+        }
         // 01000000000000000000000000000000
-        function isArray(ptr) -> isa {
+        function isArrayType(ptr) -> isa {
             let sig := getFuncSig(ptr)
             let numb := and(sig, 0x40000000)
             isa := eq(iszero(numb), 0)
@@ -632,7 +640,7 @@ object "Taylor" {
             if isFunction(ptr) {
                 _length := 0
             }
-            if isArray(ptr) {
+            if isArrayType(ptr) {
                 // _length := arraySize(ptr)
             }
             if isStruct(ptr) {
@@ -703,6 +711,11 @@ object "Taylor" {
             // typeid.number + numberid.uint + bit16 size
             // 00001 * 01010010001 * 0000000000000000
             signature := add(0xa910000, size)
+        }
+
+        function buildArraySig(arity) -> signature {
+            // signature :=  '01' * bit30 arity
+            signature := add(exp(2, 30), arity)
         }
         
         // function read(str) -> _str {
@@ -1338,6 +1351,252 @@ object "Taylor" {
             }
         }
 
+        function _insertinto(ptrs) -> result_ptr {
+            let typename_ptr := add(mload(ptrs), 4)
+            
+            // pointer to data that has to be inserted
+            let data_ptr := mload(add(ptrs, 32))
+            
+            // type signature - data is of this type
+            let typesig := mslice(typename_ptr, 4)
+
+            // get last inserted index - i
+            let last_index := getStorageCount(typesig)
+
+            let typesize := bytesSize(typesig)
+            let storage_pos := 0
+            
+            switch typesize
+            // dynamic size
+            case 0 {
+                let start_delta := 32
+                // length of data to be inserted
+                let data_len := getValueLength(data_ptr)
+            
+                let j := div(last_index, start_delta)
+                let start_ind_lengths := mul(j, start_delta)
+
+                let start_i := getStartAtIndex(j, typesig)
+
+                let offset_len := 0
+                if gt(mod(last_index, start_delta), 0) {
+                    offset_len := getLengthOffset(start_ind_lengths, last_index, typesig, start_delta)
+                }
+                
+                // store start only for mod(i, 32) === 0
+                if eq(0, mod(last_index, start_delta)) {
+                    if gt(last_index, 0) {
+                        start_i := storeStart(j, last_index, typesig, start_delta, data_len)
+                    }
+                }
+
+                storage_pos := add(start_i, offset_len)
+
+                // store length
+                storeLength(j, last_index, typesig, start_delta, data_len)
+            }
+            // static size
+            default {
+                storage_pos := mul(last_index, typesize)
+            }
+
+            // store value
+            storeAtPos(storage_pos, typesig, data_ptr)
+
+            // store new count
+            incStorageCount(typesig)
+        }
+
+        function _getfrom(ptrs) -> result_ptr {
+            let typename_ptr := add(mload(ptrs), 4)
+            let typesig := mslice(typename_ptr, 4)
+            let index := mslice(add(
+                mload(add(ptrs, 32)),
+                4
+            ), 4)
+
+            let typesize := bytesSize(typesig)
+            let storage_offset := 0
+            let data_len := typesize
+            
+            switch typesize
+            case 0 {
+
+                let start_delta := 32
+
+                let j := div(index, start_delta)
+                let start_ind_lengths := mul(j, start_delta)
+
+                let start := getStartAtIndex(j, typesig)
+                let offset_len := 0
+                
+                if gt(mod(index, start_delta), 0) {
+                    offset_len := getLengthOffset(start_ind_lengths, index, typesig, start_delta)
+                }
+
+                data_len := getLengthOffset(index, add(index, 1), typesig, start_delta)
+                storage_offset := add(start, offset_len)
+            }
+            default {
+                storage_offset := mul(index, typesize)
+            }
+
+            result_ptr := allocate(add(data_len, 4))
+
+            // TODO sig after typesig
+            mslicestore(result_ptr, buildBytesSig(data_len), 4)
+
+            readAtPos(storage_offset, typesig, add(result_ptr, 4), data_len)
+        }
+
+        function getStorageCount(typesig) -> count {
+            count := sload(mappingArrayStorageKey_count(typesig))
+        }
+
+        function incStorageCount(typesig) {
+            let count := getStorageCount(typesig)
+            count := add(count, 1)
+            sstore(mappingArrayStorageKey_count(typesig), count)
+        }
+
+        // each start value - 4bytes -> 8 values/32byte slot
+        function getStartAtIndex(j, typesig) -> _start {
+            let read_slot := div(j, 8)
+            let key := mappingArrayStorageKey_starts(read_slot, typesig)
+            let starts := sload(key)
+            let read_index := mod(j, 8)
+            _start := readmiddle(starts, mul(read_index, 4), 4)
+            _start := mul(_start, 32)
+        }
+
+        function getLengthOffset(start_index, end_index, typesig, start_delta) -> offset {
+            let len_slot := div(start_index, 32)
+            let key := mappingArrayStorageKey_lengths(len_slot, typesig)
+            let lengths := sload(key)
+
+            let base := mul(len_slot, 32)
+            let start_index_relative := sub(start_index, base)
+            let end_index_relative := sub(end_index, base)
+
+            for { let i := start_index_relative } lt(i, end_index_relative) { i := add(i, 1) } {
+                offset := add(
+                    offset, 
+                    readmiddle(lengths, i, 1)
+                )
+            }
+        }
+
+        function storeLength(j, last_index, typesig, start_delta, data_len) {
+            
+            let ind := mul(j, start_delta)
+            let len_slot := div(ind, 32)
+            let key := mappingArrayStorageKey_lengths(len_slot, typesig)
+            let lengths := sload(key)
+
+            let offset := mod(last_index, start_delta)
+            lengths := add(
+                lengths,
+                shl(mul(8, sub(31, offset)), data_len)
+            )
+            sstore(key, lengths)
+        }
+
+        function storeStart(j, last_index, typesig, start_delta, data_len) -> newstart {
+            // get last 32 lengths
+            let last_lengths := getLengthOffset(
+                sub(last_index, 32),
+                last_index,
+                typesig,
+                start_delta
+            )
+
+            switch gt(mod(last_lengths, 32), 0)
+            case 0 {
+                last_lengths := div(last_lengths, start_delta)
+            }
+            case 1 {
+                last_lengths := add(div(last_lengths, start_delta), 1)
+            }
+            newstart := add(
+                getStartAtIndex(sub(j, 1), typesig),  // get last start
+                last_lengths
+            )
+
+            let key := mappingArrayStorageKey_starts(div(j, 8), typesig)
+            let values := sload(key)
+            let offset := mul(4, mod(j, 8))
+            values := add(
+                values,
+                shl(mul(8, sub(28, offset)), newstart)
+            )
+
+            sstore(key, values)
+            newstart := mul(newstart, 32)
+        }
+
+        function storeAtPos(storage_pos, typesig, data_ptr) {
+            let storage_slot := div(storage_pos, 32)
+            let storage_offset := mod(storage_pos, 32)
+            
+            let key := mappingArrayStorageKey_values(storage_slot, typesig)
+            let values := sload(key)
+
+            let data_len := getValueLength(data_ptr)
+            data_ptr := add(data_ptr, getSignatureLength(data_ptr))
+
+            let head_len := min(sub(32, storage_offset), data_len)
+            let head := mslice(data_ptr, head_len)
+            
+            values := add(values, 
+                shl(mul(8, sub(sub(32, head_len), storage_offset)), head)
+            )
+            
+            sstore(key, values)
+
+            if gt(data_len, head_len) {
+                storeDataInner(
+                    add(data_ptr, head_len),
+                    add(key, 1),
+                    sub(data_len, head_len)
+                )
+            }
+        }
+
+        function readAtPos(storage_pos, typesig, result_ptr, data_len) {
+            let storage_slot := div(storage_pos, 32)
+            let storage_offset := mod(storage_pos, 32)
+            let key := mappingArrayStorageKey_values(storage_slot, typesig)
+            let values := sload(key)
+            let head_len := min(sub(32, storage_offset), data_len)
+            let head := readmiddle(values, storage_offset, head_len)
+            
+            mslicestore(result_ptr, head, head_len)
+
+            if gt(data_len, head_len) {
+                getStoredDataInner(
+                    add(result_ptr, head_len),
+                    key,
+                    sub(data_len, head_len),
+                    0
+                )
+            }
+        }
+
+        function readmiddle(value, _start, _len) -> newval {
+            newval := shl(mul(8, _start), value)
+            newval := shr(mul(8, sub(32, _len)), newval)
+        }
+
+        function min(a, b) -> c {
+            switch lt(a, b)
+            case 1 {
+                c := a
+            }
+            case 0 {
+                c := b
+            }
+        }
+
         // function mslice(position, length) -> result {
         //   if gt(length, 32) { revert(0, 0) } // protect against overflow
         
@@ -1408,13 +1667,19 @@ object "Taylor" {
             signature := add(add(exp(2, 31), shl(27, 2)), shl(1, id))
         }
 
-        function getFn(_pointer, signature) {
-            getStoredData(_pointer, mappingFnKey(signature))
+        function getFn(signature) -> _pointer {
+            // The following does memory allocations, so we do it first
+            let key := mappingFnKey(signature)
+            _pointer := freeMemPtr()
+            getStoredData(_pointer, key)
+
+            let len := mslice(_pointer, 4)
+            _pointer := allocate(add(len, 4))
         }
 
-        function getFnByName(_pointer, name) {
+        function getFnByName(name) -> _pointer {
             let signature := getFnSigByName(name)
-            getFn(_pointer, signature)
+            _pointer := getFn(signature)
         }
 
         function getFnSigByName(name) -> signature {
@@ -1483,8 +1748,33 @@ object "Taylor" {
 
         // mapping(bytes32(max) => *)
         function mappingStorageKey(storageIndex, key) -> storageKey {
-            mstore(0, key, storageIndex)
-            storageKey := keccak256(0, 64)
+            let ptr := allocate(64)
+            mstore(ptr, key, storageIndex)
+            storageKey := keccak256(ptr, 64)
+        }
+
+        function mappingArrayStorageKey_starts(index, typesig) -> storageKey {
+            let ptr := allocate(96)
+            mstore(ptr, typesig, 0, index)
+            storageKey := keccak256(ptr, 96)
+        }
+
+        function mappingArrayStorageKey_lengths(index, typesig) -> storageKey {
+            let ptr := allocate(96)
+            mstore(ptr, typesig, 1, index)
+            storageKey := keccak256(ptr, 96)
+        }
+
+        function mappingArrayStorageKey_values(index, typesig) -> storageKey {
+            let ptr := allocate(96)
+            mstore(ptr, typesig, 3, index)
+            storageKey := keccak256(ptr, 96)
+        }
+
+        function mappingArrayStorageKey_count(typesig) -> storageKey {
+            let ptr := allocate(64)
+            mstore(ptr, typesig, 4)
+            storageKey := keccak256(ptr, 64)
         }
 
         // mapping(bytes => *)
@@ -1496,6 +1786,10 @@ object "Taylor" {
 
         function storeData(_pointer, storageKey) {
             let sizeBytes := add(mslice(_pointer, 4), 4)
+            storeDataInner(_pointer, storageKey, sizeBytes)
+        }
+
+        function storeDataInner(_pointer, storageKey, sizeBytes) {
             let storedBytes := 0
             let index := 0
 
@@ -1518,31 +1812,34 @@ object "Taylor" {
 
         function getStoredData(_pointer, storageKey) {
             let slot := 32
-
             // read first storage slot, for the length
             mstore(_pointer, sload(storageKey))
 
             let sizeBytes := mslice(_pointer, 4)
             let loadedBytes := sub(slot, 4)
-            _pointer := add(_pointer, 32)
 
             if gt(sizeBytes, loadedBytes) {
-                let index := 1
+                getStoredDataInner(add(_pointer, 32), storageKey, sizeBytes, loadedBytes)
+            }
+        }
 
-                for {} lt(loadedBytes, sizeBytes) {} {
-                    let remaining := sub(sizeBytes, loadedBytes)
-                    switch gt(remaining, 31)
-                    case 1 {
+        function getStoredDataInner(_pointer, storageKey, sizeBytes, loadedBytes) {
+            let slot := 32
+            let index := 1
+
+            for {} lt(loadedBytes, sizeBytes) {} {
+                let remaining := sub(sizeBytes, loadedBytes)
+                switch gt(remaining, 31)
+                case 1 {
+                    mstore(_pointer, sload(add(storageKey, index)))
+                    loadedBytes := add(loadedBytes, 32)
+                    index := add(index, 1)
+                    _pointer := add(_pointer, slot)
+                }
+                case 0 {
+                    if gt(remaining, 0) {
                         mstore(_pointer, sload(add(storageKey, index)))
-                        loadedBytes := add(loadedBytes, 32)
-                        index := add(index, 1)
-                        _pointer := add(_pointer, slot)
-                    }
-                    case 0 {
-                        if gt(remaining, 0) {
-                            mstore(_pointer, sload(add(storageKey, index)))
-                            loadedBytes := add(loadedBytes, remaining)
-                        }
+                        loadedBytes := add(loadedBytes, remaining)
                     }
                 }
             }
