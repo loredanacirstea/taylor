@@ -386,10 +386,10 @@ object "Taylor" {
                 let addr := getRegAddress(index)
                 mstore(result_ptr, addr)
             }
-            case 0x90000104 {
+            case 0x90000102 {
                 result_ptr := _insertinto(add(arg_ptrs_ptr, 32))
             }
-            case 0x90000106 {
+            case 0x90000104 {
                 result_ptr := _getfrom(add(arg_ptrs_ptr, 32))
             }
 
@@ -568,8 +568,12 @@ object "Taylor" {
             // 1001000
             isget := eq(id, 0x48)
         }
+        function isArray(sig) -> isa {
+            let id := and(sig, 0x7fffffe)
+            isa := eq(id, 0x102)
+        }
         // 01000000000000000000000000000000
-        function isArray(ptr) -> isa {
+        function isArrayType(ptr) -> isa {
             let sig := getFuncSig(ptr)
             let numb := and(sig, 0x40000000)
             isa := eq(iszero(numb), 0)
@@ -636,7 +640,7 @@ object "Taylor" {
             if isFunction(ptr) {
                 _length := 0
             }
-            if isArray(ptr) {
+            if isArrayType(ptr) {
                 // _length := arraySize(ptr)
             }
             if isStruct(ptr) {
@@ -707,6 +711,11 @@ object "Taylor" {
             // typeid.number + numberid.uint + bit16 size
             // 00001 * 01010010001 * 0000000000000000
             signature := add(0xa910000, size)
+        }
+
+        function buildArraySig(arity) -> signature {
+            // signature :=  '01' * bit30 arity
+            signature := add(exp(2, 30), arity)
         }
         
         // function read(str) -> _str {
