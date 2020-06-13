@@ -15,12 +15,14 @@ beforeAll(() => {
 });
 
 afterAll(() => {
-    return MalTay.unwatch();
+    if (MalTay) MalTay.unwatch();
+    return;
 });
 
 const evenHex = value => value.length % 2 === 1 ? '0' + value : value;
 const toHex = value => '0x' + evenHex(Math.floor(value).toString(16));
 const bnToHex = value => '0x' + evenHex(value.toString(16));
+const getRandomInt = max => Math.floor(Math.random() * Math.floor(max));
 
 it('test expr2h', async function () {
     
@@ -259,6 +261,47 @@ it('test evm functions', async function() {
     expect(resp.substring(0, 10)).toBe('0x0a910020');
     expect(parseInt(resp.substring(10), 16)).toBeGreaterThan(0);
 })
+
+it('test compact dynamic storage', async function () {
+    let resp, receipt;
+    const exampleArrLengths = [...new Array(36)].map(() => getRandomInt(80))
+    const exampleArr = exampleArrLengths.map(len => '0x' + [...new Array(len)].map((_, i) => (i+1).toString(16).padStart(2, '0')).join(''))
+
+    for (item of exampleArr) {
+        receipt = await MalTay.send(`(insertinto! "0x04000000" "${item}" )`);
+        receipt =  await receipt.wait();
+    }
+
+    for (index in exampleArr) {
+        resp = await MalTay.call(`(getfrom "0x04000000" ${index})`);
+        expect(resp).toEqual(exampleArr[index]);
+    }
+}, 50000);
+
+describe.each([
+    [6, 32, '0x04000006'],
+    [8, 32, '0x04000008'],
+])('test compact static storage: (%s)(%s)(%s)', (size, count, typeid) => {
+    let resp;
+
+    const exampleArr = [...new Array(count)].map(() => '0x' + [...new Array(size)].map((_, i) => (i+1).toString(16).padStart(2, '0')).join(''))
+
+    test(`test static storage `, async () => {
+        let gasaverage = 0;
+
+        for (item of exampleArr) {
+            receipt = await MalTay.send(`(insertinto! "${typeid}" "${item}" )`);
+            receipt =  await receipt.wait();
+            gasaverage += parseInt(receipt.gasUsed._hex.substring(2), 16);
+        }
+
+        for (index in exampleArr) {
+            resp = await MalTay.call(`(getfrom "${typeid}" ${index})`);
+            expect(resp).toEqual(exampleArr[index]);
+        }
+        console.log(`static storage gasaverage: (${size})(${count})`, gasaverage / exampleArr.length);
+    });
+});
 
 describe.each([
     ['chain', MalTay],
