@@ -221,19 +221,24 @@ const decodeInner = (sig, data) => {
         });
         return { result, data };
     } else {
-        throw new Error('decode type not supported: ' + sig);
+        throw new Error(`decode type not supported: ${sig} ; ${data}`);
     }
 }
 
 const decode = data => {
+    const inidata = data;
     data = strip0x(data);
     const decoded = [];
 
-    while (data.length > 0) {
-        let result;
-        const sig = parseInt(data.substring(0, 8), 16);
-        ({result, data} = decodeInner(sig, data.substring(8)));
-        decoded.push(result);
+    try {
+        while (data.length > 0) {
+            let result;
+            const sig = parseInt(data.substring(0, 8), 16);
+            ({result, data} = decodeInner(sig, data.substring(8)));
+            decoded.push(result);
+        }
+    } catch(e) {
+        throw new Error(`${e} ; ${inidata}`)
     }
     return decoded.length > 1 ? decoded : decoded[0];
 }
@@ -284,7 +289,6 @@ const ast2h = (ast, parent=null, unkownMap={}, defenv={}) => {
 
                 if (ast[i-1] && ast[i-1].value === 'struct') {
                     const encodedName = getnumberid(32) + elem.value.hexEncode().padStart(64, '0');
-                    let arity = ast[0].value === elem.value ? ast.length : 1;
                     return encodedName;
                 }
                 
@@ -333,10 +337,15 @@ const ast2h = (ast, parent=null, unkownMap={}, defenv={}) => {
             throw new Error('Unexpected native function: ' + elem.value);
         }
 
-        if (typeof elem === 'string' && elem.substring(0, 2) === bytesMarker) {
-            const val = elem.substring(2);
-            const typeid = getbytesid(val.length / 2);
-            return  typeid + val;
+        if (typeof elem === 'string') {
+            if (elem.substring(0, 2) === bytesMarker) {
+                const val = elem.substring(2);
+                const typeid = getbytesid(val.length / 2);
+                return  typeid + val;
+            } else {
+                // TODO fixme - strings are now bytes32
+                return getnumberid(32) + elem.hexEncode().padStart(64, '0');
+            }
         }
 
         if (elem instanceof Array) {

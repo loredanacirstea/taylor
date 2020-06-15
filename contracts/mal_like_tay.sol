@@ -404,6 +404,9 @@ object "Taylor" {
             case 0x90000106 {
                 result_ptr := _struct(add(arg_ptrs_ptr, 32))
             }
+            case 0x9800010b {
+                result_ptr := _rcall(add(arg_ptrs_ptr, 32))
+            }
 
             default {
                 let isthis := 0
@@ -1462,6 +1465,11 @@ object "Taylor" {
             ), 4)
 
             let typesize := getValueLength(typename_ptr)
+            result_ptr := _getfromInner(typesig, typesize, index)
+        }
+
+
+        function _getfromInner(typesig, typesize, index) -> result_ptr {
             let storage_offset := 0
             let data_len := typesize
             
@@ -1685,6 +1693,39 @@ object "Taylor" {
             }
 
             result_ptr := allocate(length)
+        }
+
+        function _rcall(ptrs) -> result_ptr {
+            let structsig_ptr := mload(ptrs)
+            let data_ptr := mload(add(ptrs, 64))
+            let instance_ptr := _getfrom(ptrs)
+            let addr_index := mslice(add(instance_ptr, 4), 4)
+            let sig_index := mslice(add(instance_ptr, 8), 4)
+
+            // // take types from struct
+            // let struct_index := structIdFromSig(mslice(add(structsig_ptr, 4), 4))
+            // let struct_ptr := _getfromInner(0x20000000, 0, struct_index)
+            // // first is address, second is sig
+            
+            let addr_ptr := _getfromInner(0x04000014, 0x14, addr_index)
+            let sig_ptr := _getfromInner(0x04000004, 0x04, sig_index)
+            let addr := mslice(add(addr_ptr, 4), 0x14)
+            let sig := mslice(add(sig_ptr, 4), 0x04)
+
+            let data_len := getValueLength(data_ptr)
+            let fulldata_ptr := allocate(add(4, data_len))
+            
+            mslicestore(fulldata_ptr, sig, 4)
+            mmultistore(add(fulldata_ptr, 4), add(data_ptr, 4), data_len)
+
+            let result := staticcall(gas(), addr, fulldata_ptr, add(4, data_len), 0, 0)
+            dtrequire(eq(result, 1), 0xeedd)
+            
+            let size := returndatasize()
+
+            result_ptr := allocate(add(size, 4))
+            mslicestore(result_ptr, buildBytesSig(size), 4)
+            returndatacopy(add(result_ptr, 4), 0, size)
         }
 
         function readmiddle(value, _start, _len) -> newval {

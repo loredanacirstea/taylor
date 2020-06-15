@@ -311,7 +311,7 @@ describe.each([
 }, 50000);
 
 it('test structs', async function() {
-    let resp, stored;
+    let resp;
 
     // 0x0400000424000001
     await MalTay.send('(defstruct! astruct (list "0x0a910004" "0x0a910004") )');
@@ -331,6 +331,43 @@ it('test structs', async function() {
     expect(resp).toEqual({sig: 0x24000001, 0: 0, 1: 1});
 });
 
+it.skip('test structs abi func', async function() {
+    let resp;
+
+    // 0x0400000424000001
+    resp = await MalTay.send('(defstruct! abifunc (list "0x04000014" "0x04000004") )');
+    resp = await resp.wait()
+    console.log(resp.logs[0].topics)
+
+    resp = await MalTay.call(`(getfrom "0x20000000" 0)`);
+    expect(resp).toEqual('0x1100000204000004040000140400000404000004');
+
+    await MalTay.send('(save! (struct abifunc (map save! (list "0xCFF8dc8A5e2Af7fcc6BE124d3C91FA50186A8c96" "0x6bdbf8e6") )) )');
+
+    resp = await MalTay.call(`(getfrom "0x04000014" 0)`);
+    expect(resp).toEqual('0xCFF8dc8A5e2Af7fcc6BE124d3C91FA50186A8c96'.toLowerCase());
+
+    resp = await MalTay.call(`(getfrom "0x04000004" 0)`);
+    expect(resp).toEqual('0x6bdbf8e6');
+
+    resp = await MalTay.call(`(getfrom "0x24000001" 0)`);
+    expect(resp).toEqual({sig: 0x24000001, 0: 0, 1: 0});
+
+    // 2
+    await MalTay.send('(save! (struct abifunc (map save! (list "0xCFF8dc8A5e2Af7fcc6BE124d3C91FA50186A8c96" "0x5b8bfc2d") )) )');
+
+    resp = await MalTay.call(`(getfrom "0x04000014" 1)`);
+    expect(resp).toEqual('0xCFF8dc8A5e2Af7fcc6BE124d3C91FA50186A8c96'.toLowerCase());
+
+    resp = await MalTay.call(`(getfrom "0x04000004" 1)`);
+    expect(resp).toEqual('0x5b8bfc2d');
+
+    resp = await MalTay.call(`(getfrom "0x24000001" 1)`);
+    expect(resp).toEqual({sig: 0x24000001, 0: 1, 1: 1});
+
+    resp = await MalTay.call(`(rcall "0x24000001" 1 "0x00000000000000000000000000000000000000000000000000000000000000040000000000000000000000000000000000000000000000000000000000000006")`);
+    expect(resp).toEqual('0x000000000000000000000000000000000000000000000000000000000000000a');
+});
 
 it.skip('test struct!', async function() {
     let resp;
