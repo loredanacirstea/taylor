@@ -456,7 +456,7 @@ describe.each([
         expect(resp).toBe(6);
     });
 
-    it('test funcs', async function() {
+    it('test empty', async function() {
         let resp;
     
         resp = await instance.call('(empty? (list))');
@@ -465,7 +465,10 @@ describe.each([
         expect(resp).toBe(false);
         resp = await instance.call('(empty? (list 0))');
         expect(resp).toBe(false);
+    });
     
+    it('test bool checks', async function() {
+        let resp;
         resp = await instance.call('(true? true)');
         expect(resp).toBe(true);
         resp = await instance.call('(true? false)');
@@ -475,7 +478,10 @@ describe.each([
         expect(resp).toBe(true);
         resp = await instance.call('(false? true)');
         expect(resp).toBe(false);
-        
+    });
+    
+    it('test list functions', async function() {
+        let resp;
         resp = await instance.call('(first (list 5 3 7))');
         expect(resp).toBe(5);
     

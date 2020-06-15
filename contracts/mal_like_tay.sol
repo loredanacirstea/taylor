@@ -677,16 +677,16 @@ object "Taylor" {
                 }
                 done := 1
             }
+            if and(eq(done, 0), isBool(sig)) {
+                _length := 0
+                done := 1
+            }
             if and(eq(done, 0), isNumber(ptr)) {
                 _length := numberSize(sig)
                 done := 1
             }
             if and(eq(done, 0), isBytes(ptr)) {
                 _length := bytesSize(sig)
-                done := 1
-            }
-            if and(eq(done, 0), isBool(sig)) {
-                _length := 0
                 done := 1
             }
         }
