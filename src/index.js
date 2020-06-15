@@ -117,16 +117,16 @@ const getbytesid = length => formatId(typeid.bytelike + u2b(length).padStart(26,
 // signature :=  '001' * bit4 arity * bit24 id * bit1 stored?
 const getstructid = (id, arity) => formatId(typeid.struct + u2b(arity).padStart(4, '0') + id.padStart(24, '0') + '1')
 
-const isFunction = sig => (sig & 2147483648) !== 0;
+const isFunction = sig => ((sig >> 31) & 0x01) === 1;
 const isLambda = sig => (sig & 0x4000000) !== 0;
 const isApply = sig => (sig & 0x7fffffe) === 0x40;
 const isList = sig => (sig & 0x7fffffe) === 0x3e;
-const isArray = sig => (sig & 0x40000000) !== 0;
-const isStruct = sig => (sig & 0x20000000) === 0x20000000;
-const isListType = sig => (sig & 0x10000000) !== 0;
-const isNumber = sig => (sig & 0x8000000) !== 0;
+const isArray = sig => ((sig >> 30) & 0x03) === 1;
+const isStruct = sig => ((sig >> 29) & 0x07) === 1;
+const isListType = sig => ((sig >> 28) & 0x0f) === 1;
+const isNumber = sig => ((sig >> 27) & 0x1f) === 1;
 const isBool = sig => (sig & 0xffff0000) === 0x0a800000;
-const isBytelike = sig => (sig & 0x4000000) === 0x4000000;
+const isBytelike = sig => ((sig >> 26) & 0x3f) === 1;
 const isEnum = sig => (sig & 0x2000000) !== 0;
 const isLambdaUnknown = sig => (sig & 0x1000000) !== 0;
 const isGetByName = sig => (sig & 0x7fffffe) === 0x48;

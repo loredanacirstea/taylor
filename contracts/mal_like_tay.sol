@@ -547,10 +547,9 @@ object "Taylor" {
         }
 
         // function 10000000000000000000000000000000
-        function isFunction(ptr) -> isf {
+        function isFunction(ptr) -> isi {
             let sig := getFuncSig(ptr)
-            let func := and(sig, 0x80000000)
-            isf := eq(iszero(func), 0)
+            isi := eq(and(shr(31, sig), 0x01), 1)
         }
         // 10001100000000000000000000000000
         // 100000000000000000000000000
@@ -588,41 +587,39 @@ object "Taylor" {
             isa := eq(id, 0x102)
         }
         // 01000000000000000000000000000000
-        function isArrayType(ptr) -> isa {
+        function isArrayType(ptr) -> isi {
             let sig := getFuncSig(ptr)
-            let numb := and(sig, 0x40000000)
-            isa := eq(iszero(numb), 0)
+            isi := eq(and(shr(30, sig), 0x03), 1)
         }
 
         // 00100000000000000000000000000000
-        function isStruct(ptr) -> iss {
+        // 111 - 0x07
+        function isStruct(ptr) -> isi {
             let sig := getFuncSig(ptr)
-            let numb := and(sig, 0x20000000)
-            iss := eq(numb, 0x20000000)
+            isi := eq(and(shr(29, sig), 0x07), 1)
         }
 
         // 00010000000000000000000000000000
-        function isListType(sig) -> isl {
-            let numb := and(sig, 0x10000000)
-            isl := eq(iszero(numb), 0)
+        function isListType(sig) -> isi {
+            isi := eq(and(shr(28, sig), 0x0f), 1)
         }
 
         // 00001000000000000000000000000000
-        function isNumber(ptr) -> isn {
+        // 11111 - 1f
+        function isNumber(ptr) -> isi {
             let sig := getFuncSig(ptr)
-            let numb := and(sig, 0x8000000)
-            isn := eq(iszero(numb), 0)
+            isi := eq(and(shr(27, sig), 0x1f), 1)
         }
 
-        function isBool(sig) -> isbool {
-            isbool := eq(and(sig, 0xffff0000), 0x0a800000)
+        function isBool(sig) -> isi {
+            isi := eq(and(sig, 0xffff0000), 0x0a800000)
         }
 
         // 00000100000000000000000000000000
-        function isBytes(ptr) -> isn {
+        // 111111 - 0x3f
+        function isBytes(ptr) -> isi {
             let sig := getFuncSig(ptr)
-            let numb := and(sig, 0x4000000)
-            isn := eq(numb, 0x4000000)
+            isi := eq(and(shr(26, sig), 0x3f), 1)
         }
 
         // last 16 bits
