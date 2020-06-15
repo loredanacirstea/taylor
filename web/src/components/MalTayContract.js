@@ -32,6 +32,8 @@ class MalTayContract extends Component {
       addrToBeRegistered: null,
       registered: {},
       backend: 'injected',
+      currency: 'eur',
+      gasprofile: 'average',
     }
 
     this.onChangeAddress = this.onChangeAddress.bind(this);
@@ -41,6 +43,8 @@ class MalTayContract extends Component {
     this.onChangeRegisteredAddress = this.onChangeRegisteredAddress.bind(this);
     this.onRegister = this.onRegister.bind(this);
     this.onChangeBackend = this.onChangeBackend.bind(this);
+    this.onChangeCurrency = this.onChangeCurrency.bind(this);
+    this.onChangeGasprofile = this.onChangeGasprofile.bind(this);
   
     this.setWeb3();
   }
@@ -112,6 +116,16 @@ class MalTayContract extends Component {
     this.props.onRootChange(backend, this.web3util, maltay.malBackend.getBackend());
   }
 
+  onChangeCurrency(currency) {
+    this.setState({ currency });
+    this.props.onGasprofileChange({currency, profile: this.state.gasprofile});
+  }
+
+  onChangeGasprofile(gasprofile) {
+    this.setState({ gasprofile });
+    this.props.onGasprofileChange({currency: this.state.currency, profile: gasprofile});
+  }
+
   async onAddressSave() {
     const { rootAddress } = this.state;
     const { provider  } = this.state;
@@ -177,6 +191,36 @@ class MalTayContract extends Component {
               <Picker.Item label="javascript" value="javascript" key="javascript"/>
               <Picker.Item label="injected web3 provider" value="injected" key="injected"/>
               <Picker.Item label="both" value="both" key="both"/>
+            </Picker>
+          </Item>
+
+          <br></br><br></br>
+          <Text style={textStyle}>currency:</Text>
+          <Item picker style={{ borderColor: false, marginRight: '60px' }}>
+            <Picker
+              mode="dropdown"
+              style={{ width: styles.width, ...pickerStyle }}
+              selectedValue={this.state.currency}
+              onValueChange={this.onChangeCurrency}
+            >
+              <Picker.Item label="usd" value="usd" key="usd"/>
+              <Picker.Item label="eur" value="eur" key="eur"/>
+            </Picker>
+          </Item>
+
+
+          <Text style={textStyle}>gas profile:</Text>
+          <Item picker style={{ borderColor: false, marginRight: '60px' }}>
+            <Picker
+              mode="dropdown"
+              style={{ width: styles.width, ...pickerStyle }}
+              selectedValue={this.state.gasprofile}
+              onValueChange={this.onChangeGasprofile}
+            >
+              <Picker.Item label="safe low" value="safeLow" key="safeLow"/>
+              <Picker.Item label="average" value="average" key="average"/>
+              <Picker.Item label="fast" value="fast" key="fast"/>
+              <Picker.Item label="fastest" value="fastest" key="fastest"/>
             </Picker>
           </Item>
           

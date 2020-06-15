@@ -16,6 +16,7 @@ const getProvider = async () => {
   if (window.web3 && window.web3.currentProvider) {
     // eslint-disable-next-line
     const provider = new ethers.providers.Web3Provider(web3.currentProvider);
+    // const provider = new ethers.providers.JsonRpcProvider('HTTP://192.168.1.140:8545');
     const signer = provider.getSigner(0);
     return { provider, signer };
   }
