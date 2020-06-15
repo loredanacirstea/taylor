@@ -140,6 +140,7 @@ const _nativeEnv = {
     // Taylor
     'save!':  { mutable: false, arity: 2 },
     getfrom:     { mutable: false, arity: 2 },
+    struct:   { mutable: false, arity: 2, inputs: [{type: 'symbol', name: 'name'}, {type: 'list', name: 'values'}], outputs: [] },
 
     // TODO: curry
     // TODO: pay

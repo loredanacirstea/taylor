@@ -394,6 +394,16 @@ object "Taylor" {
             case 0x90000104 {
                 result_ptr := _getfrom(add(arg_ptrs_ptr, 32))
             }
+            // defstruct!
+            case 0x900000c4 {
+                let ssig := _defstruct(add(arg_ptrs_ptr, 32))
+                result_ptr := allocate(8)
+                mslicestore(result_ptr, uconcat(buildBytesSig(4), ssig, 4), 8)
+            }
+            // struct
+            case 0x90000106 {
+                result_ptr := _struct(add(arg_ptrs_ptr, 32))
+            }
 
             default {
                 let isthis := 0
@@ -585,7 +595,7 @@ object "Taylor" {
         function isStruct(ptr) -> iss {
             let sig := getFuncSig(ptr)
             let numb := and(sig, 0x20000000)
-            iss := eq(iszero(numb), 0)
+            iss := eq(numb, 0x20000000)
         }
 
         // 00010000000000000000000000000000
@@ -609,7 +619,7 @@ object "Taylor" {
         function isBytes(ptr) -> isn {
             let sig := getFuncSig(ptr)
             let numb := and(sig, 0x4000000)
-            isn := eq(iszero(numb), 0)
+            isn := eq(numb, 0x4000000)
         }
 
         // last 16 bits
@@ -625,6 +635,10 @@ object "Taylor" {
         function bytesSize(sig) -> _size {
             _size := and(sig, 0x3ffffff)
         }
+
+        function structSize(sig) -> _size {
+            _size := shr(25, and(sig, 0x1e000000))
+        }
         
         // 11111111111111111111111110
         function lambdaLength(sig) -> _blength {
@@ -639,32 +653,41 @@ object "Taylor" {
         // TODO: array, struct, more efficient - nested switches?
         function getValueLength(ptr) -> _length {
             let sig := getFuncSig(ptr)
-            if isFunction(ptr) {
+            let done := 0
+            if and(eq(done, 0), isFunction(ptr)) {
                 _length := 0
+                done := 1
             }
-            if isArrayType(ptr) {
+            if and(eq(done, 0), isArrayType(ptr)) {
                 // _length := arraySize(ptr)
+                done := 1
             }
-            if isStruct(ptr) {
-                // _length := structSize(ptr)
+            if and(eq(done, 0), isStruct(ptr)) {
+                // it contains u32 pointers to data; 
+                _length := mul(structSize(sig), 4)
+                done := 1
             }
-            if isListType(sig) {
+            if and(eq(done, 0), isListType(sig)) {
                 let size := listTypeSize(sig)
                 let ptr_now := add(ptr, getSignatureLength(ptr))
                 for { let i := 0 } lt(i, size) { i := add(i, 1) } {
                     let item_len := getTypedLength(ptr_now)
                     _length := add(_length, item_len)
                     ptr_now := add(ptr_now, item_len)
-                } 
+                }
+                done := 1
             }
-            if isNumber(ptr) {
+            if and(eq(done, 0), isNumber(ptr)) {
                 _length := numberSize(sig)
+                done := 1
             }
-            if isBytes(ptr) {
+            if and(eq(done, 0), isBytes(ptr)) {
                 _length := bytesSize(sig)
+                done := 1
             }
-            if isBool(sig) {
+            if and(eq(done, 0), isBool(sig)) {
                 _length := 0
+                done := 1
             }
         }
 
@@ -718,6 +741,15 @@ object "Taylor" {
         function buildArraySig(arity) -> signature {
             // signature :=  '01' * bit30 arity
             signature := add(exp(2, 30), arity)
+        }
+
+        function structSigFromId(id, arity) -> signature {
+            // signature :=  '001' * bit4 arity * bit24 id * bit1 stored?
+            signature := add(add(add(exp(2, 29), shl(25, arity)), shl(1, id)), 1)
+        }
+
+        function structIdFromSig(signature) -> index {
+            index := shl(8, and(signature, 0x1fffffe))
         }
         
         // function read(str) -> _str {
@@ -1358,17 +1390,24 @@ object "Taylor" {
             let data_ptr := mload(ptrs)
 
             let typename_ptr := add(mload(add(ptrs, 32)), 4)
-            
+
             // type signature - data is of this type
             let typesig := mslice(typename_ptr, 4)
+            let typesize := getValueLength(typename_ptr)
             if eq(typesig, 0) {
                 typesig := mslice(data_ptr, getSignatureLength(data_ptr))
+                typesize := getValueLength(data_ptr)
             }
 
+            let index := _saveInner(typesig, typesize, data_ptr)
+            result_ptr := allocate(8)
+            mslicestore(result_ptr, buildUintSig(4), 4)
+            mslicestore(add(result_ptr, 4), index, 4)
+        }
+
+        function _saveInner(typesig, typesize, data_ptr) -> _index {
             // get last inserted index - i
             let last_index := getStorageCount(typesig)
-
-            let typesize := bytesSize(typesig)
             let storage_pos := 0
             
             switch typesize
@@ -1410,6 +1449,8 @@ object "Taylor" {
 
             // store new count
             incStorageCount(typesig)
+
+            _index := last_index
         }
 
         function _getfrom(ptrs) -> result_ptr {
@@ -1420,7 +1461,7 @@ object "Taylor" {
                 4
             ), 4)
 
-            let typesize := bytesSize(typesig)
+            let typesize := getValueLength(typename_ptr)
             let storage_offset := 0
             let data_len := typesize
             
@@ -1441,15 +1482,20 @@ object "Taylor" {
 
                 data_len := getLengthOffset(index, add(index, 1), typesig, start_delta)
                 storage_offset := add(start, offset_len)
+
+                result_ptr := allocate(add(data_len, 4))
+
+                // TODO sig after typesig
+                mslicestore(result_ptr, buildBytesSig(data_len), 4)
             }
             default {
                 storage_offset := mul(index, typesize)
+
+                result_ptr := allocate(add(data_len, 4))
+
+                // TODO sig after typesig
+                mslicestore(result_ptr, typesig, 4)
             }
-
-            result_ptr := allocate(add(data_len, 4))
-
-            // TODO sig after typesig
-            mslicestore(result_ptr, buildBytesSig(data_len), 4)
 
             readAtPos(storage_offset, typesig, add(result_ptr, 4), data_len)
         }
@@ -1542,16 +1588,15 @@ object "Taylor" {
         function storeAtPos(storage_pos, typesig, data_ptr) {
             let storage_slot := div(storage_pos, 32)
             let storage_offset := mod(storage_pos, 32)
-            
             let key := mappingArrayStorageKey_values(storage_slot, typesig)
             let values := sload(key)
-
             let data_len := getValueLength(data_ptr)
+
             data_ptr := add(data_ptr, getSignatureLength(data_ptr))
 
             let head_len := min(sub(32, storage_offset), data_len)
             let head := mslice(data_ptr, head_len)
-            
+
             values := add(values, 
                 shl(mul(8, sub(sub(32, head_len), storage_offset)), head)
             )
@@ -1585,6 +1630,61 @@ object "Taylor" {
                     0
                 )
             }
+        }
+
+        function _defstruct(ptrs) -> sig {
+            let name_ptr := mload(ptrs)
+            let typelist_ptr := mload(add(ptrs, 32))
+            let arity := listTypeSize(mslice(typelist_ptr, 4))
+
+            let struct_abstract_id := 0x20000000
+
+            let data_len := getTypedLength(typelist_ptr)
+            let newdata_ptr := allocate(add(data_len, 4))
+            mslicestore(newdata_ptr, buildBytesSig(data_len), 4)
+            mmultistore(add(newdata_ptr, 4), typelist_ptr, data_len)
+
+            // struct abstract id
+            let id := _saveInner(struct_abstract_id, 0, newdata_ptr)
+            sig := structSigFromId(id, arity)
+
+            // TODO: this should be in save & saved under a signature type
+            // and functions should be stored in the same way
+            let name := mload(name_ptr)
+            let storageKey := mappingArrayStorageKey_names(struct_abstract_id, name)
+            sstore(storageKey, sig)
+            log3(0, 0, struct_abstract_id, name, sig)
+        }
+
+        function _struct(ptrs) -> result_ptr {
+            let name_ptr := mload(ptrs)
+            let valueslist_ptr := mload(add(ptrs, 32))
+            let struct_abstract_id := 0x20000000
+            let name := mload(name_ptr)
+            let storageKey := mappingArrayStorageKey_names(struct_abstract_id, name)
+            let sig := sload(storageKey)
+
+            // TODO: get struct from storage by signature
+            // typecheck values & cast if neccessary/possible
+
+            result_ptr := freeMemPtr()
+            mslicestore(result_ptr, sig, 4)
+
+            let list_arity := listTypeSize(mslice(valueslist_ptr, 4))
+            let res_ptr := add(result_ptr, 4)
+            let val_ptr := add(valueslist_ptr, 4)
+            let length := 4
+
+            for { let i := 0 } lt(i, list_arity) { i := add(i, 1) } {
+                let val_len := getValueLength(val_ptr)
+                let sig_len := getSignatureLength(val_ptr)
+                mmultistore(res_ptr, add(val_ptr, sig_len), val_len)
+                res_ptr := add(res_ptr, val_len)
+                val_ptr := add(val_ptr, add(val_len, sig_len))
+                length := add(length, val_len)
+            }
+
+            result_ptr := allocate(length)
         }
 
         function readmiddle(value, _start, _len) -> newval {
@@ -1780,6 +1880,12 @@ object "Taylor" {
             let ptr := allocate(64)
             mstore(ptr, typesig, 4)
             storageKey := keccak256(ptr, 64)
+        }
+
+        function mappingArrayStorageKey_names(typesig, name) -> storageKey {
+            let ptr := allocate(96)
+            mstore(ptr, typesig, 5, name)
+            storageKey := keccak256(ptr, 96)
         }
 
         // mapping(bytes => *)

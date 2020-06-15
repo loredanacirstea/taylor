@@ -310,6 +310,47 @@ describe.each([
     }, 50000);
 }, 50000);
 
+it('test structs', async function() {
+    let resp, stored;
+
+    // 0x0400000424000001
+    await MalTay.send('(defstruct! astruct (list "0x0a910004" "0x0a910004") )');
+
+    resp = await MalTay.call(`(getfrom "0x20000000" 0)`);
+    expect(resp).toEqual('0x11000002040000040a910004040000040a910004');
+
+    await MalTay.send('(save! (struct astruct (map save! (list 4 6) )) )');
+
+    resp = await MalTay.call(`(getfrom "0x0a910004" 0)`);
+    expect(resp).toEqual(4);
+
+    resp = await MalTay.call(`(getfrom "0x0a910004" 1)`);
+    expect(resp).toEqual(6);
+
+    resp = await MalTay.call(`(getfrom "0x24000001" 0)`);
+    expect(resp).toEqual({sig: 0x24000001, 0: 0, 1: 1});
+});
+
+
+it.skip('test struct!', async function() {
+    let resp;
+
+    await MalTay.send('(def! struct! (fn* (name values) (save! (struct name (map save! values )) )))');
+
+    await MalTay.send('(defstruct! mystruct (list "0x04000001" "0x04000002") )');
+
+    await MalTay.send('(struct! "mystruct" (list "0x22" "0x4455") )) )');
+
+    resp = await MalTay.call(`(getfrom "0x04000001" 0)`);
+    expect(resp).toEqual('0x22');
+
+    resp = await MalTay.call(`(getfrom "0x04000002" 0)`);
+    expect(resp).toEqual('0x4455');
+
+    resp = await MalTay.call(`(getfrom "0x24000001" 0)`);
+    expect(resp).toEqual({sig: 0x24000001, 0: 0, 1: 1});
+});
+
 describe.each([
     ['chain', MalTay],
     ['mal', MalB],

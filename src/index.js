@@ -114,17 +114,19 @@ const formatId = id => strip0x(hexZeroPad(x0(b2h(id)), 4));
 const getnumberid = size => formatId(typeid.number + numberid.uint + u2b(size).padStart(16, '0'))
 const getboolid = value => formatId(typeid.number + numberid.bool + u2b(value ? 1 : 0).padStart(16, '0'));
 const getbytesid = length => formatId(typeid.bytelike + u2b(length).padStart(26, '0'));
+// signature :=  '001' * bit4 arity * bit24 id * bit1 stored?
+const getstructid = (id, arity) => formatId(typeid.struct + u2b(arity).padStart(4, '0') + id.padStart(24, '0') + '1')
 
 const isFunction = sig => (sig & 2147483648) !== 0;
 const isLambda = sig => (sig & 0x4000000) !== 0;
 const isApply = sig => (sig & 0x7fffffe) === 0x40;
 const isList = sig => (sig & 0x7fffffe) === 0x3e;
 const isArray = sig => (sig & 0x40000000) !== 0;
-const isStruct = sig => (sig & 0x20000000) !== 0;
+const isStruct = sig => (sig & 0x20000000) === 0x20000000;
 const isListType = sig => (sig & 0x10000000) !== 0;
 const isNumber = sig => (sig & 0x8000000) !== 0;
 const isBool = sig => (sig & 0xffff0000) === 0x0a800000;
-const isBytelike = sig => (sig & 0x4000000) !== 0;
+const isBytelike = sig => (sig & 0x4000000) === 0x4000000;
 const isEnum = sig => (sig & 0x2000000) !== 0;
 const isLambdaUnknown = sig => (sig & 0x1000000) !== 0;
 const isGetByName = sig => (sig & 0x7fffffe) === 0x48;
@@ -134,6 +136,7 @@ const listTypeSize = sig => sig & 0xffffff;
 const bytelikeSize = sig => sig & 0x3ffffff;
 const funcArity = sig => (sig & 0x78000000) >> 27;
 const lambdaLength = sig => (sig & 0x3fffffe) >> 1;
+const structSize = sig => (sig & 0x1e000000) >> 25;
 const getSignatureLength = 4;
 // const getValueLength = 
 
@@ -196,6 +199,12 @@ const decodeInner = (sig, data) => {
 
         data = data.substring(size*2);
         return { result, data };
+    } else if (isStruct(sig)) {
+        const arity = structSize(sig);
+        result = { sig };
+        [...new Array(arity)].forEach((_, i) => result[i] = parseInt(data.substring(i*8, (i+1)*8)));
+        data = data.substring(arity*8);
+        return { result, data };
     } else if (isBytelike(sig)) {
         const length = bytelikeSize(sig);
         result = '0x' + data.substring(0, length*2)
@@ -245,6 +254,13 @@ const ast2h = (ast, parent=null, unkownMap={}, defenv={}) => {
         return nativeEnv[elem.value].hex + defname + exprlen + exprbody;
     }
 
+    if (ast[0] && ast[0].value === 'defstruct!') {
+        const elem = ast[0];
+        const defname = getnumberid(32) + ast[1].value.hexEncode().padStart(64, '0');
+        const exprbody = ast2h(ast[2], ast, unkownMap, defenv);
+        return nativeEnv[elem.value].hex + defname + exprbody;
+    }
+
     return ast.map((elem, i) => {
         // if Symbol
         if (malTypes._symbol_Q(elem)) {
@@ -264,6 +280,12 @@ const ast2h = (ast, parent=null, unkownMap={}, defenv={}) => {
                     let arity = ast[0].value === elem.value ? ast.length : 1;
                     // getf <fname>
                     return nativeEnv.getf.hex(arity) + encodedName;
+                }
+
+                if (ast[i-1] && ast[i-1].value === 'struct') {
+                    const encodedName = getnumberid(32) + elem.value.hexEncode().padStart(64, '0');
+                    let arity = ast[0].value === elem.value ? ast.length : 1;
+                    return encodedName;
                 }
                 
                 // lambda variables should end up here
