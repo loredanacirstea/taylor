@@ -270,11 +270,6 @@ const ast2h = (ast, parent=null, unkownMap={}, defenv={}) => {
         // if Symbol
         if (malTypes._symbol_Q(elem)) {
             if (!nativeEnv[elem.value]) {
-                if (elem.value === bytesMarker) {
-                    const typeid = getbytesid(ast[i + 1].length / 2);
-                    return  typeid + ast[i + 1];
-                }
-                
                 // check if stored function first
                 if (!unkownMap[elem.value] && defenv[elem.value]) {
                     // TODO proper type - string/bytes

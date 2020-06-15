@@ -22,8 +22,8 @@ Examples to try out: (!only one line at a time)
 # use a stored function; notice the _
 (_myfunction 5 3)
 
-(concat 0x"11aaaabb" 0x"221111ccdd")
-(contig 2 0x"221111ccdd")
+(concat "0x11aaaabb" "0x221111ccdd")
+(contig 2 "0x221111ccdd")
 
 (def! fib (fn* (n) (if (or (eq n 1) (eq n 2)) 1 (add(_fib (sub n 1)) (_fib (sub n 2)) ) )))
 

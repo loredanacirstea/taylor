@@ -115,20 +115,20 @@ it.skip('test if with lambda', async function () {
 it('test bytes concat', async function () {
     let resp;
 
-    resp = await MalTay.call('(concat 0x"11" 0x"22")');
+    resp = await MalTay.call('(concat "0x11" "0x22")');
     expect(resp).toBe('0x1122');
 
-    resp = await MalTay.call('(concat 0x"11aaaabb" 0x"221111ccdd")');
+    resp = await MalTay.call('(concat "0x11aaaabb" "0x221111ccdd")');
     expect(resp).toBe('0x11aaaabb221111ccdd');
 });
 
 it('test bytes contig', async function () {
     let resp;
 
-    resp = await MalTay.call('(contig 4 0x"22")');
+    resp = await MalTay.call('(contig 4 "0x22")');
     expect(resp).toBe('0x22222222');
 
-    resp = await MalTay.call('(contig 2 0x"221111ccdd")');
+    resp = await MalTay.call('(contig 2 "0x221111ccdd")');
     expect(resp).toBe('0x221111ccdd221111ccdd');
 });
 
@@ -175,8 +175,8 @@ it('test registration & executing from root contract', async function () {
 
     // Register
     // TODO: type integer
-    await MalTay.sendAndWait('(register! 0x"' + maltay2.address.substring(2) + '")');
-    await MalTay.sendAndWait('(register! 0x"' + maltay3.address.substring(2) + '")');
+    await MalTay.sendAndWait('(register! "0x' + maltay2.address.substring(2) + '")');
+    await MalTay.sendAndWait('(register! "0x' + maltay3.address.substring(2) + '")');
 
     // Check if registered correctly
     resp = await MalTay.call('(getregistered 1)');
@@ -250,14 +250,14 @@ it('test evm functions', async function() {
 
     // TODO calls
 
-    resp = await MalTay.call_raw(expr2h('(balance 0x"fffFd05c2b12cfE3c74464531f88349e159785ea")'));
+    resp = await MalTay.call_raw(expr2h('(balance "0xfffFd05c2b12cfE3c74464531f88349e159785ea")'));
     expect(resp).toBe('0x0a9100200000000000000000000000000000000000000000000000056bc75e2d63100000');
 
     resp = await MalTay.call_raw(expr2h('(codesize)'));
     expect(resp.substring(0, 10)).toBe('0x0a910020');
     expect(parseInt(resp.substring(10), 16)).toBeGreaterThan(0);
 
-    resp = await MalTay.call_raw(expr2h('(extcodesize 0x"' + MalTay.address.substring(2) + '")'));
+    resp = await MalTay.call_raw(expr2h('(extcodesize "0x' + MalTay.address.substring(2) + '")'));
     expect(resp.substring(0, 10)).toBe('0x0a910020');
     expect(parseInt(resp.substring(10), 16)).toBeGreaterThan(0);
 })
@@ -668,7 +668,7 @@ describe.each([
     });
     
     test.skip(`byte`, async () => {
-        resp = await instance.call('(byte 2 0x"11445566")');
+        resp = await instance.call('(byte 2 "0x11445566")');
         expect(resp).toBe('0x44');
     });
     
@@ -726,7 +726,7 @@ describe.each([
     });
 
     test.skip(`balance`, async () => {
-        resp = await instance.call('(balance 0x"fffFd05c2b12cfE3c74464531f88349e159785ea")');
+        resp = await instance.call('(balance "0xfffFd05c2b12cfE3c74464531f88349e159785ea")');
         expect(resp.toNumber()).toBe(100);
     });
 
@@ -768,7 +768,7 @@ describe.each([
     });
 
     test.skip(`extcodesize`, async () => {
-        resp = await instance.call('(extcodesize 0x"' + MalTay.signer._address.substring(2) + '")');
+        resp = await instance.call('(extcodesize "0x' + MalTay.signer._address.substring(2) + '")');
         expect(resp).toBeGreaterThan(4);
     });
 
