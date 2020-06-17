@@ -429,6 +429,13 @@ object "Taylor" {
                         result_ptr := _apply(arg_ptrs_ptr)
                     }
                 }
+
+                if eq(isthis, 0) {
+                    isthis := isArray(fsig)
+                    if eq(isthis, 1) {
+                        result_ptr := _array(arg_ptrs_ptr)
+                    }
+                }
                 
                 if eq(isthis, 0) {
                     isthis := isGetByName(fsig)
@@ -584,7 +591,7 @@ object "Taylor" {
         }
         function isArray(sig) -> isa {
             let id := and(sig, 0x7fffffe)
-            isa := eq(id, 0x102)
+            isa := eq(id, 0x10c)
         }
         // 01000000000000000000000000000000
         function isArrayType(ptr) -> isi {
@@ -639,6 +646,10 @@ object "Taylor" {
         function structSize(sig) -> _size {
             _size := shr(25, and(sig, 0x1e000000))
         }
+
+        function arrayTypeSize(sig) -> _size {
+            _size := and(sig, 0x3fffffff)
+        }
         
         // 11111111111111111111111110
         function lambdaLength(sig) -> _blength {
@@ -648,6 +659,10 @@ object "Taylor" {
         // TODO: for arrays
         function getSignatureLength(ptr) -> _length {
             _length := 4
+
+            if isArrayType(ptr) {
+                _length := 8
+            }
         }
 
         // TODO: array, struct, more efficient - nested switches?
@@ -659,7 +674,9 @@ object "Taylor" {
                 done := 1
             }
             if and(eq(done, 0), isArrayType(ptr)) {
-                // _length := arraySize(ptr)
+                let arity := arrayTypeSize(sig)
+                let item_size := getValueLength(add(ptr, 4))
+                _length := mul(arity, item_size)
                 done := 1
             }
             if and(eq(done, 0), isStruct(ptr)) {
@@ -1392,7 +1409,7 @@ object "Taylor" {
             let typename_ptr := add(mload(add(ptrs, 32)), 4)
 
             // type signature - data is of this type
-            let typesig := mslice(typename_ptr, 4)
+            let typesig := mslice(typename_ptr, getSignatureLength(typename_ptr))
             let typesize := getValueLength(typename_ptr)
             if eq(typesig, 0) {
                 typesig := mslice(data_ptr, getSignatureLength(data_ptr))
@@ -1455,18 +1472,19 @@ object "Taylor" {
 
         function _getfrom(ptrs) -> result_ptr {
             let typename_ptr := add(mload(ptrs), 4)
-            let typesig := mslice(typename_ptr, 4)
+            let sig_len := getSignatureLength(typename_ptr)
+            let typesig := mslice(typename_ptr, sig_len)
             let index := mslice(add(
                 mload(add(ptrs, 32)),
                 4
             ), 4)
 
             let typesize := getValueLength(typename_ptr)
-            result_ptr := _getfromInner(typesig, typesize, index)
+            result_ptr := _getfromInner(typesig, sig_len, typesize, index)
         }
 
 
-        function _getfromInner(typesig, typesize, index) -> result_ptr {
+        function _getfromInner(typesig, sig_len, typesize, index) -> result_ptr {
             let storage_offset := 0
             let data_len := typesize
             
@@ -1491,18 +1509,18 @@ object "Taylor" {
                 result_ptr := allocate(add(data_len, 4))
 
                 // TODO sig after typesig
-                mslicestore(result_ptr, buildBytesSig(data_len), 4)
+                sig_len := 4
+                mslicestore(result_ptr, buildBytesSig(data_len), sig_len)
             }
             default {
                 storage_offset := mul(index, typesize)
-
-                result_ptr := allocate(add(data_len, 4))
+                result_ptr := allocate(add(data_len, sig_len))
 
                 // TODO sig after typesig
-                mslicestore(result_ptr, typesig, 4)
+                mslicestore(result_ptr, typesig, sig_len)
             }
 
-            readAtPos(storage_offset, typesig, add(result_ptr, 4), data_len)
+            readAtPos(storage_offset, typesig, add(result_ptr, sig_len), data_len)
         }
 
         function getStorageCount(typesig) -> count {
@@ -1704,8 +1722,8 @@ object "Taylor" {
             // let struct_ptr := _getfromInner(0x20000000, 0, struct_index)
             // // first is address, second is sig
             
-            let addr_ptr := _getfromInner(0x04000014, 0x14, addr_index)
-            let sig_ptr := _getfromInner(0x04000004, 0x04, sig_index)
+            let addr_ptr := _getfromInner(0x04000014, 4, 0x14, addr_index)
+            let sig_ptr := _getfromInner(0x04000004, 4, 0x04, sig_index)
             let addr := mslice(add(addr_ptr, 4), 0x14)
             let sig := mslice(add(sig_ptr, 4), 0x04)
 
@@ -1723,6 +1741,35 @@ object "Taylor" {
             result_ptr := allocate(add(size, 4))
             mslicestore(result_ptr, buildBytesSig(size), 4)
             returndatacopy(add(result_ptr, 4), 0, size)
+        }
+
+        function _array(ptrs) -> result_ptr {
+            let arity := mload(ptrs)
+            let typesig_ptr := mload(add(ptrs, 32))
+            let typesig_len := getSignatureLength(typesig_ptr)
+            let val_len := getValueLength(typesig_ptr)
+            result_ptr := allocate(add(
+                add(4, typesig_len),
+                mul(arity, val_len)
+            ))
+            
+            mslicestore(result_ptr, buildArraySig(arity), 4)
+            mmultistore(add(result_ptr, 4), typesig_ptr, typesig_len)
+
+            let ptr := add(result_ptr, 8)
+            let iniptrs := add(ptrs, 32)
+
+            let typesig := getFuncSig(typesig_ptr)
+
+            for { let i := 0 } lt(i, arity) { i := add(i, 1) } {
+                let item_ptr := mload(iniptrs)
+                
+                // TODO fix sig comparison
+                dtrequire(eq(getFuncSig(item_ptr), typesig), 0xeecc)
+                mmultistore(ptr, add(item_ptr, typesig_len), val_len)
+                ptr := add(ptr, val_len)
+                iniptrs := add(iniptrs, 32)
+            }
         }
 
         function readmiddle(value, _start, _len) -> newval {

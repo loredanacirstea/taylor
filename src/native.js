@@ -143,6 +143,7 @@ const _nativeEnv = {
     struct:   { mutable: false, arity: 2, inputs: [{type: 'symbol', name: 'name'}, {type: 'list', name: 'values'}], outputs: [] },
     'struct!':   { mutable: false, arity: 2, inputs: [{type: 'symbol', name: 'name'}, {type: 'list', name: 'values'}], outputs: [] }, // todo: remove
     rcall:    { mutable: true, arity: 3 },
+    array:    { mutable: false, arity: null },
 
     // TODO: curry
     // TODO: pay

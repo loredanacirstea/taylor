@@ -115,13 +115,13 @@ const getnumberid = size => formatId(typeid.number + numberid.uint + u2b(size).p
 const getboolid = value => formatId(typeid.number + numberid.bool + u2b(value ? 1 : 0).padStart(16, '0'));
 const getbytesid = length => formatId(typeid.bytelike + u2b(length).padStart(26, '0'));
 // signature :=  '001' * bit4 arity * bit24 id * bit1 stored?
-const getstructid = (id, arity) => formatId(typeid.struct + u2b(arity).padStart(4, '0') + id.padStart(24, '0') + '1')
+const getstructid = (id, arity) => formatId(typeid.struct + u2b(arity).padStart(4, '0') + u2b(id).padStart(24, '0') + '1')
 
 const isFunction = sig => ((sig >> 31) & 0x01) === 1;
 const isLambda = sig => (sig & 0x4000000) !== 0;
 const isApply = sig => (sig & 0x7fffffe) === 0x40;
 const isList = sig => (sig & 0x7fffffe) === 0x3e;
-const isArray = sig => ((sig >> 30) & 0x03) === 1;
+const isArrayType = sig => ((sig >> 30) & 0x03) === 1;
 const isStruct = sig => ((sig >> 29) & 0x07) === 1;
 const isListType = sig => ((sig >> 28) & 0x0f) === 1;
 const isNumber = sig => ((sig >> 27) & 0x1f) === 1;
@@ -137,6 +137,7 @@ const bytelikeSize = sig => sig & 0x3ffffff;
 const funcArity = sig => (sig & 0x78000000) >> 27;
 const lambdaLength = sig => (sig & 0x3fffffe) >> 1;
 const structSize = sig => (sig & 0x1e000000) >> 25;
+const arrayTypeSize = sig => (sig & 0x3fffffff);
 const getSignatureLength = 4;
 // const getValueLength = 
 
@@ -218,6 +219,16 @@ const decodeInner = (sig, data) => {
             let result;
             ({result, data} = decodeInner(partsig, data.substring(8)));
             return result;
+        });
+        return { result, data };
+    }  else if (isArrayType(sig)) {
+        const arity = arrayTypeSize(sig);
+        const itemsig = parseInt(data.substring(0, 8), 16);
+        data = data.substring(8);
+        const result = [...new Array(arity)].map((_, i) => {
+            const item = decodeInner(itemsig, data);
+            data = item.data;
+            return item.result;
         });
         return { result, data };
     } else {
