@@ -471,6 +471,29 @@ describe('test arrays', function () {
     });
 });
 
+it('test ownership & costs', async function() {
+    let expr, resp;
+    let sender = MalTay.provider.getSigner(3);
+    let owner_pre_balance = await MalTay.signer.getBalance();
+    let sender_pre_balance = await sender.getBalance();
+
+    expr = '(defstruct! astruct_pay (list "0x0a910004" "0x0a910004") )'
+    let cost = (await MalTay.estimateGas(expr)).toNumber() * 2;
+
+    resp = await MalTay.send(expr, {value: cost}, sender);
+    let txprice = resp.gasPrice;
+    resp = await resp.wait();
+    txprice = resp.gasUsed.mul(txprice);
+
+    let sender_post_balance = await sender.getBalance();
+    let owner_post_balance = await MalTay.signer.getBalance();
+
+    expect(owner_post_balance.sub(owner_pre_balance).toNumber()).toBe(cost);
+    expect(sender_pre_balance.sub(sender_post_balance).toNumber()).toBe(txprice.toNumber() + cost);
+
+    // TODO - expect failure if value to small
+});
+
 describe.each([
     ['chain', MalTay],
     ['mal', MalB],

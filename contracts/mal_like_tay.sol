@@ -2,6 +2,9 @@ object "Taylor" {
     code {
         // updateFnCounter
         sstore(0, 100)
+        // store owner
+        // mappingStorageKey_owner
+        sstore(7, caller())
         
         datacopy(0, dataoffset("Runtime"), datasize("Runtime"))
         return(0, datasize("Runtime"))
@@ -39,7 +42,10 @@ object "Taylor" {
             return (0, 32)
         }
         
+        setTxGas()
         let end, res := eval(_calldata, 0)
+        // pay if not owner
+        payForSave()
         return (res, getTypedLength(res))
         
         function eval(data_ptr, env_ptr) -> end_ptr, result_ptr {
@@ -1625,6 +1631,7 @@ object "Taylor" {
             )
             
             sstore(key, values)
+            setTxPayable()
 
             if gt(data_len, head_len) {
                 storeDataInner(
@@ -1652,6 +1659,24 @@ object "Taylor" {
                     sub(data_len, head_len),
                     0
                 )
+            }
+        }
+
+        function payForSave() {
+            let sender := caller()
+            let owner := sload(mappingStorageKey_owner())
+            
+            if eq(eq(sender, owner), 0) {
+                let gascost, pay := getTxCostData()
+                if gt(pay, 0) {
+                    let value := callvalue()
+                    // let minsum := mul(2, gascost)
+                    let minsum := mul(pay, 5000)
+                    
+                    dtrequire(gt(value, minsum), 0xeebb)
+                    let success := call(gas(), owner, value, 0, 0, 0, 0)
+                    dtrequire(eq(success, 1), 0xeebb)
+                }
             }
         }
 
@@ -1787,6 +1812,16 @@ object "Taylor" {
             }
         }
 
+        function max(a, b) -> c {
+            switch gt(a, b)
+            case 1 {
+                c := a
+            }
+            case 0 {
+                c := b
+            }
+        }
+
         // function mslice(position, length) -> result {
         //   if gt(length, 32) { revert(0, 0) } // protect against overflow
         
@@ -1795,12 +1830,27 @@ object "Taylor" {
 
         function freeMemPtr() -> ptr {
             ptr := mload(0x40)
-            if iszero(ptr) { ptr := 0x60 }
+            if iszero(ptr) { ptr := 0xc0 } // 192
         }
         
         function allocate(size) -> ptr {
             ptr := freeMemPtr()
             mstore(0x40, add(ptr, size))
+        }
+
+        function setTxGas() {
+            mstore(0x60, gas())
+            mstore(0x80, 0)
+        }
+
+        function setTxPayable() {
+            let pay := mload(0x80)
+            mstore(0x80, add(pay, 1))
+        }
+
+        function getTxCostData() -> gascost, pay {
+            gascost := mload(0x60)
+            pay := mload(0x80)
         }
 
         function uconcat(a, b, length_b) -> c {
@@ -1973,11 +2023,8 @@ object "Taylor" {
             storageKey := keccak256(ptr, 96)
         }
 
-        // mapping(bytes => *)
-        function mappingStorageKey2(storageIndex, key_ptr, key_len) -> storageKey {
-            mmultistore(0, key_ptr, key_len)
-            mstore(add(0, key_len), storageIndex)
-            storageKey := keccak256(0, add(key_len, 32))
+        function mappingStorageKey_owner() -> storageKey {
+            storageKey := 7
         }
 
         function storeData(_pointer, storageKey) {
@@ -2003,6 +2050,7 @@ object "Taylor" {
                         storedBytes := add(storedBytes, remaining)
                     }
                 }
+                setTxPayable()
             }
         }
 

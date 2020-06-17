@@ -543,12 +543,20 @@ const getTaylor = (provider, signer) => (address, deploymentBlock = 0) => {
     }
     
     interpreter.call = async (mal_expression, txObj) => decode(await interpreter.call_raw(expr2h(mal_expression, interpreter.functions), txObj));
-    interpreter.send = async (mal_expression, txObj) => interpreter.send_raw(expr2h(mal_expression, interpreter.functions), txObj);
+    interpreter.send = async (mal_expression, txObj, newsigner=null) => {
+        if (!newsigner) {
+            return interpreter.send_raw(expr2h(mal_expression, interpreter.functions), txObj);
+        }
+        return sendTransaction(newsigner)(interpreter.address)(
+            expr2h(mal_expression, interpreter.functions),
+            txObj,
+        )
+    }
 
-    interpreter.estimateGas = async expression => provider.estimateGas({
+    interpreter.estimateGas = async (expression, txObj={}) => provider.estimateGas(Object.assign({
         to: interpreter.address,
         data: expr2h(expression, interpreter.functions),
-    });
+    }, txObj));
 
     interpreter.getregistered = getRegisteredContracts(interpreter.call_raw);
 
