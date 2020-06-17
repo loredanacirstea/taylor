@@ -1,7 +1,7 @@
 import React, { Component } from 'react';
 import { View, Item, Input, Text, Button, Icon, Picker } from 'native-base';
 import { getProvider } from '../utils/web3.js';
-import { addAddress, getAddresses, DEPL_BLOCKS } from '../utils/taylor.js';
+import { addAddress, getAddresses, getConfig, setConfig, DEPL_BLOCKS } from '../utils/taylor.js';
 import maltay from '@pipeos/taylor';
 import { editorOpts } from '../utils/config.js';
 import { argsDisplay } from '../utils/taylor_editor.js';
@@ -22,6 +22,8 @@ class MalTayContract extends Component {
   constructor(props) {
     super(props);
 
+    const config = getConfig();
+
     this.state = {
       provider: null,
       signer: null,
@@ -31,7 +33,7 @@ class MalTayContract extends Component {
       nativeFunctions: maltay.nativeEnv,
       addrToBeRegistered: null,
       registered: {},
-      backend: 'injected',
+      backend: config.backend || 'injected',
       currency: 'eur',
       gasprofile: 'average',
     }
@@ -114,6 +116,7 @@ class MalTayContract extends Component {
     
     this.setState({ backend });
     this.props.onRootChange(backend, this.web3util, maltay.malBackend.getBackend());
+    setConfig({ backend });
   }
 
   onChangeCurrency(currency) {
