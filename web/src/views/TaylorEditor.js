@@ -85,12 +85,14 @@ class TaylorEditor extends Component {
 
   async getGasCost(interpreter, code) {
     let gas = (await interpreter.estimateGas(code)).toNumber();
+    const value = (await interpreter.calculateCost(code)) / 1000000000000000000;
     const { currency, profile, ethrate } = this.state.gasprofile;
     const gaspricedata = await(await fetch('https://ethgasstation.info/api/ethgasAPI.json')).json();
     const gasprice = gaspricedata[profile] / 10; // gwei
-    const eth = gas * gasprice / 1000000000;  // eth
+    const eth = gas * gasprice / 1000000000 + value;  // eth
     const cost = (eth * ethrate).toString() + ' ' + currency;
-    return { gas, eth: eth.toString() + ' ETH', cost, ethrate: `${ethrate} ${currency}/ETH`, gasprice: gasprice.toString() + ' gwei' };
+    
+    return { gas, eth: eth.toString() + ' ETH', cost, ethrate: `${ethrate} ${currency}/ETH`, gasprice: gasprice.toString() + ' gwei', value: value + ' ETH' };
   }
 
   onFunctionsChange(functions={}) {
@@ -120,7 +122,7 @@ class TaylorEditor extends Component {
         let response, error, receipt = {};
 
         try {
-          response = await interpreter.send(code);
+          response = await interpreter.send(code, {value: gascost.value});
           callback({ receipt: response, gascost })
 
           receipt = await response.wait();
@@ -154,7 +156,9 @@ class TaylorEditor extends Component {
       if (backend) resultObj.backend = backend;
       if (gascost) {
         resultObj.gas = gascost.gas;
+        resultObj.value = gascost.value;
         delete gascost.gas;
+        delete gascost.value;
         resultObj.cost = gascost;
       }
       return { resultObj, errors };
