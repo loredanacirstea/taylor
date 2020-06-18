@@ -1693,7 +1693,7 @@ object "Taylor" {
             if gt(data_len, head_len) {
                 getStoredDataInner(
                     add(result_ptr, head_len),
-                    key,
+                    add(key, 1),
                     sub(data_len, head_len),
                     0
                 )
@@ -1937,7 +1937,7 @@ object "Taylor" {
             result_ptr := allocate(add(length, slen))
             mslicestore(result_ptr, buildArraySig(arity), 4)
             mslicestore(add(result_ptr, 4), itemsig, siglen)
-            getStoredDataInner(add(result_ptr, slen), key, length, 0)
+            getStoredDataInner(add(result_ptr, slen), add(key, 1), length, 0)
         }
 
         function getStorageCountDyn(typesig) -> count {
@@ -1977,7 +1977,7 @@ object "Taylor" {
 
             mmultistore(result_ptr, type_ptr, sig_len)
 
-            getStoredDataInner(add(result_ptr, sig_len), sub(position, 1), data_len, 0)
+            getStoredDataInner(add(result_ptr, sig_len), position, data_len, 0)
         }
 
         function readmiddle(value, _start, _len) -> newval {
@@ -2258,13 +2258,13 @@ object "Taylor" {
             let loadedBytes := sub(slot, 4)
 
             if gt(sizeBytes, loadedBytes) {
-                getStoredDataInner(add(_pointer, 32), storageKey, sizeBytes, loadedBytes)
+                getStoredDataInner(add(_pointer, 32), add(storageKey, 1), sizeBytes, loadedBytes)
             }
         }
 
         function getStoredDataInner(_pointer, storageKey, sizeBytes, loadedBytes) {
             let slot := 32
-            let index := 1
+            let index := 0
 
             for {} lt(loadedBytes, sizeBytes) {} {
                 let remaining := sub(sizeBytes, loadedBytes)
