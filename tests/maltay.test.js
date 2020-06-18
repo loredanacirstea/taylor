@@ -879,6 +879,10 @@ describe.each([
         resp = await instance.call('(keccak256 "0x223344")');
         hash = ethers.utils.keccak256(ethers.utils.arrayify('0x223344'));
         expect(resp).toBe(hash);
+
+        resp = await instance.call('(keccak256 "0x0a910004" "0x0a910004" 7)');
+        hash = ethers.utils.keccak256(ethers.utils.arrayify('0x0a9100040a91000400000007'));
+        expect(resp).toBe(hash);
     });
 
     test(`gas`, async () => {

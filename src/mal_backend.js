@@ -32,6 +32,11 @@ modifyEnv('js-eval', (orig_func, str) => {
         },
         keccak256: n => {
             if (typeof n !== 'string') throw new Error('keccak256 expects string');
+
+            // TODO: better encoding
+            // in case we have keccak256 "0x.." "0x .."
+            n = n.replace(/0x/g, '');
+
             if (n.substring(0, 2) !== '0x') n = '0x' + n;
             return ethers.utils.keccak256(ethers.utils.arrayify(n));
         },
