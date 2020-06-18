@@ -147,6 +147,8 @@ const _nativeEnv = {
     'savedyn!':  { mutable: false, arity: 2 },
     'push!':  { mutable: false, arity: 3 },
     getdyn: { mutable: false, arity: 2 },
+    'store!': { mutable: false, arity: 2 },
+    sload:    { mutable: false, arity: 2 },
 
     // TODO: curry
     // TODO: pay

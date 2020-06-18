@@ -419,6 +419,12 @@ object "Taylor" {
             case 0x90000112 {
                 result_ptr := _getdyn(add(arg_ptrs_ptr, 32))
             }
+            case 0x90000114 {
+                result_ptr := _store(add(arg_ptrs_ptr, 32))
+            }
+            case 0x90000116 {
+                result_ptr := _sload(add(arg_ptrs_ptr, 32))
+            }
 
             default {
                 let isthis := 0
@@ -1942,6 +1948,36 @@ object "Taylor" {
             let count := getStorageCountDyn(typesig)
             count := add(count, 1)
             sstore(mappingArrayDynStorageKey_count(typesig), count)
+        }
+
+        function _store(ptrs) -> result_ptr {
+            let position_ptr := mload(ptrs)
+            let data_ptr := mload(add(ptrs, 32))
+
+            let position := mslice(add(position_ptr, 4), getValueLength(position_ptr))
+            let sig_len := getSignatureLength(data_ptr)
+            let data_len := getValueLength(data_ptr)
+
+            storeDataInner(add(data_ptr, sig_len), position, data_len)
+        }
+
+        function _sload(ptrs) -> result_ptr {
+            let position_ptr := mload(ptrs)
+            let type_ptr := mload(add(ptrs, 32))
+            
+            let position := mslice(add(position_ptr, 4), getValueLength(position_ptr))
+            let sig_len := getSignatureLength(type_ptr)
+            
+            // bytes4 signature, set ptr to actual data type sig
+            type_ptr := add(type_ptr, 4)
+
+            let data_len := getValueLength(type_ptr)
+
+            result_ptr := allocate(add(data_len, sig_len))
+
+            mmultistore(result_ptr, type_ptr, sig_len)
+
+            getStoredDataInner(add(result_ptr, sig_len), sub(position, 1), data_len, 0)
         }
 
         function readmiddle(value, _start, _len) -> newval {

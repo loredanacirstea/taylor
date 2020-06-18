@@ -1032,6 +1032,20 @@ describe.each([
         expect(resp.toNumber()).toBe(200000);
     });
 
+    test.only('multi store! & sload', async () => {
+        await instance.send('(store! 12 66)');
+        resp = await instance.call('(sload 12 "0x0a910004")');
+        expect(resp).toBe(66);
+
+        await instance.send('(store! 12 66)');
+        resp = await instance.call('(sload 12 "0x04000004")');
+        expect(resp).toBe('0x00000042');
+
+        await instance.send('(store! 20 "0x11223344556677889910111213141516171819202122232425262728293031323334353637383940")');
+        resp = await instance.call('(sload 20 "0x04000028")');
+        expect(resp).toBe('0x11223344556677889910111213141516171819202122232425262728293031323334353637383940');
+    });
+
     // TBD
     // stop
     // pc
@@ -1039,8 +1053,6 @@ describe.each([
     // mload
     // mstore
     // mstore8
-    // sload
-    // sstore
     // msize
     // return
     // revert
