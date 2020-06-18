@@ -21,6 +21,7 @@ const toHex = bnval => {
     if (hex.length % 2 === 1) hex = '0' + hex;
     return '0x' + hex;
 }
+mal.globalStorage = {};
 
 modifyEnv('js-eval', (orig_func, str) => {
     const utils = {
@@ -52,6 +53,19 @@ modifyEnv('js-eval', (orig_func, str) => {
                 case 'string':
                     return n;
             }
+        },
+        store: (key, value) => {
+            mal.globalStorage[key] = value;
+        },
+        sload: (key, typename) => {
+            let value = mal.globalStorage[key];
+            // TODO: proper typecheck
+            
+            try {
+                value = JSON.parse(value)
+            } catch(e) {}
+
+            return value;
         }
     }
     let answ = eval(str.toString());
@@ -68,6 +82,10 @@ mal.reps(`
 (def! reduce (fn* (f xs init) (if (empty? xs) init (reduce f (rest xs) (f init (first xs)) ))))
 
 (def! encode (fn* (a) (js-eval (str "utils.encode('" a "')") )))
+
+(def! store! (fn* (key value) (js-eval (str "utils.store(" key ",'" value "')") )))
+
+(def! sload (fn* (key type) (js-eval (str "utils.sload(" key ",'" type "')") )))
 `)
 
 /* EVM */
@@ -188,6 +206,7 @@ const DEFAULT_TXOBJ = {
 mal.getBackend = (address) => {
     address = address || '0x81bD2984bE297E18F310BAef6b895ea089484968';
     const dec = bnval => {
+        if(!bnval) return bnval;
         if (typeof bnval === 'number') {
             bnval = new BN(bnval);
         } else if (typeof bnval === 'object' && bnval._hex) {
