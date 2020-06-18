@@ -2,6 +2,7 @@ require('../src/extensions.js');
 const { getTaylor, getMalBackend } = require('./setup/fixtures.js');
 const { decode, encode, expr2h, b2h, u2b, expr2s } = require('../src/index.js');
 const BN = require('bn.js');
+const ethers = require('ethers');
 
 let MalTay;
 let MalB = getMalBackend();
@@ -869,9 +870,15 @@ describe.each([
         expect(resp).toBe(Math.floor(((4 + 7) * 10 - 44) / 5 ));
     });
     
-    test.skip(`keccak256`, async () => {
+    test(`keccak256`, async () => {
+        let hash;
         resp = await instance.call('(keccak256 2 12)');
-        expect(resp).toBe('0x0a91000400000030');
+        hash = ethers.utils.keccak256(ethers.utils.arrayify('0x000000020000000c'));
+        expect(resp).toBe(hash);
+
+        resp = await instance.call('(keccak256 "0x223344")');
+        hash = ethers.utils.keccak256(ethers.utils.arrayify('0x223344'));
+        expect(resp).toBe(hash);
     });
 
     test(`gas`, async () => {

@@ -196,9 +196,6 @@ object "Taylor" {
             case 0x90000032 {
                 result_ptr := _signextend(add(arg_ptrs_ptr, 32))
             }
-            case 0x90000034 {
-                result_ptr := _keccak256(add(arg_ptrs_ptr, 32))
-            }
             case 0x90000036 {
                 result_ptr := _call(add(arg_ptrs_ptr, 32))
             }
@@ -451,6 +448,13 @@ object "Taylor" {
                         result_ptr := _array(arg_ptrs_ptr)
                     }
                 }
+
+                if eq(isthis, 0) {
+                    isthis := isKeccak256(fsig)
+                    if eq(isthis, 1) {
+                        result_ptr := _keccak256(arg_ptrs_ptr)
+                    }
+                }
                 
                 if eq(isthis, 0) {
                     isthis := isGetByName(fsig)
@@ -603,6 +607,10 @@ object "Taylor" {
             let id := and(sig, 0x7fffffe)
             // 1001000
             isget := eq(id, 0x48)
+        }
+        function isKeccak256(sig) -> isa {
+            let id := and(sig, 0x7fffffe)
+            isa := eq(id, 0x34)
         }
         function isArray(sig) -> isa {
             let id := and(sig, 0x7fffffe)
@@ -1283,14 +1291,29 @@ object "Taylor" {
         }
         
         function _keccak256(ptrs) -> result_ptr {
-            result_ptr := allocate(32)
-            let ptr1 := mload(ptrs)
-            let ptr2 := mload(add(ptrs, 32))
-            let c := keccak256(
-                mslice(add(ptr1, getSignatureLength(ptr1)), getValueLength(ptr1)),
-                mslice(add(ptr2, getSignatureLength(ptr2)), getValueLength(ptr2))
-            )
-            mslicestore(result_ptr, uconcat(getFuncSig(ptr1), c, 4), 8)
+            let arity := mload(ptrs)
+
+            let arg_ptr := add(ptrs, 32)
+            let data_ptr := freeMemPtr()
+            let length := 0
+
+            for { let i := 0 } lt(i, arity) { i := add(i, 1) } {
+                let val_ptr := mload(arg_ptr)
+                let sig_len := getSignatureLength(val_ptr)
+                let val_len := getValueLength(val_ptr)
+                
+                mmultistore(add(data_ptr, length), add(val_ptr, sig_len), val_len)
+                arg_ptr := add(arg_ptr, 32)
+                length := add(length, val_len)
+            }
+
+            data_ptr := allocate(length)
+
+            let _hash := keccak256(data_ptr, length)
+
+            result_ptr := allocate(36)
+            mslicestore(result_ptr, buildBytesSig(32), 4)
+            mstore(add(result_ptr, 4), _hash)
         }
         
         function _call(ptrs) -> result_ptr {

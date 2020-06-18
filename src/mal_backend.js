@@ -2,6 +2,7 @@ const mal = require('./mal/mal.js');
 const malTypes = require('./mal/types.js');
 const interop = require('./mal/interop');
 const BN = require('bn.js');
+const ethers = require('ethers');
 
 mal.re = str => mal.EVAL(mal.READ(str), mal.repl_env)
 mal.reps = lines => lines.split('\n\n')
@@ -28,6 +29,24 @@ modifyEnv('js-eval', (orig_func, str) => {
                 return new BN(n.substring(2), 16)
             }
             return new BN(n)
+        },
+        keccak256: n => {
+            if (typeof n !== 'string') throw new Error('keccak256 expects string');
+            if (n.substring(0, 2) !== '0x') n = '0x' + n;
+            return ethers.utils.keccak256(ethers.utils.arrayify(n));
+        },
+        encode: n => {
+            // TODO: proper encoding
+            try {
+                n = JSON.parse(n)
+            } catch(e) {}
+
+            switch (typeof n) {
+                case 'number':
+                    return n.toString(16).padStart(8, '0');
+                case 'string':
+                    return n;
+            }
         }
     }
     let answ = eval(str.toString());
@@ -42,6 +61,8 @@ modifyEnv('js-eval', (orig_func, str) => {
 
 mal.reps(`
 (def! reduce (fn* (f xs init) (if (empty? xs) init (reduce f (rest xs) (f init (first xs)) ))))
+
+(def! encode (fn* (a) (js-eval (str "utils.encode('" a "')") )))
 `)
 
 /* EVM */
@@ -134,12 +155,13 @@ mal.reps(`
 
 (def! gaslimit (fn* () (get cenv "gasLimit" )))
 
+(def! keccak256 (fn* (& xs) (js-eval (str "utils.keccak256('" (reduce str (map encode xs) "" ) "')") )))
+
 `)
 
 // addmod
 // mulmod
 // signextend
-// keccak256
 // calldataload
 // calldatacopy
 // codecopy
