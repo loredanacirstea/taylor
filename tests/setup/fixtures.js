@@ -44,7 +44,7 @@ const deployContract = signer => async filePath => {
   if (!compiled) throw new Error('not compiled');
   const transaction = {
     data: '0x' + compiled.evm.bytecode.object,
-    gasLimit: 6000000,
+    gasLimit: 7000000,
     value: 0,
   };
   const response = await signer.sendTransaction(transaction);

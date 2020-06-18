@@ -413,6 +413,15 @@ object "Taylor" {
             case 0x9800010b {
                 result_ptr := _rcall(add(arg_ptrs_ptr, 32))
             }
+            case 0x9000010e {
+                result_ptr := _savedyn(add(arg_ptrs_ptr, 32))
+            }
+            case 0x98000110 {
+                result_ptr := _push(add(arg_ptrs_ptr, 32))
+            }
+            case 0x90000112 {
+                result_ptr := _getdyn(add(arg_ptrs_ptr, 32))
+            }
 
             default {
                 let isthis := 0
@@ -1797,6 +1806,121 @@ object "Taylor" {
             }
         }
 
+        function _savedyn(ptrs) -> result_ptr {
+            // pointer to data that has to be inserted
+            let data_ptr := mload(ptrs)
+
+            let itemsig := mslice(add(data_ptr, 4), 4)
+            let arity := arrayTypeSize(mslice(data_ptr, 4))
+
+            let index := _savedynInner(itemsig, arity, data_ptr)
+            result_ptr := allocate(8)
+            mslicestore(result_ptr, buildUintSig(4), 4)
+            mslicestore(add(result_ptr, 4), index, 4)
+        }
+
+        function _savedynInner(itemsig, arity, data_ptr) -> _index {
+            // let typesig := 0x40000000
+            // get last inserted index - i
+            let last_index := getStorageCountDyn(itemsig)
+
+            let key := mappingArrayDynStorageKey_values(last_index, itemsig)
+
+            let data_len := getValueLength(data_ptr)
+
+            sstore(key, arity)
+
+            storeDataInner(add(data_ptr, 8), add(key, 1), data_len)
+
+            // store new count
+            incStorageCountDyn(itemsig)
+
+            _index := last_index
+        }
+
+        function _push(ptrs) -> result_ptr {
+            let typename_ptr := add(mload(ptrs), 4)
+            let itemsig := mslice(add(typename_ptr, 4), 4)
+            let itemsize := getValueLength(add(typename_ptr, 4))
+            let siglen := getSignatureLength(add(typename_ptr, 4))
+
+            let index := mslice(add(
+                mload(add(ptrs, 32)),
+                4
+            ), 4)
+
+            let data_ptr := mload(add(ptrs, 64))
+            let data_len := getValueLength(data_ptr)
+            
+            data_ptr := add(data_ptr, getSignatureLength(data_ptr))
+            
+            let key := mappingArrayDynStorageKey_values(index, itemsig)
+            let arity := sload(key)
+            
+            let storage_offset := mod(mul(arity, itemsize), 32)
+            let key_offset := add(div(mul(arity, itemsize), 32), 1)
+            let values_key := add(key, key_offset)
+
+            let values := sload(values_key)
+
+            let head_len := min(sub(32, storage_offset), data_len)
+            let head := mslice(data_ptr, head_len)
+
+            values := add(values, 
+                shl(mul(8, sub(sub(32, head_len), storage_offset)), head)
+            )
+            
+            sstore(values_key, values)
+
+            if gt(data_len, head_len) {
+                storeDataInner(
+                    add(data_ptr, head_len),
+                    add(values_key, 1),
+                    sub(data_len, head_len)
+                )
+            }
+
+            arity := add(arity, 1)
+            sstore(key, arity)
+            // TODO what to return? entire array?
+            result_ptr := allocate(8)
+            mslicestore(result_ptr, buildUintSig(4), 4)
+            mslicestore(add(result_ptr, 4), index, 4)
+        }
+
+        function _getdyn(ptrs) -> result_ptr {
+            let typename_ptr := add(mload(ptrs), 4)
+            let itemsig := mslice(add(typename_ptr, 4), 4)
+            let itemsize := getValueLength(add(typename_ptr, 4))
+            let siglen := getSignatureLength(add(typename_ptr, 4))
+            let index := mslice(add(
+                mload(add(ptrs, 32)),
+                4
+            ), 4)
+            result_ptr := _getdynInner(itemsig, itemsize, siglen, index)
+        }
+
+        function _getdynInner(itemsig, itemsize, siglen, index) -> result_ptr {
+            let key := mappingArrayDynStorageKey_values(index, itemsig)
+            let arity := sload(key)
+            let length := mul(arity, itemsize)
+            let slen := add(4, siglen)
+            result_ptr := allocate(add(length, slen))
+            mslicestore(result_ptr, buildArraySig(arity), 4)
+            mslicestore(add(result_ptr, 4), itemsig, siglen)
+            getStoredDataInner(add(result_ptr, slen), key, length, 0)
+        }
+
+        function getStorageCountDyn(typesig) -> count {
+            count := sload(mappingArrayDynStorageKey_count(typesig))
+        }
+
+        function incStorageCountDyn(typesig) {
+            let count := getStorageCountDyn(typesig)
+            count := add(count, 1)
+            sstore(mappingArrayDynStorageKey_count(typesig), count)
+        }
+
         function readmiddle(value, _start, _len) -> newval {
             newval := shl(mul(8, _start), value)
             newval := shr(mul(8, sub(32, _len)), newval)
@@ -2025,6 +2149,18 @@ object "Taylor" {
 
         function mappingStorageKey_owner() -> storageKey {
             storageKey := 7
+        }
+
+        function mappingArrayDynStorageKey_values(index, typesig) -> storageKey {
+            let ptr := allocate(96)
+            mstore(ptr, typesig, 8, index)
+            storageKey := keccak256(ptr, 96)
+        }
+
+        function mappingArrayDynStorageKey_count(typesig) -> storageKey {
+            let ptr := allocate(64)
+            mstore(ptr, typesig, 9)
+            storageKey := keccak256(ptr, 64)
         }
 
         function storeData(_pointer, storageKey) {
