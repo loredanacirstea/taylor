@@ -180,6 +180,10 @@ mal.reps(`
 
 (def! keccak256 (fn* (& xs) (js-eval (str "utils.keccak256('" (reduce str (map encode xs) "" ) "')") )))
 
+(def! revert (fn* (a) (throw a) ) )
+
+(def! return (fn* (a) (js-eval (str "'" a "'" )) ) )
+
 `)
 
 // addmod

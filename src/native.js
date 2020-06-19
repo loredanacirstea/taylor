@@ -149,6 +149,8 @@ const _nativeEnv = {
     getdyn: { mutable: false, arity: 2 },
     'store!': { mutable: false, arity: 2 },
     sload:    { mutable: false, arity: 2 },
+    revert:   { mutable: false, arity: 1 },
+    return:   { mutable: false, arity: 1 },
 
     // TODO: curry
     // TODO: pay

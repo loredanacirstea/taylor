@@ -1051,6 +1051,24 @@ describe.each([
         expect(resp).toBe('0x11223344556677889910111213141516171819202122232425262728293031323334353637383940');
     });
 
+    it('test revert', async function() {
+        if (backendname === 'chain') {
+            await expect(instance.send('(revert "Error1")')).rejects.toThrow('revert');
+        } else {
+            // TODO properly catch this with jest
+            // await expect(instance.send('(revert "Error1")')).rejects.toThrow();
+        }
+    })
+
+    it('test return', async function() {
+        let resp;
+        
+        resp = await instance.call('(return 44)');
+        expect(parseInt(resp)).toBe(44);
+        resp = await instance.call('(return "0x2233")');
+        expect(resp).toBe('0x2233');
+    })
+
     // TBD
     // stop
     // pc

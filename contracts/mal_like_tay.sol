@@ -425,6 +425,12 @@ object "Taylor" {
             case 0x90000116 {
                 result_ptr := _sload(add(arg_ptrs_ptr, 32))
             }
+            case 0x88000118 {
+                _revert(add(arg_ptrs_ptr, 32))
+            }
+            case 0x8800011a {
+                _return(add(arg_ptrs_ptr, 32))
+            }
 
             default {
                 let isthis := 0
@@ -1989,6 +1995,18 @@ object "Taylor" {
             mmultistore(result_ptr, type_ptr, sig_len)
 
             getStoredDataInner(add(result_ptr, sig_len), position, data_len, 0)
+        }
+
+        function _revert(ptrs) {
+            let data_ptr := mload(ptrs)
+            let data_len := getTypedLength(data_ptr)
+            revert(data_ptr, data_len)
+        }
+
+        function _return(ptrs) {
+            let data_ptr := mload(ptrs)
+            let data_len := getTypedLength(data_ptr)
+            return(data_ptr, data_len)
         }
 
         function readmiddle(value, _start, _len) -> newval {
