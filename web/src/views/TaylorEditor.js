@@ -83,16 +83,19 @@ class TaylorEditor extends Component {
     this.setState({ gasprofile });
   }
 
-  async getGasCost(interpreter, code) {
+  async getGasCost(interpreter, code, isTransaction) {
     let gas = (await interpreter.estimateGas(code)).toNumber();
-    const value = (await interpreter.calculateCost(code)) / 1000000000000000000;
-    const { currency, profile, ethrate } = this.state.gasprofile;
-    const gaspricedata = await(await fetch('https://ethgasstation.info/api/ethgasAPI.json')).json();
-    const gasprice = gaspricedata[profile] / 10; // gwei
-    const eth = gas * gasprice / 1000000000 + value;  // eth
-    const cost = (eth * ethrate).toString() + ' ' + currency;
-    
-    return { gas, eth: eth.toString() + ' ETH', cost, ethrate: `${ethrate} ${currency}/ETH`, gasprice: gasprice.toString() + ' gwei', value: value + ' ETH' };
+    const value = await interpreter.calculateCost(code);
+
+    if (isTransaction) {
+      const { currency, profile, ethrate } = this.state.gasprofile;
+      const gaspricedata = await(await fetch('https://ethgasstation.info/api/ethgasAPI.json')).json();
+      // gasprice / 10 = gwei
+      const gasprice = gaspricedata[profile] * 1000000000 / 10; // wei
+  
+      return { gas, currency, ethrate, gasprice, value };
+    }
+    return {gas, value};
   }
 
   onFunctionsChange(functions={}) {
@@ -106,7 +109,7 @@ class TaylorEditor extends Component {
       let gascost;
 
       if (backend === 'injected') {
-        gascost = await this.getGasCost(interpreter, code);
+        gascost = await this.getGasCost(interpreter, code, isTransaction);
       }
 
       if (!isTransaction || backend === 'javascript') {
@@ -122,8 +125,8 @@ class TaylorEditor extends Component {
         let response, error, receipt = {};
 
         try {
-          response = await interpreter.send(code, {value: gascost.value});
-          callback({ receipt: response, gascost })
+          response = await interpreter.send(code, {value: gascost.value, gasPrice: gascost.gasprice});
+          callback({ receipt: response, gascost, isTransaction })
 
           receipt = await response.wait();
         } catch (e) {
@@ -137,7 +140,7 @@ class TaylorEditor extends Component {
           callback({ receipt })
         }
       } else {
-        callback({ gascost, encdata })
+        callback({ gascost, encdata, isTransaction })
       }
   }
 
@@ -148,7 +151,7 @@ class TaylorEditor extends Component {
       injected: tayinterpreter || this.state.tayinterpreter,
     }
 
-    const getResult =  ({ result, receipt, encdata, errors, backend, gascost }) => {
+    const getResult =  ({ result, receipt, encdata, errors, backend, gascost, isTransaction }) => {
       const resultObj = {};
       if (result) resultObj.result = result;
       if (receipt) resultObj.receipt = receipt;
@@ -156,10 +159,20 @@ class TaylorEditor extends Component {
       if (backend) resultObj.backend = backend;
       if (gascost) {
         resultObj.gas = gascost.gas;
-        resultObj.value = gascost.value;
-        delete gascost.gas;
-        delete gascost.value;
-        resultObj.cost = gascost;
+        
+        if (isTransaction) {
+          const currency = gascost.currency.toUpperCase();
+          resultObj.value = gascost.value;  // wei
+          resultObj.cost = {};
+          resultObj.cost.gasprice = gascost.gasprice; // wei
+          resultObj.cost.eth = (gascost.gas * gascost.gasprice + gascost.value) / 1000000000000000000; // eth // 1000000000;
+          resultObj.cost.cost = (resultObj.cost.eth * gascost.ethrate).toString() + ' ' + currency;
+
+          resultObj.value = (resultObj.value / 1000000000000000000).toFixed(18) + ' ETH (fee)';
+          resultObj.cost.eth = resultObj.cost.eth.toString() + ' ETH';
+          resultObj.cost.ethrate = `${gascost.ethrate} ${currency}/ETH`;
+          resultObj.cost.gasprice = (resultObj.cost.gasprice / 1000000000).toString() + ' GWEI';
+        }
       }
       return { resultObj, errors };
     }
