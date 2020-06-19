@@ -117,20 +117,19 @@ class TaylorEditor extends Component {
         try {
           result = await interpreter.call(code);
         } catch (e) {
-          error = e;
+          error = e.message;
         }
         callback({ result, error, gascost, encdata })
       
       } else if (force) {
         let response, error, receipt = {};
-
         try {
           response = await interpreter.send(code, {value: gascost.value, gasPrice: gascost.gasprice});
           callback({ receipt: response, gascost, isTransaction })
 
           receipt = await response.wait();
         } catch (e) {
-          error = e;
+          error = e.message;
           callback({ error, encdata })
         }
   
@@ -151,7 +150,7 @@ class TaylorEditor extends Component {
       injected: tayinterpreter || this.state.tayinterpreter,
     }
 
-    const getResult =  ({ result, receipt, encdata, errors, backend, gascost, isTransaction }) => {
+    const getResult =  ({ result, receipt, encdata, error, backend, gascost, isTransaction }) => {
       const resultObj = {};
       if (result) resultObj.result = result;
       if (receipt) resultObj.receipt = receipt;
@@ -174,19 +173,20 @@ class TaylorEditor extends Component {
           resultObj.cost.gasprice = (resultObj.cost.gasprice / 1000000000).toString() + ' GWEI';
         }
       }
-      return { resultObj, errors };
+
+      return { resultObj, error };
     }
 
     let callb = {
       main: btype => (data) => {
         data.backend = btype;
-        const { resultObj, errors } = getResult(data);
-        this.setState({ result: resultObj, errors });
+        const { resultObj, error } = getResult(data);
+        this.setState({ result: resultObj, errors: error });
       },
       second: btype => (data) => {
         data.backend = btype;
-        const { resultObj, errors } = getResult(data);
-        this.setState({ result2: resultObj, errors2: errors });
+        const { resultObj, error } = getResult(data);
+        this.setState({ result2: resultObj, errors2: error });
       },
     }
 
@@ -325,7 +325,7 @@ class TaylorEditor extends Component {
             >
               {backend === 'both'
                 ? (errors2
-                    ? <Text style={{color: 'firebrick', fontSize: editorOpts.fontSize }}>{errors}</Text>
+                    ? <Text style={{color: 'firebrick', fontSize: editorOpts.fontSize }}>{errors2}</Text>
                     : <ReactJson
                     src={result2 || {}}
                     name={null}
