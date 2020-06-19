@@ -1515,9 +1515,20 @@ object "Taylor" {
         }
 
         function _getfrom(ptrs) -> result_ptr {
-            let typename_ptr := add(mload(ptrs), 4)
+            let typename_ptr := mload(ptrs)
+            let typename_len := getValueLength(typename_ptr)
+            typename_ptr := add(typename_ptr, 4)
+
+            // if name;
+            if eq(typename_len, 32) {
+                let name := mload(typename_ptr)
+                let storageKey := mappingArrayStorageKey_names(name)
+                mstore(typename_ptr, sload(storageKey))
+            }
+
             let sig_len := getSignatureLength(typename_ptr)
             let typesig := mslice(typename_ptr, sig_len)
+
             let index := mslice(add(
                 mload(add(ptrs, 32)),
                 4
@@ -1736,9 +1747,9 @@ object "Taylor" {
 
             // TODO: this should be in save & saved under a signature type
             // and functions should be stored in the same way
-            let name := mload(name_ptr)
-            let storageKey := mappingArrayStorageKey_names(struct_abstract_id, name)
-            sstore(storageKey, sig)
+            let name := mload(add(name_ptr, 4))
+            let storageKey := mappingArrayStorageKey_names(name)
+            sstore(storageKey, shl(224, sig))
             log3(0, 0, struct_abstract_id, name, sig)
         }
 
@@ -1746,8 +1757,8 @@ object "Taylor" {
             let name_ptr := mload(ptrs)
             let valueslist_ptr := mload(add(ptrs, 32))
             let struct_abstract_id := 0x20000000
-            let name := mload(name_ptr)
-            let storageKey := mappingArrayStorageKey_names(struct_abstract_id, name)
+            let name := mload(add(name_ptr, 4))
+            let storageKey := mappingArrayStorageKey_names(name)
             let sig := sload(storageKey)
 
             // TODO: get struct from storage by signature
@@ -2200,10 +2211,10 @@ object "Taylor" {
             storageKey := keccak256(ptr, 64)
         }
 
-        function mappingArrayStorageKey_names(typesig, name) -> storageKey {
-            let ptr := allocate(96)
-            mstore(ptr, typesig, 5, name)
-            storageKey := keccak256(ptr, 96)
+        function mappingArrayStorageKey_names(name) -> storageKey {
+            let ptr := allocate(64)
+            mstore(ptr, 5, name)
+            storageKey := keccak256(ptr, 64)
         }
 
         function mappingStorageKey_owner() -> storageKey {

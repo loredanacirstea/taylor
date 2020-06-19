@@ -328,7 +328,7 @@ it('test structs', async function() {
     resp = await MalTay.call(`(getfrom "0x0a910004" 1)`);
     expect(resp).toEqual(6);
 
-    resp = await MalTay.call(`(getfrom "0x24000001" 0)`);
+    resp = await MalTay.call(`(getfrom "astruct" 0)`);
     expect(resp).toEqual({sig: 0x24000001, 0: 0, 1: 1});
 });
 
@@ -409,6 +409,9 @@ describe('test arrays', function () {
 
         resp = await MalTay.call(`(getfrom "0x20000000" ${scount})`);
         expect(resp).toEqual('0x11000002040000040a91000404000008400000030a910004');
+        
+        resp = await MalTay.call(`(getfrom Struct ${scount})`);
+        expect(resp).toEqual('0x11000002040000040a91000404000008400000030a910004');
     });
 
     it('instantiate astruct2 with u32 array', async function() {
@@ -420,15 +423,15 @@ describe('test arrays', function () {
         resp = await MalTay.call(`(getfrom "0x400000030a910004" 2)`);
         expect(resp).toEqual([2, 7, 9]);
 
-        resp = await MalTay.call(`(getfrom "0x24000001" 0)`);
-        expect(resp).toEqual({sig: 0x24000001, 0: 0, 1: 1});
+        resp = await MalTay.call(`(getfrom "astruct2" 0)`);
+        expect(resp).toEqual({sig: 0x24000003, 0: 1, 1: 2});
     });
     
     it('define anotherstruct with array', async function() {
         await MalTay.send('(defstruct! anotherstruct (list "0x04000003" "0x4000000604000014") )');
         scount += 1;
     
-        resp = await MalTay.call(`(getfrom "0x20000000" ${scount})`);
+        resp = await MalTay.call(`(getfrom Struct ${scount})`);
         expect(resp).toEqual('0x110000020400000404000003040000084000000604000014');
     });
 
@@ -449,10 +452,10 @@ describe('test arrays', function () {
         resp = await MalTay.call(`(getfrom "0x4000000604000014" 0)`);
         expect(resp).toEqual(arr);
 
-        resp = await MalTay.call(`(getfrom "0x24000003" 0)`);
-        expect(resp).toEqual({sig: 0x24000003, 0: 1, 1: 2}); // TODO fixme 0, 0 ?
+        resp = await MalTay.call(`(getfrom "anotherstruct" 0)`);
+        expect(resp).toEqual({sig: 0x24000005, 0: 0, 1: 0});
 
-        2
+        // 2
         arr = [
             '0x7777777777777777777777777777777777777777', '0x8888888888888888888888888888888888888888', '0x9999999999999999999999999999999999999999',
             '0x4444444444444444444444444444444444444444', '0x5555555555555555555555555555555555555555', '0x6666666666666666666666666666666666666666'
@@ -467,8 +470,8 @@ describe('test arrays', function () {
         resp = await MalTay.call(`(getfrom "0x4000000604000014" 1)`);
         expect(resp).toEqual(arr);
 
-        resp = await MalTay.call(`(getfrom "0x24000003" 1)`);
-        expect(resp).toEqual({sig: 0x24000003, 0: 0, 1: 0}); // TODO fixme 1 1 ??
+        resp = await MalTay.call(`(getfrom "anotherstruct" 1)`);
+        expect(resp).toEqual({sig: 0x24000005, 0: 1, 1: 1});
     });
 });
 

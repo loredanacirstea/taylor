@@ -83,8 +83,6 @@ const numberid = {
     rational: '', // TODO
 }
 
-
-
 const nativeEnv = {};
 Object.keys(_nativeEnv).forEach((key, id) => {
     if (_nativeEnv[key].notimp) return;
@@ -146,6 +144,15 @@ tableSig[nativeEnv['def!'].hex] = {offsets: [64, 8], aritydelta: -1}
 tableSig[nativeEnv['if'].hex] = {offsets: [8, 8], aritydelta: 0}
 tableSig['lambda'] = {offsets: lambdaLength}
 tableSig['isGetByName'] = {offsets: [64]}
+
+const nativeTypes = {};
+const typekey = key => key.substring(0, 1).toUpperCase() + key.substring(1);
+Object.keys(typeid).forEach(key => nativeTypes[typekey(key)] = b2h(typeid[key].padEnd(32, '0')));
+Object.keys(numberid).forEach(key => nativeTypes[typekey(key)] = formatId(typeid.number, numberid[key], u2b(4).padStart(16, '0')))
+nativeTypes.Bool = getnumberid(1)
+nativeTypes.Uint = getnumberid(4)
+nativeTypes.Address = getbytesid(20)
+nativeTypes.Bytes32 = getbytesid(32)
 
 const encodeInner = (types, values) => {
     if (types.length !== values.length) throw new Error('Encode - different lengths.');
@@ -281,6 +288,10 @@ const ast2h = (ast, parent=null, unkownMap={}, defenv={}) => {
         // if Symbol
         if (malTypes._symbol_Q(elem)) {
             if (!nativeEnv[elem.value]) {
+                // check if native type
+                if (nativeTypes[elem.value]) {
+                    return getbytesid(4) + nativeTypes[elem.value];
+                }
                 // check if stored function first
                 if (!unkownMap[elem.value] && defenv[elem.value]) {
                     // TODO proper type - string/bytes
@@ -350,7 +361,7 @@ const ast2h = (ast, parent=null, unkownMap={}, defenv={}) => {
                 return  typeid + val;
             } else {
                 // TODO fixme - strings are now bytes32
-                return getnumberid(32) + elem.hexEncode().padStart(64, '0');
+                return getbytesid(32) + elem.hexEncode().padStart(64, '0');
             }
         }
 
@@ -369,6 +380,10 @@ const ast2h = (ast, parent=null, unkownMap={}, defenv={}) => {
         ) {
             return encodeInner([{type: 'uint', size: 4}], [elem]);
         }
+
+        // default - treat as string
+        // TODO fixme - strings are now bytes32
+        return getbytesid(32) + elem.hexEncode().padStart(64, '0');
 
     }).join('');
 }
@@ -651,7 +666,7 @@ const getTaylor = (provider, signer) => (address, deploymentBlock = 0) => {
 
 module.exports = {
     u2b, u2h, b2u, b2h, h2u, h2b,
-    typeid, nativeEnv, reverseNativeEnv,
+    typeid, nativeEnv, reverseNativeEnv, nativeTypes,
     encode,
     decode,
     expr2h,
