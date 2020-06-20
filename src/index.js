@@ -147,7 +147,7 @@ tableSig['isGetByName'] = {offsets: [64]}
 
 const nativeTypes = {};
 const typekey = key => key.substring(0, 1).toUpperCase() + key.substring(1);
-Object.keys(typeid).forEach(key => nativeTypes[typekey(key)] = b2h(typeid[key].padEnd(32, '0')));
+Object.keys(typeid).forEach(key => nativeTypes[typekey(key)] = formatId(typeid[key].padEnd(32, '0')));
 Object.keys(numberid).forEach(key => nativeTypes[typekey(key)] = formatId(typeid.number, numberid[key], u2b(4).padStart(16, '0')))
 nativeTypes.Bool = getnumberid(1)
 nativeTypes.Uint = getnumberid(4)
