@@ -548,7 +548,7 @@ describe('test dynamic storage', function () {
         resp = await MalTay.call(`(getdyn "0x400000000400000a" 0)`);
         expect(resp).toEqual(['0x11223344556677889910', '0x11121314151617181920', '0x21222324252627282930', '0x31323334353637383940']);
     });
-})
+});
 
 describe.each([
     ['chain', MalTay],
@@ -1091,3 +1091,204 @@ describe.each([
     });
 });
 
+it.skip('mapping', async function() {
+    let resp;
+
+    // (def! defmap! (fn* (name valuetype) (store! (keccak256 100 name) (or 8388608 (save! valuetype "0x800000")) )  ))
+
+    // await MalTay.send('(def! defmap! (fn* (name valuetype) (store! (keccak256 100 name) (or 8388608 (save! valuetype "0x800000")) )  ))');
+
+    // // await MalTay.send('(defmap! "amap" "0x0a910004")');
+    // console.log(expr2h('(defmap! "amap" "0x0a910004")'));
+
+    // await MalTay.send('(defmap! "voters" Address "Voter")');
+
+
+    
+
+    // await MalTay.send('(defmap! "voters" Address Uint)');
+
+    // resp = await MalTay.call('(getfrom Map 0)');
+    // console.log('resp', resp);
+
+    // await MalTay.send('(mapset! "voters" (caller) 3)');
+
+    // resp = await MalTay.call('(mapget "voters" (caller))');
+    // console.log('resp', resp);
+
+
+
+return;
+
+    
+    await MalTay.send('(defstruct! Voter (list Uint Bool Uint))');
+
+    await MalTay.send('(defmap! "voters" Address "Voter")');
+
+    resp = await MalTay.call('(getfrom Map 0)');
+    console.log('resp', resp);
+
+    await MalTay.send('(mapset! "voters" (caller) (struct! "Voter" (list 3 true 66) ))');
+
+    resp = await MalTay.call('(mapget "voters" (caller))');
+    console.log('resp', resp);
+
+    resp = await MalTay.call('(getfrom Uint 0)');
+    console.log('1resp', resp);
+    resp = await MalTay.call('(getfrom Uint 1)');
+    console.log('2resp', resp);
+    resp = await MalTay.call('(getfrom Bool 0)');
+    console.log('3resp', resp);
+
+    resp = await MalTay.call(`(list-struct (getfrom "Voter" 0))`);
+    console.log('4resp', resp);
+    resp = await MalTay.call(`(list-struct (mapget "voters" (caller)))`);
+    console.log('5resp', resp);
+
+});
+
+it.only('ttttttt', async function() {
+
+    const init = `(list 
+        ; weight, voted, delegate, vote (proposal index)
+        (defstruct! Voter (list Uint Bool Address Uint))
+        
+        ; name, voteCount
+        (defstruct! Proposal (list Bytes32 Uint) )
+    
+        (defmap! "voters" Address "Voter")
+        
+        ; (name! chairperson (save! (caller)))
+        (store! 0 (caller))
+    )`;
+    
+    const init2 = `(list
+        (struct! "Proposal" (list "proposal1" 0))
+        (struct! "Proposal" (list "proposal2" 0))
+        (struct! "Proposal" (list "proposal3" 0))
+    )`;
+
+    const checkinit = `(list
+        (getfrom Struct 0)
+        (getfrom Struct 1)
+        (getfrom "Proposal" 0)
+        (getfrom "Proposal" 1)
+        (getfrom "Proposal" 2)
+
+        (getfrom Bytes32 0)
+        (getfrom Bytes32 1)
+        (getfrom Bytes32 2)
+        (list-struct (getfrom "Proposal" 0))
+        (list-struct (getfrom "Proposal" 1))
+        (list-struct (getfrom "Proposal" 2))
+    )`
+
+    let giveRightToVote = `(def! giveRightToVote! (fn* (voterAddress)
+        (if (eq (caller) (sload 0 Address))
+            (if (eq 0 (nth (list-struct (mapget "voters" voterAddress)) 0) )
+                (mapset! "voters" voterAddress (struct! "Voter" (list 1 0 0 0)))
+                (revert "The voter already voted.")
+            )
+            (revert "Only chairperson can give right to vote.")
+        )
+    ))`
+
+    const vote = `(def! vote (fn* (proposalIndex)
+        (let sender (mapget voters (caller)
+            (if (or (eq 0 (nth 0 sender)) (nth 1 sender))
+                (revert "Has no right to vote")
+                (seq!
+                    (mapset! voters (caller) 
+                        (struct! Voter (list sender.0 true sender.2 proposalIndex))
+                    )
+                    (let proposal (getfrom Proposal proposalIndex)
+                        (modify! (set proposal.1 (add proposal.1 sender.1)))
+                    )
+                )
+            )
+        )
+    ))`
+
+    const giveVote1 = '(giveRightToVote! "0xe8B7665DE12D67bC802aEcb8eef4D8bd34741C51")';
+return;
+    await MalTay.send(init);
+    await MalTay.send(init2);
+
+
+
+    // await MalTay.send('(mapset! "voters" "0xe8B7665DE12D67bC802aEcb8eef4D8bd34741C51" (struct! "Voter" (list 34 0 (caller) 77) ))');
+
+    // resp = await MalTay.call_raw(expr2h('(mapget "voters" "0xe8B7665DE12D67bC802aEcb8eef4D8bd34741C51")'))
+    // console.log('212--resp', resp);
+
+    // resp = await MalTay.call_raw(expr2h('(getfrom "Proposal" 0)'))
+    // console.log('333--resp', resp);
+
+
+
+    // return;
+
+    resp = await MalTay.call(checkinit);
+    console.log('resp', resp);
+
+
+    await MalTay.send(giveRightToVote);
+
+    // resp = await MalTay.call(giveRightToVote);
+    // console.log('-----resp', resp);
+
+
+    // await MalTay.send(giveVote1);
+
+    // await MalTay.send(`(if (eq (caller) (sload 0 Address))
+    //     (if (eq 0 (nth (list-struct (mapget "voters" "0xe8B7665DE12D67bC802aEcb8eef4D8bd34741C51")) 0) )
+    //         (mapset! "voters" "0xe8B7665DE12D67bC802aEcb8eef4D8bd34741C51" (struct! "Voter" (list 1 0 0 0)))
+    //         (revert "The voter already voted.")
+    //     )
+    //     (revert "Only chairperson can give right to vote.")
+    // )`);
+
+    
+    resp = await MalTay.call('(eq (caller) (sload 0 Address))');
+    console.log('-----resp', resp);
+
+    resp = await MalTay.call('(eq 0 (nth (list-struct (mapget "voters" "0xe8B7665DE12D67bC802aEcb8eef4D8bd34741C51") 0) ))');
+    console.log('-----resp', resp);
+
+    resp = await MalTay.call('(list-struct (mapget "voters" "0xe8B7665DE12D67bC802aEcb8eef4D8bd34741C51"))')
+    console.log('2222--resp', resp);
+
+
+    // resp = await MalTay.call_raw(expr2h('(mapset! "voters" "0xD32298893dD95c1Aaed8A79bc06018b8C265a279" (struct! "Voter" (list 4 0 0 3)))'))
+    // console.log('11--resp', resp);
+
+    // resp = await MalTay.call_raw(expr2h('(mapset! "voters" "0xe8B7665DE12D67bC802aEcb8eef4D8bd34741C51" (struct! "Voter" (list 34 0 (caller) 77) ))'))
+    // console.log('22--resp', resp);
+
+    return;
+
+    await MalTay.send('(mapset! "voters" "0xD32298893dD95c1Aaed8A79bc06018b8C265a279" (struct! "Voter" (list 4 0 0 3)))')
+
+    
+    resp = await MalTay.call('(mapget "voters" "0xD32298893dD95c1Aaed8A79bc06018b8C265a279")')
+    console.log('11--resp', resp);
+
+
+    resp = await MalTay.call('(list-struct (mapget "voters" "0xD32298893dD95c1Aaed8A79bc06018b8C265a279"))')
+    console.log('11resp', resp);
+
+
+
+    await MalTay.send('(mapset! "voters" "0xe8B7665DE12D67bC802aEcb8eef4D8bd34741C51" (struct! "Voter" (list 34 0 (caller) 77) ))');
+
+
+    resp = await MalTay.call('(mapget "voters" "0xe8B7665DE12D67bC802aEcb8eef4D8bd34741C51")')
+    console.log('22--resp', resp);
+    
+    resp = await MalTay.call('(list-struct (mapget "voters" "0xe8B7665DE12D67bC802aEcb8eef4D8bd34741C51"))')
+    console.log('22resp', resp);
+
+    
+
+    
+});

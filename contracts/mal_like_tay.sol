@@ -492,6 +492,17 @@ object "Taylor" {
             case 0x8800011c {
                 result_ptr := _list_from_struct(add(arg_ptrs_ptr, 32))
             }
+            case 0x9800011e {
+                let ssig := _defmap(add(arg_ptrs_ptr, 32))
+                result_ptr := allocate(8)
+                mslicestore(result_ptr, uconcat(buildBytesSig(4), ssig, 4), 8)
+            }
+            case 0x98000120 {
+                result_ptr := _mapset(add(arg_ptrs_ptr, 32))
+            }
+            case 0x90000122 {
+                result_ptr := _mapget(add(arg_ptrs_ptr, 32))
+            }
 
             default {
                 let isthis := 0
@@ -762,6 +773,8 @@ object "Taylor" {
 
             if isArrayType(ptr) {
                 _length := 8
+                // let len := getSignatureLength(add(ptr, 4))
+                // _length := add(_length, len)
             }
         }
 
@@ -886,6 +899,15 @@ object "Taylor" {
 
         function structIdFromSig(signature) -> index {
             index := shl(8, and(signature, 0x1fffffe))
+        }
+
+        function mapSigFromId(id) -> signature {
+            // signature :=  '000000001' * bit23 id
+            signature := add(0x800000, id)
+        }
+
+        function mapIdFromSig(signature) -> index {
+            index := and(signature, 0x7fffff)
         }
         
         // function read(str) -> _str {
@@ -1470,6 +1492,7 @@ object "Taylor" {
 
             let typesize := getValueLength(typename_ptr)
             result_ptr := _getfromInner(typesig, sig_len, typesize, index)
+            // return(result_ptr, 32)
         }
 
 
@@ -1774,7 +1797,7 @@ object "Taylor" {
                 let typesig := mslice(add(type_ptr, typesig_len), typesig_val_len)
                 let value_len := getValueLength(add(type_ptr, typesig_len))
                 let index := mslice(index_ptr, 4)
-                let arg_ptr := _getfromInner(typesig, typesig_len, value_len, index)
+                let arg_ptr := _getfromInner(typesig, typesig_len, value_len, index)    
 
                 mstore(add(list_ptrs, mul(i, 32)), arg_ptr)
 
@@ -1998,6 +2021,132 @@ object "Taylor" {
             let data_ptr := mload(ptrs)
             let data_len := getTypedLength(data_ptr)
             return(data_ptr, data_len)
+        }
+
+        function _defmap(ptrs) -> sig {
+            let name_ptr := mload(ptrs)
+            let keytype_ptr := mload(add(ptrs, 32))
+            let valtype_ptr := mload(add(ptrs, 64))
+
+            if eq(getValueLength(valtype_ptr), 32) {
+                let valtype_sig_key := mappingArrayStorageKey_names(mload(add(valtype_ptr, 4)))
+                mslicestore(valtype_ptr, buildBytesSig(4), 4)
+                mstore(add(valtype_ptr, 4), sload(valtype_sig_key))
+            }
+
+            let keytype_len := getTypedLength(keytype_ptr)
+            let valtype_len := getTypedLength(valtype_ptr)
+            
+            let data_len := add(add(keytype_len, valtype_len), 4)
+            let data_ptr := allocate(data_len)
+            mslicestore(data_ptr, buildListTypeSig(2), 4)
+            mmultistore(add(data_ptr, 4), keytype_ptr, keytype_len)
+            mmultistore(add(4, add(data_ptr, keytype_len)), valtype_ptr, valtype_len)
+
+            let id := _saveInner(sub(0x800000, 1), 0, data_ptr)
+            sig := mapSigFromId(id)
+
+            let name := mload(add(name_ptr, 4))
+            let storageKey := mappingArrayStorageKey_names(name)
+            sstore(storageKey, sig)
+            log3(0, 0, 0x800000, name, sig)
+        }
+
+        function _mapset(ptrs) -> result_ptr {
+            let name_ptr := mload(ptrs)
+            let key_ptr := mload(add(ptrs, 32))
+            let val_ptr := mload(add(ptrs, 64))
+
+            let name := mload(add(name_ptr, 4))
+            let storageKey := mappingArrayStorageKey_names(name)
+            let sig := sload(storageKey)
+
+            // typecheck key?
+
+            // save value first
+            let val_id := _saveInner(getSignature(val_ptr), getValueLength(val_ptr), val_ptr)
+            
+            // let val_id := 0
+            // mstore(0, val_id)
+            // return(0, 32)
+
+            // this id is saved in the mapping
+            let temp := allocate(8)
+            mslicestore(temp, buildUintSig(4), 4)
+            mslicestore(add(temp, 4), val_id, 4)
+
+            // return(temp, 32)
+            
+            let instance_id := _saveInner(sig, 4, temp)
+
+            // hash key
+            let keysiglen := getSignatureLength(key_ptr)
+            let keyvallen := getValueLength(key_ptr)
+            let keyhashlen := add(4, keyvallen)
+            let hash_ptr := allocate(keyhashlen)
+            mslicestore(hash_ptr, sig, 4)
+            mmultistore(add(hash_ptr, 4), add(key_ptr, keysiglen), keyvallen)
+            let key := keccak256(hash_ptr, keyhashlen)
+            
+            // return (hash_ptr, keyhashlen)
+
+            sstore(key, instance_id)
+
+            result_ptr := allocate(8)
+            mslicestore(result_ptr, buildUintSig(4), 4)
+            mslicestore(add(result_ptr, 4), instance_id, 4)
+        }
+
+        function _mapget(ptrs) -> result_ptr {
+            let name_ptr := mload(ptrs)
+            let key_ptr := mload(add(ptrs, 32))
+
+            let name := mload(add(name_ptr, 4))
+            let storageKey := mappingArrayStorageKey_names(name)
+            // mapping signature (we can retrieve the mapdefinition)
+            let sig := sload(storageKey)
+            let struct_def_id := mapIdFromSig(sig)
+
+
+            // typesig from value & hashed key -> value
+
+            // return (key_ptr, 32)
+
+            // hash key
+            let keysiglen := getSignatureLength(key_ptr)
+            let keyvallen := getValueLength(key_ptr)
+            let keyhashlen := add(4, keyvallen)
+            let hash_ptr := allocate(keyhashlen)
+
+            // return (add(key_ptr, keysiglen), keyvallen)
+            
+            mslicestore(hash_ptr, sig, 4)
+            mmultistore(add(hash_ptr, 4), add(key_ptr, keysiglen), keyvallen)
+
+            // return (hash_ptr, 32)
+
+            let key := keccak256(hash_ptr, keyhashlen)
+
+            let instance_id := sload(key)
+            // now type - get it from mapping def
+
+            // mstore(0, instance_id)
+            // return(0, 32)
+
+            let mapdef := _getfromInner(sub(0x800000, 1), 4, 0, struct_def_id)
+
+ 
+            let key_type := add(mapdef, 4)
+            let value_type := add(key_type, getTypedLength(key_type))
+
+            let typesig_ptr := add(value_type, getSignatureLength(value_type))
+            let typesig := mslice(typesig_ptr, getValueLength(value_type))
+
+            // mstore(0, typesig)
+            // return(0, 32)
+
+            result_ptr := _getfromInner(typesig, getSignatureLength(typesig_ptr), getValueLength(typesig_ptr), instance_id)
+            // return (result_ptr, 32)
         }
 
         function readmiddle(value, _start, _len) -> newval {

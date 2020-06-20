@@ -152,6 +152,9 @@ const _nativeEnv = {
     revert:   { mutable: false, arity: 1 },
     return:   { mutable: false, arity: 1 },
     'list-struct': { mutable: false, arity: 1 },
+    'defmap!': { mutable: false, arity: 3 },
+    'mapset!': { mutable: false, arity: 3 },
+    mapget: { mutable: false, arity: 2 },
 
     // TODO: curry
     // TODO: pay

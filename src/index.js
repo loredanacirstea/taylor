@@ -57,6 +57,7 @@ const typeid = {
     bytelike: '000001',
     enum: '0000001',
     unknown: '00000001',
+    map: '000000001',
 }
 const fulltypeidHex = {
     // nil shorthand for empty list
@@ -215,8 +216,16 @@ const decodeInner = (sig, data) => {
         return { result, data };
     } else if (isBytelike(sig)) {
         const length = bytelikeSize(sig);
-        result = '0x' + data.substring(0, length*2)
+        result = data.substring(0, length*2)
+
+        if (length === 32) {
+            result = result.hexDecode();
+        } else {
+            result = '0x' + result
+        }
+        
         data = data.substring(length*2);
+
         return { result, data };
     } else if (isListType(sig)) {
         const length = listTypeSize(sig);
@@ -370,7 +379,8 @@ const ast2h = (ast, parent=null, unkownMap={}, defenv={}) => {
         }
 
         if (typeof elem === 'boolean') {
-            return encodeInner([{type: 'bool'}], [elem]);
+            // return encodeInner([{type: 'bool'}], [elem]);
+            return encodeInner([{type: 'uint', size: 1}], [elem ? 1 : 0]);
         }
 
         // TODO
