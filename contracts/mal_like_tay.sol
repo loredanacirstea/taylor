@@ -407,6 +407,10 @@ object "Taylor" {
             case 0x90000106 {
                 result_ptr := _struct(add(arg_ptrs_ptr, 32))
             }
+            // struct!
+            case 0x90000108 {
+                result_ptr := _struct_bang(add(arg_ptrs_ptr, 32))
+            }
             case 0x9800010b {
                 result_ptr := _rcall(add(arg_ptrs_ptr, 32))
             }
@@ -430,6 +434,9 @@ object "Taylor" {
             }
             case 0x8800011a {
                 _return(add(arg_ptrs_ptr, 32))
+            }
+            case 0x8800011c {
+                result_ptr := _list_from_struct(add(arg_ptrs_ptr, 32))
             }
 
             default {
@@ -582,6 +589,10 @@ object "Taylor" {
         
         function getFuncSig(ptr) -> _sig {
             _sig := mslice(ptr, 4)
+        }
+
+        function getSignature(ptr) -> _sig {
+            _sig := mslice(ptr, getSignatureLength(ptr))
         }
 
         // function 10000000000000000000000000000000
@@ -1788,6 +1799,73 @@ object "Taylor" {
             }
 
             result_ptr := allocate(length)
+        }
+
+        function _struct_bang(ptrs) -> result_ptr {
+            let name_ptr := mload(ptrs)
+            let valueslist_ptr := mload(add(ptrs, 32))
+
+            let name := mload(add(name_ptr, 4))
+            let storageKey := mappingArrayStorageKey_names(name)
+            let sig := shr(224, sload(storageKey))
+
+            // TODO: get struct from storage by signature
+            // typecheck values & cast if neccessary/possible
+
+            let list_arity := listTypeSize(mslice(valueslist_ptr, 4))
+
+            let struct_ptr := allocate(add(4, mul(list_arity, 4)))
+            mslicestore(struct_ptr, sig, 4)
+
+            let res_ptr := add(struct_ptr, 4)
+            let val_ptr := add(valueslist_ptr, 4)
+
+            for { let i := 0 } lt(i, list_arity) { i := add(i, 1) } {
+                let typesig := getSignature(val_ptr)
+                let typesize := getValueLength(val_ptr)
+                // let index := _saveInner(typesig, typesize, add(val_ptr, getSignatureLength(val_ptr)))
+
+                let index := _saveInner(typesig, typesize, val_ptr)
+                
+                mslicestore(res_ptr, index, 4)
+                res_ptr := add(res_ptr, 4)
+                val_ptr := add(val_ptr, getTypedLength(val_ptr))
+            }
+
+            let index := _saveInner(sig, mul(list_arity, 4), struct_ptr)
+            result_ptr := allocate(8)
+            mslicestore(result_ptr, buildUintSig(4), 4)
+            mslicestore(add(result_ptr, 4), index, 4)
+        }
+
+        function _list_from_struct(ptrs) -> result_ptr {
+            let struct_ptr := mload(ptrs)
+            let sig := mslice(struct_ptr, 4)
+            let struct_id := structIdFromSig(sig)
+            let arity := structSize(sig)
+
+            let struct_types := _getfromInner(0x20000000, 4, 0, struct_id)
+            let type_ptr := add(struct_types, 8)
+            let index_ptr := add(struct_ptr, 4)
+
+            let list_ptrs := allocate(mul(arity, 32))
+
+            for { let i := 0 } lt(i, arity) { i := add(i, 1) } {
+                let typesig_len := getSignatureLength(type_ptr)
+                let typesig_val_len := getValueLength(type_ptr)
+                
+                let typesig := mslice(add(type_ptr, typesig_len), typesig_val_len)
+                let value_len := getValueLength(add(type_ptr, typesig_len))
+                let index := mslice(index_ptr, 4)
+                let arg_ptr := _getfromInner(typesig, typesig_len, value_len, index)
+
+                mstore(add(list_ptrs, mul(i, 32)), arg_ptr)
+
+                type_ptr := add(add(type_ptr, typesig_len), typesig_val_len)
+                index_ptr := add(index_ptr, 4)
+            }
+
+            result_ptr := _list(arity, list_ptrs)
         }
 
         function _rcall(ptrs) -> result_ptr {

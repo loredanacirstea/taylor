@@ -151,6 +151,7 @@ const _nativeEnv = {
     sload:    { mutable: false, arity: 2 },
     revert:   { mutable: false, arity: 1 },
     return:   { mutable: false, arity: 1 },
+    'list-struct': { mutable: false, arity: 1 },
 
     // TODO: curry
     // TODO: pay
