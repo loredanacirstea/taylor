@@ -49,7 +49,7 @@ object "Taylor" {
         return (res, getTypedLength(res))
         
         function eval(data_ptr, env_ptr) -> end_ptr, result_ptr {
-            let sig := getFuncSig(data_ptr)
+            let sig := get4b(data_ptr)
 
             switch isFunction(data_ptr)
             case 0 {
@@ -587,7 +587,7 @@ object "Taylor" {
             }
         }
         
-        function getFuncSig(ptr) -> _sig {
+        function get4b(ptr) -> _sig {
             _sig := mslice(ptr, 4)
         }
 
@@ -597,7 +597,7 @@ object "Taylor" {
 
         // function 10000000000000000000000000000000
         function isFunction(ptr) -> isi {
-            let sig := getFuncSig(ptr)
+            let sig := get4b(ptr)
             isi := eq(and(shr(31, sig), 0x01), 1)
         }
         // 10001100000000000000000000000000
@@ -641,14 +641,14 @@ object "Taylor" {
         }
         // 01000000000000000000000000000000
         function isArrayType(ptr) -> isi {
-            let sig := getFuncSig(ptr)
+            let sig := get4b(ptr)
             isi := eq(and(shr(30, sig), 0x03), 1)
         }
 
         // 00100000000000000000000000000000
         // 111 - 0x07
         function isStruct(ptr) -> isi {
-            let sig := getFuncSig(ptr)
+            let sig := get4b(ptr)
             isi := eq(and(shr(29, sig), 0x07), 1)
         }
 
@@ -660,7 +660,7 @@ object "Taylor" {
         // 00001000000000000000000000000000
         // 11111 - 1f
         function isNumber(ptr) -> isi {
-            let sig := getFuncSig(ptr)
+            let sig := get4b(ptr)
             isi := eq(and(shr(27, sig), 0x1f), 1)
         }
 
@@ -671,7 +671,7 @@ object "Taylor" {
         // 00000100000000000000000000000000
         // 111111 - 0x3f
         function isBytes(ptr) -> isi {
-            let sig := getFuncSig(ptr)
+            let sig := get4b(ptr)
             isi := eq(and(shr(26, sig), 0x3f), 1)
         }
 
@@ -713,7 +713,7 @@ object "Taylor" {
 
         // TODO: array, struct, more efficient - nested switches?
         function getValueLength(ptr) -> _length {
-            let sig := getFuncSig(ptr)
+            let sig := get4b(ptr)
             let done := 0
             if and(eq(done, 0), isFunction(ptr)) {
                 _length := 0
@@ -761,7 +761,7 @@ object "Taylor" {
         // arity - 4 bits -> 16 args
         // 01111000000000000000000000000000
         function getFuncArity(ptr) -> arity {
-            arity := shr(27, and(getFuncSig(ptr), 0x78000000))
+            arity := shr(27, and(get4b(ptr), 0x78000000))
         }
 
         // 1010100000000000000000000001
@@ -1044,7 +1044,7 @@ object "Taylor" {
                 mslice(add(ptr1, getSignatureLength(ptr1)), getValueLength(ptr1)),
                 mslice(add(ptr2, getSignatureLength(ptr2)), getValueLength(ptr2))
             )
-            mslicestore(result_ptr, uconcat(getFuncSig(ptr1), c, 4), 8)
+            mslicestore(result_ptr, uconcat(get4b(ptr1), c, 4), 8)
         }
 
         function _sub(ptrs) -> result_ptr {
@@ -1055,7 +1055,7 @@ object "Taylor" {
                 mslice(add(ptr1, getSignatureLength(ptr1)), getValueLength(ptr1)),
                 mslice(add(ptr2, getSignatureLength(ptr2)), getValueLength(ptr2))
             )
-            mslicestore(result_ptr, uconcat(getFuncSig(ptr1), c, 4), 8)
+            mslicestore(result_ptr, uconcat(get4b(ptr1), c, 4), 8)
         }
         
         function _mul(ptrs) -> result_ptr {
@@ -1066,7 +1066,7 @@ object "Taylor" {
                 mslice(add(ptr1, getSignatureLength(ptr1)), getValueLength(ptr1)),
                 mslice(add(ptr2, getSignatureLength(ptr2)), getValueLength(ptr2))
             )
-            mslicestore(result_ptr, uconcat(getFuncSig(ptr1), c, 4), 8)
+            mslicestore(result_ptr, uconcat(get4b(ptr1), c, 4), 8)
         }
         
         function _div(ptrs) -> result_ptr {
@@ -1077,7 +1077,7 @@ object "Taylor" {
                 mslice(add(ptr1, getSignatureLength(ptr1)), getValueLength(ptr1)),
                 mslice(add(ptr2, getSignatureLength(ptr2)), getValueLength(ptr2))
             )
-            mslicestore(result_ptr, uconcat(getFuncSig(ptr1), c, 4), 8)
+            mslicestore(result_ptr, uconcat(get4b(ptr1), c, 4), 8)
         }
         
         function _sdiv(ptrs) -> result_ptr {
@@ -1088,7 +1088,7 @@ object "Taylor" {
                 mslice(add(ptr1, getSignatureLength(ptr1)), getValueLength(ptr1)),
                 mslice(add(ptr2, getSignatureLength(ptr2)), getValueLength(ptr2))
             )
-            mslicestore(result_ptr, uconcat(getFuncSig(ptr1), c, 4), 8)
+            mslicestore(result_ptr, uconcat(get4b(ptr1), c, 4), 8)
         }
         
         function _mod(ptrs) -> result_ptr {
@@ -1099,7 +1099,7 @@ object "Taylor" {
                 mslice(add(ptr1, getSignatureLength(ptr1)), getValueLength(ptr1)),
                 mslice(add(ptr2, getSignatureLength(ptr2)), getValueLength(ptr2))
             )
-            mslicestore(result_ptr, uconcat(getFuncSig(ptr1), c, 4), 8)
+            mslicestore(result_ptr, uconcat(get4b(ptr1), c, 4), 8)
         }
         
         function _smod(ptrs) -> result_ptr {
@@ -1110,7 +1110,7 @@ object "Taylor" {
                 mslice(add(ptr1, getSignatureLength(ptr1)), getValueLength(ptr1)),
                 mslice(add(ptr2, getSignatureLength(ptr2)), getValueLength(ptr2))
             )
-            mslicestore(result_ptr, uconcat(getFuncSig(ptr1), c, 4), 8)
+            mslicestore(result_ptr, uconcat(get4b(ptr1), c, 4), 8)
         }
         
         function _exp(ptrs) -> result_ptr {
@@ -1123,7 +1123,7 @@ object "Taylor" {
             )
             // get max sig size
             // exp - size: 
-            mslicestore(result_ptr, uconcat(getFuncSig(ptr1), c, 4), 8)
+            mslicestore(result_ptr, uconcat(get4b(ptr1), c, 4), 8)
         }
         
         function _not(ptrs) -> result_ptr {
@@ -1132,7 +1132,7 @@ object "Taylor" {
             let c := not(
                 mslice(add(ptr1, getSignatureLength(ptr1)), getValueLength(ptr1))
             )
-            mslicestore(result_ptr, uconcat(getFuncSig(ptr1), c, 4), 8)
+            mslicestore(result_ptr, uconcat(get4b(ptr1), c, 4), 8)
         }
         
         function _lt(ptrs) -> result_ptr {
@@ -1143,7 +1143,7 @@ object "Taylor" {
                 mslice(add(ptr1, getSignatureLength(ptr1)), getValueLength(ptr1)),
                 mslice(add(ptr2, getSignatureLength(ptr2)), getValueLength(ptr2))
             )
-            mslicestore(result_ptr, uconcat(getFuncSig(ptr1), c, 4), 8)
+            mslicestore(result_ptr, uconcat(get4b(ptr1), c, 4), 8)
         }
         
         function _gt(ptrs) -> result_ptr {
@@ -1154,7 +1154,7 @@ object "Taylor" {
                 mslice(add(ptr1, getSignatureLength(ptr1)), getValueLength(ptr1)),
                 mslice(add(ptr2, getSignatureLength(ptr2)), getValueLength(ptr2))
             )
-            mslicestore(result_ptr, uconcat(getFuncSig(ptr1), c, 4), 8)
+            mslicestore(result_ptr, uconcat(get4b(ptr1), c, 4), 8)
         }
         
         function _slt(ptrs) -> result_ptr {
@@ -1165,7 +1165,7 @@ object "Taylor" {
                 mslice(add(ptr1, getSignatureLength(ptr1)), getValueLength(ptr1)),
                 mslice(add(ptr2, getSignatureLength(ptr2)), getValueLength(ptr2))
             )
-            mslicestore(result_ptr, uconcat(getFuncSig(ptr1), c, 4), 8)
+            mslicestore(result_ptr, uconcat(get4b(ptr1), c, 4), 8)
         }
         
         function _sgt(ptrs) -> result_ptr {
@@ -1176,7 +1176,7 @@ object "Taylor" {
                 mslice(add(ptr1, getSignatureLength(ptr1)), getValueLength(ptr1)),
                 mslice(add(ptr2, getSignatureLength(ptr2)), getValueLength(ptr2))
             )
-            mslicestore(result_ptr, uconcat(getFuncSig(ptr1), c, 4), 8)
+            mslicestore(result_ptr, uconcat(get4b(ptr1), c, 4), 8)
         }
         
         function _eq(ptrs) -> result_ptr {
@@ -1187,7 +1187,7 @@ object "Taylor" {
                 mslice(add(ptr1, getSignatureLength(ptr1)), getValueLength(ptr1)),
                 mslice(add(ptr2, getSignatureLength(ptr2)), getValueLength(ptr2))
             )
-            mslicestore(result_ptr, uconcat(getFuncSig(ptr1), c, 4), 8)
+            mslicestore(result_ptr, uconcat(get4b(ptr1), c, 4), 8)
         }
         
         function _iszero(ptrs) -> result_ptr {
@@ -1196,7 +1196,7 @@ object "Taylor" {
             let c := iszero(
                 mslice(add(ptr1, getSignatureLength(ptr1)), getValueLength(ptr1))
             )
-            mslicestore(result_ptr, uconcat(getFuncSig(ptr1), c, 4), 8)
+            mslicestore(result_ptr, uconcat(get4b(ptr1), c, 4), 8)
         }
         
         function _and(ptrs) -> result_ptr {
@@ -1207,7 +1207,7 @@ object "Taylor" {
                 mslice(add(ptr1, getSignatureLength(ptr1)), getValueLength(ptr1)),
                 mslice(add(ptr2, getSignatureLength(ptr2)), getValueLength(ptr2))
             )
-            mslicestore(result_ptr, uconcat(getFuncSig(ptr1), c, 4), 8)
+            mslicestore(result_ptr, uconcat(get4b(ptr1), c, 4), 8)
         }
         
         function _or(ptrs) -> result_ptr {
@@ -1218,7 +1218,7 @@ object "Taylor" {
                 mslice(add(ptr1, getSignatureLength(ptr1)), getValueLength(ptr1)),
                 mslice(add(ptr2, getSignatureLength(ptr2)), getValueLength(ptr2))
             )
-            mslicestore(result_ptr, uconcat(getFuncSig(ptr1), c, 4), 8)
+            mslicestore(result_ptr, uconcat(get4b(ptr1), c, 4), 8)
         }
         
         function _xor(ptrs) -> result_ptr {
@@ -1229,7 +1229,7 @@ object "Taylor" {
                 mslice(add(ptr1, getSignatureLength(ptr1)), getValueLength(ptr1)),
                 mslice(add(ptr2, getSignatureLength(ptr2)), getValueLength(ptr2))
             )
-            mslicestore(result_ptr, uconcat(getFuncSig(ptr1), c, 4), 8)
+            mslicestore(result_ptr, uconcat(get4b(ptr1), c, 4), 8)
         }
         
         function _byte(ptrs) -> result_ptr {
@@ -1240,7 +1240,7 @@ object "Taylor" {
                 mslice(add(ptr1, getSignatureLength(ptr1)), getValueLength(ptr1)),
                 mslice(add(ptr2, getSignatureLength(ptr2)), getValueLength(ptr2))
             )
-            mslicestore(result_ptr, uconcat(getFuncSig(ptr1), c, 4), 8)
+            mslicestore(result_ptr, uconcat(get4b(ptr1), c, 4), 8)
         }
         
         function _shl(ptrs) -> result_ptr {
@@ -1251,7 +1251,7 @@ object "Taylor" {
                 mslice(add(ptr1, getSignatureLength(ptr1)), getValueLength(ptr1)),
                 mslice(add(ptr2, getSignatureLength(ptr2)), getValueLength(ptr2))
             )
-            mslicestore(result_ptr, uconcat(getFuncSig(ptr1), c, 4), 8)
+            mslicestore(result_ptr, uconcat(get4b(ptr1), c, 4), 8)
         }
         
         function _shr(ptrs) -> result_ptr {
@@ -1262,7 +1262,7 @@ object "Taylor" {
                 mslice(add(ptr1, getSignatureLength(ptr1)), getValueLength(ptr1)),
                 mslice(add(ptr2, getSignatureLength(ptr2)), getValueLength(ptr2))
             )
-            mslicestore(result_ptr, uconcat(getFuncSig(ptr1), c, 4), 8)
+            mslicestore(result_ptr, uconcat(get4b(ptr1), c, 4), 8)
         }
         
         function _sar(ptrs) -> result_ptr {
@@ -1273,7 +1273,7 @@ object "Taylor" {
                 mslice(add(ptr1, getSignatureLength(ptr1)), getValueLength(ptr1)),
                 mslice(add(ptr2, getSignatureLength(ptr2)), getValueLength(ptr2))
             )
-            mslicestore(result_ptr, uconcat(getFuncSig(ptr1), c, 4), 8)
+            mslicestore(result_ptr, uconcat(get4b(ptr1), c, 4), 8)
         }
         
         function _addmod(ptrs) -> result_ptr {
@@ -1286,7 +1286,7 @@ object "Taylor" {
                 mslice(add(ptr2, getSignatureLength(ptr2)), getValueLength(ptr2)),
                 mslice(add(ptr3, getSignatureLength(ptr3)), getValueLength(ptr3))
             )
-            mslicestore(result_ptr, uconcat(getFuncSig(ptr1), c, 4), 8)
+            mslicestore(result_ptr, uconcat(get4b(ptr1), c, 4), 8)
         }
         
         function _mulmod(ptrs) -> result_ptr {
@@ -1299,7 +1299,7 @@ object "Taylor" {
                 mslice(add(ptr2, getSignatureLength(ptr2)), getValueLength(ptr2)),
                 mslice(add(ptr3, getSignatureLength(ptr3)), getValueLength(ptr3))
             )
-            mslicestore(result_ptr, uconcat(getFuncSig(ptr1), c, 4), 8)
+            mslicestore(result_ptr, uconcat(get4b(ptr1), c, 4), 8)
         }
         
         function _signextend(ptrs) -> result_ptr {
@@ -1310,7 +1310,7 @@ object "Taylor" {
                 mslice(add(ptr1, getSignatureLength(ptr1)), getValueLength(ptr1)),
                 mslice(add(ptr2, getSignatureLength(ptr2)), getValueLength(ptr2))
             )
-            mslicestore(result_ptr, uconcat(getFuncSig(ptr1), c, 4), 8)
+            mslicestore(result_ptr, uconcat(get4b(ptr1), c, 4), 8)
         }
         
         function _keccak256(ptrs) -> result_ptr {
@@ -1917,13 +1917,13 @@ object "Taylor" {
             let ptr := add(result_ptr, 8)
             let iniptrs := add(ptrs, 32)
 
-            let typesig := getFuncSig(typesig_ptr)
+            let typesig := get4b(typesig_ptr)
 
             for { let i := 0 } lt(i, arity) { i := add(i, 1) } {
                 let item_ptr := mload(iniptrs)
                 
                 // TODO fix sig comparison
-                dtrequire(eq(getFuncSig(item_ptr), typesig), 0xeecc)
+                dtrequire(eq(get4b(item_ptr), typesig), 0xeecc)
                 mmultistore(ptr, add(item_ptr, typesig_len), val_len)
                 ptr := add(ptr, val_len)
                 iniptrs := add(iniptrs, 32)
