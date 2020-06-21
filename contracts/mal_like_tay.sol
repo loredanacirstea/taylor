@@ -121,80 +121,130 @@ object "Taylor" {
 
             // 10010000000000000000000000000010
             case 0x90000002 {
-                result_ptr := _add(add(arg_ptrs_ptr, 32))
+                let ptr1 := mload(add(arg_ptrs_ptr, 32))
+                let ptr2 := mload(add(arg_ptrs_ptr, 64))
+                result_ptr := _add(ptr1, ptr2)
             }
             // 10010000000000000000000000000100
             case 0x90000004 {
-                result_ptr := _sub(add(arg_ptrs_ptr, 32))
+                let ptr1 := mload(add(arg_ptrs_ptr, 32))
+                let ptr2 := mload(add(arg_ptrs_ptr, 64))
+                result_ptr := _sub(ptr1, ptr2)
             }
             case 0x90000006 {
-                result_ptr := _mul(add(arg_ptrs_ptr, 32))
+                let ptr1 := mload(add(arg_ptrs_ptr, 32))
+                let ptr2 := mload(add(arg_ptrs_ptr, 64))
+                result_ptr := _mul(ptr1, ptr2)
             }
             case 0x90000008 {
-                result_ptr := _div(add(arg_ptrs_ptr, 32))
+                let ptr1 := mload(add(arg_ptrs_ptr, 32))
+                let ptr2 := mload(add(arg_ptrs_ptr, 64))
+                result_ptr := _div(ptr1, ptr2)
             }
             case 0x9000000a {
-                result_ptr := _sdiv(add(arg_ptrs_ptr, 32))
+                let ptr1 := mload(add(arg_ptrs_ptr, 32))
+                let ptr2 := mload(add(arg_ptrs_ptr, 64))
+                result_ptr := _sdiv(ptr1, ptr2)
             }
             case 0x9000000c {
-                result_ptr := _mod(add(arg_ptrs_ptr, 32))
+                let ptr1 := mload(add(arg_ptrs_ptr, 32))
+                let ptr2 := mload(add(arg_ptrs_ptr, 64))
+                result_ptr := _mod(ptr1, ptr2)
             }
             case 0x9000000e {
-                result_ptr := _smod(add(arg_ptrs_ptr, 32))
+                let ptr1 := mload(add(arg_ptrs_ptr, 32))
+                let ptr2 := mload(add(arg_ptrs_ptr, 64))
+                result_ptr := _smod(ptr1, ptr2)
             }
             case 0x90000010 {
-                result_ptr := _exp(add(arg_ptrs_ptr, 32))
+                let ptr1 := mload(add(arg_ptrs_ptr, 32))
+                let ptr2 := mload(add(arg_ptrs_ptr, 64))
+                result_ptr := _exp(ptr1, ptr2)
             }
             case 0x88000012 {
-                result_ptr := _not(add(arg_ptrs_ptr, 32))
+                let ptr1 := mload(add(arg_ptrs_ptr, 32))
+                result_ptr := _not(ptr1)
             }
             case 0x90000014 {
-                result_ptr := _lt(add(arg_ptrs_ptr, 32))
+                let ptr1 := mload(add(arg_ptrs_ptr, 32))
+                let ptr2 := mload(add(arg_ptrs_ptr, 64))
+                result_ptr := _lt(ptr1, ptr2)
             }
             case 0x90000016 {
-                result_ptr := _gt(add(arg_ptrs_ptr, 32))
+                let ptr1 := mload(add(arg_ptrs_ptr, 32))
+                let ptr2 := mload(add(arg_ptrs_ptr, 64))
+                result_ptr := _gt(ptr1, ptr2)
             }
             case 0x90000018 {
-                result_ptr := _slt(add(arg_ptrs_ptr, 32))
+                let ptr1 := mload(add(arg_ptrs_ptr, 32))
+                let ptr2 := mload(add(arg_ptrs_ptr, 64))
+                result_ptr := _slt(ptr1, ptr2)
             }
             case 0x9000001a {
-                result_ptr := _sgt(add(arg_ptrs_ptr, 32))
+                let ptr1 := mload(add(arg_ptrs_ptr, 32))
+                let ptr2 := mload(add(arg_ptrs_ptr, 64))
+                result_ptr := _sgt(ptr1, ptr2)
             }
             case 0x9000001c {
-                result_ptr := _eq(add(arg_ptrs_ptr, 32))
+                let ptr1 := mload(add(arg_ptrs_ptr, 32))
+                let ptr2 := mload(add(arg_ptrs_ptr, 64))
+                result_ptr := _eq(ptr1, ptr2)
             }
             case 0x8800001e {
-                result_ptr := _iszero(add(arg_ptrs_ptr, 32))
+                let ptr1 := mload(add(arg_ptrs_ptr, 32))
+                result_ptr := _iszero(ptr1)
             }
             case 0x90000020 {
-                result_ptr := _and(add(arg_ptrs_ptr, 32))
+                let ptr1 := mload(add(arg_ptrs_ptr, 32))
+                let ptr2 := mload(add(arg_ptrs_ptr, 64))
+                result_ptr := _and(ptr1, ptr2)
             }
             case 0x90000022 {
-                result_ptr := _or(add(arg_ptrs_ptr, 32))
+                let ptr1 := mload(add(arg_ptrs_ptr, 32))
+                let ptr2 := mload(add(arg_ptrs_ptr, 64))
+                result_ptr := _or(ptr1, ptr2)
             }
             case 0x90000024 {
-                result_ptr := _xor(add(arg_ptrs_ptr, 32))
+                let ptr1 := mload(add(arg_ptrs_ptr, 32))
+                let ptr2 := mload(add(arg_ptrs_ptr, 64))
+                result_ptr := _xor(ptr1, ptr2)
             }
             case 0x90000026 {
-                result_ptr := _byte(add(arg_ptrs_ptr, 32))
+                let ptr1 := mload(add(arg_ptrs_ptr, 32))
+                let ptr2 := mload(add(arg_ptrs_ptr, 64))
+                result_ptr := _byte(ptr1, ptr2)
             }
             case 0x90000028 {
-                result_ptr := _shl(add(arg_ptrs_ptr, 32))
+                let ptr1 := mload(add(arg_ptrs_ptr, 32))
+                let ptr2 := mload(add(arg_ptrs_ptr, 64))
+                result_ptr := _shl(ptr1, ptr2)
             }
             case 0x9000002a {
-                result_ptr := _shr(add(arg_ptrs_ptr, 32))
+                let ptr1 := mload(add(arg_ptrs_ptr, 32))
+                let ptr2 := mload(add(arg_ptrs_ptr, 64))
+                result_ptr := _shr(ptr1, ptr2)
             }
             case 0x9000002c {
-                result_ptr := _sar(add(arg_ptrs_ptr, 32))
+                let ptr1 := mload(add(arg_ptrs_ptr, 32))
+                let ptr2 := mload(add(arg_ptrs_ptr, 64))
+                result_ptr := _sar(ptr1, ptr2)
             }
             case 0x9800002e {
-                result_ptr := _addmod(add(arg_ptrs_ptr, 32))
+                let ptr1 := mload(add(arg_ptrs_ptr, 32))
+                let ptr2 := mload(add(arg_ptrs_ptr, 64))
+                let ptr3 := mload(add(arg_ptrs_ptr, 96))
+                result_ptr := _addmod(ptr1, ptr2, ptr3)
             }
             case 0x98000030 {
-                result_ptr := _mulmod(add(arg_ptrs_ptr, 32))
+                let ptr1 := mload(add(arg_ptrs_ptr, 32))
+                let ptr2 := mload(add(arg_ptrs_ptr, 64))
+                let ptr3 := mload(add(arg_ptrs_ptr, 96))
+                result_ptr := _mulmod(ptr1, ptr2, ptr3)
             }
             case 0x90000032 {
-                result_ptr := _signextend(add(arg_ptrs_ptr, 32))
+                let ptr1 := mload(add(arg_ptrs_ptr, 32))
+                let ptr2 := mload(add(arg_ptrs_ptr, 64))
+                result_ptr := _signextend(ptr1, ptr2)
             }
             case 0x90000036 {
                 result_ptr := _call(add(arg_ptrs_ptr, 32))
@@ -757,6 +807,25 @@ object "Taylor" {
         function getTypedLength(ptr) -> _length {
             _length := add(getValueLength(ptr), getSignatureLength(ptr))
         }
+
+        function extractValue(ptr) -> _value {
+            let siglen := getSignatureLength(ptr)
+            let vallen := getValueLength(ptr)
+            _value := mslice(add(ptr, siglen), vallen)
+        }
+
+        function writeTyped(ptr, value, sig, siglen) -> _len {
+            mslicestore(ptr, sig, siglen)
+            let vallen := getValueLength(ptr)
+            mslicestore(add(ptr, siglen), value, vallen)
+            _len := add(siglen, vallen)
+        }
+
+        function allocateTyped(value, sig, siglen) -> result_ptr {
+            result_ptr := freeMemPtr()
+            let len := writeTyped(result_ptr, value, sig, siglen)
+            result_ptr := allocate(len)
+        }
         
         // arity - 4 bits -> 16 args
         // 01111000000000000000000000000000
@@ -1036,281 +1105,130 @@ object "Taylor" {
         }
        
         // TODO: auto cast if overflow
-        function _add(ptrs) -> result_ptr {
-            result_ptr := allocate(32)
-            let ptr1 := mload(ptrs)
-            let ptr2 := mload(add(ptrs, 32))
-            let c := add(
-                mslice(add(ptr1, getSignatureLength(ptr1)), getValueLength(ptr1)),
-                mslice(add(ptr2, getSignatureLength(ptr2)), getValueLength(ptr2))
-            )
-            mslicestore(result_ptr, uconcat(get4b(ptr1), c, 4), 8)
+        function _add(ptr1, ptr2) -> result_ptr {
+            let c := add(extractValue(ptr1), extractValue(ptr2))
+            result_ptr := allocateTyped(c, get4b(ptr1), 4)
         }
 
-        function _sub(ptrs) -> result_ptr {
-            result_ptr := allocate(32)
-            let ptr1 := mload(ptrs)
-            let ptr2 := mload(add(ptrs, 32))
-            let c := sub(
-                mslice(add(ptr1, getSignatureLength(ptr1)), getValueLength(ptr1)),
-                mslice(add(ptr2, getSignatureLength(ptr2)), getValueLength(ptr2))
-            )
-            mslicestore(result_ptr, uconcat(get4b(ptr1), c, 4), 8)
+        function _sub(ptr1, ptr2) -> result_ptr {
+            let c := sub(extractValue(ptr1), extractValue(ptr2))
+            result_ptr := allocateTyped(c, get4b(ptr1), 4)
         }
         
-        function _mul(ptrs) -> result_ptr {
-            result_ptr := allocate(32)
-            let ptr1 := mload(ptrs)
-            let ptr2 := mload(add(ptrs, 32))
-            let c := mul(
-                mslice(add(ptr1, getSignatureLength(ptr1)), getValueLength(ptr1)),
-                mslice(add(ptr2, getSignatureLength(ptr2)), getValueLength(ptr2))
-            )
-            mslicestore(result_ptr, uconcat(get4b(ptr1), c, 4), 8)
+        function _mul(ptr1, ptr2) -> result_ptr {
+            let c := mul(extractValue(ptr1), extractValue(ptr2))
+            result_ptr := allocateTyped(c, get4b(ptr1), 4)
         }
         
-        function _div(ptrs) -> result_ptr {
-            result_ptr := allocate(32)
-            let ptr1 := mload(ptrs)
-            let ptr2 := mload(add(ptrs, 32))
-            let c := div(
-                mslice(add(ptr1, getSignatureLength(ptr1)), getValueLength(ptr1)),
-                mslice(add(ptr2, getSignatureLength(ptr2)), getValueLength(ptr2))
-            )
-            mslicestore(result_ptr, uconcat(get4b(ptr1), c, 4), 8)
+        function _div(ptr1, ptr2) -> result_ptr {
+            let c := div(extractValue(ptr1), extractValue(ptr2))
+            result_ptr := allocateTyped(c, get4b(ptr1), 4)
         }
         
-        function _sdiv(ptrs) -> result_ptr {
-            result_ptr := allocate(32)
-            let ptr1 := mload(ptrs)
-            let ptr2 := mload(add(ptrs, 32))
-            let c := sdiv(
-                mslice(add(ptr1, getSignatureLength(ptr1)), getValueLength(ptr1)),
-                mslice(add(ptr2, getSignatureLength(ptr2)), getValueLength(ptr2))
-            )
-            mslicestore(result_ptr, uconcat(get4b(ptr1), c, 4), 8)
+        function _sdiv(ptr1, ptr2) -> result_ptr {
+            let c := sdiv(extractValue(ptr1), extractValue(ptr2))
+            result_ptr := allocateTyped(c, get4b(ptr1), 4)
         }
         
-        function _mod(ptrs) -> result_ptr {
-            result_ptr := allocate(32)
-            let ptr1 := mload(ptrs)
-            let ptr2 := mload(add(ptrs, 32))
-            let c := mod(
-                mslice(add(ptr1, getSignatureLength(ptr1)), getValueLength(ptr1)),
-                mslice(add(ptr2, getSignatureLength(ptr2)), getValueLength(ptr2))
-            )
-            mslicestore(result_ptr, uconcat(get4b(ptr1), c, 4), 8)
+        function _mod(ptr1, ptr2) -> result_ptr {
+            let c := mod(extractValue(ptr1), extractValue(ptr2))
+            result_ptr := allocateTyped(c, get4b(ptr1), 4)
         }
         
-        function _smod(ptrs) -> result_ptr {
-            result_ptr := allocate(32)
-            let ptr1 := mload(ptrs)
-            let ptr2 := mload(add(ptrs, 32))
-            let c := smod(
-                mslice(add(ptr1, getSignatureLength(ptr1)), getValueLength(ptr1)),
-                mslice(add(ptr2, getSignatureLength(ptr2)), getValueLength(ptr2))
-            )
-            mslicestore(result_ptr, uconcat(get4b(ptr1), c, 4), 8)
+        function _smod(ptr1, ptr2) -> result_ptr {
+            let c := smod(extractValue(ptr1), extractValue(ptr2))
+            result_ptr := allocateTyped(c, get4b(ptr1), 4)
         }
         
-        function _exp(ptrs) -> result_ptr {
-            result_ptr := allocate(32)
-            let ptr1 := mload(ptrs)
-            let ptr2 := mload(add(ptrs, 32))
-            let c := exp(
-                mslice(add(ptr1, getSignatureLength(ptr1)), getValueLength(ptr1)),
-                mslice(add(ptr2, getSignatureLength(ptr2)), getValueLength(ptr2))
-            )
-            // get max sig size
-            // exp - size: 
-            mslicestore(result_ptr, uconcat(get4b(ptr1), c, 4), 8)
+        function _exp(ptr1, ptr2) -> result_ptr {
+            let c := exp(extractValue(ptr1), extractValue(ptr2))
+            // get max sig size ; exp - size: 
+            result_ptr := allocateTyped(c, get4b(ptr1), 4)
         }
         
-        function _not(ptrs) -> result_ptr {
-            result_ptr := allocate(32)
-            let ptr1 := mload(ptrs)
-            let c := not(
-                mslice(add(ptr1, getSignatureLength(ptr1)), getValueLength(ptr1))
-            )
-            mslicestore(result_ptr, uconcat(get4b(ptr1), c, 4), 8)
+        function _not(ptr1) -> result_ptr {
+            let c := not(extractValue(ptr1))
+            result_ptr := allocateTyped(c, get4b(ptr1), 4)
         }
         
-        function _lt(ptrs) -> result_ptr {
-            result_ptr := allocate(32)
-            let ptr1 := mload(ptrs)
-            let ptr2 := mload(add(ptrs, 32))
-            let c := lt(
-                mslice(add(ptr1, getSignatureLength(ptr1)), getValueLength(ptr1)),
-                mslice(add(ptr2, getSignatureLength(ptr2)), getValueLength(ptr2))
-            )
-            mslicestore(result_ptr, uconcat(get4b(ptr1), c, 4), 8)
+        function _lt(ptr1, ptr2) -> result_ptr {
+            let c := lt(extractValue(ptr1), extractValue(ptr2))
+            result_ptr := allocateTyped(c, get4b(ptr1), 4)
         }
         
-        function _gt(ptrs) -> result_ptr {
-            result_ptr := allocate(32)
-            let ptr1 := mload(ptrs)
-            let ptr2 := mload(add(ptrs, 32))
-            let c := gt(
-                mslice(add(ptr1, getSignatureLength(ptr1)), getValueLength(ptr1)),
-                mslice(add(ptr2, getSignatureLength(ptr2)), getValueLength(ptr2))
-            )
-            mslicestore(result_ptr, uconcat(get4b(ptr1), c, 4), 8)
+        function _gt(ptr1, ptr2) -> result_ptr {
+            let c := gt(extractValue(ptr1), extractValue(ptr2))
+            result_ptr := allocateTyped(c, get4b(ptr1), 4)
         }
         
-        function _slt(ptrs) -> result_ptr {
-            result_ptr := allocate(32)
-            let ptr1 := mload(ptrs)
-            let ptr2 := mload(add(ptrs, 32))
-            let c := slt(
-                mslice(add(ptr1, getSignatureLength(ptr1)), getValueLength(ptr1)),
-                mslice(add(ptr2, getSignatureLength(ptr2)), getValueLength(ptr2))
-            )
-            mslicestore(result_ptr, uconcat(get4b(ptr1), c, 4), 8)
+        function _slt(ptr1, ptr2) -> result_ptr {
+            let c := slt(extractValue(ptr1), extractValue(ptr2))
+            result_ptr := allocateTyped(c, get4b(ptr1), 4)
         }
         
-        function _sgt(ptrs) -> result_ptr {
-            result_ptr := allocate(32)
-            let ptr1 := mload(ptrs)
-            let ptr2 := mload(add(ptrs, 32))
-            let c := sgt(
-                mslice(add(ptr1, getSignatureLength(ptr1)), getValueLength(ptr1)),
-                mslice(add(ptr2, getSignatureLength(ptr2)), getValueLength(ptr2))
-            )
-            mslicestore(result_ptr, uconcat(get4b(ptr1), c, 4), 8)
+        function _sgt(ptr1, ptr2) -> result_ptr {
+            let c := sgt(extractValue(ptr1), extractValue(ptr2))
+            result_ptr := allocateTyped(c, get4b(ptr1), 4)
         }
         
-        function _eq(ptrs) -> result_ptr {
-            result_ptr := allocate(32)
-            let ptr1 := mload(ptrs)
-            let ptr2 := mload(add(ptrs, 32))
-            let c := eq(
-                mslice(add(ptr1, getSignatureLength(ptr1)), getValueLength(ptr1)),
-                mslice(add(ptr2, getSignatureLength(ptr2)), getValueLength(ptr2))
-            )
-            mslicestore(result_ptr, uconcat(get4b(ptr1), c, 4), 8)
+        function _eq(ptr1, ptr2) -> result_ptr {
+            let c := eq(extractValue(ptr1), extractValue(ptr2))
+            result_ptr := allocateTyped(c, get4b(ptr1), 4)
         }
         
-        function _iszero(ptrs) -> result_ptr {
-            result_ptr := allocate(32)
-            let ptr1 := mload(ptrs)
-            let c := iszero(
-                mslice(add(ptr1, getSignatureLength(ptr1)), getValueLength(ptr1))
-            )
-            mslicestore(result_ptr, uconcat(get4b(ptr1), c, 4), 8)
+        function _iszero(ptr1) -> result_ptr {
+            let c := iszero(extractValue(ptr1))
+            result_ptr := allocateTyped(c, get4b(ptr1), 4)
         }
         
-        function _and(ptrs) -> result_ptr {
-            result_ptr := allocate(32)
-            let ptr1 := mload(ptrs)
-            let ptr2 := mload(add(ptrs, 32))
-            let c := and(
-                mslice(add(ptr1, getSignatureLength(ptr1)), getValueLength(ptr1)),
-                mslice(add(ptr2, getSignatureLength(ptr2)), getValueLength(ptr2))
-            )
-            mslicestore(result_ptr, uconcat(get4b(ptr1), c, 4), 8)
+        function _and(ptr1, ptr2) -> result_ptr {
+            let c := and(extractValue(ptr1), extractValue(ptr2))
+            result_ptr := allocateTyped(c, get4b(ptr1), 4)
         }
         
-        function _or(ptrs) -> result_ptr {
-            result_ptr := allocate(32)
-            let ptr1 := mload(ptrs)
-            let ptr2 := mload(add(ptrs, 32))
-            let c := or(
-                mslice(add(ptr1, getSignatureLength(ptr1)), getValueLength(ptr1)),
-                mslice(add(ptr2, getSignatureLength(ptr2)), getValueLength(ptr2))
-            )
-            mslicestore(result_ptr, uconcat(get4b(ptr1), c, 4), 8)
+        function _or(ptr1, ptr2) -> result_ptr {
+            let c := or(extractValue(ptr1), extractValue(ptr2))
+            result_ptr := allocateTyped(c, get4b(ptr1), 4)
         }
         
-        function _xor(ptrs) -> result_ptr {
-            result_ptr := allocate(32)
-            let ptr1 := mload(ptrs)
-            let ptr2 := mload(add(ptrs, 32))
-            let c := xor(
-                mslice(add(ptr1, getSignatureLength(ptr1)), getValueLength(ptr1)),
-                mslice(add(ptr2, getSignatureLength(ptr2)), getValueLength(ptr2))
-            )
-            mslicestore(result_ptr, uconcat(get4b(ptr1), c, 4), 8)
+        function _xor(ptr1, ptr2) -> result_ptr {
+            let c := xor(extractValue(ptr1), extractValue(ptr2))
+            result_ptr := allocateTyped(c, get4b(ptr1), 4)
         }
         
-        function _byte(ptrs) -> result_ptr {
-            result_ptr := allocate(32)
-            let ptr1 := mload(ptrs)
-            let ptr2 := mload(add(ptrs, 32))
-            let c := byte(
-                mslice(add(ptr1, getSignatureLength(ptr1)), getValueLength(ptr1)),
-                mslice(add(ptr2, getSignatureLength(ptr2)), getValueLength(ptr2))
-            )
-            mslicestore(result_ptr, uconcat(get4b(ptr1), c, 4), 8)
+        function _byte(ptr1, ptr2) -> result_ptr {
+            let c := byte(extractValue(ptr1), extractValue(ptr2))
+            result_ptr := allocateTyped(c, get4b(ptr1), 4)
         }
         
-        function _shl(ptrs) -> result_ptr {
-            result_ptr := allocate(32)
-            let ptr1 := mload(ptrs)
-            let ptr2 := mload(add(ptrs, 32))
-            let c := shl(
-                mslice(add(ptr1, getSignatureLength(ptr1)), getValueLength(ptr1)),
-                mslice(add(ptr2, getSignatureLength(ptr2)), getValueLength(ptr2))
-            )
-            mslicestore(result_ptr, uconcat(get4b(ptr1), c, 4), 8)
+        function _shl(ptr1, ptr2) -> result_ptr {
+            let c := shl(extractValue(ptr1), extractValue(ptr2))
+            result_ptr := allocateTyped(c, get4b(ptr1), 4)
         }
         
-        function _shr(ptrs) -> result_ptr {
-            result_ptr := allocate(32)
-            let ptr1 := mload(ptrs)
-            let ptr2 := mload(add(ptrs, 32))
-            let c := shr(
-                mslice(add(ptr1, getSignatureLength(ptr1)), getValueLength(ptr1)),
-                mslice(add(ptr2, getSignatureLength(ptr2)), getValueLength(ptr2))
-            )
-            mslicestore(result_ptr, uconcat(get4b(ptr1), c, 4), 8)
+        function _shr(ptr1, ptr2) -> result_ptr {
+            let c := shr(extractValue(ptr1), extractValue(ptr2))
+            result_ptr := allocateTyped(c, get4b(ptr1), 4)
         }
         
-        function _sar(ptrs) -> result_ptr {
-            result_ptr := allocate(32)
-            let ptr1 := mload(ptrs)
-            let ptr2 := mload(add(ptrs, 32))
-            let c := sar(
-                mslice(add(ptr1, getSignatureLength(ptr1)), getValueLength(ptr1)),
-                mslice(add(ptr2, getSignatureLength(ptr2)), getValueLength(ptr2))
-            )
-            mslicestore(result_ptr, uconcat(get4b(ptr1), c, 4), 8)
+        function _sar(ptr1, ptr2) -> result_ptr {
+            let c := sar(extractValue(ptr1), extractValue(ptr2))
+            result_ptr := allocateTyped(c, get4b(ptr1), 4)
         }
         
-        function _addmod(ptrs) -> result_ptr {
-            result_ptr := allocate(32)
-            let ptr1 := mload(ptrs)
-            let ptr2 := mload(add(ptrs, 32))
-            let ptr3 := mload(add(ptrs, 64))
-            let c := addmod(
-                mslice(add(ptr1, getSignatureLength(ptr1)), getValueLength(ptr1)),
-                mslice(add(ptr2, getSignatureLength(ptr2)), getValueLength(ptr2)),
-                mslice(add(ptr3, getSignatureLength(ptr3)), getValueLength(ptr3))
-            )
-            mslicestore(result_ptr, uconcat(get4b(ptr1), c, 4), 8)
+        function _addmod(ptr1, ptr2, ptr3) -> result_ptr {
+            let c := addmod(extractValue(ptr1), extractValue(ptr2), extractValue(ptr3))
+            result_ptr := allocateTyped(c, get4b(ptr1), 4)
         }
         
-        function _mulmod(ptrs) -> result_ptr {
-            result_ptr := allocate(32)
-            let ptr1 := mload(ptrs)
-            let ptr2 := mload(add(ptrs, 32))
-            let ptr3 := mload(add(ptrs, 64))
-            let c := mulmod(
-                mslice(add(ptr1, getSignatureLength(ptr1)), getValueLength(ptr1)),
-                mslice(add(ptr2, getSignatureLength(ptr2)), getValueLength(ptr2)),
-                mslice(add(ptr3, getSignatureLength(ptr3)), getValueLength(ptr3))
-            )
-            mslicestore(result_ptr, uconcat(get4b(ptr1), c, 4), 8)
+        function _mulmod(ptr1, ptr2, ptr3) -> result_ptr {
+            let c := mulmod(extractValue(ptr1), extractValue(ptr2), extractValue(ptr3))
+            result_ptr := allocateTyped(c, get4b(ptr1), 4)
         }
         
-        function _signextend(ptrs) -> result_ptr {
-            result_ptr := allocate(32)
-            let ptr1 := mload(ptrs)
-            let ptr2 := mload(add(ptrs, 32))
-            let c := signextend(
-                mslice(add(ptr1, getSignatureLength(ptr1)), getValueLength(ptr1)),
-                mslice(add(ptr2, getSignatureLength(ptr2)), getValueLength(ptr2))
-            )
-            mslicestore(result_ptr, uconcat(get4b(ptr1), c, 4), 8)
+        function _signextend(ptr1, ptr2) -> result_ptr {
+            let c := signextend(extractValue(ptr1), extractValue(ptr2))
+            result_ptr := allocateTyped(c, get4b(ptr1), 4)
         }
         
         function _keccak256(ptrs) -> result_ptr {

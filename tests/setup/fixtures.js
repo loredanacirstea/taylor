@@ -49,6 +49,7 @@ const deployContract = signer => async filePath => {
   };
   const response = await signer.sendTransaction(transaction);
   const receipt = await response.wait();
+  console.log('* Deploy ' + filePath + ': ' + receipt.gasUsed);
   return receipt.contractAddress;
 }
 

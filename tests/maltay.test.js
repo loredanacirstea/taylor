@@ -250,8 +250,9 @@ it('test evm functions', async function() {
     expect(resp).toBe(0xc);
 
     // TODO calls
-
-    resp = await MalTay.call_raw(expr2h('(balance "0xfffFd05c2b12cfE3c74464531f88349e159785ea")'));
+    
+    const account = await MalTay.provider.getSigner(5).getAddress();
+    resp = await MalTay.call_raw(expr2h(`(balance "${account}")`));
     expect(resp).toBe('0x0a9100200000000000000000000000000000000000000000000000056bc75e2d63100000');
 
     resp = await MalTay.call_raw(expr2h('(codesize)'));
