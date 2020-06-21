@@ -399,10 +399,14 @@ object "Taylor" {
             }
             // 0x9800004a is _if
             case 0x9000004c {
-                result_ptr := _contig(add(arg_ptrs_ptr, 32))
+                let ptr1 := mload(add(arg_ptrs_ptr, 32))
+                let ptr2 := mload(add(arg_ptrs_ptr, 64))
+                result_ptr := _contig(ptr1, ptr2)
             }
             case 0x9000004e {
-                result_ptr := _concat(add(arg_ptrs_ptr, 32))
+                let ptr1 := mload(add(arg_ptrs_ptr, 32))
+                let ptr2 := mload(add(arg_ptrs_ptr, 64))
+                result_ptr := _concat(ptr1, ptr2)
             }
             case 0x90000050 {
                 result_ptr := _map(arg_ptrs_ptr)
@@ -420,13 +424,13 @@ object "Taylor" {
                 result_ptr := _rest(add(arg_ptrs_ptr, 32))
             }
             case 0x8800005a {
-                result_ptr := _empty(add(arg_ptrs_ptr, 32))
+                result_ptr := _empty(mload(add(arg_ptrs_ptr, 32)))
             }
             case 0x8800005c {
-                result_ptr := _true(add(arg_ptrs_ptr, 32))
+                result_ptr := _true(mload(add(arg_ptrs_ptr, 32)))
             }
             case 0x8800005e {
-                result_ptr := _false(add(arg_ptrs_ptr, 32))
+                result_ptr := _false(mload(add(arg_ptrs_ptr, 32)))
             }
             // register!
             case 0x880000c0 {
@@ -1277,9 +1281,7 @@ object "Taylor" {
             // c := staticcall(gas(), a, inptr, insize, outptr, outsize)
         }
 
-        function _contig(ptrs) -> result_ptr {
-            let ptr1 := mload(ptrs)
-            let ptr2 := mload(add(ptrs, 32))
+        function _contig(ptr1, ptr2) -> result_ptr {
             dtrequire(isNumber(ptr1), 0xe010)
             dtrequire(isBytes(ptr2), 0xe010)
 
@@ -1300,9 +1302,7 @@ object "Taylor" {
             }
         }
 
-        function _concat(ptrs) -> result_ptr {
-            let ptr1 := mload(ptrs)
-            let ptr2 := mload(add(ptrs, 32))
+        function _concat(ptr1, ptr2) -> result_ptr {
             let len1 := bytesSize(mslice(ptr1, 4))
             let len2 := bytesSize(mslice(ptr2, 4))
             let newsig := buildBytesSig(add(len1, len2))
@@ -1313,8 +1313,7 @@ object "Taylor" {
             mmultistore(add(add(result_ptr, 4), len1), add(ptr2, 4), len2)
         }
 
-        function _empty(ptrs) -> result_ptr {
-            let list_ptr := mload(ptrs)
+        function _empty(list_ptr) -> result_ptr {
             let sig := mslice(list_ptr, 4)
             let list_arity := listTypeSize(sig)
             result_ptr := allocate(4)
@@ -1324,15 +1323,15 @@ object "Taylor" {
             ), 4)
         }
 
-        function _true(ptrs) -> result_ptr {
-            let sig := mslice(mload(ptrs), 4)
+        function _true(ptr1) -> result_ptr {
+            let sig := mslice(ptr1, 4)
             mslicestore(result_ptr, buildBoolSig(
                 and(isBool(sig), eq(and(sig, 0xffff), 1))
             ), 4)
         }
 
-        function _false(ptrs) -> result_ptr {
-            let sig := mslice(mload(ptrs), 4)
+        function _false(ptr1) -> result_ptr {
+            let sig := mslice(ptr1, 4)
             mslicestore(result_ptr, buildBoolSig(
                 and(isBool(sig), eq(and(sig, 0xffff), 0))
             ), 4)
@@ -1856,9 +1855,7 @@ object "Taylor" {
             let arity := arrayTypeSize(mslice(data_ptr, 4))
 
             let index := _savedynInner(itemsig, arity, data_ptr)
-            result_ptr := allocate(8)
-            mslicestore(result_ptr, buildUintSig(4), 4)
-            mslicestore(add(result_ptr, 4), index, 4)
+            result_ptr := allocateTyped(index, buildUintSig(4), 4)
         }
 
         function _savedynInner(itemsig, arity, data_ptr) -> _index {
@@ -1925,9 +1922,7 @@ object "Taylor" {
             arity := add(arity, 1)
             sstore(key, arity)
             // TODO what to return? entire array?
-            result_ptr := allocate(8)
-            mslicestore(result_ptr, buildUintSig(4), 4)
-            mslicestore(add(result_ptr, 4), index, 4)
+            result_ptr := allocateTyped(index, buildUintSig(4), 4)
         }
 
         function _getdyn(ptrs) -> result_ptr {
