@@ -154,6 +154,7 @@ nativeTypes.Bool = getnumberid(1)
 nativeTypes.Uint = getnumberid(4)
 nativeTypes.Address = getbytesid(20)
 nativeTypes.Bytes32 = getbytesid(32)
+nativeTypes.Map = (parseInt(nativeTypes.Map, 16) - 1).toString(16).padStart(8, '0')
 
 const encodeInner = (types, values) => {
     if (types.length !== values.length) throw new Error('Encode - different lengths.');
@@ -216,16 +217,8 @@ const decodeInner = (sig, data) => {
         return { result, data };
     } else if (isBytelike(sig)) {
         const length = bytelikeSize(sig);
-        result = data.substring(0, length*2)
-
-        if (length === 32) {
-            result = result.hexDecode();
-        } else {
-            result = '0x' + result
-        }
-        
+        result = '0x' + data.substring(0, length*2)
         data = data.substring(length*2);
-
         return { result, data };
     } else if (isListType(sig)) {
         const length = listTypeSize(sig);

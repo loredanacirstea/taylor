@@ -264,7 +264,7 @@ it('test evm functions', async function() {
     expect(parseInt(resp.substring(10), 16)).toBeGreaterThan(0);
 })
 
-it('test compact dynamic storage', async function () {
+it('test compact dynamic length storage', async function () {
     let resp, receipt;
     const count = 36;
     const maxLength = 80;
@@ -1091,60 +1091,37 @@ describe.each([
     });
 });
 
-it.skip('mapping', async function() {
-    let resp;
+describe('test mapping', function () {
+    it('value: simple type', async function() {
+        let resp;
+        
+        await MalTay.send('(defmap! "balances" Address Uint)');
+        resp = await MalTay.call('(getfrom Map 0)');
+        expect(resp).toBe(expr2h('(Address)') + expr2h('(Uint)').substring(2))
 
-    // (def! defmap! (fn* (name valuetype) (store! (keccak256 100 name) (or 8388608 (save! valuetype "0x800000")) )  ))
+        await MalTay.send('(mapset! "balances" (caller) 3)');
+        resp = await MalTay.call('(mapget "balances" (caller))');
+        expect(resp).toBe(3);
+    });
 
-    // await MalTay.send('(def! defmap! (fn* (name valuetype) (store! (keccak256 100 name) (or 8388608 (save! valuetype "0x800000")) )  ))');
+    it('value: struct type', async function() {
+        let resp;
 
-    // // await MalTay.send('(defmap! "amap" "0x0a910004")');
-    // console.log(expr2h('(defmap! "amap" "0x0a910004")'));
+        await MalTay.send('(defstruct! Voter (list Uint Bool Uint))');
+        await MalTay.send('(defmap! "voters" Address "Voter")');
 
-    // await MalTay.send('(defmap! "voters" Address "Voter")');
+        // TODO: (getsig Voter)
+        resp = await MalTay.call('(getfrom Map 1)');
+        expect(resp.substring(0, 18)).toBe(expr2h('(Address)'));
 
+        await MalTay.send('(mapset! "voters" (caller) (struct! "Voter" (list 3 true 66) ))');
 
-    
+        resp = await MalTay.call(`(list-struct (getfrom "Voter" 0))`);
+        expect(resp).toEqual([3, 1, 66]);
 
-    // await MalTay.send('(defmap! "voters" Address Uint)');
-
-    // resp = await MalTay.call('(getfrom Map 0)');
-    // console.log('resp', resp);
-
-    // await MalTay.send('(mapset! "voters" (caller) 3)');
-
-    // resp = await MalTay.call('(mapget "voters" (caller))');
-    // console.log('resp', resp);
-
-
-
-return;
-
-    
-    await MalTay.send('(defstruct! Voter (list Uint Bool Uint))');
-
-    await MalTay.send('(defmap! "voters" Address "Voter")');
-
-    resp = await MalTay.call('(getfrom Map 0)');
-    console.log('resp', resp);
-
-    await MalTay.send('(mapset! "voters" (caller) (struct! "Voter" (list 3 true 66) ))');
-
-    resp = await MalTay.call('(mapget "voters" (caller))');
-    console.log('resp', resp);
-
-    resp = await MalTay.call('(getfrom Uint 0)');
-    console.log('1resp', resp);
-    resp = await MalTay.call('(getfrom Uint 1)');
-    console.log('2resp', resp);
-    resp = await MalTay.call('(getfrom Bool 0)');
-    console.log('3resp', resp);
-
-    resp = await MalTay.call(`(list-struct (getfrom "Voter" 0))`);
-    console.log('4resp', resp);
-    resp = await MalTay.call(`(list-struct (mapget "voters" (caller)))`);
-    console.log('5resp', resp);
-
+        resp = await MalTay.call(`(list-struct (mapget "voters" (caller)))`);
+        expect(resp).toEqual([3, 1, 66]);
+    });
 });
 
 it.only('ttttttt', async function() {
