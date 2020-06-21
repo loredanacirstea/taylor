@@ -1420,63 +1420,78 @@ object "Taylor" {
             // pointer to data that has to be inserted
             let data_ptr := mload(ptrs)
 
+            // save at specific type (optional)
             let typename_ptr := add(mload(add(ptrs, 32)), 4)
 
             // type signature - data is of this type
-            let typesig := mslice(typename_ptr, getSignatureLength(typename_ptr))
-            let typesize := getValueLength(typename_ptr)
-            if eq(typesig, 0) {
-                typesig := mslice(data_ptr, getSignatureLength(data_ptr))
-                typesize := getValueLength(data_ptr)
-            }
-
-            let index := _saveInner(typesig, typesize, data_ptr)
-            result_ptr := allocate(8)
-            mslicestore(result_ptr, buildUintSig(4), 4)
-            mslicestore(add(result_ptr, 4), index, 4)
-        }
-
-        function _saveInner(typesig, typesize, data_ptr) -> _index {
-            // get last inserted index - i
-            let last_index := getStorageCount(typesig)
-            let storage_pos := 0
+            let siglen := getSignatureLength(typename_ptr)
+            let typesig := mslice(typename_ptr, siglen)
+            let vallen := getValueLength(typename_ptr)
             
-            switch typesize
+            // (save! "0x..." "0x04000000" )
+            let abstract_type := and(gt(typesig, 0), eq(vallen, 0))
+            
+            let index := 0
+
+            switch abstract_type
             // dynamic size
-            case 0 {
-                let start_delta := 32
-                // length of data to be inserted
-                let data_len := getValueLength(data_ptr)
-            
-                let j := div(last_index, start_delta)
-                let start_ind_lengths := mul(j, start_delta)
-
-                let start_i := getStartAtIndex(j, typesig)
-
-                let offset_len := 0
-                if gt(mod(last_index, start_delta), 0) {
-                    offset_len := getLengthOffset(start_ind_lengths, last_index, typesig, start_delta)
-                }
-                
-                // store start only for mod(i, 32) === 0
-                if eq(0, mod(last_index, start_delta)) {
-                    if gt(last_index, 0) {
-                        start_i := storeStart(j, last_index, typesig, start_delta, data_len)
-                    }
-                }
-
-                storage_pos := add(start_i, offset_len)
-
-                // store length
-                storeLength(j, last_index, typesig, start_delta, data_len)
+            case 1 {
+                siglen := getSignatureLength(data_ptr)
+                vallen := getValueLength(data_ptr)
+                index := _saveInnerDynamicSize(typesig, vallen, add(data_ptr, siglen))
             }
             // static size
-            default {
-                storage_pos := mul(last_index, typesize)
+            case 0 {
+                if eq(typesig, 0) {
+                    siglen := getSignatureLength(data_ptr)
+                    typesig := mslice(data_ptr, siglen)
+                    vallen := getValueLength(data_ptr)
+                }
+                index := _saveInnerStaticSize(typesig, vallen, add(data_ptr, siglen))
             }
 
+            result_ptr := allocateTyped(index, buildUintSig(4), 4)
+        }
+
+        // value_ptr does not contain the signature
+        function _saveInnerStaticSize(typesig, value_len, value_ptr) -> _index {
+            _index := getStorageCount(typesig)
+            let storage_pos := mul(_index, value_len)
+
+            storeAtPos(storage_pos, typesig, value_len, value_ptr)
+            incStorageCount(typesig)
+        }
+
+        // data_ptr does not contain the signature
+        function _saveInnerDynamicSize(typesig, data_len, data_ptr) -> _index {
+            let last_index := getStorageCount(typesig)
+
+            let start_delta := 32
+        
+            let j := div(last_index, start_delta)
+            let start_ind_lengths := mul(j, start_delta)
+
+            let start_i := getStartAtIndex(j, typesig)
+
+            let offset_len := 0
+            if gt(mod(last_index, start_delta), 0) {
+                offset_len := getLengthOffset(start_ind_lengths, last_index, typesig, start_delta)
+            }
+            
+            // store start only for mod(i, 32) === 0
+            if eq(0, mod(last_index, start_delta)) {
+                if gt(last_index, 0) {
+                    start_i := storeStart(j, last_index, typesig, start_delta, data_len)
+                }
+            }
+
+            let storage_pos := add(start_i, offset_len)
+
+            // store length
+            storeLength(j, last_index, typesig, start_delta, data_len)
+
             // store value
-            storeAtPos(storage_pos, typesig, data_ptr)
+            storeAtPos(storage_pos, typesig, data_len, data_ptr)
 
             // store new count
             incStorageCount(typesig)
@@ -1632,15 +1647,15 @@ object "Taylor" {
             sstore(key, values)
             newstart := mul(newstart, 32)
         }
-
-        function storeAtPos(storage_pos, typesig, data_ptr) {
+        
+        // data_len := getValueLength(ptr); data_ptr := add(ptr, getSignatureLength(ptr))
+        function storeAtPos(storage_pos, typesig, data_len, data_ptr) {
             let storage_slot := div(storage_pos, 32)
             let storage_offset := mod(storage_pos, 32)
             let key := mappingArrayStorageKey_values(storage_slot, typesig)
             let values := sload(key)
-            let data_len := getValueLength(data_ptr)
 
-            data_ptr := add(data_ptr, getSignatureLength(data_ptr))
+            // data_ptr := add(data_ptr, getSignatureLength(data_ptr))
 
             let head_len := min(sub(32, storage_offset), data_len)
             let head := mslice(data_ptr, head_len)
@@ -1707,12 +1722,11 @@ object "Taylor" {
             let struct_abstract_id := 0x20000000
 
             let data_len := getTypedLength(typelist_ptr)
-            let newdata_ptr := allocate(add(data_len, 4))
-            mslicestore(newdata_ptr, buildBytesSig(data_len), 4)
-            mmultistore(add(newdata_ptr, 4), typelist_ptr, data_len)
+            let newdata_ptr := allocate(data_len)
+            mmultistore(newdata_ptr, typelist_ptr, data_len)
 
             // struct abstract id
-            let id := _saveInner(struct_abstract_id, 0, newdata_ptr)
+            let id := _saveInnerDynamicSize(struct_abstract_id, data_len, newdata_ptr)
             sig := structSigFromId(id, arity)
 
             // TODO: this should be in save & saved under a signature type
@@ -1758,34 +1772,30 @@ object "Taylor" {
             let name_ptr := mload(ptrs)
             let valueslist_ptr := mload(add(ptrs, 32))
 
+            // Get struct's signature from name
             let name := mload(add(name_ptr, 4))
             let storageKey := mappingArrayStorageKey_names(name)
             let sig := shr(224, sload(storageKey))
 
-            // TODO: get struct from storage by signature
-            // typecheck values & cast if neccessary/possible
+            // TODO: typecheck values & cast if neccessary/possible
 
             let list_arity := listTypeSize(mslice(valueslist_ptr, 4))
+            let struct_ptr := allocate(mul(list_arity, 4))
 
-            let struct_ptr := allocate(add(4, mul(list_arity, 4)))
-            mslicestore(struct_ptr, sig, 4)
-
-            let res_ptr := add(struct_ptr, 4)
+            let res_ptr := struct_ptr
             let val_ptr := add(valueslist_ptr, 4)
 
             for { let i := 0 } lt(i, list_arity) { i := add(i, 1) } {
                 let typesig := getSignature(val_ptr)
-                let typesize := getValueLength(val_ptr)
-                // let index := _saveInner(typesig, typesize, add(val_ptr, getSignatureLength(val_ptr)))
-
-                let index := _saveInner(typesig, typesize, val_ptr)
+                let value_len := getValueLength(val_ptr)
+                let index := _saveInnerStaticSize(typesig, value_len, add(val_ptr, getSignatureLength(val_ptr)))
                 
                 mslicestore(res_ptr, index, 4)
                 res_ptr := add(res_ptr, 4)
                 val_ptr := add(val_ptr, getTypedLength(val_ptr))
             }
 
-            let index := _saveInner(sig, mul(list_arity, 4), struct_ptr)
+            let index := _saveInnerStaticSize(sig, mul(list_arity, 4), struct_ptr)
             result_ptr := allocate(8)
             mslicestore(result_ptr, buildUintSig(4), 4)
             mslicestore(add(result_ptr, 4), index, 4)
@@ -2050,13 +2060,12 @@ object "Taylor" {
             let keytype_len := getTypedLength(keytype_ptr)
             let valtype_len := getTypedLength(valtype_ptr)
             
-            let data_len := add(add(keytype_len, valtype_len), 4)
+            let data_len := add(keytype_len, valtype_len)
             let data_ptr := allocate(data_len)
-            mslicestore(data_ptr, buildListTypeSig(2), 4)
-            mmultistore(add(data_ptr, 4), keytype_ptr, keytype_len)
-            mmultistore(add(4, add(data_ptr, keytype_len)), valtype_ptr, valtype_len)
+            mmultistore(data_ptr, keytype_ptr, keytype_len)
+            mmultistore(add(data_ptr, keytype_len), valtype_ptr, valtype_len)
 
-            let id := _saveInner(sub(0x800000, 1), 0, data_ptr)
+            let id := _saveInnerDynamicSize(sub(0x800000, 1), data_len, data_ptr)
             sig := mapSigFromId(id)
 
             let name := mload(add(name_ptr, 4))
@@ -2078,7 +2087,7 @@ object "Taylor" {
             // TODO: typecheck key value
 
             // First save value under its apropriate type
-            let val_id := _saveInner(getSignature(val_ptr), getValueLength(val_ptr), val_ptr)
+            let val_id := _saveInnerStaticSize(getSignature(val_ptr), getValueLength(val_ptr), add(val_ptr, getSignatureLength(val_ptr)))
 
             // Hash mapping key with mapping's signature
             let key := mappingKey(sig, key_ptr)
