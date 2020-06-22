@@ -1474,7 +1474,7 @@ object "Taylor" {
 
         // value_ptr does not contain the signature
         function _saveInnerStaticSize(typesig, value_len, value_ptr) -> _index {
-            _index := getStorageCount(typesig)
+            _index := add(getStorageCount(typesig), 1)
             let storage_pos := mul(_index, value_len)
 
             storeAtPos(storage_pos, typesig, value_len, value_ptr)
@@ -1483,7 +1483,7 @@ object "Taylor" {
 
         // data_ptr does not contain the signature
         function _saveInnerDynamicSize(typesig, data_len, data_ptr) -> _index {
-            let last_index := getStorageCount(typesig)
+            let last_index := add(getStorageCount(typesig), 1)
 
             let start_delta := 32
         
@@ -1926,8 +1926,8 @@ object "Taylor" {
 
         function _savedynInner(itemsig, arity, data_ptr) -> _index {
             // let typesig := 0x40000000
-            // get last inserted index - i
-            let last_index := getStorageCountDyn(itemsig)
+            // get last inserted index
+            let last_index := add(getStorageCountDyn(itemsig), 1)
 
             let key := mappingArrayDynStorageKey_values(last_index, itemsig)
 
