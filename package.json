@@ -26,7 +26,7 @@
   },
   "dependencies": {
     "ethers": "^4.0.47",
-    "solc": "0.5.7"
+    "solc": "^0.6.10"
   },
   "publishConfig": {
     "access": "public"

@@ -43,10 +43,10 @@ object "Taylor" {
         }
         
         setTxGas()
-        let end, res := eval(_calldata, 0)
+        let end, response := eval(_calldata, 0)
         // pay if not owner
         payForSave()
-        return (res, getTypedLength(res))
+        return (response, getTypedLength(response))
         
         function eval(data_ptr, env_ptr) -> end_ptr, result_ptr {
             let sig := get4b(data_ptr)
@@ -967,7 +967,7 @@ object "Taylor" {
 
         function _applyInner(arity, lambda_body_ptr, arg_ptrs) -> _data_ptr {
             let args_ptr := _join_ptrs(arity, arg_ptrs)
-            let end, res := eval(lambda_body_ptr, args_ptr)
+            let endd, res := eval(lambda_body_ptr, args_ptr)
             _data_ptr := res
         }
 
@@ -1050,7 +1050,7 @@ object "Taylor" {
                 mslicestore(dataptr, sig, 4)
                 mmultistore(add(dataptr, 4), arg_ptr, arglen)
 
-                let end, res := eval(dataptr, 0)
+                let endd, res := eval(dataptr, 0)
                 mstore(add(results_ptrs, mul(i, 32)), res)
 
                 let arg_len := getTypedLength(arg_ptr)
@@ -1070,7 +1070,7 @@ object "Taylor" {
 
             // iterate over list & apply function on each arg
             for { let i := 0 } lt(i, list_arity) { i := add(i, 1) } {
-                let end, res := eval(lambda_body_ptr, arg_ptr)
+                let endd, res := eval(lambda_body_ptr, arg_ptr)
                 mstore(add(results_ptrs, mul(i, 32)), res)
 
                 let arg_len := getTypedLength(arg_ptr)
@@ -1110,7 +1110,7 @@ object "Taylor" {
                 mmultistore(add(dataptr, 4), accum_ptr, accum_length)
                 mmultistore(add(add(dataptr, 4), accum_length), arg_ptr, arg_length)
 
-                let end, res := eval(dataptr, 0)
+                let endd, res := eval(dataptr, 0)
 
                 mmultistore(accum_ptr, res, getTypedLength(res))
                 arg_ptr := add(arg_ptr, arg_length)
@@ -1139,7 +1139,7 @@ object "Taylor" {
                 let currentarg := allocate(32)
                 mmultistore(currentarg, arg_ptr, arg_length)
                 
-                let end, res := eval(lambda_body_ptr, newargs)
+                let endd, res := eval(lambda_body_ptr, newargs)
   
                 mmultistore(accum_ptr, res, getTypedLength(res))
                 arg_ptr := add(arg_ptr, arg_length)
@@ -2194,11 +2194,11 @@ object "Taylor" {
             }
         }
 
-        // function mslice(position, length) -> result {
-        //   if gt(length, 32) { revert(0, 0) } // protect against overflow
+        function mslice(position, length) -> result {
+          if gt(length, 32) { revert(0, 0) } // protect against overflow
         
-        //   result := shr(sub(256, mul(length, 8)), mload(position))
-        // }
+          result := shr(sub(256, mul(length, 8)), mload(position))
+        }
 
         function freeMemPtr() -> ptr {
             ptr := mload(0x40)
@@ -2253,13 +2253,13 @@ object "Taylor" {
                     let remaining := sub(sizeBytes, storedBytes)
                     switch gt(remaining, 31)
                     case 1 {
-                        mstore(safeAdd(_ptr_target, storedBytes), mload(safeAdd(_ptr_source, storedBytes)))
+                        mstore(add(_ptr_target, storedBytes), mload(add(_ptr_source, storedBytes)))
                         storedBytes := add(storedBytes, 32)
                     }
                     case 0 {
                         mslicestore(
-                            safeAdd(_ptr_target, storedBytes),
-                            mslice(safeAdd(_ptr_source, storedBytes), remaining),
+                            add(_ptr_target, storedBytes),
+                            mslice(add(_ptr_source, storedBytes), remaining),
                             remaining
                         )
                         storedBytes := add(storedBytes, remaining)
@@ -2361,37 +2361,46 @@ object "Taylor" {
         // mapping(bytes32(max) => *)
         function mappingStorageKey(storageIndex, key) -> storageKey {
             let ptr := allocate(64)
-            mstore(ptr, key, storageIndex)
+            mstore(ptr, key)
+            mstore(add(ptr, 32), storageIndex)
             storageKey := keccak256(ptr, 64)
         }
 
         function mappingArrayStorageKey_starts(index, typesig) -> storageKey {
             let ptr := allocate(96)
-            mstore(ptr, typesig, 0, index)
+            mstore(ptr, typesig)
+            mstore(add(ptr, 32), 0)
+            mstore(add(ptr, 64), index)
             storageKey := keccak256(ptr, 96)
         }
 
         function mappingArrayStorageKey_lengths(index, typesig) -> storageKey {
             let ptr := allocate(96)
-            mstore(ptr, typesig, 1, index)
+            mstore(ptr, typesig)
+            mstore(add(ptr, 32), 1)
+            mstore(add(ptr, 64), index)
             storageKey := keccak256(ptr, 96)
         }
 
         function mappingArrayStorageKey_values(index, typesig) -> storageKey {
             let ptr := allocate(96)
-            mstore(ptr, typesig, 3, index)
+            mstore(ptr, typesig)
+            mstore(add(ptr, 32), 3)
+            mstore(add(ptr, 64), index)
             storageKey := keccak256(ptr, 96)
         }
 
         function mappingArrayStorageKey_count(typesig) -> storageKey {
             let ptr := allocate(64)
-            mstore(ptr, typesig, 4)
+            mstore(ptr, typesig)
+            mstore(add(ptr, 32), 4)
             storageKey := keccak256(ptr, 64)
         }
 
         function mappingArrayStorageKey_names(name) -> storageKey {
             let ptr := allocate(64)
-            mstore(ptr, 5, name)
+            mstore(ptr, 5)
+            mstore(add(ptr, 32), name)
             storageKey := keccak256(ptr, 64)
         }
 
@@ -2401,13 +2410,16 @@ object "Taylor" {
 
         function mappingArrayDynStorageKey_values(index, typesig) -> storageKey {
             let ptr := allocate(96)
-            mstore(ptr, typesig, 8, index)
+            mstore(ptr, typesig)
+            mstore(add(ptr, 32), 8)
+            mstore(add(ptr, 64), index)
             storageKey := keccak256(ptr, 96)
         }
 
         function mappingArrayDynStorageKey_count(typesig) -> storageKey {
             let ptr := allocate(64)
-            mstore(ptr, typesig, 9)
+            mstore(ptr, typesig)
+            mstore(add(ptr, 32), 9)
             storageKey := keccak256(ptr, 64)
         }
 
