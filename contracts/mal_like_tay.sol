@@ -1191,52 +1191,52 @@ object "Taylor" {
         
         function _not(ptr1) -> result_ptr {
             let c := not(extractValue(ptr1))
-            result_ptr := allocateTyped(c, get4b(ptr1), 4)
+            result_ptr := allocateTyped(c, buildUintSig(4), 4)
         }
         
         function _lt(ptr1, ptr2) -> result_ptr {
             let c := lt(extractValue(ptr1), extractValue(ptr2))
-            result_ptr := allocateTyped(c, get4b(ptr1), 4)
+            result_ptr := allocateTyped(c, buildUintSig(4), 4)
         }
         
         function _gt(ptr1, ptr2) -> result_ptr {
             let c := gt(extractValue(ptr1), extractValue(ptr2))
-            result_ptr := allocateTyped(c, get4b(ptr1), 4)
+            result_ptr := allocateTyped(c, buildUintSig(4), 4)
         }
         
         function _slt(ptr1, ptr2) -> result_ptr {
             let c := slt(extractValue(ptr1), extractValue(ptr2))
-            result_ptr := allocateTyped(c, get4b(ptr1), 4)
+            result_ptr := allocateTyped(c, buildUintSig(4), 4)
         }
         
         function _sgt(ptr1, ptr2) -> result_ptr {
             let c := sgt(extractValue(ptr1), extractValue(ptr2))
-            result_ptr := allocateTyped(c, get4b(ptr1), 4)
+            result_ptr := allocateTyped(c, buildUintSig(4), 4)
         }
         
         function _eq(ptr1, ptr2) -> result_ptr {
             let c := eq(extractValue(ptr1), extractValue(ptr2))
-            result_ptr := allocateTyped(c, get4b(ptr1), 4)
+            result_ptr := allocateTyped(c, buildUintSig(4), 4)
         }
         
         function _iszero(ptr1) -> result_ptr {
             let c := iszero(extractValue(ptr1))
-            result_ptr := allocateTyped(c, get4b(ptr1), 4)
+            result_ptr := allocateTyped(c, buildUintSig(4), 4)
         }
         
         function _and(ptr1, ptr2) -> result_ptr {
             let c := and(extractValue(ptr1), extractValue(ptr2))
-            result_ptr := allocateTyped(c, get4b(ptr1), 4)
+            result_ptr := allocateTyped(c, buildUintSig(4), 4)
         }
         
         function _or(ptr1, ptr2) -> result_ptr {
             let c := or(extractValue(ptr1), extractValue(ptr2))
-            result_ptr := allocateTyped(c, get4b(ptr1), 4)
+            result_ptr := allocateTyped(c, buildUintSig(4), 4)
         }
         
         function _xor(ptr1, ptr2) -> result_ptr {
             let c := xor(extractValue(ptr1), extractValue(ptr2))
-            result_ptr := allocateTyped(c, get4b(ptr1), 4)
+            result_ptr := allocateTyped(c, buildUintSig(4), 4)
         }
         
         function _byte(ptr1, ptr2) -> result_ptr {
