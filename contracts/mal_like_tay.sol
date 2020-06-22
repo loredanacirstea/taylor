@@ -58,9 +58,8 @@ object "Taylor" {
                     // replace variables from lambdas
                     let index := mslice(add(data_ptr, 4), 4)
                     let value_ptr := add(env_ptr, mul(index, 32))
-                    let size := getTypedLength(value_ptr)
                     result_ptr := value_ptr
-                    end_ptr := add(data_ptr, size)
+                    end_ptr := add(data_ptr, 8)
                 }
                 case 0 {
                     let size := getTypedLength(data_ptr)
