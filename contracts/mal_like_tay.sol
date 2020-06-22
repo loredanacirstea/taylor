@@ -501,7 +501,9 @@ object "Taylor" {
                 result_ptr := _mapset(add(arg_ptrs_ptr, 32))
             }
             case 0x90000122 {
-                result_ptr := _mapget(add(arg_ptrs_ptr, 32))
+                let name_ptr := mload(add(arg_ptrs_ptr, 32))
+                let key_ptr := mload(add(arg_ptrs_ptr, 64))
+                result_ptr := _mapget(name_ptr, key_ptr)
             }
 
             default {
@@ -791,8 +793,16 @@ object "Taylor" {
                 done := 1
             }
             if and(eq(done, 0), isStruct(ptr)) {
-                // it contains u32 pointers to data; 
-                _length := mul(structSize(sig), 4)
+                let storage_ref := structStoredFromSig(sig)
+                switch storage_ref
+                case 1 {
+                    // if storage reference, it only contains a u4 storage id/index
+                    _length := 4
+                }
+                default {
+                    // it contains u32 pointers to data; 
+                    _length := mul(structSize(sig), 4)
+                }
                 done := 1
             }
             if and(eq(done, 0), isListType(sig)) {
@@ -890,13 +900,23 @@ object "Taylor" {
             signature := add(exp(2, 30), arity)
         }
 
-        function structSigFromId(id, arity) -> signature {
+        function structSigFromId(id, arity, stored) -> signature {
             // signature :=  '001' * bit4 arity * bit24 id * bit1 stored?
-            signature := add(add(add(exp(2, 29), shl(25, arity)), shl(1, id)), 1)
+            dtrequire(or(eq(stored, 1), eq(stored, 0)), 0xeeaa)
+            signature := add(add(add(exp(2, 29), shl(25, arity)), shl(1, id)), stored)
         }
 
+        function structSigStoredChange(sig, stored) -> newsig {
+            newsig := add(shr(1, shl(1, sig)), stored)
+        }
+
+        function structStoredFromSig(sig) -> stored {
+            stored := shr(31, shl(31, sig))
+        }
+
+        // 3,4,24,1
         function structIdFromSig(signature) -> index {
-            index := shl(8, and(signature, 0x1fffffe))
+            index := shr(1, and(signature, 0x1fffffe))
         }
 
         function mapSigFromId(id) -> signature {
@@ -1727,7 +1747,7 @@ object "Taylor" {
 
             // struct abstract id
             let id := _saveInnerDynamicSize(struct_abstract_id, data_len, newdata_ptr)
-            sig := structSigFromId(id, arity)
+            sig := structSigFromId(id, arity, 0)
 
             // TODO: this should be in save & saved under a signature type
             // and functions should be stored in the same way
@@ -1797,7 +1817,7 @@ object "Taylor" {
 
             let index := _saveInnerStaticSize(sig, mul(list_arity, 4), struct_ptr)
             result_ptr := allocate(8)
-            mslicestore(result_ptr, buildUintSig(4), 4)
+            mslicestore(result_ptr, structSigStoredChange(sig, 1), 4)
             mslicestore(add(result_ptr, 4), index, 4)
         }
 
@@ -1807,6 +1827,7 @@ object "Taylor" {
             let struct_id := structIdFromSig(sig)
             let arity := structSize(sig)
 
+            // Get struct component types
             let struct_types := _getfromInner(0x20000000, 4, 0, struct_id)
             let type_ptr := add(struct_types, 8)
             let index_ptr := add(struct_ptr, 4)
@@ -2085,9 +2106,19 @@ object "Taylor" {
             let sig := sload(storageKey)
 
             // TODO: typecheck key value
+            
+            let val_id := 0
+            let valsig := getSignature(val_ptr)
+            let isStructReference := and(isStruct(val_ptr), eq(structStoredFromSig(valsig), 1))
 
-            // First save value under its apropriate type
-            let val_id := _saveInnerStaticSize(getSignature(val_ptr), getValueLength(val_ptr), add(val_ptr, getSignatureLength(val_ptr)))
+            switch isStructReference
+            case 1 {
+                val_id := mslice(add(val_ptr, 4), 4)
+            }
+            case 0 {
+                // Save value under its apropriate type
+                val_id := _saveInnerStaticSize(valsig, getValueLength(val_ptr), add(val_ptr, getSignatureLength(val_ptr)))
+            }
 
             // Hash mapping key with mapping's signature
             let key := mappingKey(sig, key_ptr)
@@ -2097,32 +2128,34 @@ object "Taylor" {
             result_ptr := allocateTyped(val_id, buildUintSig(4), 4)
         }
 
-        function _mapget(ptrs) -> result_ptr {
-            let name_ptr := mload(ptrs)
-            let key_ptr := mload(add(ptrs, 32))
-
+        function _mapget(name_ptr, key_ptr) -> result_ptr {
             let name := mload(add(name_ptr, 4))
             let storageKey := mappingArrayStorageKey_names(name)
             // Mapping's signature (so we can retrieve its definition)
             let sig := sload(storageKey)
             // The id where the mapping is defined
-            let map_def_id := mapIdFromSig(sig)
+            // let map_def_id := mapIdFromSig(sig)
+
+            // Now we need the value's type sig from the mapping's def
+            let mapdef := _getfromInner(sub(0x800000, 1), 4, 0, mapIdFromSig(sig))
 
             // Hash mapping key with mapping's signature
-            let key := mappingKey(sig, key_ptr)
-
             // The mapping value's id/index
-            let value_id := sload(key)
-            // Now we need the value's type sig from the mapping's def
-            let mapdef := _getfromInner(sub(0x800000, 1), 4, 0, map_def_id)
+            let value_id := sload(mappingKey(sig, key_ptr))
 
             let key_type := add(mapdef, 4)
+            
             let value_type := add(key_type, getTypedLength(key_type))
 
             let typesig_ptr := add(value_type, getSignatureLength(value_type))
             let typesig := mslice(typesig_ptr, getValueLength(value_type))
 
-            result_ptr := _getfromInner(typesig, getSignatureLength(typesig_ptr), getValueLength(typesig_ptr), value_id)
+            result_ptr := _getfromInner(
+                typesig,
+                getSignatureLength(typesig_ptr),
+                getValueLength(typesig_ptr),
+                value_id
+            )
         }
 
         function mappingKey(mapsig, key_ptr) -> _key {

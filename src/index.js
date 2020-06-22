@@ -114,7 +114,7 @@ const getnumberid = size => formatId(typeid.number + numberid.uint + u2b(size).p
 const getboolid = value => formatId(typeid.number + numberid.bool + u2b(value ? 1 : 0).padStart(16, '0'));
 const getbytesid = length => formatId(typeid.bytelike + u2b(length).padStart(26, '0'));
 // signature :=  '001' * bit4 arity * bit24 id * bit1 stored?
-const getstructid = (id, arity) => formatId(typeid.struct + u2b(arity).padStart(4, '0') + u2b(id).padStart(24, '0') + '1')
+const getstructid = (id, arity, stored=false) => formatId(typeid.struct + u2b(arity).padStart(4, '0') + u2b(id).padStart(24, '0') + stored ? '1' : '0')
 
 const isFunction = sig => ((sig >> 31) & 0x01) === 1;
 const isLambda = sig => (sig & 0x4000000) !== 0;

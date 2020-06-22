@@ -389,9 +389,6 @@ describe('test arrays & structs', function () {
         resp = await MalTay.call(`(getfrom Uint 1)`);
         expect(resp).toEqual(6);
     
-        resp = await MalTay.call(`(getfrom "astruct" 0)`);
-        expect(resp).toEqual({sig: 0x24000001, 0: 0, 1: 1});
-    
         resp = await MalTay.call(`(list-struct (getfrom "astruct" 0))`);
         expect(resp).toEqual([4, 6]);
     });
@@ -547,7 +544,7 @@ describe('test dynamic storage', function () {
         await MalTay.send('(push! "0x400000000400000a" 0 "0x31323334353637383940" )');
         resp = await MalTay.call(`(getdyn "0x400000000400000a" 0)`);
         expect(resp).toEqual(['0x11223344556677889910', '0x11121314151617181920', '0x21222324252627282930', '0x31323334353637383940']);
-    });
+    }, 10000);
 });
 
 describe.each([
@@ -1107,19 +1104,19 @@ describe('test mapping', function () {
     it('value: struct type', async function() {
         let resp;
 
-        await MalTay.send('(defstruct! Voter (list Uint Bool Uint))');
-        await MalTay.send('(defmap! "voters" Address "Voter")');
+        await MalTay.send('(defstruct! SomeStruct (list Uint Bool Uint))');
+        await MalTay.send('(defmap! "structbyaddr" Address "SomeStruct")');
 
         // TODO: (getsig Voter)
         resp = await MalTay.call('(getfrom Map 1)');
         expect(resp.substring(0, 18)).toBe(expr2h('(Address)'));
 
-        await MalTay.send('(mapset! "voters" (caller) (struct! "Voter" (list 3 true 66) ))');
+        await MalTay.send('(mapset! "structbyaddr" (caller) (struct! "SomeStruct" (list 3 true 66) ))');
 
-        resp = await MalTay.call(`(list-struct (getfrom "Voter" 0))`);
+        resp = await MalTay.call(`(list-struct (getfrom "SomeStruct" 0))`);
         expect(resp).toEqual([3, 1, 66]);
 
-        resp = await MalTay.call(`(list-struct (mapget "voters" (caller)))`);
+        resp = await MalTay.call(`(list-struct (mapget "structbyaddr" (caller)))`);
         expect(resp).toEqual([3, 1, 66]);
     });
 });
