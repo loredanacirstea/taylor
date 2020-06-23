@@ -1900,7 +1900,7 @@ object "Taylor" {
             mslicestore(result_ptr, buildArraySig(arity), 4)
             mmultistore(add(result_ptr, 4), typesig_ptr, typesig_len)
 
-            let ptr := add(result_ptr, 8)
+            let ptr := add(add(result_ptr, 4), typesig_len)
             let iniptrs := add(ptrs, 32)
 
             let typesig := get4b(typesig_ptr)

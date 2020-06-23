@@ -137,8 +137,42 @@ const funcArity = sig => (sig & 0x78000000) >> 27;
 const lambdaLength = sig => (sig & 0x3fffffe) >> 1;
 const structSize = sig => (sig & 0x1e000000) >> 25;
 const arrayTypeSize = sig => (sig & 0x3fffffff);
-const getSignatureLength = 4;
-// const getValueLength = 
+const structStoredFromSig = sig => (sig << 31) >> 31;
+const get4bsig = data => parseInt(data.substring(0, 8), 16);
+const getSignatureLength = data => {
+    let length = 4;
+    if (isArrayType(get4bsig(data))) {
+        length += getSignatureLength(data.substring(8));
+    }
+    return length;
+}
+const getValueLength = data => {
+    let sig = get4bsig(data)
+    if (isFunction(sig)) return 0
+    if (isBool(sig)) return 0
+    if (isNumber(sig)) return numberSize(sig)
+    if (isBytes(sig)) return bytesSize(sig)
+    if (isArrayType(sig)) return arrayTypeSize(sig) * getValueLength(data.substring(8));
+    if (isStruct(sig)) {
+        if (structStoredFromSig(sig)) return 4;
+        else return structSize(sig) * 4;
+    }
+    if (isListType(sig)) {
+        let size = listTypeSize(sig);
+        let length = 0;
+        data = data.substring(getSignatureLength(data));
+        [...new Array(size)].forEach((_, i) => {
+            let item_len = getTypedLength(data);
+            length += item_len;
+            data = data.substring(item_len);
+        })
+        return length;
+    }
+}
+const getTypedLength = data => getSignatureLength(data) + getTypedLength(data);
+const getSignatureLengthH = data => getSignatureLength(data) * 2;
+const getValueLengthH = data => getValueLength(data) * 2;
+const getTypedLengthH = data => getTypedLength(data) * 2;
 
 const tableSig = {}
 tableSig[nativeEnv['def!'].hex] = {offsets: [64, 8], aritydelta: -1}
@@ -193,7 +227,9 @@ const encode = (types, values) => {
     return '0x' + encodeInner(types, values);
 }
 
-const decodeInner = (sig, data) => {
+const decodeInner = (inidata) => {
+    let sig = get4bsig(inidata);
+    data = inidata.substring(8);
     let result;
     if (isBool(sig)) {
         if (sig === 0x0a800001) result = true;
@@ -222,20 +258,20 @@ const decodeInner = (sig, data) => {
         return { result, data };
     } else if (isListType(sig)) {
         const length = listTypeSize(sig);
-        
         const result = [...new Array(length)].map((_, i) => {
-            const partsig = parseInt(data.substring(0, 8), 16);
-            let result;
-            ({result, data} = decodeInner(partsig, data.substring(8)));
-            return result;
+            const answ = decodeInner(data);
+            data = answ.data;
+            return answ.result;
         });
         return { result, data };
     }  else if (isArrayType(sig)) {
         const arity = arrayTypeSize(sig);
-        const itemsig = parseInt(data.substring(0, 8), 16);
-        data = data.substring(8);
+        const siglen = getSignatureLengthH(inidata);
+        const signature = inidata.substring(8, siglen);
+        data = inidata.substring(siglen);
+        
         const result = [...new Array(arity)].map((_, i) => {
-            const item = decodeInner(itemsig, data);
+            const item = decodeInner(signature + data);
             data = item.data;
             return item.result;
         });
@@ -253,9 +289,9 @@ const decode = data => {
     try {
         while (data.length > 0) {
             let result;
-            const sig = parseInt(data.substring(0, 8), 16);
-            ({result, data} = decodeInner(sig, data.substring(8)));
-            decoded.push(result);
+            let answ = decodeInner(data);
+            decoded.push(answ.result);
+            data = answ.data;
         }
     } catch(e) {
         throw new Error(`${e} ; ${inidata}`)
@@ -400,6 +436,7 @@ const expr2string = (inidata, pos=0, accum='') => {
     let name, arity;
     let unknownList = [];
     let data = inidata.substring(pos);
+    const inidata_ = data;
     const sig = data.substring(0, 8);
     const sigu = parseInt(sig, 16);
     data = data.substring(8);
@@ -471,7 +508,7 @@ const expr2string = (inidata, pos=0, accum='') => {
         pos += 8
     }
     else {
-        const res = decodeInner(sigu, data)
+        const res = decodeInner(inidata_)
         accum += ' ' + res.result.toString()
         pos = inidata.length - res.data.length;
     }

@@ -451,6 +451,39 @@ describe('test arrays & structs', function () {
         resp = await MalTay.call(`(list-struct (getfrom "anotherstruct" 2))`);
         expect(resp).toEqual(['0x667788', arr]);
     });
+
+    it('test multi dimensional array in struct', async function() {
+        let resp;
+        let array_2_3_expr = '(array (array 2 3 4) (array 5 6 7))'
+        let array_2_4_3_expr = `(array (array (array 2 3 4) (array 2 3 4) (array 5 6 7) (array 5 6 7)) (array (array 2 3 4) (array 2 3 4) (array 5 6 7) (array 5 6 7)) )`
+        let array_2_3 = [[2, 3, 4], [5, 6, 7]];
+        let array_2_4_3 = [
+            [[ 2, 3, 4 ], [ 2, 3, 4 ], [ 5, 6, 7 ], [ 5, 6, 7 ]],
+            [[ 2, 3, 4 ], [ 2, 3, 4 ], [ 5, 6, 7 ], [ 5, 6, 7 ]],
+        ]
+        
+        resp = await MalTay.call(array_2_3_expr);
+        expect(resp).toEqual(array_2_3);
+        
+        resp = await MalTay.call(array_2_4_3_expr);
+        expect(resp).toEqual(array_2_4_3);
+
+        await MalTay.send('(defstruct! struct3 (list "0x40000002400000030a910004" "0x4000000240000004400000030a910004") )');
+
+        await MalTay.send(`(struct! "struct3" (list 
+            ${array_2_3_expr}
+            ${array_2_4_3_expr}
+        ))`);
+
+        resp = await MalTay.call(`(getfrom "0x40000002400000030a910004" 1)`);
+        expect(resp).toEqual(array_2_3);
+
+        resp = await MalTay.call(`(getfrom "0x4000000240000004400000030a910004" 1)`);
+        expect(resp).toEqual(array_2_4_3);
+
+        resp = await MalTay.call(`(list-struct (getfrom "struct3" 1))`);
+        expect(resp).toEqual([array_2_3, array_2_4_3]);
+    });
 });
 
 it('test ownership & costs', async function() {
