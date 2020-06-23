@@ -278,8 +278,7 @@ it('test compact dynamic length storage', async function () {
     }
 
     for (index in exampleArr) {
-        let ind = parseInt(index) + 1;
-        resp = await MalTay.call(`(getfrom "0x04000000" ${ind})`);
+        resp = await MalTay.call(`(getfrom "0x04000000" ${index})`);
         expect(resp).toEqual(exampleArr[index]);
     }
 }, 50000);
@@ -306,8 +305,7 @@ describe.each([
         typeid = typeid || ('0x04' + size.toString(16).padStart(6, '0'));
 
         for (index in exampleArr) {
-            let ind = parseInt(index) + 1;
-            resp = await MalTay.call(`(getfrom "${typeid}" ${ind})`);
+            resp = await MalTay.call(`(getfrom "${typeid}" ${index})`);
             expect(resp).toEqual(exampleArr[index]);
         }
         console.log(`static storage gasaverage: (${size})(${count})`, gasaverage / exampleArr.length);
@@ -322,30 +320,30 @@ it.skip('test structs abi func', async function() {
     resp = await resp.wait()
     console.log(resp.logs[0].topics)
 
-    resp = await MalTay.call(`(getfrom "0x20000000" 1)`);
+    resp = await MalTay.call(`(getfrom "0x20000000" 0)`);
     expect(resp).toEqual('0x1100000204000004040000140400000404000004');
 
     await MalTay.send('(save! (struct abifunc (map save! (list "0xCFF8dc8A5e2Af7fcc6BE124d3C91FA50186A8c96" "0x6bdbf8e6") )) )');
 
-    resp = await MalTay.call(`(getfrom "0x04000014" 1)`);
+    resp = await MalTay.call(`(getfrom "0x04000014" 0)`);
     expect(resp).toEqual('0xCFF8dc8A5e2Af7fcc6BE124d3C91FA50186A8c96'.toLowerCase());
 
-    resp = await MalTay.call(`(getfrom "0x04000004" 1)`);
+    resp = await MalTay.call(`(getfrom "0x04000004" 0)`);
     expect(resp).toEqual('0x6bdbf8e6');
 
-    resp = await MalTay.call(`(getfrom "0x24000001" 1)`);
+    resp = await MalTay.call(`(getfrom "0x24000001" 0)`);
     expect(resp).toEqual({sig: 0x24000001, 0: 0, 1: 0});
 
     // 2
     await MalTay.send('(save! (struct abifunc (map save! (list "0xCFF8dc8A5e2Af7fcc6BE124d3C91FA50186A8c96" "0x5b8bfc2d") )) )');
 
-    resp = await MalTay.call(`(getfrom "0x04000014" 2)`);
+    resp = await MalTay.call(`(getfrom "0x04000014" 1)`);
     expect(resp).toEqual('0xCFF8dc8A5e2Af7fcc6BE124d3C91FA50186A8c96'.toLowerCase());
 
-    resp = await MalTay.call(`(getfrom "0x04000004" 2)`);
+    resp = await MalTay.call(`(getfrom "0x04000004" 1)`);
     expect(resp).toEqual('0x5b8bfc2d');
 
-    resp = await MalTay.call(`(getfrom "0x24000001" 2)`);
+    resp = await MalTay.call(`(getfrom "0x24000001" 1)`);
     expect(resp).toEqual({sig: 0x24000001, 0: 1, 1: 1});
 
     resp = await MalTay.call(`(rcall "0x24000001" 1 "0x00000000000000000000000000000000000000000000000000000000000000040000000000000000000000000000000000000000000000000000000000000006")`);
@@ -353,7 +351,7 @@ it.skip('test structs abi func', async function() {
 });
 
 describe('test arrays & structs', function () {
-    let scount = 1;
+    let scount = 0;
 
     it('test structs', async function() {
         let resp;
@@ -361,18 +359,18 @@ describe('test arrays & structs', function () {
         // 0x0400000424000001
         await MalTay.send('(defstruct! astruct (list "0x0a910004" "0x0a910004") )');
     
-        resp = await MalTay.call(`(getfrom Struct 1)`);
+        resp = await MalTay.call(`(getfrom Struct 0)`);
         expect(resp).toEqual('0x11000002040000040a910004040000040a910004');
         
         await MalTay.send('(struct! "astruct" (list 4 6) )');
     
-        resp = await MalTay.call(`(getfrom Uint 1)`);
+        resp = await MalTay.call(`(getfrom Uint 0)`);
         expect(resp).toEqual(4);
     
-        resp = await MalTay.call(`(getfrom Uint 2)`);
+        resp = await MalTay.call(`(getfrom Uint 1)`);
         expect(resp).toEqual(6);
     
-        resp = await MalTay.call(`(list-struct (getfrom "astruct" 1))`);
+        resp = await MalTay.call(`(list-struct (getfrom "astruct" 0))`);
         expect(resp).toEqual([4, 6]);
     });
 
@@ -384,7 +382,7 @@ describe('test arrays & structs', function () {
     
         await MalTay.send('(save! (array 4 8 9) )');
     
-        resp = await MalTay.call(`(getfrom "0x400000030a910004" 1)`);
+        resp = await MalTay.call(`(getfrom "0x400000030a910004" 0)`);
         expect(resp).toEqual([4, 8, 9]);
     });
 
@@ -397,13 +395,13 @@ describe('test arrays & structs', function () {
 
         await MalTay.send('(struct! "astruct2" (list (array 6 8 11) (array 2 7 9)) )');
 
-        resp = await MalTay.call(`(getfrom "0x400000030a910004" 2)`);
+        resp = await MalTay.call(`(getfrom "0x400000030a910004" 1)`);
         expect(resp).toEqual([6, 8, 11]);
 
-        resp = await MalTay.call(`(getfrom "0x400000030a910004" 3)`);
+        resp = await MalTay.call(`(getfrom "0x400000030a910004" 2)`);
         expect(resp).toEqual([2, 7, 9]);
 
-        resp = await MalTay.call(`(list-struct (getfrom "astruct2" 1))`);
+        resp = await MalTay.call(`(list-struct (getfrom "astruct2" 0))`);
         expect(resp).toEqual([[6, 8, 11], [2, 7, 9]]);
     });
     
@@ -424,13 +422,13 @@ describe('test arrays & structs', function () {
 
         await MalTay.send(`(struct! "anotherstruct" (list "0x334455" (array ${arrstr} ) ))`);
 
-        resp = await MalTay.call(`(getfrom "0x04000003" 1)`);
+        resp = await MalTay.call(`(getfrom "0x04000003" 0)`);
         expect(resp).toEqual("0x334455");
 
-        resp = await MalTay.call(`(getfrom "0x4000000604000014" 1)`);
+        resp = await MalTay.call(`(getfrom "0x4000000604000014" 0)`);
         expect(resp).toEqual(arr);
 
-        resp = await MalTay.call(`(list-struct (getfrom "anotherstruct" 1))`);
+        resp = await MalTay.call(`(list-struct (getfrom "anotherstruct" 0))`);
         expect(resp).toEqual(['0x334455', arr]);
 
         // 2
@@ -442,13 +440,13 @@ describe('test arrays & structs', function () {
 
         await MalTay.send(`(struct! "anotherstruct" (list "0x667788" (array ${arrstr} ) ))`);
 
-        resp = await MalTay.call(`(getfrom "0x04000003" 2)`);
+        resp = await MalTay.call(`(getfrom "0x04000003" 1)`);
         expect(resp).toEqual("0x667788");
 
-        resp = await MalTay.call(`(getfrom "0x4000000604000014" 2)`);
+        resp = await MalTay.call(`(getfrom "0x4000000604000014" 1)`);
         expect(resp).toEqual(arr);
 
-        resp = await MalTay.call(`(list-struct (getfrom "anotherstruct" 2))`);
+        resp = await MalTay.call(`(list-struct (getfrom "anotherstruct" 1))`);
         expect(resp).toEqual(['0x667788', arr]);
     });
 
@@ -475,13 +473,13 @@ describe('test arrays & structs', function () {
             ${array_2_4_3_expr}
         ))`);
 
-        resp = await MalTay.call(`(getfrom "0x40000002400000030a910004" 1)`);
+        resp = await MalTay.call(`(getfrom "0x40000002400000030a910004" 0)`);
         expect(resp).toEqual(array_2_3);
 
-        resp = await MalTay.call(`(getfrom "0x4000000240000004400000030a910004" 1)`);
+        resp = await MalTay.call(`(getfrom "0x4000000240000004400000030a910004" 0)`);
         expect(resp).toEqual(array_2_4_3);
 
-        resp = await MalTay.call(`(list-struct (getfrom "struct3" 1))`);
+        resp = await MalTay.call(`(list-struct (getfrom "struct3" 0))`);
         expect(resp).toEqual([array_2_3, array_2_4_3]);
     });
 });
@@ -519,39 +517,39 @@ describe('test dynamic storage', function () {
 
         await MalTay.send('(savedyn! (array 1 2 3) )');
 
-        resp = await MalTay.call(`(getdyn "0x400000000a910004" 1)`);
+        resp = await MalTay.call(`(getdyn "0x400000000a910004" 0)`);
         expect(resp).toEqual([4, 8, 9]);
 
-        resp = await MalTay.call(`(getdyn "0x400000000400000a" 1)`);
+        resp = await MalTay.call(`(getdyn "0x400000000400000a" 0)`);
         expect(resp).toEqual(['0x11223344556677889910', '0x11121314151617181920']);
 
-        resp = await MalTay.call(`(getdyn "0x400000000a910004" 2)`);
+        resp = await MalTay.call(`(getdyn "0x400000000a910004" 1)`);
         expect(resp).toEqual([1, 2, 3]);
 
-        await MalTay.send('(push! "0x400000000a910004" 1 22 )');
-        await MalTay.send('(push! "0x400000000a910004" 1 23 )');
-        await MalTay.send('(push! "0x400000000a910004" 1 24 )');
-        await MalTay.send('(push! "0x400000000a910004" 1 25 )');
-        await MalTay.send('(push! "0x400000000a910004" 1 26 )');
-        await MalTay.send('(push! "0x400000000a910004" 1 27 )');
-        await MalTay.send('(push! "0x400000000a910004" 1 28 )');
-        await MalTay.send('(push! "0x400000000a910004" 1 29 )');
-        await MalTay.send('(push! "0x400000000a910004" 1 30 )');
-        await MalTay.send('(push! "0x400000000a910004" 1 31 )');
-        await MalTay.send('(push! "0x400000000a910004" 1 32 )');
+        await MalTay.send('(push! "0x400000000a910004" 0 22 )');
+        await MalTay.send('(push! "0x400000000a910004" 0 23 )');
+        await MalTay.send('(push! "0x400000000a910004" 0 24 )');
+        await MalTay.send('(push! "0x400000000a910004" 0 25 )');
+        await MalTay.send('(push! "0x400000000a910004" 0 26 )');
+        await MalTay.send('(push! "0x400000000a910004" 0 27 )');
+        await MalTay.send('(push! "0x400000000a910004" 0 28 )');
+        await MalTay.send('(push! "0x400000000a910004" 0 29 )');
+        await MalTay.send('(push! "0x400000000a910004" 0 30 )');
+        await MalTay.send('(push! "0x400000000a910004" 0 31 )');
+        await MalTay.send('(push! "0x400000000a910004" 0 32 )');
 
-        resp = await MalTay.call(`(getdyn "0x400000000a910004" 1)`);
+        resp = await MalTay.call(`(getdyn "0x400000000a910004" 0)`);
         expect(resp).toEqual([4, 8, 9, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32]);
 
-        await MalTay.send('(push! "0x400000000a910004" 2 4 )');
-        await MalTay.send('(push! "0x400000000a910004" 2 5 )');
-        resp = await MalTay.call(`(getdyn "0x400000000a910004" 2)`);
+        await MalTay.send('(push! "0x400000000a910004" 1 4 )');
+        await MalTay.send('(push! "0x400000000a910004" 1 5 )');
+        resp = await MalTay.call(`(getdyn "0x400000000a910004" 1)`);
         expect(resp).toEqual([1, 2, 3, 4, 5]);
 
         
-        await MalTay.send('(push! "0x400000000400000a" 1 "0x21222324252627282930" )');
-        await MalTay.send('(push! "0x400000000400000a" 1 "0x31323334353637383940" )');
-        resp = await MalTay.call(`(getdyn "0x400000000400000a" 1)`);
+        await MalTay.send('(push! "0x400000000400000a" 0 "0x21222324252627282930" )');
+        await MalTay.send('(push! "0x400000000400000a" 0 "0x31323334353637383940" )');
+        resp = await MalTay.call(`(getdyn "0x400000000400000a" 0)`);
         expect(resp).toEqual(['0x11223344556677889910', '0x11121314151617181920', '0x21222324252627282930', '0x31323334353637383940']);
     }, 10000);
 });
@@ -1102,7 +1100,7 @@ describe('test mapping', function () {
         let resp;
         
         await MalTay.send('(defmap! "balances" Address Uint)');
-        resp = await MalTay.call('(getfrom Map 1)');
+        resp = await MalTay.call('(getfrom Map 0)');
         expect(resp).toBe(expr2h('(Address)') + expr2h('(Uint)').substring(2))
 
         await MalTay.send('(mapset! "balances" (caller) 3)');
@@ -1117,12 +1115,12 @@ describe('test mapping', function () {
         await MalTay.send('(defmap! "structbyaddr" Address "SomeStruct")');
 
         // TODO: (getsig Voter)
-        resp = await MalTay.call('(getfrom Map 2)');
+        resp = await MalTay.call('(getfrom Map 1)');
         expect(resp.substring(0, 18)).toBe(expr2h('(Address)'));
 
         await MalTay.send('(mapset! "structbyaddr" (caller) (struct! "SomeStruct" (list 3 true 66) ))');
 
-        resp = await MalTay.call(`(list-struct (getfrom "SomeStruct" 1))`);
+        resp = await MalTay.call(`(list-struct (getfrom "SomeStruct" 0))`);
         expect(resp).toEqual([3, 1, 66]);
 
         resp = await MalTay.call(`(list-struct (mapget "structbyaddr" (caller)))`);
@@ -1152,9 +1150,9 @@ it('ballot contract', async function() {
     )`;
 
     const checkinit = `(list
+        (list-struct (getfrom "Proposal" 0))
         (list-struct (getfrom "Proposal" 1))
         (list-struct (getfrom "Proposal" 2))
-        (list-struct (getfrom "Proposal" 3))
     )`
 
     let giveRightToVote = `(def! giveRightToVote! (fn* (voterAddress)

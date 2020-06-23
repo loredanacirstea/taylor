@@ -1457,7 +1457,7 @@ object "Taylor" {
             case 1 {
                 siglen := getSignatureLength(data_ptr)
                 vallen := getValueLength(data_ptr)
-                index := _saveInnerDynamicSize(typesig, vallen, add(data_ptr, siglen))
+                index := _saveInner(typesig, vallen, add(data_ptr, siglen), 0)
             }
             // static size
             case 0 {
@@ -1466,10 +1466,23 @@ object "Taylor" {
                     typesig := mslice(data_ptr, siglen)
                     vallen := getValueLength(data_ptr)
                 }
-                index := _saveInnerStaticSize(typesig, vallen, add(data_ptr, siglen))
+                index := _saveInner(typesig, vallen, add(data_ptr, siglen), 1)
             }
 
             result_ptr := allocateTyped(index, buildUintSig(4), 4)
+        }
+
+        function _saveInner(typesig, value_len, value_ptr, hasStaticSize) -> _index {
+            switch hasStaticSize
+            case 1 {
+                _index := _saveInnerStaticSize(typesig, value_len, value_ptr)
+            }
+            case 0 {
+                _index := _saveInnerDynamicSize(typesig, value_len, value_ptr)
+            }
+
+            // Internal index starts at 1
+            _index := sub(_index, 1)
         }
 
         // value_ptr does not contain the signature
@@ -1546,6 +1559,9 @@ object "Taylor" {
         function _getfromInner(typesig, sig_len, typesize, index) -> result_ptr {
             let storage_offset := 0
             let data_len := typesize
+
+            // Internal index starts at 1
+            index := add(index, 1)
             
             switch typesize
             case 0 {
@@ -1743,7 +1759,7 @@ object "Taylor" {
             mmultistore(newdata_ptr, typelist_ptr, data_len)
 
             // struct abstract id
-            let id := _saveInnerDynamicSize(struct_abstract_id, data_len, newdata_ptr)
+            let id := _saveInner(struct_abstract_id, data_len, newdata_ptr, 0)
             sig := structSigFromId(id, arity, 0)
 
             // TODO: this should be in save & saved under a signature type
@@ -1805,14 +1821,14 @@ object "Taylor" {
             for { let i := 0 } lt(i, list_arity) { i := add(i, 1) } {
                 let typesig := getSignature(val_ptr)
                 let value_len := getValueLength(val_ptr)
-                let index := _saveInnerStaticSize(typesig, value_len, add(val_ptr, getSignatureLength(val_ptr)))
+                let index := _saveInner(typesig, value_len, add(val_ptr, getSignatureLength(val_ptr)), 1)
                 
                 mslicestore(res_ptr, index, 4)
                 res_ptr := add(res_ptr, 4)
                 val_ptr := add(val_ptr, getTypedLength(val_ptr))
             }
 
-            let index := _saveInnerStaticSize(sig, mul(list_arity, 4), struct_ptr)
+            let index := _saveInner(sig, mul(list_arity, 4), struct_ptr, 1)
             result_ptr := allocate(8)
             mslicestore(result_ptr, structSigStoredChange(sig, 1), 4)
             mslicestore(add(result_ptr, 4), index, 4)
@@ -1943,7 +1959,8 @@ object "Taylor" {
             // store new count
             incStorageCountDyn(itemsig)
 
-            _index := last_index
+            // Internal index starts at 1
+            _index := sub(last_index, 1)
         }
 
         function _push(ptrs) -> result_ptr {
@@ -1956,6 +1973,9 @@ object "Taylor" {
                 mload(add(ptrs, 32)),
                 4
             ), 4)
+
+            // Internal index starts at 1
+            index := add(index, 1)
 
             let data_ptr := mload(add(ptrs, 64))
             let data_len := getValueLength(data_ptr)
@@ -2007,6 +2027,9 @@ object "Taylor" {
         }
 
         function _getdynInner(itemsig, itemsize, siglen, index) -> result_ptr {
+            // Internal index starts at 1
+            index := add(index, 1)
+
             let key := mappingArrayDynStorageKey_values(index, itemsig)
             let arity := sload(key)
             let length := mul(arity, itemsize)
@@ -2088,7 +2111,7 @@ object "Taylor" {
             mmultistore(data_ptr, keytype_ptr, keytype_len)
             mmultistore(add(data_ptr, keytype_len), valtype_ptr, valtype_len)
 
-            let id := _saveInnerDynamicSize(sub(0x800000, 1), data_len, data_ptr)
+            let id := _saveInner(sub(0x800000, 1), data_len, data_ptr, 0)
             sig := mapSigFromId(id)
 
             let name := mload(add(name_ptr, 4))
@@ -2119,7 +2142,7 @@ object "Taylor" {
             }
             case 0 {
                 // Save value under its apropriate type
-                val_id := _saveInnerStaticSize(valsig, getValueLength(val_ptr), add(val_ptr, getSignatureLength(val_ptr)))
+                val_id := _saveInner(valsig, getValueLength(val_ptr), add(val_ptr, getSignatureLength(val_ptr)), 1)
             }
 
             // Hash mapping key with mapping's signature
