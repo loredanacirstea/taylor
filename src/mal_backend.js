@@ -23,6 +23,16 @@ const toHex = bnval => {
 }
 mal.globalStorage = {};
 
+modifyEnv('nil?', (orig_func, value) => {
+    let nil = (
+        !value ||
+        (value instanceof Object && Object.keys(value).length === 0) ||
+        (value instanceof Array && value.length === 0) ||
+        (typeof value === 'string' && value.substring(0, 2) === '0x' && value.length === 2)
+    );
+    return interop.js_to_mal(nil ? true : false);
+});
+
 modifyEnv('js-eval', (orig_func, str) => {
     const utils = {
         BN: n => {

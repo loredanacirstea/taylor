@@ -62,9 +62,9 @@ const typeid = {
 const fulltypeidHex = {
     // nil shorthand for empty list
     Nil: listTypeId(0),
-    None: '',
-    // unit - equivalent to void, for functions without return type
-    Unit: '',
+    // None: '',
+    // // unit - equivalent to void, for functions without return type
+    // Unit: '',
     // trait
     Nothing: b2h('00000000000000000000000000000000'),
     Any: b2h('00000000000000000000000000000001'),
@@ -188,7 +188,8 @@ nativeTypes.Bool = getnumberid(1)
 nativeTypes.Uint = getnumberid(4)
 nativeTypes.Address = getbytesid(20)
 nativeTypes.Bytes32 = getbytesid(32)
-nativeTypes.Map = (parseInt(nativeTypes.Map, 16) - 1).toString(16).padStart(8, '0')
+nativeTypes.Map = (parseInt(nativeTypes.Map, 16) - 1).toString(16).padStart(8, '0');
+Object.keys(fulltypeidHex).forEach(key => nativeTypes[typekey(key)] = fulltypeidHex[key]);
 
 const encodeInner = (types, values) => {
     if (types.length !== values.length) throw new Error('Encode - different lengths.');

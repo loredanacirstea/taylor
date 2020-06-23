@@ -54,7 +54,7 @@ const _nativeEnv = {
     // Mal specific - unimplemented, just placeholders
     cons:         { mutable: false, arity: 2, notimp: true },  // prepend item to list
     concat2:      { mutable: false, arity: null, notimp: true },  // concats lists
-    'nil?':       { mutable: false, arity: 1, notimp: true },
+    'nil?':       { mutable: false, arity: 1 },
     'list?':      { mutable: false, arity: 1, notimp: true },
     vector:       { mutable: false, arity: null, notimp: true },
     'vector?':    { mutable: false, arity: 1, notimp: true },

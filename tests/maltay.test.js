@@ -645,6 +645,28 @@ describe.each([
         resp = await instance.call('(false? true)');
         expect(resp).toBe(false);
     });
+
+    it('test nil', async function() {
+        let resp;
+    
+        resp = await instance.call('(nil? (list))');
+        expect(resp).toBe(true);
+
+        resp = await instance.call('(nil? (list 1))');
+        expect(resp).toBe(false);
+
+        resp = await instance.call('(nil? false)');
+        expect(resp).toBe(true);
+
+        resp = await instance.call('(nil? true)');
+        expect(resp).toBe(false);
+
+        resp = await instance.call('(nil? "0x")');
+        expect(resp).toBe(true);
+
+        resp = await instance.call('(nil? "0x22")');
+        expect(resp).toBe(false);
+    });
     
     it('test list functions', async function() {
         let resp;
@@ -1157,7 +1179,7 @@ it('ballot contract', async function() {
 
     let giveRightToVote = `(def! giveRightToVote! (fn* (voterAddress)
         (if (eq (caller) (sload 0 Address))
-            (if (eq 0 (nth (list-struct (mapget "voters" voterAddress)) 0) )
+            (if (nil? (mapget "voters" voterAddress))
                 (mapset! "voters" voterAddress (struct! "Voter" (list 1 0 0 0)))
                 (revert "The voter already voted.")
             )
@@ -1192,11 +1214,20 @@ it('ballot contract', async function() {
     resp = await MalTay.call('(eq (caller) (sload 0 Address))');
     expect(resp).toBe(1);
 
-    resp = await MalTay.call('(eq 0 (nth (list-struct (mapget "voters" "0xe8B7665DE12D67bC802aEcb8eef4D8bd34741C51") 0) ))');
-    expect(resp).toBe(1);
+    resp = await MalTay.call('(nil? (mapget "voters" "0xe8B7665DE12D67bC802aEcb8eef4D8bd34741C51"))');
+    expect(resp).toBe(true);
+
+    resp = await MalTay.call('(nil? (list-struct (mapget "voters" "0xe8B7665DE12D67bC802aEcb8eef4D8bd34741C51")))');
+    expect(resp).toBe(true);
 
     await MalTay.sendAndWait(giveRightToVote);
     await MalTay.send('(giveRightToVote! "0xe8B7665DE12D67bC802aEcb8eef4D8bd34741C51")');
+
+    resp = await MalTay.call('(nil? (mapget "voters" "0xe8B7665DE12D67bC802aEcb8eef4D8bd34741C51"))');
+    expect(resp).toBe(false);
+
+    resp = await MalTay.call('(nil? (list-struct (mapget "voters" "0xe8B7665DE12D67bC802aEcb8eef4D8bd34741C51")))');
+    expect(resp).toBe(false);
 
     resp = await MalTay.call('(list-struct (mapget "voters" "0xe8B7665DE12D67bC802aEcb8eef4D8bd34741C51"))')
     expect(resp).toEqual([1, 0, '0x0000000000000000000000000000000000000000', 0]);

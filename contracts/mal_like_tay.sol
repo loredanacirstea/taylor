@@ -431,6 +431,11 @@ object "Taylor" {
             case 0x8800005e {
                 result_ptr := _false(mload(add(arg_ptrs_ptr, 32)))
             }
+            case 0x88000066 {
+                let answ := _nil_q(mload(add(arg_ptrs_ptr, 32)))
+                result_ptr := allocate(4)
+                mslicestore(result_ptr, buildBoolSig(answ), 4)
+            }
             // register!
             case 0x880000c0 {
                 result_ptr := allocate(32)
@@ -850,6 +855,48 @@ object "Taylor" {
             let len := writeTyped(result_ptr, value, sig, siglen)
             result_ptr := allocate(len)
         }
+
+        function allocateNil(sig_ptr, sig_len) -> result_ptr {
+            result_ptr := allocate(sig_len)
+            mslicestore(result_ptr, getNilSignature(sig_ptr, sig_len), sig_len)
+        }
+
+        function getNilSignature(ptr, sig_len) -> _nil_sig {
+            let sig := get4b(ptr)
+            let done := 0
+            if and(eq(done, 0), isFunction(ptr)) {
+                _nil_sig := buildFnSig(0, 0)
+                let rest_len := sub(sig_len, 4)
+                let rest := mslice(add(ptr, 4), rest_len)
+                _nil_sig := add(shl(mul(rest_len, 8), _nil_sig), rest)
+                done := 1
+            }
+            if and(eq(done, 0), isArrayType(ptr)) {
+                _nil_sig := buildArraySig(0)
+
+                done := 1
+            }
+            if and(eq(done, 0), isStruct(ptr)) {
+                _nil_sig := structSigFromId(0, 0, 0)
+                done := 1
+            }
+            if and(eq(done, 0), isListType(sig)) {
+                _nil_sig := buildListTypeSig(0)
+                done := 1
+            }
+            if and(eq(done, 0), isBool(sig)) {
+                _nil_sig := buildBoolSig(0)
+                done := 1
+            }
+            if and(eq(done, 0), isNumber(ptr)) {
+                _nil_sig := buildUintSig(0)
+                done := 1
+            }
+            if and(eq(done, 0), isBytes(ptr)) {
+                _nil_sig := buildBytesSig(0)
+                done := 1
+            }
+        }
         
         // arity - 4 bits -> 16 args
         // 01111000000000000000000000000000
@@ -1008,9 +1055,10 @@ object "Taylor" {
         function _if(_ptr, env_ptr) -> end_ptr, result_ptr {
             let branch1len := mslice(_ptr, 4)
             let branch2len := mslice(add(_ptr, 4), 4)
-
             let cond_end, cond_answ := eval(add(_ptr, 8), env_ptr)
-            switch mslice(add(cond_answ, 4), 4)
+            let cond_value := eq(_nil_q(cond_answ), 0)
+
+            switch cond_value
             case 1 {
                 let act_end, act_ptr := eval(cond_end, env_ptr)
                 result_ptr := act_ptr
@@ -1196,42 +1244,43 @@ object "Taylor" {
         
         function _lt(ptr1, ptr2) -> result_ptr {
             let c := lt(extractValue(ptr1), extractValue(ptr2))
-            result_ptr := allocateTyped(c, buildUintSig(4), 4)
+            result_ptr := allocateTyped(c, buildUintSig(1), 4)
         }
         
         function _gt(ptr1, ptr2) -> result_ptr {
             let c := gt(extractValue(ptr1), extractValue(ptr2))
-            result_ptr := allocateTyped(c, buildUintSig(4), 4)
+            result_ptr := allocateTyped(c, buildUintSig(1), 4)
         }
         
         function _slt(ptr1, ptr2) -> result_ptr {
             let c := slt(extractValue(ptr1), extractValue(ptr2))
-            result_ptr := allocateTyped(c, buildUintSig(4), 4)
+            result_ptr := allocateTyped(c, buildUintSig(1), 4)
         }
         
         function _sgt(ptr1, ptr2) -> result_ptr {
             let c := sgt(extractValue(ptr1), extractValue(ptr2))
-            result_ptr := allocateTyped(c, buildUintSig(4), 4)
+            result_ptr := allocateTyped(c, buildUintSig(1), 4)
         }
         
         function _eq(ptr1, ptr2) -> result_ptr {
             let c := eq(extractValue(ptr1), extractValue(ptr2))
-            result_ptr := allocateTyped(c, buildUintSig(4), 4)
+            mstore(0, buildUintSig(1))
+            result_ptr := allocateTyped(c, buildUintSig(1), 4)
         }
         
         function _iszero(ptr1) -> result_ptr {
             let c := iszero(extractValue(ptr1))
-            result_ptr := allocateTyped(c, buildUintSig(4), 4)
+            result_ptr := allocateTyped(c, buildUintSig(1), 4)
         }
         
         function _and(ptr1, ptr2) -> result_ptr {
             let c := and(extractValue(ptr1), extractValue(ptr2))
-            result_ptr := allocateTyped(c, buildUintSig(4), 4)
+            result_ptr := allocateTyped(c, buildUintSig(1), 4)
         }
         
         function _or(ptr1, ptr2) -> result_ptr {
             let c := or(extractValue(ptr1), extractValue(ptr2))
-            result_ptr := allocateTyped(c, buildUintSig(4), 4)
+            result_ptr := allocateTyped(c, buildUintSig(1), 4)
         }
         
         function _xor(ptr1, ptr2) -> result_ptr {
@@ -1390,6 +1439,18 @@ object "Taylor" {
             }
             result_ptr := allocate(4)
             mslicestore(result_ptr, buildBoolSig(isfalse), 4)
+        }
+
+        function _nil_q(ptr1) -> answ {
+            let sig := getSignature(ptr1)
+            let nil_sig := getNilSignature(ptr1, getSignatureLength(ptr1))
+            answ := eq(sig, nil_sig)
+            
+            // TODO: remove this?
+            // u1 acts as a bool now
+            if and(eq(isBool(sig), 0), and(isNumber(ptr1), eq(numberSize(sig), 1))) {
+                answ := eq(mslice(add(ptr1, 4), 1), 0)
+            }
         }
 
         function _nth(ptrs) -> result_ptr {
@@ -2135,21 +2196,23 @@ object "Taylor" {
             let val_id := 0
             let valsig := getSignature(val_ptr)
             let isStructReference := and(isStruct(val_ptr), eq(structStoredFromSig(valsig), 1))
+            // Hash mapping key with mapping's signature
+            let key := mappingKey(sig, key_ptr)
 
             switch isStructReference
             case 1 {
                 val_id := mslice(add(val_ptr, 4), 4)
+                // Store value id at mapping key
+                sstore(key, val_id)
             }
             case 0 {
                 // Save value under its apropriate type
                 val_id := _saveInner(valsig, getValueLength(val_ptr), add(val_ptr, getSignatureLength(val_ptr)), 1)
+                // Store value id at mapping key
+                // internal index starts at 1
+                sstore(key, add(val_id, 1))
             }
 
-            // Hash mapping key with mapping's signature
-            let key := mappingKey(sig, key_ptr)
-
-            // Store value id at mapping key
-            sstore(key, val_id)
             result_ptr := allocateTyped(val_id, buildUintSig(4), 4)
         }
 
@@ -2167,20 +2230,26 @@ object "Taylor" {
             // Hash mapping key with mapping's signature
             // The mapping value's id/index
             let value_id := sload(mappingKey(sig, key_ptr))
-
-            let key_type := add(mapdef, 4)
             
+            let key_type := add(mapdef, 4)    
             let value_type := add(key_type, getTypedLength(key_type))
-
             let typesig_ptr := add(value_type, getSignatureLength(value_type))
-            let typesig := mslice(typesig_ptr, getValueLength(value_type))
+            let typesig_len := getValueLength(value_type)
+            let typesig := mslice(typesig_ptr, typesig_len)
 
-            result_ptr := _getfromInner(
-                typesig,
-                getSignatureLength(typesig_ptr),
-                getValueLength(typesig_ptr),
-                value_id
-            )
+            // value_id === 0 -> nothing is stored there
+            switch eq(value_id, 0)
+            case 1 {
+                result_ptr := allocateNil(typesig_ptr, typesig_len)
+            }
+            default {
+                result_ptr := _getfromInner(
+                    typesig,
+                    getSignatureLength(typesig_ptr),
+                    getValueLength(typesig_ptr),
+                    sub(value_id, 1)  // user index starts at 0
+                )
+            }
         }
 
         function mappingKey(mapsig, key_ptr) -> _key {
