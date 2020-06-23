@@ -2,6 +2,7 @@ const mal = require('./mal/mal.js');
 const malTypes = require('./mal/types.js');
 const interop = require('./mal/interop');
 const BN = require('bn.js');
+const ethers = require('ethers');
 
 mal.re = str => mal.EVAL(mal.READ(str), mal.repl_env)
 mal.reps = lines => lines.split('\n\n')
@@ -20,6 +21,17 @@ const toHex = bnval => {
     if (hex.length % 2 === 1) hex = '0' + hex;
     return '0x' + hex;
 }
+mal.globalStorage = {};
+
+modifyEnv('nil?', (orig_func, value) => {
+    let nil = (
+        !value ||
+        (value instanceof Object && Object.keys(value).length === 0) ||
+        (value instanceof Array && value.length === 0) ||
+        (typeof value === 'string' && value.substring(0, 2) === '0x' && value.length === 2)
+    );
+    return interop.js_to_mal(nil ? true : false);
+});
 
 modifyEnv('js-eval', (orig_func, str) => {
     const utils = {
@@ -28,6 +40,42 @@ modifyEnv('js-eval', (orig_func, str) => {
                 return new BN(n.substring(2), 16)
             }
             return new BN(n)
+        },
+        keccak256: n => {
+            if (typeof n !== 'string') throw new Error('keccak256 expects string');
+
+            // TODO: better encoding
+            // in case we have keccak256 "0x.." "0x .."
+            n = n.replace(/0x/g, '');
+
+            if (n.substring(0, 2) !== '0x') n = '0x' + n;
+            return ethers.utils.keccak256(ethers.utils.arrayify(n));
+        },
+        encode: n => {
+            // TODO: proper encoding
+            try {
+                n = JSON.parse(n)
+            } catch(e) {}
+
+            switch (typeof n) {
+                case 'number':
+                    return n.toString(16).padStart(8, '0');
+                case 'string':
+                    return n;
+            }
+        },
+        store: (key, value) => {
+            mal.globalStorage[key] = value;
+        },
+        sload: (key, typename) => {
+            let value = mal.globalStorage[key];
+            // TODO: proper typecheck
+            
+            try {
+                value = JSON.parse(value)
+            } catch(e) {}
+
+            return value;
         }
     }
     let answ = eval(str.toString());
@@ -42,6 +90,12 @@ modifyEnv('js-eval', (orig_func, str) => {
 
 mal.reps(`
 (def! reduce (fn* (f xs init) (if (empty? xs) init (reduce f (rest xs) (f init (first xs)) ))))
+
+(def! encode (fn* (a) (js-eval (str "utils.encode('" a "')") )))
+
+(def! store! (fn* (key value) (js-eval (str "utils.store(" key ",'" value "')") )))
+
+(def! sload (fn* (key type) (js-eval (str "utils.sload(" key ",'" type "')") )))
 `)
 
 /* EVM */
@@ -134,12 +188,17 @@ mal.reps(`
 
 (def! gaslimit (fn* () (get cenv "gasLimit" )))
 
+(def! keccak256 (fn* (& xs) (js-eval (str "utils.keccak256('" (reduce str (map encode xs) "" ) "')") )))
+
+(def! revert (fn* (a) (throw a) ) )
+
+(def! return (fn* (a) (js-eval (str "'" a "'" )) ) )
+
 `)
 
 // addmod
 // mulmod
 // signextend
-// keccak256
 // calldataload
 // calldatacopy
 // codecopy
@@ -161,6 +220,7 @@ const DEFAULT_TXOBJ = {
 mal.getBackend = (address) => {
     address = address || '0x81bD2984bE297E18F310BAef6b895ea089484968';
     const dec = bnval => {
+        if(!bnval) return bnval;
         if (typeof bnval === 'number') {
             bnval = new BN(bnval);
         } else if (typeof bnval === 'object' && bnval._hex) {

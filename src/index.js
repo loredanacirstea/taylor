@@ -57,13 +57,14 @@ const typeid = {
     bytelike: '000001',
     enum: '0000001',
     unknown: '00000001',
+    map: '000000001',
 }
 const fulltypeidHex = {
     // nil shorthand for empty list
     Nil: listTypeId(0),
-    None: '',
-    // unit - equivalent to void, for functions without return type
-    Unit: '',
+    // None: '',
+    // // unit - equivalent to void, for functions without return type
+    // Unit: '',
     // trait
     Nothing: b2h('00000000000000000000000000000000'),
     Any: b2h('00000000000000000000000000000001'),
@@ -82,8 +83,6 @@ const numberid = {
     uint: '01010010001',
     rational: '', // TODO
 }
-
-
 
 const nativeEnv = {};
 Object.keys(_nativeEnv).forEach((key, id) => {
@@ -114,17 +113,19 @@ const formatId = id => strip0x(hexZeroPad(x0(b2h(id)), 4));
 const getnumberid = size => formatId(typeid.number + numberid.uint + u2b(size).padStart(16, '0'))
 const getboolid = value => formatId(typeid.number + numberid.bool + u2b(value ? 1 : 0).padStart(16, '0'));
 const getbytesid = length => formatId(typeid.bytelike + u2b(length).padStart(26, '0'));
+// signature :=  '001' * bit4 arity * bit24 id * bit1 stored?
+const getstructid = (id, arity, stored=false) => formatId(typeid.struct + u2b(arity).padStart(4, '0') + u2b(id).padStart(24, '0') + stored ? '1' : '0')
 
-const isFunction = sig => (sig & 2147483648) !== 0;
+const isFunction = sig => ((sig >> 31) & 0x01) === 1;
 const isLambda = sig => (sig & 0x4000000) !== 0;
 const isApply = sig => (sig & 0x7fffffe) === 0x40;
 const isList = sig => (sig & 0x7fffffe) === 0x3e;
-const isArray = sig => (sig & 0x40000000) !== 0;
-const isStruct = sig => (sig & 0x20000000) !== 0;
-const isListType = sig => (sig & 0x10000000) !== 0;
-const isNumber = sig => (sig & 0x8000000) !== 0;
+const isArrayType = sig => ((sig >> 30) & 0x03) === 1;
+const isStruct = sig => ((sig >> 29) & 0x07) === 1;
+const isListType = sig => ((sig >> 28) & 0x0f) === 1;
+const isNumber = sig => ((sig >> 27) & 0x1f) === 1;
 const isBool = sig => (sig & 0xffff0000) === 0x0a800000;
-const isBytelike = sig => (sig & 0x4000000) !== 0;
+const isBytelike = sig => ((sig >> 26) & 0x3f) === 1;
 const isEnum = sig => (sig & 0x2000000) !== 0;
 const isLambdaUnknown = sig => (sig & 0x1000000) !== 0;
 const isGetByName = sig => (sig & 0x7fffffe) === 0x48;
@@ -134,14 +135,61 @@ const listTypeSize = sig => sig & 0xffffff;
 const bytelikeSize = sig => sig & 0x3ffffff;
 const funcArity = sig => (sig & 0x78000000) >> 27;
 const lambdaLength = sig => (sig & 0x3fffffe) >> 1;
-const getSignatureLength = 4;
-// const getValueLength = 
+const structSize = sig => (sig & 0x1e000000) >> 25;
+const arrayTypeSize = sig => (sig & 0x3fffffff);
+const structStoredFromSig = sig => (sig << 31) >> 31;
+const get4bsig = data => parseInt(data.substring(0, 8), 16);
+const getSignatureLength = data => {
+    let length = 4;
+    if (isArrayType(get4bsig(data))) {
+        length += getSignatureLength(data.substring(8));
+    }
+    return length;
+}
+const getValueLength = data => {
+    let sig = get4bsig(data)
+    if (isFunction(sig)) return 0
+    if (isBool(sig)) return 0
+    if (isNumber(sig)) return numberSize(sig)
+    if (isBytes(sig)) return bytesSize(sig)
+    if (isArrayType(sig)) return arrayTypeSize(sig) * getValueLength(data.substring(8));
+    if (isStruct(sig)) {
+        if (structStoredFromSig(sig)) return 4;
+        else return structSize(sig) * 4;
+    }
+    if (isListType(sig)) {
+        let size = listTypeSize(sig);
+        let length = 0;
+        data = data.substring(getSignatureLength(data));
+        [...new Array(size)].forEach((_, i) => {
+            let item_len = getTypedLength(data);
+            length += item_len;
+            data = data.substring(item_len);
+        })
+        return length;
+    }
+}
+const getTypedLength = data => getSignatureLength(data) + getTypedLength(data);
+const getSignatureLengthH = data => getSignatureLength(data) * 2;
+const getValueLengthH = data => getValueLength(data) * 2;
+const getTypedLengthH = data => getTypedLength(data) * 2;
 
 const tableSig = {}
 tableSig[nativeEnv['def!'].hex] = {offsets: [64, 8], aritydelta: -1}
 tableSig[nativeEnv['if'].hex] = {offsets: [8, 8], aritydelta: 0}
 tableSig['lambda'] = {offsets: lambdaLength}
 tableSig['isGetByName'] = {offsets: [64]}
+
+const nativeTypes = {};
+const typekey = key => key.substring(0, 1).toUpperCase() + key.substring(1);
+Object.keys(typeid).forEach(key => nativeTypes[typekey(key)] = formatId(typeid[key].padEnd(32, '0')));
+Object.keys(numberid).forEach(key => nativeTypes[typekey(key)] = formatId(typeid.number, numberid[key], u2b(4).padStart(16, '0')))
+nativeTypes.Bool = getnumberid(1)
+nativeTypes.Uint = getnumberid(4)
+nativeTypes.Address = getbytesid(20)
+nativeTypes.Bytes32 = getbytesid(32)
+nativeTypes.Map = (parseInt(nativeTypes.Map, 16) - 1).toString(16).padStart(8, '0');
+Object.keys(fulltypeidHex).forEach(key => nativeTypes[typekey(key)] = fulltypeidHex[key]);
 
 const encodeInner = (types, values) => {
     if (types.length !== values.length) throw new Error('Encode - different lengths.');
@@ -180,7 +228,9 @@ const encode = (types, values) => {
     return '0x' + encodeInner(types, values);
 }
 
-const decodeInner = (sig, data) => {
+const decodeInner = (inidata) => {
+    let sig = get4bsig(inidata);
+    data = inidata.substring(8);
     let result;
     if (isBool(sig)) {
         if (sig === 0x0a800001) result = true;
@@ -196,6 +246,12 @@ const decodeInner = (sig, data) => {
 
         data = data.substring(size*2);
         return { result, data };
+    } else if (isStruct(sig)) {
+        const arity = structSize(sig);
+        result = { sig };
+        [...new Array(arity)].forEach((_, i) => result[i] = parseInt(data.substring(i*8, (i+1)*8)));
+        data = data.substring(arity*8);
+        return { result, data };
     } else if (isBytelike(sig)) {
         const length = bytelikeSize(sig);
         result = '0x' + data.substring(0, length*2)
@@ -203,28 +259,43 @@ const decodeInner = (sig, data) => {
         return { result, data };
     } else if (isListType(sig)) {
         const length = listTypeSize(sig);
-        
         const result = [...new Array(length)].map((_, i) => {
-            const partsig = parseInt(data.substring(0, 8), 16);
-            let result;
-            ({result, data} = decodeInner(partsig, data.substring(8)));
-            return result;
+            const answ = decodeInner(data);
+            data = answ.data;
+            return answ.result;
+        });
+        return { result, data };
+    }  else if (isArrayType(sig)) {
+        const arity = arrayTypeSize(sig);
+        const siglen = getSignatureLengthH(inidata);
+        const signature = inidata.substring(8, siglen);
+        data = inidata.substring(siglen);
+        
+        const result = [...new Array(arity)].map((_, i) => {
+            const item = decodeInner(signature + data);
+            data = item.data;
+            return item.result;
         });
         return { result, data };
     } else {
-        throw new Error('decode type not supported: ' + sig);
+        throw new Error(`decode type not supported: ${sig} ; ${data}`);
     }
 }
 
 const decode = data => {
+    const inidata = data;
     data = strip0x(data);
     const decoded = [];
 
-    while (data.length > 0) {
-        let result;
-        const sig = parseInt(data.substring(0, 8), 16);
-        ({result, data} = decodeInner(sig, data.substring(8)));
-        decoded.push(result);
+    try {
+        while (data.length > 0) {
+            let result;
+            let answ = decodeInner(data);
+            decoded.push(answ.result);
+            data = answ.data;
+        }
+    } catch(e) {
+        throw new Error(`${e} ; ${inidata}`)
     }
     return decoded.length > 1 ? decoded : decoded[0];
 }
@@ -245,15 +316,21 @@ const ast2h = (ast, parent=null, unkownMap={}, defenv={}) => {
         return nativeEnv[elem.value].hex + defname + exprlen + exprbody;
     }
 
+    if (ast[0] && ast[0].value === 'defstruct!') {
+        const elem = ast[0];
+        const defname = getnumberid(32) + ast[1].value.hexEncode().padStart(64, '0');
+        const exprbody = ast2h(ast[2], ast, unkownMap, defenv);
+        return nativeEnv[elem.value].hex + defname + exprbody;
+    }
+
     return ast.map((elem, i) => {
         // if Symbol
         if (malTypes._symbol_Q(elem)) {
             if (!nativeEnv[elem.value]) {
-                if (elem.value === bytesMarker) {
-                    const typeid = getbytesid(ast[i + 1].length / 2);
-                    return  typeid + ast[i + 1];
+                // check if native type
+                if (nativeTypes[elem.value]) {
+                    return getbytesid(4) + nativeTypes[elem.value];
                 }
-                
                 // check if stored function first
                 if (!unkownMap[elem.value] && defenv[elem.value]) {
                     // TODO proper type - string/bytes
@@ -264,6 +341,11 @@ const ast2h = (ast, parent=null, unkownMap={}, defenv={}) => {
                     let arity = ast[0].value === elem.value ? ast.length : 1;
                     // getf <fname>
                     return nativeEnv.getf.hex(arity) + encodedName;
+                }
+
+                if (ast[i-1] && ast[i-1].value === 'struct') {
+                    const encodedName = getnumberid(32) + elem.value.hexEncode().padStart(64, '0');
+                    return encodedName;
                 }
                 
                 // lambda variables should end up here
@@ -311,10 +393,15 @@ const ast2h = (ast, parent=null, unkownMap={}, defenv={}) => {
             throw new Error('Unexpected native function: ' + elem.value);
         }
 
-        if (typeof elem === 'string' && elem.substring(0, 2) === bytesMarker) {
-            const val = elem.substring(2);
-            const typeid = getbytesid(val.length / 2);
-            return  typeid + val;
+        if (typeof elem === 'string') {
+            if (elem.substring(0, 2) === bytesMarker) {
+                const val = elem.substring(2);
+                const typeid = getbytesid(val.length / 2);
+                return  typeid + val;
+            } else {
+                // TODO fixme - strings are now bytes32
+                return getbytesid(32) + elem.hexEncode().padStart(64, '0');
+            }
         }
 
         if (elem instanceof Array) {
@@ -322,7 +409,8 @@ const ast2h = (ast, parent=null, unkownMap={}, defenv={}) => {
         }
 
         if (typeof elem === 'boolean') {
-            return encodeInner([{type: 'bool'}], [elem]);
+            // return encodeInner([{type: 'bool'}], [elem]);
+            return encodeInner([{type: 'uint', size: 1}], [elem ? 1 : 0]);
         }
 
         // TODO
@@ -332,6 +420,10 @@ const ast2h = (ast, parent=null, unkownMap={}, defenv={}) => {
         ) {
             return encodeInner([{type: 'uint', size: 4}], [elem]);
         }
+
+        // default - treat as string
+        // TODO fixme - strings are now bytes32
+        return getbytesid(32) + elem.hexEncode().padStart(64, '0');
 
     }).join('');
 }
@@ -345,6 +437,7 @@ const expr2string = (inidata, pos=0, accum='') => {
     let name, arity;
     let unknownList = [];
     let data = inidata.substring(pos);
+    const inidata_ = data;
     const sig = data.substring(0, 8);
     const sigu = parseInt(sig, 16);
     data = data.substring(8);
@@ -416,7 +509,7 @@ const expr2string = (inidata, pos=0, accum='') => {
         pos += 8
     }
     else {
-        const res = decodeInner(sigu, data)
+        const res = decodeInner(inidata_)
         accum += ' ' + res.result.toString()
         pos = inidata.length - res.data.length;
     }
@@ -506,7 +599,25 @@ const getTaylor = (provider, signer) => (address, deploymentBlock = 0) => {
     }
     
     interpreter.call = async (mal_expression, txObj) => decode(await interpreter.call_raw(expr2h(mal_expression, interpreter.functions), txObj));
-    interpreter.send = async (mal_expression, txObj) => interpreter.send_raw(expr2h(mal_expression, interpreter.functions), txObj);
+    interpreter.send = async (expression, txObj={}, newsigner=null) => {
+        if(!txObj.value) {
+            txObj.value = await interpreter.calculateCost(expression);
+        }
+        if (!newsigner) {
+            return interpreter.send_raw(expr2h(expression, interpreter.functions), txObj);
+        }
+        return sendTransaction(newsigner)(interpreter.address)(
+            expr2h(expression, interpreter.functions),
+            txObj,
+        )
+    }
+
+    interpreter.estimateGas = async (expression, txObj={}) => provider.estimateGas(Object.assign({
+        to: interpreter.address,
+        data: expr2h(expression, interpreter.functions),
+    }, txObj));
+
+    interpreter.calculateCost = async expression => (await interpreter.estimateGas(expression)).toNumber() * 2;
 
     interpreter.getregistered = getRegisteredContracts(interpreter.call_raw);
 
@@ -596,7 +707,7 @@ const getTaylor = (provider, signer) => (address, deploymentBlock = 0) => {
 
 module.exports = {
     u2b, u2h, b2u, b2h, h2u, h2b,
-    typeid, nativeEnv, reverseNativeEnv,
+    typeid, nativeEnv, reverseNativeEnv, nativeTypes,
     encode,
     decode,
     expr2h,

@@ -25,7 +25,7 @@ const _nativeEnv = {
     addmod:       { mutable: false, arity: 3, inputs: [{type: 'uint', name: 'a'}, {type: 'uint', name: 'b'}, {type: 'uint', name: 'c'}], outputs: [{type: 'uint', name: 'd'}] },
     mulmod:       { mutable: false, arity: 3, inputs: [{type: 'uint', name: 'a'}, {type: 'uint', name: 'b'}, {type: 'uint', name: 'c'}], outputs: [{type: 'uint', name: 'd'}] },
     signextend:   { mutable: false, arity: 2, inputs: [{type: 'uint', name: 'a'}, {type: 'uint', name: 'b'}], outputs: [{type: 'uint', name: 'c'}] },
-    keccak256:    { mutable: false, arity: 2, inputs: [{type: 'uint', name: 'a'}, {type: 'uint', name: 'b'}], outputs: [{type: 'uint', name: 'c'}] },
+    keccak256:    { mutable: false, arity: null, inputs: [{type: 'uint', name: 'a'}, {type: 'uint', name: 'b'}], outputs: [{type: 'uint', name: 'c'}] },
     call:         { mutable: true, arity: 7, notimp: true },
     callcode:     { mutable: true, arity: 7, notimp: true },
     delegatecall: { mutable: true, arity: 6, notimp: true },
@@ -54,7 +54,7 @@ const _nativeEnv = {
     // Mal specific - unimplemented, just placeholders
     cons:         { mutable: false, arity: 2, notimp: true },  // prepend item to list
     concat2:      { mutable: false, arity: null, notimp: true },  // concats lists
-    'nil?':       { mutable: false, arity: 1, notimp: true },
+    'nil?':       { mutable: false, arity: 1 },
     'list?':      { mutable: false, arity: 1, notimp: true },
     vector:       { mutable: false, arity: null, notimp: true },
     'vector?':    { mutable: false, arity: 1, notimp: true },
@@ -138,8 +138,23 @@ const _nativeEnv = {
     gaslimit:   {mutable: false, arity: 0, inputs: [], outputs: [] },
 
     // Taylor
-    'insertinto!':  { mutable: false, arity: 2 },
+    'save!':  { mutable: false, arity: 2 },
     getfrom:     { mutable: false, arity: 2 },
+    struct:   { mutable: false, arity: 2, inputs: [{type: 'symbol', name: 'name'}, {type: 'list', name: 'values'}], outputs: [] },
+    'struct!':   { mutable: false, arity: 2, inputs: [{type: 'symbol', name: 'name'}, {type: 'list', name: 'values'}], outputs: [] }, // todo: remove
+    rcall:    { mutable: true, arity: 3 },
+    array:    { mutable: false, arity: null },
+    'savedyn!':  { mutable: false, arity: 2 },
+    'push!':  { mutable: false, arity: 3 },
+    getdyn: { mutable: false, arity: 2 },
+    'store!': { mutable: false, arity: 2 },
+    sload:    { mutable: false, arity: 2 },
+    revert:   { mutable: false, arity: 1 },
+    return:   { mutable: false, arity: 1 },
+    'list-struct': { mutable: false, arity: 1 },
+    'defmap!': { mutable: false, arity: 3 },
+    'mapset!': { mutable: false, arity: 3 },
+    mapget: { mutable: false, arity: 2 },
 
     // TODO: curry
     // TODO: pay

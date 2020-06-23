@@ -1,7 +1,6 @@
 const fs = require('fs')
 const solc = require('solc')
 const ethers = require('ethers');
-const yulp = require('yulp');
 const BN = require('bn.js');
 require('../../src/extensions.js');
 const { decode, expr2h, getTaylor } = require('../../src/index.js');
@@ -25,11 +24,8 @@ const solcData = yulsource => JSON.stringify({
 });
 
 const compileContract = filePath => {
-  const yulpsource = fs.readFileSync(filePath).toString();
-
-  const yulpCompiled = yulp.compile(yulpsource);
-  const yulpResult = yulp.print(yulpCompiled.results).replace(/\./g, "_");
-  const output = JSON.parse(solc.compile(solcData(yulpResult)));
+  const yulsource = fs.readFileSync(filePath).toString();
+  const output = JSON.parse(solc.compile(solcData(yulsource)));
 
   if (output.errors.length > 1 || !output.contracts) {
     const message = output.errors.map(err => err.formattedMessage).join('\n');
@@ -49,6 +45,7 @@ const deployContract = signer => async filePath => {
   };
   const response = await signer.sendTransaction(transaction);
   const receipt = await response.wait();
+  console.log('* Deploy ' + filePath + ': ' + receipt.gasUsed);
   return receipt.contractAddress;
 }
 

@@ -12,6 +12,8 @@ import ReactJson from 'custom-react-json-view'
 
 const MIN_WIDTH = 800;
 
+const getGasRate = async (currency) => (await (await fetch('https://api.coingecko.com/api/v3/simple/price?ids=ethereum&vs_currencies=' + currency)).json()).ethereum[currency];
+
 class TaylorEditor extends Component {
   constructor(props) {
     super(props);
@@ -32,6 +34,7 @@ class TaylorEditor extends Component {
       tayinterpreter: null,
       malbackend: null,
       backend: 'javascript',
+      gasprofile: {currency: 'eur', ethrate: null, profile: 'average'},
     }
 
     this.onContentSizeChange = this.onContentSizeChange.bind(this);
@@ -41,6 +44,7 @@ class TaylorEditor extends Component {
     this.onRootChange = this.onRootChange.bind(this);
     this.onFunctionsChange = this.onFunctionsChange.bind(this);
     this.editorDidMount = this.editorDidMount.bind(this);
+    this.onGasprofileChange = this.onGasprofileChange.bind(this);
 
     this.editor = null;
     this.monaco = null;
@@ -48,6 +52,8 @@ class TaylorEditor extends Component {
     Dimensions.addEventListener('change', () => {
       this.onContentSizeChange();
     });
+
+    this.setEthrate(this.state.gasprofile);
   }
 
   onRootChange(backend, tayinterpreter, malbackend) {
@@ -64,6 +70,34 @@ class TaylorEditor extends Component {
     }
   }
 
+  async setEthrate(gasprofile) {
+    gasprofile = gasprofile || this.state.gasprofile;
+    const ethrate = await getGasRate(gasprofile.currency);
+    gasprofile.ethrate = ethrate;
+    this.setState({ gasprofile });
+  }
+
+  async onGasprofileChange(gasprofile) {
+    const ethrate = await getGasRate(gasprofile.currency);
+    gasprofile.ethrate = ethrate;
+    this.setState({ gasprofile });
+  }
+
+  async getGasCost(interpreter, code, isTransaction) {
+    let gas = (await interpreter.estimateGas(code)).toNumber();
+    const value = await interpreter.calculateCost(code);
+
+    if (isTransaction) {
+      const { currency, profile, ethrate } = this.state.gasprofile;
+      const gaspricedata = await(await fetch('https://ethgasstation.info/api/ethgasAPI.json')).json();
+      // gasprice / 10 = gwei
+      const gasprice = gaspricedata[profile] * 1000000000 / 10; // wei
+  
+      return { gas, currency, ethrate, gasprice, value };
+    }
+    return {gas, value};
+  }
+
   onFunctionsChange(functions={}) {
     monacoTaylorExtension(this.monaco, Object.assign({}, functions, maltay.nativeEnv));
   }
@@ -72,26 +106,30 @@ class TaylorEditor extends Component {
       encdata = encdata || this.state.encoded;
       code = code || this.state.code;
       const isTransaction = code && code.includes("!");
+      let gascost;
+
+      if (backend === 'injected') {
+        gascost = await this.getGasCost(interpreter, code, isTransaction);
+      }
 
       if (!isTransaction || backend === 'javascript') {
         let result, error;
         try {
           result = await interpreter.call(code);
         } catch (e) {
-          error = e;
+          error = e.message;
         }
-        callback({ result, error, encdata })
+        callback({ result, error, gascost, encdata })
       
       } else if (force) {
         let response, error, receipt = {};
-
         try {
-          response = await interpreter.send(code);
-          callback({ receipt: response })
+          response = await interpreter.send(code, {value: gascost.value, gasPrice: gascost.gasprice});
+          callback({ receipt: response, gascost, isTransaction })
 
           receipt = await response.wait();
         } catch (e) {
-          error = e;
+          error = e.message;
           callback({ error, encdata })
         }
   
@@ -100,6 +138,8 @@ class TaylorEditor extends Component {
         } else {
           callback({ receipt })
         }
+      } else {
+        callback({ gascost, encdata, isTransaction })
       }
   }
 
@@ -110,25 +150,43 @@ class TaylorEditor extends Component {
       injected: tayinterpreter || this.state.tayinterpreter,
     }
 
-    const getResult =  ({ result, receipt, encdata, errors, backend }) => {
+    const getResult =  ({ result, receipt, encdata, error, backend, gascost, isTransaction }) => {
       const resultObj = {};
       if (result) resultObj.result = result;
       if (receipt) resultObj.receipt = receipt;
       if (encdata) resultObj.data = encdata;
       if (backend) resultObj.backend = backend;
-      return { resultObj, errors };
+      if (gascost) {
+        resultObj.gas = gascost.gas;
+        
+        if (isTransaction) {
+          const currency = gascost.currency.toUpperCase();
+          resultObj.value = gascost.value;  // wei
+          resultObj.cost = {};
+          resultObj.cost.gasprice = gascost.gasprice; // wei
+          resultObj.cost.eth = (gascost.gas * gascost.gasprice + gascost.value) / 1000000000000000000; // eth // 1000000000;
+          resultObj.cost.cost = (resultObj.cost.eth * gascost.ethrate).toString() + ' ' + currency;
+
+          resultObj.value = (resultObj.value / 1000000000000000000).toFixed(18) + ' ETH (fee)';
+          resultObj.cost.eth = resultObj.cost.eth.toString() + ' ETH';
+          resultObj.cost.ethrate = `${gascost.ethrate} ${currency}/ETH`;
+          resultObj.cost.gasprice = (resultObj.cost.gasprice / 1000000000).toString() + ' GWEI';
+        }
+      }
+
+      return { resultObj, error };
     }
 
     let callb = {
       main: btype => (data) => {
         data.backend = btype;
-        const { resultObj, errors } = getResult(data);
-        this.setState({ result: resultObj, errors });
+        const { resultObj, error } = getResult(data);
+        this.setState({ result: resultObj, errors: error });
       },
       second: btype => (data) => {
         data.backend = btype;
-        const { resultObj, errors } = getResult(data);
-        this.setState({ result2: resultObj, errors2: errors });
+        const { resultObj, error } = getResult(data);
+        this.setState({ result2: resultObj, errors2: error });
       },
     }
 
@@ -254,7 +312,7 @@ class TaylorEditor extends Component {
                   name={null}
                   theme="twilight"
                   collapsed={6}
-                  shouldCollapse={field => field.name === 'd' }
+                  shouldCollapse={field => field.name === 'cost' }
                   style={{ fontSize: editorOpts.fontSize }}
                   />
               }
@@ -267,7 +325,7 @@ class TaylorEditor extends Component {
             >
               {backend === 'both'
                 ? (errors2
-                    ? <Text style={{color: 'firebrick', fontSize: editorOpts.fontSize }}>{errors}</Text>
+                    ? <Text style={{color: 'firebrick', fontSize: editorOpts.fontSize }}>{errors2}</Text>
                     : <ReactJson
                     src={result2 || {}}
                     name={null}
@@ -301,6 +359,7 @@ class TaylorEditor extends Component {
               styles={{...panelStyles}}
               onRootChange={this.onRootChange}
               onFunctionsChange={this.onFunctionsChange}
+              onGasprofileChange={this.onGasprofileChange}
           />
         </ScrollView>
       </ScrollView>

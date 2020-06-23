@@ -1,6 +1,7 @@
 const DEFAULT_CODE = '(add (mul 2 (add 13 56)) 9000)';
 const STORAGE_KEY_CODE = 'TaylorCode';
 const STORAGE_KEY_TAYLOR_ADDRESS = 'TaylorInterpreterAddress';
+const STORAGE_KEY_CONFIG = 'TaylorConfig';
 
 const DEFAULT_DEPLOYMENT = {
   5777: {
@@ -80,6 +81,18 @@ const clearAddresses = (chainid) => {
   localStorage.setItem(key, '{}');
 }
 
+const setConfig = config => {
+  let _config = getConfig();
+  config = Object.assign({}, _config, config);
+  localStorage.setItem(STORAGE_KEY_CONFIG, JSON.stringify(config))
+}
+
+const getConfig = () => {
+  let config = localStorage.getItem(STORAGE_KEY_CONFIG);
+  if (!config) config = '{}';
+  return JSON.parse(config);
+}
+
 export {
   storeCode,
   getCode,
@@ -87,6 +100,8 @@ export {
   getAddresses,
   getNamedAddress,
   clearAddresses,
+  setConfig,
+  getConfig,
   DEPL_BLOCKS,
   DEFAULT_DEPLOYMENT,
 }
