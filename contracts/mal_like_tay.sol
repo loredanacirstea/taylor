@@ -773,7 +773,7 @@ object "Taylor" {
             _length := 4
 
             if isArrayType(ptr) {
-                _length := 8
+                _length := add(4, getSignatureLength(add(ptr, 4)))
             }
         }
 
@@ -1674,8 +1674,6 @@ object "Taylor" {
             let key := mappingArrayStorageKey_values(storage_slot, typesig)
             let values := sload(key)
 
-            // data_ptr := add(data_ptr, getSignatureLength(data_ptr))
-
             let head_len := min(sub(32, storage_offset), data_len)
             let head := mslice(data_ptr, head_len)
 
@@ -1834,17 +1832,22 @@ object "Taylor" {
             let list_ptrs := allocate(mul(arity, 32))
 
             for { let i := 0 } lt(i, arity) { i := add(i, 1) } {
+                // type_ptr: <bytes_sig><typesig>
+                // length of bytes_sig
                 let typesig_len := getSignatureLength(type_ptr)
+                // length of typesig
                 let typesig_val_len := getValueLength(type_ptr)
+
+                type_ptr := add(type_ptr, typesig_len)
                 
-                let typesig := mslice(add(type_ptr, typesig_len), typesig_val_len)
-                let value_len := getValueLength(add(type_ptr, typesig_len))
+                let typesig := mslice(type_ptr, typesig_val_len)
+                let value_len := getValueLength(type_ptr)
                 let index := mslice(index_ptr, 4)
-                let arg_ptr := _getfromInner(typesig, typesig_len, value_len, index)    
+                let arg_ptr := _getfromInner(typesig, typesig_val_len, value_len, index)
 
                 mstore(add(list_ptrs, mul(i, 32)), arg_ptr)
 
-                type_ptr := add(add(type_ptr, typesig_len), typesig_val_len)
+                type_ptr := add(type_ptr, typesig_val_len)
                 index_ptr := add(index_ptr, 4)
             }
 
