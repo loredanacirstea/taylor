@@ -482,6 +482,100 @@ describe('test arrays & structs', function () {
         resp = await MalTay.call(`(list-struct (getfrom "struct3" 0))`);
         expect(resp).toEqual([array_2_3, array_2_4_3]);
     });
+
+    it('test dynamic array storage', async function() {
+        let resp;
+
+        await MalTay.send('(save! (array 4 8 9) "0x400000000a910004" )');
+
+        await MalTay.send('(save! (array "0x11223344556677889910" "0x11121314151617181920") "0x400000000400000a" )');
+
+        await MalTay.send('(save! (array 1 2 3) "0x400000000a910004" )');
+
+        resp = await MalTay.call(`(getfrom "0x400000000a910004" 0)`);
+        expect(resp).toEqual([4, 8, 9]);
+
+        resp = await MalTay.call(`(getfrom "0x400000000400000a" 0)`);
+        expect(resp).toEqual(['0x11223344556677889910', '0x11121314151617181920']);
+
+        resp = await MalTay.call(`(getfrom "0x400000000a910004" 1)`);
+        expect(resp).toEqual([1, 2, 3]);
+
+        await MalTay.send('(push! "0x400000000a910004" 0 22 )');
+        await MalTay.send('(push! "0x400000000a910004" 0 23 )');
+        await MalTay.send('(push! "0x400000000a910004" 0 24 )');
+        await MalTay.send('(push! "0x400000000a910004" 0 25 )');
+        await MalTay.send('(push! "0x400000000a910004" 0 26 )');
+        await MalTay.send('(push! "0x400000000a910004" 0 27 )');
+        await MalTay.send('(push! "0x400000000a910004" 0 28 )');
+        await MalTay.send('(push! "0x400000000a910004" 0 29 )');
+        await MalTay.send('(push! "0x400000000a910004" 0 30 )');
+        await MalTay.send('(push! "0x400000000a910004" 0 31 )');
+        await MalTay.send('(push! "0x400000000a910004" 0 32 )');
+
+        resp = await MalTay.call(`(getfrom "0x400000000a910004" 0)`);
+        expect(resp).toEqual([4, 8, 9, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32]);
+
+        await MalTay.send('(push! "0x400000000a910004" 1 4 )');
+        await MalTay.send('(push! "0x400000000a910004" 1 5 )');
+        resp = await MalTay.call(`(getfrom "0x400000000a910004" 1)`);
+        expect(resp).toEqual([1, 2, 3, 4, 5]);
+
+        await MalTay.send('(push! "0x400000000400000a" 0 "0x21222324252627282930" )');
+        await MalTay.send('(push! "0x400000000400000a" 0 "0x31323334353637383940" )');
+        resp = await MalTay.call(`(getfrom "0x400000000400000a" 0)`);
+        expect(resp).toEqual(['0x11223344556677889910', '0x11121314151617181920', '0x21222324252627282930', '0x31323334353637383940']);
+    }, 10000);
+
+    it('test dynamic array in struct', async function() {
+        await MalTay.send('(defstruct! dynarstruct (list "0x400000000a910004" "0x400000000a910004") )');
+    
+        await MalTay.send('(struct! "dynarstruct" (list (array 6 8 11) (array 2 7 9)) )');
+
+        resp = await MalTay.call(`(getfrom "0x400000000a910004" 2)`);
+        expect(resp).toEqual([6, 8, 11]);
+
+        resp = await MalTay.call(`(getfrom "0x400000000a910004" 3)`);
+        expect(resp).toEqual([2, 7, 9]);
+
+        resp = await MalTay.call(`(list-struct (getfrom "dynarstruct" 0))`);
+        expect(resp).toEqual([[6, 8, 11], [2, 7, 9]]);
+
+        await MalTay.send('(push! "0x400000000a910004" 2 22 )');
+        await MalTay.send('(push! "0x400000000a910004" 3 24 )');
+
+        resp = await MalTay.call(`(list-struct (getfrom "dynarstruct" 0))`);
+        expect(resp).toEqual([[6, 8, 11, 22], [2, 7, 9, 24]]);
+    });
+
+    it('test dynamic array multi dim in struct', async function() {
+        const arr_0_0_u4 = [[223, 12, 16, 14], [16, 18, 111, 55]];
+        const arr_0_3_u4 = [[5, 7, 19], [12, 17, 39]];
+
+        await MalTay.send('(defstruct! dynmultiarstruct (list "0x40000000400000040a910004" "0x40000000400000030a910004") )');
+    
+        await MalTay.send(`(struct! "dynmultiarstruct" (list 
+            (array (array 223 12 16 14) (array 16 18 111 55)) 
+            (array (array 5 7 19) (array 12 17 39))
+        ))`);
+
+        resp = await MalTay.call(`(getfrom "0x40000000400000040a910004" 0)`);
+        expect(resp).toEqual(arr_0_0_u4);
+
+        resp = await MalTay.call(`(getfrom "0x40000000400000030a910004" 0)`);
+        expect(resp).toEqual(arr_0_3_u4);
+
+        resp = await MalTay.call(`(list-struct (getfrom "dynmultiarstruct" 0))`);
+        expect(resp).toEqual([arr_0_0_u4, arr_0_3_u4]);
+
+        await MalTay.send('(push! "0x40000000400000040a910004" 0 (array 6 66 666 6666) )');
+        await MalTay.send('(push! "0x40000000400000030a910004" 0 (array 6 66 666) )');
+        
+        arr_0_0_u4.push([6, 66, 666, 6666]);
+        arr_0_3_u4.push([6, 66, 666]);
+        resp = await MalTay.call(`(list-struct (getfrom "dynmultiarstruct" 0))`);
+        expect(resp).toEqual([arr_0_0_u4, arr_0_3_u4]);
+    });
 });
 
 it('test ownership & costs', async function() {
@@ -505,53 +599,6 @@ it('test ownership & costs', async function() {
     expect(sender_pre_balance.sub(sender_post_balance).toNumber()).toBe(txprice.toNumber() + cost);
 
     // TODO - expect failure if value to small
-});
-
-describe('test dynamic storage', function () {
-    it('test dynamic array storage', async function() {
-        let resp;
-
-        await MalTay.send('(savedyn! (array 4 8 9) )');
-
-        await MalTay.send('(savedyn! (array "0x11223344556677889910" "0x11121314151617181920") )');
-
-        await MalTay.send('(savedyn! (array 1 2 3) )');
-
-        resp = await MalTay.call(`(getdyn "0x400000000a910004" 0)`);
-        expect(resp).toEqual([4, 8, 9]);
-
-        resp = await MalTay.call(`(getdyn "0x400000000400000a" 0)`);
-        expect(resp).toEqual(['0x11223344556677889910', '0x11121314151617181920']);
-
-        resp = await MalTay.call(`(getdyn "0x400000000a910004" 1)`);
-        expect(resp).toEqual([1, 2, 3]);
-
-        await MalTay.send('(push! "0x400000000a910004" 0 22 )');
-        await MalTay.send('(push! "0x400000000a910004" 0 23 )');
-        await MalTay.send('(push! "0x400000000a910004" 0 24 )');
-        await MalTay.send('(push! "0x400000000a910004" 0 25 )');
-        await MalTay.send('(push! "0x400000000a910004" 0 26 )');
-        await MalTay.send('(push! "0x400000000a910004" 0 27 )');
-        await MalTay.send('(push! "0x400000000a910004" 0 28 )');
-        await MalTay.send('(push! "0x400000000a910004" 0 29 )');
-        await MalTay.send('(push! "0x400000000a910004" 0 30 )');
-        await MalTay.send('(push! "0x400000000a910004" 0 31 )');
-        await MalTay.send('(push! "0x400000000a910004" 0 32 )');
-
-        resp = await MalTay.call(`(getdyn "0x400000000a910004" 0)`);
-        expect(resp).toEqual([4, 8, 9, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32]);
-
-        await MalTay.send('(push! "0x400000000a910004" 1 4 )');
-        await MalTay.send('(push! "0x400000000a910004" 1 5 )');
-        resp = await MalTay.call(`(getdyn "0x400000000a910004" 1)`);
-        expect(resp).toEqual([1, 2, 3, 4, 5]);
-
-        
-        await MalTay.send('(push! "0x400000000400000a" 0 "0x21222324252627282930" )');
-        await MalTay.send('(push! "0x400000000400000a" 0 "0x31323334353637383940" )');
-        resp = await MalTay.call(`(getdyn "0x400000000400000a" 0)`);
-        expect(resp).toEqual(['0x11223344556677889910', '0x11121314151617181920', '0x21222324252627282930', '0x31323334353637383940']);
-    }, 10000);
 });
 
 describe.each([

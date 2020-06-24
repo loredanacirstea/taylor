@@ -144,9 +144,9 @@ const _nativeEnv = {
     'struct!':   { mutable: false, arity: 2, inputs: [{type: 'symbol', name: 'name'}, {type: 'list', name: 'values'}], outputs: [] }, // todo: remove
     rcall:    { mutable: true, arity: 3 },
     array:    { mutable: false, arity: null },
-    'savedyn!':  { mutable: false, arity: 2 },
+    'savedyn!':  { mutable: false, arity: 2, notimp: true }, // obsolete
     'push!':  { mutable: false, arity: 3 },
-    getdyn: { mutable: false, arity: 2 },
+    getdyn: { mutable: false, arity: 2, notimp: true },  // obsolete
     'store!': { mutable: false, arity: 2 },
     sload:    { mutable: false, arity: 2 },
     revert:   { mutable: false, arity: 1 },

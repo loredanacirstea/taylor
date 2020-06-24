@@ -472,14 +472,8 @@ object "Taylor" {
             case 0x9800010b {
                 result_ptr := _rcall(add(arg_ptrs_ptr, 32))
             }
-            case 0x9000010e {
-                result_ptr := _savedyn(add(arg_ptrs_ptr, 32))
-            }
             case 0x98000110 {
                 result_ptr := _push(add(arg_ptrs_ptr, 32))
-            }
-            case 0x90000112 {
-                result_ptr := _getdyn(add(arg_ptrs_ptr, 32))
             }
             case 0x90000114 {
                 result_ptr := _store(add(arg_ptrs_ptr, 32))
@@ -715,6 +709,9 @@ object "Taylor" {
             let sig := get4b(ptr)
             isi := eq(and(shr(30, sig), 0x03), 1)
         }
+        function isArrayTypeSig(sig) -> isi {
+            isi := eq(and(shr(30, sig), 0x03), 1)
+        }
 
         // 00100000000000000000000000000000
         // 111 - 0x07
@@ -741,7 +738,7 @@ object "Taylor" {
 
         // 00000100000000000000000000000000
         // 111111 - 0x3f
-        function isBytes(ptr) -> isi {
+        function isByteLike(ptr) -> isi {
             let sig := get4b(ptr)
             isi := eq(and(shr(26, sig), 0x3f), 1)
         }
@@ -827,7 +824,7 @@ object "Taylor" {
                 _length := numberSize(sig)
                 done := 1
             }
-            if and(eq(done, 0), isBytes(ptr)) {
+            if and(eq(done, 0), isByteLike(ptr)) {
                 _length := bytesSize(sig)
                 done := 1
             }
@@ -892,7 +889,7 @@ object "Taylor" {
                 _nil_sig := buildUintSig(0)
                 done := 1
             }
-            if and(eq(done, 0), isBytes(ptr)) {
+            if and(eq(done, 0), isByteLike(ptr)) {
                 _nil_sig := buildBytesSig(0)
                 done := 1
             }
@@ -1370,7 +1367,7 @@ object "Taylor" {
 
         function _contig(ptr1, ptr2) -> result_ptr {
             dtrequire(isNumber(ptr1), 0xe010)
-            dtrequire(isBytes(ptr2), 0xe010)
+            dtrequire(isByteLike(ptr2), 0xe010)
 
             let len1 := numberSize(mslice(ptr1, 4))
             let len2 := bytesSize(mslice(ptr2, 4))
@@ -1509,19 +1506,30 @@ object "Taylor" {
             let vallen := getValueLength(typename_ptr)
             
             // (save! "0x..." "0x04000000" )
-            let abstract_type := and(gt(typesig, 0), eq(vallen, 0))
+            let is_abstract_type := and(gt(typesig, 0), eq(vallen, 0))
             
             let index := 0
 
-            switch abstract_type
-            // dynamic size
+            switch is_abstract_type
+            // dynamic length bytes & strings or dynamic arrays
             case 1 {
                 siglen := getSignatureLength(data_ptr)
                 vallen := getValueLength(data_ptr)
-                index := _saveInner(typesig, vallen, add(data_ptr, siglen), 0)
+                // eq(vallen, 0) is tested in is_abstract_type
+                let isdynarray := isArrayType(typename_ptr)
+                switch isdynarray
+                case 1 {
+                    index := _saveInner(data_ptr, vallen, add(data_ptr, siglen), 2)
+                }
+                default {
+                    // only for bytelike, but now we can have anything
+                    // because we use this for storing type definitions (e.g. struct)
+                    // on the abstract type
+                    index := _saveInner(typesig, vallen, add(data_ptr, siglen), 0)
+                }
             }
             // static size
-            case 0 {
+            default {
                 if eq(typesig, 0) {
                     siglen := getSignatureLength(data_ptr)
                     typesig := mslice(data_ptr, siglen)
@@ -1533,13 +1541,22 @@ object "Taylor" {
             result_ptr := allocateTyped(index, buildUintSig(4), 4)
         }
 
-        function _saveInner(typesig, value_len, value_ptr, hasStaticSize) -> _index {
-            switch hasStaticSize
+        function _saveInner(typesig, value_len, value_ptr, storageType) -> _index {
+            switch storageType
             case 1 {
                 _index := _saveInnerStaticSize(typesig, value_len, value_ptr)
             }
             case 0 {
                 _index := _saveInnerDynamicSize(typesig, value_len, value_ptr)
+            }
+            // dynamic
+            default {
+                // multidimarrays?
+                // typesig = typesig pointer
+                let itemsig_len := getSignatureLength(add(typesig, 4))
+                let itemsig := mslice(add(typesig, 4), itemsig_len)
+                let arity := arrayTypeSize(mslice(typesig, 4))
+                _index := _savedynInner(itemsig, arity, value_len, value_ptr)
             }
 
             // Internal index starts at 1
@@ -1592,6 +1609,16 @@ object "Taylor" {
             _index := last_index
         }
 
+        function _savedynInner(itemsig, arity, data_len, data_ptr) -> _index {
+            // get last inserted index
+            _index := add(getStorageCountDyn(itemsig), 1)
+            let key := mappingArrayDynStorageKey_values(_index, itemsig)
+
+            sstore(key, arity)
+            storeDataInner(data_ptr, add(key, 1), data_len)
+            incStorageCountDyn(itemsig)
+        }
+
         function _getfrom(ptrs) -> result_ptr {
             let typename_ptr := mload(ptrs)
             let typename_len := getValueLength(typename_ptr)
@@ -1604,16 +1631,28 @@ object "Taylor" {
                 mstore(typename_ptr, sload(storageKey))
             }
 
-            let sig_len := getSignatureLength(typename_ptr)
-            let typesig := mslice(typename_ptr, sig_len)
-
             let index := mslice(add(
                 mload(add(ptrs, 32)),
                 4
             ), 4)
-
+            
+            let sig_len := getSignatureLength(typename_ptr)
+            let typesig := mslice(typename_ptr, sig_len)
             let typesize := getValueLength(typename_ptr)
-            result_ptr := _getfromInner(typesig, sig_len, typesize, index)
+
+            let isdynarray := and(eq(typesize, 0), isArrayType(typename_ptr))
+            switch isdynarray
+            case 1 {
+                // array item
+                typename_ptr := add(typename_ptr, 4)
+                sig_len := getSignatureLength(typename_ptr)
+                typesig := mslice(typename_ptr, sig_len)
+                typesize := getValueLength(typename_ptr)
+                result_ptr := _getdynInner(typesig, typesize, sig_len, index)
+            }
+            default {
+                result_ptr := _getfromInner(typesig, sig_len, typesize, index)
+            }
         }
 
 
@@ -1873,20 +1912,45 @@ object "Taylor" {
 
             // TODO: typecheck values & cast if neccessary/possible
 
+            let struct_id := structIdFromSig(sig)
+            let types_arity := structSize(sig)
+            let struct_types := _getfromInner(0x20000000, 4, 0, struct_id)
+
             let list_arity := listTypeSize(mslice(valueslist_ptr, 4))
             let struct_ptr := allocate(mul(list_arity, 4))
 
+            dtrequire(eq(types_arity, list_arity), 0xefff)
+
             let res_ptr := struct_ptr
             let val_ptr := add(valueslist_ptr, 4)
+            let type_ptr := add(struct_types, 8)
 
             for { let i := 0 } lt(i, list_arity) { i := add(i, 1) } {
                 let typesig := getSignature(val_ptr)
+
+                // type_ptr: <bytes_sig><typesig>
+                // length of bytes_sig
+                let typesig_len := getSignatureLength(type_ptr)
+                // length of typesig
+                let typesig_val_len := getValueLength(type_ptr)
+                type_ptr := add(type_ptr, typesig_len)
                 let value_len := getValueLength(val_ptr)
-                let index := _saveInner(typesig, value_len, add(val_ptr, getSignatureLength(val_ptr)), 1)
-                
+
+                // let typesig := mslice(type_ptr, typesig_val_len)
+                let storageType := 1
+                let isdynarray := and(eq(getValueLength(type_ptr), 0), isArrayType(type_ptr))
+                if isdynarray {
+                    typesig := val_ptr
+                    storageType := 2
+                }
+
+                let index := _saveInner(typesig, value_len, add(val_ptr, getSignatureLength(val_ptr)), storageType)
+
                 mslicestore(res_ptr, index, 4)
                 res_ptr := add(res_ptr, 4)
                 val_ptr := add(val_ptr, getTypedLength(val_ptr))
+
+                type_ptr := add(type_ptr, typesig_val_len)
             }
 
             let index := _saveInner(sig, mul(list_arity, 4), struct_ptr, 1)
@@ -1920,7 +1984,21 @@ object "Taylor" {
                 let typesig := mslice(type_ptr, typesig_val_len)
                 let value_len := getValueLength(type_ptr)
                 let index := mslice(index_ptr, 4)
-                let arg_ptr := _getfromInner(typesig, typesig_val_len, value_len, index)
+                let arg_ptr := 0
+                
+                let isdynarray := and(eq(value_len, 0), isArrayType(type_ptr))
+                switch isdynarray
+                case 1 {
+                    // array item
+                    let itemtype_ptr := add(type_ptr, 4)
+                    let sig_len := getSignatureLength(itemtype_ptr)
+                    typesig := mslice(itemtype_ptr, sig_len)
+                    let typesize := getValueLength(itemtype_ptr)
+                    arg_ptr := _getdynInner(typesig, typesize, sig_len, index)
+                }
+                default {
+                    arg_ptr := _getfromInner(typesig, typesig_val_len, value_len, index)
+                }
 
                 mstore(add(list_ptrs, mul(i, 32)), arg_ptr)
 
@@ -1993,42 +2071,11 @@ object "Taylor" {
             }
         }
 
-        function _savedyn(ptrs) -> result_ptr {
-            // pointer to data that has to be inserted
-            let data_ptr := mload(ptrs)
-
-            let itemsig := mslice(add(data_ptr, 4), 4)
-            let arity := arrayTypeSize(mslice(data_ptr, 4))
-
-            let index := _savedynInner(itemsig, arity, data_ptr)
-            result_ptr := allocateTyped(index, buildUintSig(4), 4)
-        }
-
-        function _savedynInner(itemsig, arity, data_ptr) -> _index {
-            // let typesig := 0x40000000
-            // get last inserted index
-            let last_index := add(getStorageCountDyn(itemsig), 1)
-
-            let key := mappingArrayDynStorageKey_values(last_index, itemsig)
-
-            let data_len := getValueLength(data_ptr)
-
-            sstore(key, arity)
-
-            storeDataInner(add(data_ptr, 8), add(key, 1), data_len)
-
-            // store new count
-            incStorageCountDyn(itemsig)
-
-            // Internal index starts at 1
-            _index := sub(last_index, 1)
-        }
-
         function _push(ptrs) -> result_ptr {
-            let typename_ptr := add(mload(ptrs), 4)
-            let itemsig := mslice(add(typename_ptr, 4), 4)
-            let itemsize := getValueLength(add(typename_ptr, 4))
-            let siglen := getSignatureLength(add(typename_ptr, 4))
+            let typename_ptr := add(mload(ptrs), 8)
+            let siglen := getSignatureLength(typename_ptr)
+            let itemsig := mslice(typename_ptr, siglen)
+            let itemsize := getValueLength(typename_ptr)
 
             let index := mslice(add(
                 mload(add(ptrs, 32)),
@@ -2073,18 +2120,6 @@ object "Taylor" {
             sstore(key, arity)
             // TODO what to return? entire array?
             result_ptr := allocateTyped(index, buildUintSig(4), 4)
-        }
-
-        function _getdyn(ptrs) -> result_ptr {
-            let typename_ptr := add(mload(ptrs), 4)
-            let itemsig := mslice(add(typename_ptr, 4), 4)
-            let itemsize := getValueLength(add(typename_ptr, 4))
-            let siglen := getSignatureLength(add(typename_ptr, 4))
-            let index := mslice(add(
-                mload(add(ptrs, 32)),
-                4
-            ), 4)
-            result_ptr := _getdynInner(itemsig, itemsize, siglen, index)
         }
 
         function _getdynInner(itemsig, itemsize, siglen, index) -> result_ptr {
