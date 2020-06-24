@@ -768,6 +768,11 @@ describe.each([
         expect(resp).toBe(15);
     });
 
+    it('test byte-like', async function() {
+        resp = await instance.call('(list "0x2233" "hello" "0x44556677" "someword")');
+        expect(resp).toEqual(['0x2233', 'hello', '0x44556677', 'someword']);
+    });
+
     test(`add`, async () => {
         resp = await instance.call('(add 9 3)');
         expect(resp).toBe(12);
@@ -1157,7 +1162,7 @@ it('ballot contract', async function() {
         (defstruct! Voter (list Uint Bool Address Uint))
         
         ; name, voteCount
-        (defstruct! Proposal (list Bytes32 Uint) )
+        (defstruct! Proposal (list String32 Uint) )
     
         (defmap! "voters" Address "Voter")
         
@@ -1207,9 +1212,9 @@ it('ballot contract', async function() {
     await MalTay.send(init2);
 
     resp = await MalTay.call(checkinit);
-    expect(resp[0]).toEqual(['0x' + 'proposal1'.hexEncode().padStart(64, '0'), 0]);
-    expect(resp[1]).toEqual(['0x' + 'proposal2'.hexEncode().padStart(64, '0'), 0]);
-    expect(resp[2]).toEqual(['0x' + 'proposal3'.hexEncode().padStart(64, '0'), 0]);
+    expect(resp[0]).toEqual(['proposal1', 0]);
+    expect(resp[1]).toEqual(['proposal2', 0]);
+    expect(resp[2]).toEqual(['proposal3', 0]);
 
     resp = await MalTay.call('(eq (caller) (sload 0 Address))');
     expect(resp).toBe(1);

@@ -757,7 +757,7 @@ object "Taylor" {
         }
 
         function bytesSize(sig) -> _size {
-            _size := and(sig, 0x3ffffff)
+            _size := and(sig, 0xffff)
         }
 
         function structSize(sig) -> _size {

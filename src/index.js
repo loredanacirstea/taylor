@@ -112,7 +112,7 @@ Object.keys(nativeEnv).forEach(key => {
 const formatId = id => strip0x(hexZeroPad(x0(b2h(id)), 4));
 const getnumberid = size => formatId(typeid.number + numberid.uint + u2b(size).padStart(16, '0'))
 const getboolid = value => formatId(typeid.number + numberid.bool + u2b(value ? 1 : 0).padStart(16, '0'));
-const getbytesid = length => formatId(typeid.bytelike + u2b(length).padStart(26, '0'));
+const getbytesid = (length, encoding=0) => formatId(typeid.bytelike + u2b(encoding).padStart(10, '0') + u2b(length).padStart(16, '0'));
 // signature :=  '001' * bit4 arity * bit24 id * bit1 stored?
 const getstructid = (id, arity, stored=false) => formatId(typeid.struct + u2b(arity).padStart(4, '0') + u2b(id).padStart(24, '0') + stored ? '1' : '0')
 
@@ -132,12 +132,13 @@ const isGetByName = sig => (sig & 0x7fffffe) === 0x48;
 
 const numberSize = sig => sig & 0xffff;
 const listTypeSize = sig => sig & 0xffffff;
-const bytelikeSize = sig => sig & 0x3ffffff;
+const bytelikeSize = sig => sig & 0xffff;
 const funcArity = sig => (sig & 0x78000000) >> 27;
 const lambdaLength = sig => (sig & 0x3fffffe) >> 1;
 const structSize = sig => (sig & 0x1e000000) >> 25;
 const arrayTypeSize = sig => (sig & 0x3fffffff);
 const structStoredFromSig = sig => (sig << 31) >> 31;
+const bytesEncoding = sig => (sig >> 16) & 0x3ff;
 const get4bsig = data => parseInt(data.substring(0, 8), 16);
 const getSignatureLength = data => {
     let length = 4;
@@ -188,6 +189,9 @@ nativeTypes.Bool = getnumberid(1)
 nativeTypes.Uint = getnumberid(4)
 nativeTypes.Address = getbytesid(20)
 nativeTypes.Bytes32 = getbytesid(32)
+nativeTypes.Bytes = getbytesid(0)
+nativeTypes.String = getbytesid(0, 1)
+nativeTypes.String32 = getbytesid(32, 1)
 nativeTypes.Map = (parseInt(nativeTypes.Map, 16) - 1).toString(16).padStart(8, '0');
 Object.keys(fulltypeidHex).forEach(key => nativeTypes[typekey(key)] = fulltypeidHex[key]);
 
@@ -210,6 +214,10 @@ const encodeInner = (types, values) => {
                 const val = strip0x(values[i]);
                 const length = val.length / 2;
                 return  getbytesid(length) + val;
+            case 'string':
+                const strval = values[i].hexEncode();
+                const strlength = strval.length / 2;
+                return  getbytesid(strlength, 1) + strval;
             case 'list':
                 let len = u2b(values[i].length).padStart(24, '0');
                 const lid = listTypeId(len);
@@ -254,7 +262,9 @@ const decodeInner = (inidata) => {
         return { result, data };
     } else if (isBytelike(sig)) {
         const length = bytelikeSize(sig);
-        result = '0x' + data.substring(0, length*2)
+        const encoding = bytesEncoding(sig);
+        if (encoding === 0) result = '0x' + data.substring(0, length*2);
+        else result = data.substring(0, length*2).hexDecode();
         data = data.substring(length*2);
         return { result, data };
     } else if (isListType(sig)) {
@@ -399,8 +409,8 @@ const ast2h = (ast, parent=null, unkownMap={}, defenv={}) => {
                 const typeid = getbytesid(val.length / 2);
                 return  typeid + val;
             } else {
-                // TODO fixme - strings are now bytes32
-                return getbytesid(32) + elem.hexEncode().padStart(64, '0');
+                // TODO fixme - strings are now string32
+                return getbytesid(32, 1) + elem.hexEncode().padStart(64, '0');
             }
         }
 
