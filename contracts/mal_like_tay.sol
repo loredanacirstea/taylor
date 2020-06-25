@@ -53,12 +53,13 @@ object "Taylor" {
 
             switch isFunction(data_ptr)
             case 0 {
-                switch and(gt(env_ptr, 0), isLambdaUnknown(mslice(data_ptr, 4)))
+                // switch and(gt(env_ptr, 0), isLambdaUnknown(mslice(data_ptr, 4)))
+                switch isLambdaUnknown(mslice(data_ptr, 4))
                 case 1 {
                     // replace variables from lambdas
                     let index := mslice(add(data_ptr, 4), 4)
                     let value_ptr := add(env_ptr, mul(index, 32))
-                    result_ptr := value_ptr
+                    result_ptr := mload(value_ptr)
                     end_ptr := add(data_ptr, 8)
                 }
                 case 0 {
@@ -88,23 +89,31 @@ object "Taylor" {
                     mstore(args_ptrs_now, end_ptr)
                     end_ptr := add(end_ptr, lambdaLength(sig))
                     // apply function on arguments
-                    result_ptr := evalWithEnv(sig, args_ptrs)
+                    result_ptr := evalWithEnv(sig, args_ptrs, env_ptr)
                 }
                 case 0 {
                     let isIf := eq(sig, 0x9800004a)
                     switch isIf
                     case 0 {
-                        for { let i := 0 } lt(i, arity) { i := add(i, 1) } {
-                            let _end_ptr, arg_ptr := eval(end_ptr, env_ptr)
-                            
-                            // store pointer to argument value
-                            mstore(args_ptrs_now, arg_ptr)
+                        let isLet := eq(sig, 0x90000060)
+                        switch isLet
+                        case 1 {
+                            let _end_ptr, _result_ptr := _let_asterix(end_ptr, env_ptr)
                             end_ptr := _end_ptr
-                            args_ptrs_now := add(args_ptrs_now, 32)
+                            result_ptr := _result_ptr
                         }
+                        default {
+                            for { let i := 0 } lt(i, arity) { i := add(i, 1) } {
+                                let _end_ptr, arg_ptr := eval(end_ptr, env_ptr)
+                                // store pointer to argument value
+                                mstore(args_ptrs_now, arg_ptr)
+                                end_ptr := _end_ptr
+                                args_ptrs_now := add(args_ptrs_now, 32)
+                            }
 
-                        // apply function on arguments
-                        result_ptr := evalWithEnv(sig, args_ptrs)
+                            // apply function on arguments
+                            result_ptr := evalWithEnv(sig, args_ptrs, env_ptr)
+                        }
                     }
                     case 1 {
                         let _end_ptr, _result_ptr := _if(end_ptr, env_ptr)
@@ -115,7 +124,7 @@ object "Taylor" {
             }
         }
         
-        function evalWithEnv(fsig, arg_ptrs_ptr) -> result_ptr {
+        function evalWithEnv(fsig, arg_ptrs_ptr, env_ptr) -> result_ptr {
             switch fsig
 
             // 10010000000000000000000000000010
@@ -679,8 +688,7 @@ object "Taylor" {
         }
         // 00000001000000000000000000000000
         function isLambdaUnknown(vartype) -> islu {
-            let test := and(vartype, 0x1000000)
-            islu := eq(iszero(test), 0)
+            islu := eq(vartype, 0x1000000)
         }
         // 10000000000000000000000001000000
         function isApply(sig) -> isapp {
@@ -1408,6 +1416,39 @@ object "Taylor" {
             mslicestore(result_ptr, buildBoolSig(
                 or(eq(sig, 0x00), eq(list_arity, 0))
             ), 4)
+        }
+
+        function _let_asterix(let_variables_ptr, env_ptr) -> _end_ptr, result_ptr {
+            let arity := listTypeSize(mslice(let_variables_ptr, 4))
+            arity := div(arity, 2)
+
+            // TODO: in continuation of env_ptr - have a length there
+
+            let args_ptr := allocate(mul(arity, 32))
+
+            let addit := 0
+            let var_ptr := add(let_variables_ptr, 4) // list sig
+
+            for { let i := 0 } lt(i, arity) { i := add(i, 1) } {
+                // first 12bytes from var_ptr is <b4sig><8b unknown>
+                // this should be the position inside env_ptr, so we can have nested environments that can access parent variables
+                
+                var_ptr := add(var_ptr, 12)
+
+                let val_end := 0
+                val_end, var_ptr := eval(var_ptr, args_ptr)
+
+                mstore(
+                    add(args_ptr, addit),
+                    var_ptr
+                )
+                addit := add(addit, 32)
+                var_ptr := val_end
+            }
+
+            let let_body_ptr := var_ptr
+            let endd, res := eval(let_body_ptr, args_ptr)
+            result_ptr := res
         }
 
         function _true(ptr1) -> result_ptr {

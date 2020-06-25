@@ -680,6 +680,14 @@ describe.each([
         expect(resp).toBe(7);
     });
 
+    it('test let*', async function() {
+        resp = await instance.call('(let* (c 2) c)');
+        expect(resp).toBe(2);
+
+        resp = await instance.call('(let* (a 4 b (add a 2) c (mul b 3)) (sub c b))');
+        expect(resp).toBe(12);
+    });
+
     it('test use stored fn 1', async function () {
         let resp;
         let name = 'func1'
