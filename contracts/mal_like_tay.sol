@@ -1030,14 +1030,13 @@ object "Taylor" {
             _data_ptr := add(arg_ptrs, 32)
         }
 
-        // TODO: mmultistore
         function _join_ptrs(arity, arg_ptrs) -> _data_ptr {
             _data_ptr := allocate(mul(arity, 32))
             let addit := 0
             for { let i := 0 } lt(i, arity) { i := add(i, 1) } {
                 mstore(
                     add(_data_ptr, addit), 
-                    mload(mload(add(arg_ptrs, addit)))
+                    mload(add(arg_ptrs, addit))
                 )
                 addit := add(addit, 32)
             }
@@ -1117,15 +1116,15 @@ object "Taylor" {
         }
 
         function _mapInnerLambda(lambda_body_ptr, list_ptr) -> result_ptr {
-            // TODO: fixme: we only get the arity here, not the id
-            // it is ok here, but might be problematic later
             let list_arity := listTypeSize(mslice(list_ptr, 4))
             let arg_ptr := add(list_ptr, 4)
             let results_ptrs := allocate(mul(list_arity, 32))
 
             // iterate over list & apply function on each arg
             for { let i := 0 } lt(i, list_arity) { i := add(i, 1) } {
-                let endd, res := eval(lambda_body_ptr, arg_ptr)
+                let env_ptr := allocate(32)
+                mstore(env_ptr, arg_ptr)
+                let endd, res := eval(lambda_body_ptr, env_ptr)
                 mstore(add(results_ptrs, mul(i, 32)), res)
 
                 let arg_len := getTypedLength(arg_ptr)
@@ -1183,18 +1182,11 @@ object "Taylor" {
             for { let i := 0 } lt(i, list_arity) { i := add(i, 1) } {
                 let arg_length := getTypedLength(arg_ptr)
 
-                // TODO: fixme - use the actual lengths
-                // the bytes32 slots come from 
+                let env_ptr := allocate(64)
+                mstore(env_ptr, accum_ptr)
+                mstore(add(env_ptr, 32), arg_ptr)
                 
-                // let newargs := allocate(accum_length)
-                let newargs := allocate(32)
-                mmultistore(newargs, accum_ptr, accum_length)
-                
-                // let currentarg := allocate(arg_length)
-                let currentarg := allocate(32)
-                mmultistore(currentarg, arg_ptr, arg_length)
-                
-                let endd, res := eval(lambda_body_ptr, newargs)
+                let endd, res := eval(lambda_body_ptr, env_ptr)
   
                 mmultistore(accum_ptr, res, getTypedLength(res))
                 arg_ptr := add(arg_ptr, arg_length)
