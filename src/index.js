@@ -39,14 +39,6 @@ const funcidb = name => {
     }
     return { bin: binf, hex: hex || (arity => b2h(binf(arity))) }
 }
-const unknown = index => {
-    let id = b2h(typeid.unknown + '0'.padStart(24, '0')).padStart(8, '0');
-    let value = u2h(index).padStart(8, '0');
-    return id + value;
-}
-const listTypeId = len => strip0x(hexZeroPad(x0(b2h(
-    typeid.list + u2b(1).padStart(4, '0') + len
-)), 4));
 
 const typeid = {
     function: '1',
@@ -58,16 +50,6 @@ const typeid = {
     enum: '0000001',
     unknown: '00000001',
     map: '000000001',
-}
-const fulltypeidHex = {
-    // nil shorthand for empty list
-    Nil: listTypeId(0),
-    // None: '',
-    // // unit - equivalent to void, for functions without return type
-    // Unit: '',
-    // trait
-    Nothing: b2h('00000000000000000000000000000000'),
-    Any: b2h('00000000000000000000000000000001'),
 }
 
 const numberid = {
@@ -115,6 +97,23 @@ const getboolid = value => formatId(typeid.number + numberid.bool + u2b(value ? 
 const getbytesid = (length, encoding=0) => formatId(typeid.bytelike + u2b(encoding).padStart(10, '0') + u2b(length).padStart(16, '0'));
 // signature :=  '001' * bit4 arity * bit24 id * bit1 stored?
 const getstructid = (id, arity, stored=false) => formatId(typeid.struct + u2b(arity).padStart(4, '0') + u2b(id).padStart(24, '0') + stored ? '1' : '0')
+const listTypeId = len => formatId(typeid.list + u2b(1).padStart(4, '0') + u2b(len).padStart(24, '0'));
+const unknown = index => {
+    let id = b2h(typeid.unknown + '0'.padStart(24, '0')).padStart(8, '0');
+    let value = u2h(index).padStart(8, '0');
+    return id + value;
+}
+
+const fulltypeidHex = {
+    // nil shorthand for empty list
+    Nil: listTypeId(0),
+    // None: '',
+    // // unit - equivalent to void, for functions without return type
+    // Unit: '',
+    // trait
+    Nothing: b2h('00000000000000000000000000000000'),
+    Any: b2h('00000000000000000000000000000001'),
+}
 
 const isFunction = sig => ((sig >> 31) & 0x01) === 1;
 const isLambda = sig => (sig & 0x4000000) !== 0;
@@ -333,6 +332,22 @@ const ast2h = (ast, parent=null, unkownMap={}, defenv={}) => {
         return nativeEnv[elem.value].hex + defname + exprbody;
     }
 
+    if (ast[0] && ast[0].value === 'let*') {
+        const arity = ast[1].length;
+        if (arity % 2 !== 0) throw new Error('let* argument without value');
+        let definitions = nativeEnv['let*'].hex + listTypeId(arity);
+        for (let i = 0; i < arity; i += 2) {
+            const elem = ast[1][i];
+            unkownMap[elem.value] = unknown(Object.keys(unkownMap).length);
+            definitions += getbytesid(8) + unkownMap[elem.value];
+            const encodedvalue = ast2h([ast[1][i+1]], ast[1], unkownMap, defenv);
+            definitions += encodedvalue;
+        }
+        const execution = ast2h([ast[2]], ast, unkownMap, defenv);
+        definitions += execution;
+        return definitions;
+    }
+
     return ast.map((elem, i) => {
         // if Symbol
         if (malTypes._symbol_Q(elem)) {
@@ -362,6 +377,7 @@ const ast2h = (ast, parent=null, unkownMap={}, defenv={}) => {
                 // lambda argument definition
                 if (!unkownMap[elem.value]) {
                     unkownMap[elem.value] = unknown(i);
+                    // unkownMap[elem.value] = unknown(Object.keys(unkownMap).length);
                     // TODO: now we don't include `(a, b)` from `fn* (a b) (add a b)`
                     return '';
                 }

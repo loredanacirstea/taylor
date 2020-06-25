@@ -59,50 +59,6 @@ it('test encoding & decoding', function () {
     expect(decode(encode([{type: 'bool'}], [false]))).toEqual(false);
 });
 
-it('test lambda 1', async function () {
-    let expr, resp;
-    const lambdaRntArgs = '0a910004000000020a91000400000003';
-    const lambdabdy =  b2h('10010000000000000000000000000010')  // ADD
-        + b2h('00000001000000000000000000000000').padStart(8, '0')
-        + '00'.padStart(8, '0')
-        + b2h('00000001000000000000000000000001').padStart(8, '0')
-        + '01'.padStart(8, '0')
-    
-    // 10001100000000000000000000100000
-    const lambdasig = '100011' + u2b(lambdabdy.length / 2).padStart(25, '0') + '0';
-    expr = '0x' + '98000040'  // apply
-         + b2h(lambdasig)     // lambda
-         + lambdabdy
-         + lambdaRntArgs;
-    
-    resp = await MalTay.call_raw(expr);
-    expect(resp).toBe('0x0a91000400000005');
-});
-
-it('test lambda 2', async function () {
-    let expr, resp;
-
-    const lambdaRntArgs = expr2h('(add (add (sub 7 2) 1) 41)').substring(2)
-        + expr2h('(add 2 3)').substring(2);
-    
-    const lambdabdy =  b2h('10010000000000000000000000000010')  // ADD
-        + b2h('00000001000000000000000000000000').padStart(8, '0')
-        + '00'.padStart(8, '0')
-        + b2h('00000001000000000000000000000001').padStart(8, '0')
-        + '01'.padStart(8, '0')
-    
-    // 10001100000000000000000000100000
-    const lambdasig = '100011' + u2b(lambdabdy.length / 2).padStart(25, '0') + '0';
-
-    expr = '0x' + '98000040'  // apply
-         + b2h(lambdasig)     // lambda
-         + lambdabdy
-         + lambdaRntArgs;
-    
-    resp = await MalTay.call_raw(expr);
-    expect(resp).toBe('0x0a91000400000034');
-});
-
 it.skip('test if with lambda', async function () {
     let resp;
 
@@ -595,6 +551,13 @@ describe.each([
 
         resp = await instance.call('( (fn* (a b) (add (mul a b ) b)) 2 3)');
         expect(resp).toBe(9);
+
+        resp = await MalTay.call(`
+            ((fn* (a b) (add a b))
+            (add (add (sub 7 2) 1) 41)
+            (add 2 3) )
+        `);
+        expect(resp).toBe(52);
     });
 
     it('test if', async function () {
@@ -680,6 +643,14 @@ describe.each([
         expect(resp).toBe(7);
     });
 
+    it('test let*', async function() {
+        resp = await instance.call('(let* (c 2) c)');
+        expect(resp).toBe(2);
+
+        resp = await instance.call('(let* (a 4 b (add a 2) c (mul b 3)) (sub c b))');
+        expect(resp).toBe(12);
+    });
+
     it('test use stored fn 1', async function () {
         let resp;
         let name = 'func1'
@@ -724,7 +695,7 @@ describe.each([
             expect(resp[0].name).toBe('func1');
             expect(resp[1].name).toBe('func2');
         }
-    });
+    }, 10000);
 
     it('test map', async function () {
         let resp;
@@ -742,7 +713,7 @@ describe.each([
             expect(resp.length).toBe(3);
             expect(resp[2].name).toBe('myfunc');
         }
-    });
+    }, 10000);
 
     it('test reduce', async function () {
         let resp;
@@ -1236,4 +1207,4 @@ it('ballot contract', async function() {
 
     resp = await MalTay.call('(list-struct (mapget "voters" "0xe8B7665DE12D67bC802aEcb8eef4D8bd34741C51"))')
     expect(resp).toEqual([1, 0, '0x0000000000000000000000000000000000000000', 0]);
-});
+}, 10000);
