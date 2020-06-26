@@ -59,16 +59,6 @@ it('test encoding & decoding', function () {
     expect(decode(encode([{type: 'bool'}], [false]))).toEqual(false);
 });
 
-it.skip('test if with lambda', async function () {
-    let resp;
-
-    resp = await MalTay.call('(if (gt 4 1) ((fn* (a b) (add a b)) 2 3) (add (sub 7 2) 1))');
-    expect(resp).toBe(5);
-
-    resp = await MalTay.call('(if (gt 4 9) ((fn* (a b) (add a b)) 2 3) (add (sub 7 2) 1))');
-    expect(resp).toBe(6);
-});
-
 it('test bytes concat', async function () {
     let resp;
 
@@ -585,6 +575,22 @@ describe.each([
         expect(resp).toBe(6);
     });
 
+    it('test if with lambda', async function () {
+        let resp;
+    
+        resp = await MalTay.call(`(if (gt 4 1) 
+            ( (fn* (a b) (add a b)) 2 3 )
+            (add (sub 7 2) 1)
+        )`);
+        expect(resp).toBe(5);
+    
+        resp = await MalTay.call(`(if (gt 4 9)
+            ( (fn* (a b) (add a b)) 2 3 )
+            (add (sub 7 2) 1)
+        )`);
+        expect(resp).toBe(6);
+    });
+
     it('test empty', async function() {
         let resp;
     
@@ -643,12 +649,23 @@ describe.each([
         expect(resp).toBe(7);
     });
 
-    it('test let*', async function() {
+    it('test let* & nested scopes', async function() {
         resp = await instance.call('(let* (c 2) c)');
         expect(resp).toBe(2);
 
         resp = await instance.call('(let* (a 4 b (add a 2) c (mul b 3)) (sub c b))');
         expect(resp).toBe(12);
+
+        resp = await instance.call(`(let* (c 2 a (add c 4))
+            ((fn* (d e) (add d e)) a c)
+        )`);
+        expect(resp).toBe(8);
+
+        resp = await instance.call(`( (fn* (d e)
+            (let* (a 6) (add (add a d) e) )
+        ) 2 1
+        )`);
+        expect(resp).toBe(9);
     });
 
     it('test use stored fn 1', async function () {
@@ -659,7 +676,7 @@ describe.each([
 
         if (backendname === 'chain') {
             resp = await instance.call_raw('0x44444442' + name.hexEncode().padStart(64, '0'));
-            expect(resp).toBe('0x8c0000289000000201000000000000000100000000000001');
+            expect(resp).toBe('0x8c00005011000002010000000000000001000000000000019000000201000000000000000100000000000001');
         }
 
         resp = await instance.call('(func1 2 3)');

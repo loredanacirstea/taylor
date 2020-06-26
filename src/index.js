@@ -348,6 +348,22 @@ const ast2h = (ast, parent=null, unkownMap={}, defenv={}) => {
         return definitions;
     }
 
+    if (ast[0].value === 'fn*') {
+        const arity = ast[1].length;
+        const lambdaArgs = listTypeId(arity) + ast2h([ast[1]], ast, unkownMap, defenv);
+        const lambdaBody = ast2h([ast[2]], ast, unkownMap, defenv);
+        let encoded = nativeEnv.lambda.hex(lambdaArgs.length + lambdaBody.length)
+            + lambdaArgs + lambdaBody;
+
+        // we execute it with apply only if there is a parent ast
+        // with this lambda at index 0
+        if (parent && parent[0][0] && parent[0][0].value === ast[0].value) {
+            // apply arity: 1 + number of args
+            encoded = nativeEnv.apply.hex(arity + 1) + encoded;
+        }
+        return encoded;
+    }
+
     return ast.map((elem, i) => {
         // if Symbol
         if (malTypes._symbol_Q(elem)) {
@@ -376,33 +392,17 @@ const ast2h = (ast, parent=null, unkownMap={}, defenv={}) => {
                 // lambda variables should end up here
                 // lambda argument definition
                 if (!unkownMap[elem.value]) {
-                    unkownMap[elem.value] = unknown(i);
-                    // unkownMap[elem.value] = unknown(Object.keys(unkownMap).length);
-                    // TODO: now we don't include `(a, b)` from `fn* (a b) (add a b)`
-                    return '';
+                    unkownMap[elem.value] = unknown(Object.keys(unkownMap).length);
                 }
                 return unkownMap[elem.value];
             }
             if (elem.value === 'if') {
-                const action1body = ast2h([ast[2]], null, unkownMap, defenv);
-                const action2body = ast2h([ast[3]], null, unkownMap, defenv);
+                const unknownMap_cpy = JSON.parse(JSON.stringify(unkownMap))
+                const action1body = ast2h([ast[2]], null, unknownMap_cpy, defenv);
+                const action2body = ast2h([ast[3]], null, unknownMap_cpy, defenv);
                 return nativeEnv[elem.value].hex
                     + u2h(action1body.length / 2).padStart(8, '0')
                     + u2h(action2body.length / 2).padStart(8, '0');
-            }
-
-            if (elem.value === 'fn*') {
-                const lambdaBody = ast2h([ast[1], ast[2]], null, {}, defenv);
-                let encoded = nativeEnv.lambda.hex(lambdaBody.length);
-                const arity = ast[1].length;
-
-                // we execute it with apply only if there is a parent ast
-                // with this lambda at index 0
-                if (parent && parent[0][0] && parent[0][0].value === elem.value) {
-                    // apply arity: 1 + number of args
-                    encoded = nativeEnv.apply.hex(arity + 1) + encoded;
-                }
-                return encoded;
             }
 
             let encoded;
