@@ -79,41 +79,6 @@ it('test bytes contig', async function () {
     expect(resp).toBe('0x221111ccdd221111ccdd');
 });
 
-it('test recursive', async function () {
-    let resp;
-    
-    await MalTay.sendAndWait('(def! recursivefn (fn* (n) (if (gt n 5) n (recursivefn (add n 1)) ) ) )');
-    
-    resp = await MalTay.call('(recursivefn 2)');
-    expect(resp).toBe(6);
-});
-
-it('test recursive fibonacci', async function () {
-    await MalTay.sendAndWait('(def! fibonacci (fn* (n) (if (or (eq n 1) (eq n 2)) 1 (add(fibonacci (sub n 1)) (fibonacci (sub n 2)) ) )))');
-
-    resp = await MalTay.call('(fibonacci 1)');
-    expect(resp).toBe(1);
-
-    resp = await MalTay.call('(fibonacci 2)');
-    expect(resp).toBe(1);
-
-    resp = await MalTay.call('(fibonacci 3)');
-    expect(resp).toBe(2);
-
-    resp = await MalTay.call('(fibonacci 8)');
-    expect(resp).toBe(21);
-});
-
-it.skip('test reduce recursive', async function () {
-    let expr, resp;
-
-    await MalTay.sendAndWait('(def! myfunc3 (fn* (a b) (add a b)) )');
-    await MalTay.sendAndWait('(def! reduce (fn* (f init xs) (if (empty? xs) init (reduce f (f init (first xs)) (rest xs)))))');
-
-    resp = await MalTay.call('(reduce myfunc3 (list 5 8 2) 0 )');
-    expect(resp).toBe(15);
-});
-
 it('test registration & executing from root contract', async function () {
     let expr, resp;
 
@@ -553,11 +518,11 @@ describe.each([
     it('test if', async function () {
         let resp;
 
-        // resp = await instance.call('(if true 7 8)');
-        // expect(resp).toBe(7);
+        resp = await instance.call('(if true 7 8)');
+        expect(resp).toBe(7);
 
-        // resp = await instance.call('(if false 7 8)');
-        // expect(resp).toBe(8);
+        resp = await instance.call('(if false 7 8)');
+        expect(resp).toBe(8);
     
         resp = await instance.call('(if (gt 4 1) 7 8)');
         expect(resp).toBe(7);
@@ -735,6 +700,10 @@ describe.each([
     it('test reduce', async function () {
         let resp;
 
+        if (backendname === 'chain') {
+            await instance.sendAndWait('(def! reduce (fn* (f xs init) (if (empty? xs) init (reduce f (rest xs) (f init (first xs)) ))))');
+        }
+
         resp = await instance.call('(reduce add (list) 2)');
         expect(resp).toBe(2);
     
@@ -754,6 +723,38 @@ describe.each([
       
         resp = await instance.call('(reduce myfunc2 (list 5 8 2) 0)');
         expect(resp).toBe(15);
+    });
+
+    it('test reduce recursive', async function () {
+        let resp;
+        await instance.sendAndWait('(def! myfunc3 (fn* (a b) (add a b)) )');
+        resp = await instance.call('(reduce myfunc3 (list 5 8 2) 0 )');
+        expect(resp).toBe(15);
+    });
+
+    it('test recursive', async function () {
+        let resp;
+        
+        await instance.sendAndWait('(def! recursivefn (fn* (n) (if (gt n 5) n (recursivefn (add n 1)) ) ) )');
+        
+        resp = await instance.call('(recursivefn 2)');
+        expect(resp).toBe(6);
+    });
+
+    it('test recursive fibonacci', async function () {
+        await MalTay.sendAndWait('(def! fibonacci (fn* (n) (if (or (eq n 1) (eq n 2)) 1 (add(fibonacci (sub n 1)) (fibonacci (sub n 2)) ) )))');
+    
+        resp = await MalTay.call('(fibonacci 1)');
+        expect(resp).toBe(1);
+    
+        resp = await MalTay.call('(fibonacci 2)');
+        expect(resp).toBe(1);
+    
+        resp = await MalTay.call('(fibonacci 3)');
+        expect(resp).toBe(2);
+    
+        resp = await MalTay.call('(fibonacci 8)');
+        expect(resp).toBe(21);
     });
 
     it('test byte-like', async function() {
@@ -1105,7 +1106,7 @@ describe.each([
     it('test logs', async function() {
         if (backendname === 'chain') {
             const resp = await instance.getFns();
-            expect(resp.length).toBe(4);
+            expect(resp.length).toBe(7);
         }
     });
 });
