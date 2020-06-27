@@ -187,12 +187,14 @@ Object.keys(numberid).forEach(key => nativeTypes[typekey(key)] = formatId(typeid
 nativeTypes.Bool = getnumberid(1)
 nativeTypes.Uint = getnumberid(4)
 nativeTypes.Address = getbytesid(20)
-nativeTypes.Bytes32 = getbytesid(32)
 nativeTypes.Bytes = getbytesid(0)
 nativeTypes.String = getbytesid(0, 1)
-nativeTypes.String32 = getbytesid(32, 1)
 nativeTypes.Map = (parseInt(nativeTypes.Map, 16) - 1).toString(16).padStart(8, '0');
 Object.keys(fulltypeidHex).forEach(key => nativeTypes[typekey(key)] = fulltypeidHex[key]);
+[...new Array(32)].forEach((_, i) => {
+    nativeTypes['Bytes' + (i+1)] = getbytesid(i+1);
+    nativeTypes['String' + (i+1)] = getbytesid(i+1, 1);
+});
 
 const encodeInner = (types, values) => {
     if (types.length !== values.length) throw new Error('Encode - different lengths.');

@@ -155,6 +155,7 @@ const _nativeEnv = {
     'defmap!': { mutable: false, arity: 3 },
     'mapset!': { mutable: false, arity: 3 },
     mapget: { mutable: false, arity: 2 },
+    'update!': { mutable: false, arity: 3 },
 
     // TODO: curry
     // TODO: pay

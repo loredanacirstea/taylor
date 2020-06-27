@@ -475,7 +475,9 @@ object "Taylor" {
             }
             // struct!
             case 0x90000108 {
-                result_ptr := _struct_bang(add(arg_ptrs_ptr, 32))
+                let name_ptr := mload(add(arg_ptrs_ptr, 32))
+                let valueslist_ptr := mload(add(arg_ptrs_ptr, 64))
+                result_ptr := _struct_bang(name_ptr, valueslist_ptr)
             }
             case 0x9800010b {
                 result_ptr := _rcall(add(arg_ptrs_ptr, 32))
@@ -516,6 +518,12 @@ object "Taylor" {
                 let name_ptr := mload(add(arg_ptrs_ptr, 32))
                 let key_ptr := mload(add(arg_ptrs_ptr, 64))
                 result_ptr := _mapget(name_ptr, key_ptr)
+            }
+            case 0x98000124 {
+                let name_ptr := mload(add(arg_ptrs_ptr, 32))
+                let index_ptr := mload(add(arg_ptrs_ptr, 64))
+                let value_ptr := mload(add(arg_ptrs_ptr, 96))
+                result_ptr := _update_bang(name_ptr, index_ptr, value_ptr)
             }
 
             default {
@@ -731,6 +739,9 @@ object "Taylor" {
             let sig := get4b(ptr)
             isi := eq(and(shr(29, sig), 0x07), 1)
         }
+        function _isStruct(sig) -> isi {
+            isi := eq(and(shr(29, sig), 0x07), 1)
+        }
 
         // 00010000000000000000000000000000
         function isListType(sig) -> isi {
@@ -754,6 +765,10 @@ object "Taylor" {
             let sig := get4b(ptr)
             isi := eq(and(shr(26, sig), 0x3f), 1)
         }
+
+        // function _isMapping(sig) -> isi {
+        //     isi := eq(and(shr(29, sig), 0x07), 1)
+        // }
 
         // last 16 bits
         function numberSize(sig) -> _size {
@@ -1630,6 +1645,12 @@ object "Taylor" {
             incStorageCount(typesig)
         }
 
+        function _updateInnerStaticSize(typesig, index, value_len, value_ptr) {
+            index := add(index, 1)
+            let storage_pos := mul(index, value_len)
+            updateAtPos(storage_pos, typesig, value_len, value_ptr)
+        }
+
         // data_ptr does not contain the signature
         function _saveInnerDynamicSize(typesig, data_len, data_ptr) -> _index {
             let last_index := add(getStorageCount(typesig), 1)
@@ -1845,6 +1866,47 @@ object "Taylor" {
             }
         }
 
+        function updateAtPos(storage_pos, typesig, data_len, data_ptr) {
+            let storage_slot := div(storage_pos, 32)
+            let storage_offset := mod(storage_pos, 32)
+            let key := mappingArrayStorageKey_values(storage_slot, typesig)
+
+            let value_ptr := allocate(32)
+            mstore(value_ptr, sload(key))
+
+            let head_len := min(sub(32, storage_offset), data_len)
+            let head := mslice(data_ptr, head_len)
+            mslicestore(add(value_ptr, storage_offset), head, head_len)
+            sstore(key, mload(value_ptr))
+            setTxPayable()
+
+            if gt(data_len, head_len) {
+                let rest := sub(data_len, head_len)
+                let slots := div(rest, 32)
+                let fully_replaced_len := mul(slots, 32)
+                let currentkey := add(key, 1)
+                rest := sub(rest, fully_replaced_len)
+
+                data_ptr := add(data_ptr, head_len)
+                
+                if gt(fully_replaced_len, 0) {
+                    storeDataInner(
+                        data_ptr,
+                        currentkey,
+                        fully_replaced_len
+                    )
+                }
+                if gt(rest, 0) {
+                    currentkey := add(currentkey, slots)
+                    data_ptr := add(data_ptr, fully_replaced_len)
+                    
+                    mstore(value_ptr, sload(currentkey))
+                    mstorehead(value_ptr, mslice(data_ptr, rest), rest)
+                    sstore(currentkey, mload(value_ptr))
+                }
+            }
+        }
+
         function readAtPos(storage_pos, typesig, result_ptr, data_len) {
             let storage_slot := div(storage_pos, 32)
             let storage_offset := mod(storage_pos, 32)
@@ -1902,7 +1964,8 @@ object "Taylor" {
             // and functions should be stored in the same way
             let name := mload(add(name_ptr, 4))
             let storageKey := mappingArrayStorageKey_names(name)
-            sstore(storageKey, shl(224, sig))
+            // sstore(storageKey, shl(224, sig))
+            sstore(storageKey, sig)
             log4(0, 0, 0xfffffffd, struct_abstract_id, name, sig)
         }
 
@@ -1910,6 +1973,7 @@ object "Taylor" {
             let name_ptr := mload(ptrs)
             let valueslist_ptr := mload(add(ptrs, 32))
             let struct_abstract_id := 0x20000000
+            
             let name := mload(add(name_ptr, 4))
             let storageKey := mappingArrayStorageKey_names(name)
             let sig := sload(storageKey)
@@ -1937,24 +2001,37 @@ object "Taylor" {
             result_ptr := allocate(length)
         }
 
-        function _struct_bang(ptrs) -> result_ptr {
-            let name_ptr := mload(ptrs)
-            let valueslist_ptr := mload(add(ptrs, 32))
-
+        function _struct_bang(name_ptr, valueslist_ptr) -> result_ptr {
             // Get struct's signature from name
             let name := mload(add(name_ptr, 4))
             let storageKey := mappingArrayStorageKey_names(name)
-            let sig := shr(224, sload(storageKey))
+            
+            // let sig := shr(224, sload(storageKey))
+            let sig := sload(storageKey)
+            result_ptr := _saveStruct(sig, valueslist_ptr)
+        }
 
+        function _saveStruct(sig, valueslist_ptr) -> result_ptr {
+            let list_arity := listTypeSize(mslice(valueslist_ptr, 4))
+            let struct_ptr := _saveStructComponents(sig, valueslist_ptr)
+
+            let index := _saveInner(sig, mul(list_arity, 4), struct_ptr, 1)
+            result_ptr := allocate(8)
+            mslicestore(result_ptr, structSigStoredChange(sig, 1), 4)
+            mslicestore(add(result_ptr, 4), index, 4)
+        }
+
+        function _saveStructComponents(sig, valueslist_ptr) -> struct_ptr {
             // TODO: typecheck values & cast if neccessary/possible
 
             let list_arity := listTypeSize(mslice(valueslist_ptr, 4))
-            let struct_ptr := allocate(mul(list_arity, 4))
+            struct_ptr := allocate(mul(list_arity, 4))
 
             let res_ptr := struct_ptr
             let val_ptr := add(valueslist_ptr, 4)
 
             for { let i := 0 } lt(i, list_arity) { i := add(i, 1) } {
+                // typecheck with struct's type & cast if possible
                 let typesig := getSignature(val_ptr)
                 let value_len := getValueLength(val_ptr)
                 let index := _saveInner(typesig, value_len, add(val_ptr, getSignatureLength(val_ptr)), 1)
@@ -1963,11 +2040,6 @@ object "Taylor" {
                 res_ptr := add(res_ptr, 4)
                 val_ptr := add(val_ptr, getTypedLength(val_ptr))
             }
-
-            let index := _saveInner(sig, mul(list_arity, 4), struct_ptr, 1)
-            result_ptr := allocate(8)
-            mslicestore(result_ptr, structSigStoredChange(sig, 1), 4)
-            mslicestore(add(result_ptr, 4), index, 4)
         }
 
         function _list_from_struct(ptrs) -> result_ptr {
@@ -2336,6 +2408,29 @@ object "Taylor" {
             mslicestore(hash_ptr, mapsig, 4)
             mmultistore(add(hash_ptr, 4), add(key_ptr, keysiglen), keyvallen)
             _key := keccak256(hash_ptr, keyhashlen)
+        }
+
+        function _update_bang(name_ptr, index_ptr, value_ptr) -> result_ptr {
+            let typesig := getSigFromNameOrSig(name_ptr)
+            let index := extractValue(index_ptr)
+            let value_len := getValueLength(value_ptr)
+
+            _updateInnerStaticSize(typesig, index, value_len, value_ptr)
+        }
+
+        // TODO fixme; names should be String<size>, not bytes32
+        function getSigFromNameOrSig(typename_ptr) -> sig {
+            let typename_len := getValueLength(typename_ptr)
+
+            switch typename_len
+            case 32 {
+                let name := mload(add(typename_ptr, 4))
+                let storageKey := mappingArrayStorageKey_names(name)
+                sig := sload(storageKey)
+            }
+            default {
+                sig := extractValue(typename_ptr)
+            }
         }
 
         function readmiddle(value, _start, _len) -> newval {
