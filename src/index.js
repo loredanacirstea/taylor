@@ -374,14 +374,16 @@ const ast2h = (ast, parent=null, unkownMap={}, defenv={}) => {
                 }
                 // check if stored function first
                 if (!unkownMap[elem.value] && defenv[elem.value]) {
-                    // TODO proper type - string/bytes
-                    const encodedName = getnumberid(32) + elem.value.hexEncode().padStart(64, '0');
+                    const encodedName = getbytesid(32, 1) + elem.value.hexEncode().padStart(64, '0');
 
-                    // if function is first arg, it is executed
-                    // otherwise, it is referenced as an argument (lambda)
-                    let arity = ast[0].value === elem.value ? ast.length : 1;
-                    // getf <fname>
-                    return nativeEnv.getf.hex(arity) + encodedName;
+                    if (!defenv[elem.value].type) {
+                        // if function is first arg, it is executed
+                        // otherwise, it is referenced as an argument (lambda)
+                        let arity = ast[0].value === elem.value ? ast.length : 1;
+                        // getf <fname>
+                        return nativeEnv.getf.hex(arity) + encodedName;
+                    }
+                    return encodedName;
                 }
 
                 if (ast[i-1] && ast[i-1].value === 'struct') {
@@ -594,6 +596,17 @@ const getStoredFunctions = getLogs => async (filter) => {
     });
 }
 
+const getStoredTypes = getLogs => async (filter) => {
+    const topic = '0x00000000000000000000000000000000000000000000000000000000fffffffd';
+    const logs = await getLogs(topic, filter);
+  
+    return logs.map(log => {
+        log.name = log.topics[2].substring(2).hexDecode();
+        log.signature = '0x' + log.topics[3].substring(58);
+        return log;
+    });
+}
+
 const getRegisteredContracts = call_raw => async () => {
     let count = await call_raw('0x44444440');
     count = parseInt(count, 16);
@@ -617,30 +630,33 @@ const getTaylor = (provider, signer) => (address, deploymentBlock = 0) => {
         fromBlock: deploymentBlock,
         getLogs: getLogs(provider)(address),
         getFns: getStoredFunctions(getLogs(provider)(address)),
+        getTypes: getStoredTypes(getLogs(provider)(address)),
         functions: {},
+        types: {},
         registered: {},
+        alltypes: () => Object.assign({}, interpreter.functions, interpreter.types),
         provider,
         signer,
-        expr2h: expression => expr2h(expression, interpreter.functions),
+        expr2h: expression => expr2h(expression, interpreter.alltypes()),
     }
     
-    interpreter.call = async (mal_expression, txObj) => decode(await interpreter.call_raw(expr2h(mal_expression, interpreter.functions), txObj));
+    interpreter.call = async (mal_expression, txObj) => decode(await interpreter.call_raw(expr2h(mal_expression, interpreter.alltypes()), txObj));
     interpreter.send = async (expression, txObj={}, newsigner=null) => {
         if(!txObj.value) {
             txObj.value = await interpreter.calculateCost(expression);
         }
         if (!newsigner) {
-            return interpreter.send_raw(expr2h(expression, interpreter.functions), txObj);
+            return interpreter.send_raw(expr2h(expression, interpreter.alltypes()), txObj);
         }
         return sendTransaction(newsigner)(interpreter.address)(
-            expr2h(expression, interpreter.functions),
+            expr2h(expression, interpreter.alltypes()),
             txObj,
         )
     }
 
     interpreter.estimateGas = async (expression, txObj={}) => provider.estimateGas(Object.assign({
         to: interpreter.address,
-        data: expr2h(expression, interpreter.functions),
+        data: expr2h(expression, interpreter.alltypes()),
     }, txObj));
 
     interpreter.calculateCost = async expression => (await interpreter.estimateGas(expression)).toNumber() * 2;
@@ -651,6 +667,14 @@ const getTaylor = (provider, signer) => (address, deploymentBlock = 0) => {
         let functions = await interpreter.getFns({fromBlock: interpreter.fromBlock, toBlock: 'pending'});
         functions.forEach(f => {
             interpreter.functions[f.name] = { signature: f.signature, own: true };
+
+        });
+    }
+
+    interpreter.setOwnTypes = async () => {
+        let types = await interpreter.getTypes({fromBlock: interpreter.fromBlock, toBlock: 'pending'});
+        types.forEach(f => {
+            interpreter.types[f.name] = { signature: f.signature, own: true, type: true };
 
         });
     }
@@ -682,6 +706,10 @@ const getTaylor = (provider, signer) => (address, deploymentBlock = 0) => {
             await interpreter.setOwnFunctions();
         }
 
+        if (mal_expression.includes('!')) {
+            await interpreter.setOwnTypes();
+        }
+
         if (mal_expression.includes('register!')) {
             await interpreter.setRegistered();
         }
@@ -691,6 +719,7 @@ const getTaylor = (provider, signer) => (address, deploymentBlock = 0) => {
     // populates with all functions, including those stored in registered contracts
     interpreter.init = async () => {
         await interpreter.setOwnFunctions();
+        await interpreter.setOwnTypes();
         await interpreter.setRegistered();
     }
 

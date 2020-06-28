@@ -1903,7 +1903,7 @@ object "Taylor" {
             let name := mload(add(name_ptr, 4))
             let storageKey := mappingArrayStorageKey_names(name)
             sstore(storageKey, shl(224, sig))
-            log3(0, 0, struct_abstract_id, name, sig)
+            log4(0, 0, 0xfffffffd, struct_abstract_id, name, sig)
         }
 
         function _struct(ptrs) -> result_ptr {
@@ -2253,7 +2253,7 @@ object "Taylor" {
             let name := mload(add(name_ptr, 4))
             let storageKey := mappingArrayStorageKey_names(name)
             sstore(storageKey, sig)
-            log3(0, 0, 0x800000, name, sig)
+            log4(0, 0, 0xfffffffd, 0x800000, name, sig)
         }
 
         function _mapset(ptrs) -> result_ptr {
