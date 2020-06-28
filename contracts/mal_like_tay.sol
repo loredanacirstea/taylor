@@ -461,7 +461,9 @@ object "Taylor" {
                 result_ptr := _save(add(arg_ptrs_ptr, 32))
             }
             case 0x90000104 {
-                result_ptr := _getfrom(add(arg_ptrs_ptr, 32))
+                let typename_ptr := mload(add(arg_ptrs_ptr, 32))
+                let index_ptr := mload(add(arg_ptrs_ptr, 64))
+                result_ptr := _getfrom(typename_ptr, index_ptr)
             }
             // defstruct!
             case 0x900000c4 {
@@ -480,7 +482,10 @@ object "Taylor" {
                 result_ptr := _struct_bang(name_ptr, valueslist_ptr)
             }
             case 0x9800010b {
-                result_ptr := _rcall(add(arg_ptrs_ptr, 32))
+                let structsig_ptr := mload(add(arg_ptrs_ptr, 32))
+                let index_ptr := mload(add(arg_ptrs_ptr, 64))
+                let data_ptr := mload(add(arg_ptrs_ptr, 96))
+                result_ptr := _rcall(structsig_ptr, index_ptr, data_ptr)
             }
             case 0x9000010e {
                 result_ptr := _savedyn(add(arg_ptrs_ptr, 32))
@@ -763,7 +768,24 @@ object "Taylor" {
         // 111111 - 0x3f
         function isBytes(ptr) -> isi {
             let sig := get4b(ptr)
+            isi := _isBytes(sig)
+        }
+
+        function _isBytes(sig) -> isi {
             isi := eq(and(shr(26, sig), 0x3f), 1)
+        }
+
+        function bytesEncoding(sig) -> encoding {
+            encoding := and(shr(16, sig), 0x3ff)
+        }
+
+        function isString(ptr) -> iss {
+            let sig := get4b(ptr)
+            iss := _isString(sig)
+        }
+
+        function _isString(sig) -> iss {
+            iss := and(_isBytes(sig), gt(bytesEncoding(sig), 0))
         }
 
         // function _isMapping(sig) -> isi {
@@ -1688,27 +1710,13 @@ object "Taylor" {
             _index := last_index
         }
 
-        function _getfrom(ptrs) -> result_ptr {
-            let typename_ptr := mload(ptrs)
-            let typename_len := getValueLength(typename_ptr)
-            typename_ptr := add(typename_ptr, 4)
+        function _getfrom(typename_ptr, index_ptr) -> result_ptr {
+            let sig_ptr := sigPtrFromNameOrSig(typename_ptr)
+            let sig_len := getSignatureLength(sig_ptr)
+            let typesig := mslice(sig_ptr, sig_len)
+            let typesize := getValueLength(sig_ptr)
+            let index := mslice(add(index_ptr, 4), 4)
 
-            // if name;
-            if eq(typename_len, 32) {
-                let name := mload(typename_ptr)
-                let storageKey := mappingArrayStorageKey_names(name)
-                mstore(typename_ptr, sload(storageKey))
-            }
-
-            let sig_len := getSignatureLength(typename_ptr)
-            let typesig := mslice(typename_ptr, sig_len)
-
-            let index := mslice(add(
-                mload(add(ptrs, 32)),
-                4
-            ), 4)
-
-            let typesize := getValueLength(typename_ptr)
             result_ptr := _getfromInner(typesig, sig_len, typesize, index)
         }
 
@@ -1960,23 +1968,14 @@ object "Taylor" {
             let id := _saveInner(struct_abstract_id, data_len, newdata_ptr, 0)
             sig := structSigFromId(id, arity, 0)
 
-            // TODO: this should be in save & saved under a signature type
-            // and functions should be stored in the same way
-            let name := mload(add(name_ptr, 4))
-            let storageKey := mappingArrayStorageKey_names(name)
-            // sstore(storageKey, shl(224, sig))
-            sstore(storageKey, sig)
-            log4(0, 0, 0xfffffffd, struct_abstract_id, name, sig)
+            _name_bang(name_ptr, struct_abstract_id, sig, 4)
         }
 
         function _struct(ptrs) -> result_ptr {
             let name_ptr := mload(ptrs)
             let valueslist_ptr := mload(add(ptrs, 32))
             let struct_abstract_id := 0x20000000
-            
-            let name := mload(add(name_ptr, 4))
-            let storageKey := mappingArrayStorageKey_names(name)
-            let sig := sload(storageKey)
+            let sig := getSignature(sigPtrFromNameOrSig(name_ptr))
 
             // TODO: get struct from storage by signature
             // typecheck values & cast if neccessary/possible
@@ -2002,12 +2001,7 @@ object "Taylor" {
         }
 
         function _struct_bang(name_ptr, valueslist_ptr) -> result_ptr {
-            // Get struct's signature from name
-            let name := mload(add(name_ptr, 4))
-            let storageKey := mappingArrayStorageKey_names(name)
-            
-            // let sig := shr(224, sload(storageKey))
-            let sig := sload(storageKey)
+            let sig := getSignature(sigPtrFromNameOrSig(name_ptr))
             result_ptr := _saveStruct(sig, valueslist_ptr)
         }
 
@@ -2078,10 +2072,8 @@ object "Taylor" {
             result_ptr := _list(arity, list_ptrs)
         }
 
-        function _rcall(ptrs) -> result_ptr {
-            let structsig_ptr := mload(ptrs)
-            let data_ptr := mload(add(ptrs, 64))
-            let instance_ptr := _getfrom(ptrs)
+        function _rcall(structsig_ptr, index_ptr, data_ptr) -> result_ptr {
+            let instance_ptr := _getfrom(structsig_ptr, index_ptr)
             let addr_index := mslice(add(instance_ptr, 4), 4)
             let sig_index := mslice(add(instance_ptr, 8), 4)
 
@@ -2322,10 +2314,7 @@ object "Taylor" {
             let id := _saveInner(sub(0x800000, 1), data_len, data_ptr, 0)
             sig := mapSigFromId(id)
 
-            let name := mload(add(name_ptr, 4))
-            let storageKey := mappingArrayStorageKey_names(name)
-            sstore(storageKey, sig)
-            log4(0, 0, 0xfffffffd, 0x800000, name, sig)
+            _name_bang(name_ptr, 0x800000, sig, 4)
         }
 
         function _mapset(ptrs) -> result_ptr {
@@ -2333,10 +2322,7 @@ object "Taylor" {
             let key_ptr := mload(add(ptrs, 32))
             let val_ptr := mload(add(ptrs, 64))
 
-            // Get mapping signature from name
-            let name := mload(add(name_ptr, 4))
-            let storageKey := mappingArrayStorageKey_names(name)
-            let sig := sload(storageKey)
+            let sig := getSignature(sigPtrFromNameOrSig(name_ptr))
 
             // TODO: typecheck key value
             
@@ -2364,10 +2350,8 @@ object "Taylor" {
         }
 
         function _mapget(name_ptr, key_ptr) -> result_ptr {
-            let name := mload(add(name_ptr, 4))
-            let storageKey := mappingArrayStorageKey_names(name)
             // Mapping's signature (so we can retrieve its definition)
-            let sig := sload(storageKey)
+            let sig := getSignature(sigPtrFromNameOrSig(name_ptr))
             // The id where the mapping is defined
             // let map_def_id := mapIdFromSig(sig)
 
@@ -2411,25 +2395,32 @@ object "Taylor" {
         }
 
         function _update_bang(name_ptr, index_ptr, value_ptr) -> result_ptr {
-            let typesig := getSigFromNameOrSig(name_ptr)
+            let typesig := getSignature(sigPtrFromNameOrSig(name_ptr))
             let index := extractValue(index_ptr)
             let value_len := getValueLength(value_ptr)
 
             _updateInnerStaticSize(typesig, index, value_len, value_ptr)
         }
 
-        // TODO fixme; names should be String<size>, not bytes32
-        function getSigFromNameOrSig(typename_ptr) -> sig {
-            let typename_len := getValueLength(typename_ptr)
+        function _name_bang(name_ptr, abstract_type_sig, sig, sig_len) {
+            let name := mload(add(name_ptr, 4))
+            let storageKey := mappingArrayStorageKey_names(name)
+            // right padded
+            sstore(storageKey, shl(sub(256, mul(sig_len, 8)), sig))
+            log4(0, 0, 0xfffffffd, abstract_type_sig, name, sig)
+        }
 
-            switch typename_len
-            case 32 {
-                let name := mload(add(typename_ptr, 4))
+        function sigPtrFromNameOrSig(typename_ptr) -> sig_ptr {
+            let is_name := isString(typename_ptr)
+            typename_ptr := add(typename_ptr, 4)
+            sig_ptr := typename_ptr
+
+            if is_name {
+                let name := mload(typename_ptr)
                 let storageKey := mappingArrayStorageKey_names(name)
-                sig := sload(storageKey)
-            }
-            default {
-                sig := extractValue(typename_ptr)
+                // right padded
+                sig_ptr := allocate(32)
+                mstore(sig_ptr, sload(storageKey))
             }
         }
 
