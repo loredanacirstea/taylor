@@ -268,12 +268,12 @@ describe('test arrays & structs', function () {
         let resp;
     
         // 0x0400000424000001
-        await MalTay.send('(defstruct! astruct (list "0x0a910004" "0x0a910004") )');
+        await MalTay.sendAndWait('(defstruct! astruct (list "0x0a910004" "0x0a910004") )');
     
         resp = await MalTay.call(`(getfrom Struct 0)`);
         expect(resp).toEqual('0x11000002040000040a910004040000040a910004');
         
-        await MalTay.send('(struct! "astruct" (list 4 6) )');
+        await MalTay.send('(struct! astruct (list 4 6) )');
     
         resp = await MalTay.call(`(getfrom Uint 0)`);
         expect(resp).toEqual(4);
@@ -281,7 +281,7 @@ describe('test arrays & structs', function () {
         resp = await MalTay.call(`(getfrom Uint 1)`);
         expect(resp).toEqual(6);
     
-        resp = await MalTay.call(`(list-struct (getfrom "astruct" 0))`);
+        resp = await MalTay.call(`(list-struct (getfrom astruct 0))`);
         expect(resp).toEqual([4, 6]);
     });
 
@@ -298,13 +298,13 @@ describe('test arrays & structs', function () {
     });
 
     it('struct: astruct2 with u32 array', async function() {
-        await MalTay.send('(defstruct! astruct2 (list "0x400000030a910004" "0x400000030a910004") )');
+        await MalTay.sendAndWait('(defstruct! astruct2 (list "0x400000030a910004" "0x400000030a910004") )');
         scount += 1;
 
         resp = await MalTay.call(`(getfrom Struct ${scount})`);
         expect(resp).toEqual('0x1100000204000008400000030a91000404000008400000030a910004');
 
-        await MalTay.send('(struct! "astruct2" (list (array 6 8 11) (array 2 7 9)) )');
+        await MalTay.send('(struct! astruct2 (list (array 6 8 11) (array 2 7 9)) )');
 
         resp = await MalTay.call(`(getfrom "0x400000030a910004" 1)`);
         expect(resp).toEqual([6, 8, 11]);
@@ -312,12 +312,12 @@ describe('test arrays & structs', function () {
         resp = await MalTay.call(`(getfrom "0x400000030a910004" 2)`);
         expect(resp).toEqual([2, 7, 9]);
 
-        resp = await MalTay.call(`(list-struct (getfrom "astruct2" 0))`);
+        resp = await MalTay.call(`(list-struct (getfrom astruct2 0))`);
         expect(resp).toEqual([[6, 8, 11], [2, 7, 9]]);
     });
     
     it('struct: anotherstruct with bytes20 array', async function() {
-        await MalTay.send('(defstruct! anotherstruct (list "0x04000003" "0x4000000604000014") )');
+        await MalTay.sendAndWait('(defstruct! anotherstruct (list "0x04000003" "0x4000000604000014") )');
         scount += 1;
     
         resp = await MalTay.call(`(getfrom Struct ${scount})`);
@@ -331,7 +331,7 @@ describe('test arrays & structs', function () {
         resp = await MalTay.call(`(array ${arrstr})`);
         expect(resp).toEqual(arr);
 
-        await MalTay.send(`(struct! "anotherstruct" (list "0x334455" (array ${arrstr} ) ))`);
+        await MalTay.send(`(struct! anotherstruct (list "0x334455" (array ${arrstr} ) ))`);
 
         resp = await MalTay.call(`(getfrom "0x04000003" 0)`);
         expect(resp).toEqual("0x334455");
@@ -339,7 +339,7 @@ describe('test arrays & structs', function () {
         resp = await MalTay.call(`(getfrom "0x4000000604000014" 0)`);
         expect(resp).toEqual(arr);
 
-        resp = await MalTay.call(`(list-struct (getfrom "anotherstruct" 0))`);
+        resp = await MalTay.call(`(list-struct (getfrom anotherstruct 0))`);
         expect(resp).toEqual(['0x334455', arr]);
 
         // 2
@@ -349,7 +349,7 @@ describe('test arrays & structs', function () {
         ];
         arrstr = `"${arr.join('" "')}"`;
 
-        await MalTay.send(`(struct! "anotherstruct" (list "0x667788" (array ${arrstr} ) ))`);
+        await MalTay.send(`(struct! anotherstruct (list "0x667788" (array ${arrstr} ) ))`);
 
         resp = await MalTay.call(`(getfrom "0x04000003" 1)`);
         expect(resp).toEqual("0x667788");
@@ -357,7 +357,7 @@ describe('test arrays & structs', function () {
         resp = await MalTay.call(`(getfrom "0x4000000604000014" 1)`);
         expect(resp).toEqual(arr);
 
-        resp = await MalTay.call(`(list-struct (getfrom "anotherstruct" 1))`);
+        resp = await MalTay.call(`(list-struct (getfrom anotherstruct 1))`);
         expect(resp).toEqual(['0x667788', arr]);
     });
 
@@ -377,9 +377,9 @@ describe('test arrays & structs', function () {
         resp = await MalTay.call(array_2_4_3_expr);
         expect(resp).toEqual(array_2_4_3);
 
-        await MalTay.send('(defstruct! struct3 (list "0x40000002400000030a910004" "0x4000000240000004400000030a910004") )');
+        await MalTay.sendAndWait('(defstruct! struct3 (list "0x40000002400000030a910004" "0x4000000240000004400000030a910004") )');
 
-        await MalTay.send(`(struct! "struct3" (list 
+        await MalTay.send(`(struct! struct3 (list 
             ${array_2_3_expr}
             ${array_2_4_3_expr}
         ))`);
@@ -390,7 +390,7 @@ describe('test arrays & structs', function () {
         resp = await MalTay.call(`(getfrom "0x4000000240000004400000030a910004" 0)`);
         expect(resp).toEqual(array_2_4_3);
 
-        resp = await MalTay.call(`(list-struct (getfrom "struct3" 0))`);
+        resp = await MalTay.call(`(list-struct (getfrom struct3 0))`);
         expect(resp).toEqual([array_2_3, array_2_4_3]);
     });
 });
@@ -1127,19 +1127,19 @@ describe('test mapping', function () {
     it('value: struct type', async function() {
         let resp;
 
-        await MalTay.send('(defstruct! SomeStruct (list Uint Bool Uint))');
-        await MalTay.send('(defmap! "structbyaddr" Address "SomeStruct")');
+        await MalTay.sendAndWait('(defstruct! SomeStruct (list Uint Bool Uint))');
+        await MalTay.sendAndWait('(defmap! "structbyaddr" Address "SomeStruct")');
 
         // TODO: (getsig Voter)
         resp = await MalTay.call('(getfrom Map 1)');
         expect(resp.substring(0, 18)).toBe(expr2h('(Address)'));
 
-        await MalTay.send('(mapset! "structbyaddr" (caller) (struct! "SomeStruct" (list 3 true 66) ))');
+        await MalTay.send('(mapset! structbyaddr (caller) (struct! SomeStruct (list 3 true 66) ))');
 
-        resp = await MalTay.call(`(list-struct (getfrom "SomeStruct" 0))`);
+        resp = await MalTay.call(`(list-struct (getfrom SomeStruct 0))`);
         expect(resp).toEqual([3, 1, 66]);
 
-        resp = await MalTay.call(`(list-struct (mapget "structbyaddr" (caller)))`);
+        resp = await MalTay.call(`(list-struct (mapget structbyaddr (caller)))`);
         expect(resp).toEqual([3, 1, 66]);
     });
 });
@@ -1160,21 +1160,21 @@ it('ballot contract', async function() {
     )`;
     
     const init2 = `(list
-        (struct! "Proposal" (list "proposal1" 0))
-        (struct! "Proposal" (list "proposal2" 0))
-        (struct! "Proposal" (list "proposal3" 0))
+        (struct! Proposal (list "proposal1" 0))
+        (struct! Proposal (list "proposal2" 0))
+        (struct! Proposal (list "proposal3" 0))
     )`;
 
     const checkinit = `(list
-        (list-struct (getfrom "Proposal" 0))
-        (list-struct (getfrom "Proposal" 1))
-        (list-struct (getfrom "Proposal" 2))
+        (list-struct (getfrom Proposal 0))
+        (list-struct (getfrom Proposal 1))
+        (list-struct (getfrom Proposal 2))
     )`
 
     let giveRightToVote = `(def! giveRightToVote! (fn* (voterAddress)
         (if (eq (caller) (sload 0 Address))
-            (if (nil? (mapget "voters" voterAddress))
-                (mapset! "voters" voterAddress (struct! "Voter" (list 1 0 0 0)))
+            (if (nil? (mapget voters voterAddress))
+                (mapset! voters voterAddress (struct! Voter (list 1 0 0 0)))
                 (revert "The voter already voted.")
             )
             (revert "Only chairperson can give right to vote.")
@@ -1197,8 +1197,8 @@ it('ballot contract', async function() {
         )
     ))`
 
-    await MalTay.send(init);
-    await MalTay.send(init2);
+    await MalTay.sendAndWait(init);
+    await MalTay.sendAndWait(init2);
 
     resp = await MalTay.call(checkinit);
     expect(resp[0]).toEqual(['proposal1', 0]);
@@ -1208,10 +1208,10 @@ it('ballot contract', async function() {
     resp = await MalTay.call('(eq (caller) (sload 0 Address))');
     expect(resp).toBe(1);
 
-    resp = await MalTay.call('(nil? (mapget "voters" "0xe8B7665DE12D67bC802aEcb8eef4D8bd34741C51"))');
+    resp = await MalTay.call('(nil? (mapget voters "0xe8B7665DE12D67bC802aEcb8eef4D8bd34741C51"))');
     expect(resp).toBe(true);
 
-    resp = await MalTay.call('(nil? (list-struct (mapget "voters" "0xe8B7665DE12D67bC802aEcb8eef4D8bd34741C51")))');
+    resp = await MalTay.call('(nil? (list-struct (mapget voters "0xe8B7665DE12D67bC802aEcb8eef4D8bd34741C51")))');
     expect(resp).toBe(true);
 
     await MalTay.sendAndWait(giveRightToVote);
@@ -1220,9 +1220,9 @@ it('ballot contract', async function() {
     resp = await MalTay.call('(nil? (mapget "voters" "0xe8B7665DE12D67bC802aEcb8eef4D8bd34741C51"))');
     expect(resp).toBe(false);
 
-    resp = await MalTay.call('(nil? (list-struct (mapget "voters" "0xe8B7665DE12D67bC802aEcb8eef4D8bd34741C51")))');
+    resp = await MalTay.call('(nil? (list-struct (mapget voters "0xe8B7665DE12D67bC802aEcb8eef4D8bd34741C51")))');
     expect(resp).toBe(false);
 
-    resp = await MalTay.call('(list-struct (mapget "voters" "0xe8B7665DE12D67bC802aEcb8eef4D8bd34741C51"))')
+    resp = await MalTay.call('(list-struct (mapget voters "0xe8B7665DE12D67bC802aEcb8eef4D8bd34741C51"))')
     expect(resp).toEqual([1, 0, '0x0000000000000000000000000000000000000000', 0]);
 }, 10000);
