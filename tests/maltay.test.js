@@ -272,8 +272,14 @@ describe('test arrays & structs', function () {
     
         resp = await MalTay.call(`(getfrom Struct 0)`);
         expect(resp).toEqual('0x11000002040000040a910004040000040a910004');
+
+        resp = await MalTay.call(`(defstruct astruct)`);
+        expect(resp).toEqual(['0x0a910004', '0x0a910004']);
         
         await MalTay.send('(struct! astruct (list 4 6) )');
+
+        resp = await MalTay.call(`(refs-struct (getfrom astruct 0))`);
+        expect(resp).toEqual([0, 1]);
     
         resp = await MalTay.call(`(getfrom Uint 0)`);
         expect(resp).toEqual(4);
@@ -1294,50 +1300,48 @@ it('ballot contract', async function() {
 
 }, 10000);
 
-it.only('test update!', async function() {
-    await MalTay.send('(defstruct! UpdatableStruct (list Bytes4 Uint) )');
-    await MalTay.send('(struct! "UpdatableStruct" (list "0x11223344" 2))');
+describe('test update!', function() {
+    it('update setup struct', async function() {
+        await MalTay.send('(defstruct! UpdatableStruct (list Bytes4 Uint) )');
+        await MalTay.send('(struct! UpdatableStruct (list "0x11223344" 2))');
 
-    // resp = await MalTay.call('(getfrom Bytes4 0)')
-    // expect(resp).toEqual('0x11223344');
+        resp = await MalTay.call('(getfrom Bytes4 0)')
+        expect(resp).toEqual('0x11223344');
 
-    // resp = await MalTay.call('(getfrom Uint 0)')
-    // expect(resp).toEqual(2);
+        resp = await MalTay.call('(getfrom Uint 0)')
+        expect(resp).toEqual(2);
 
-    // console.log('...pre..', await MalTay.call('(getfrom "UpdatableStruct" 0)'))
+        resp = await MalTay.call('(refs-struct (getfrom UpdatableStruct 0))')
+        expect(resp).toEqual([0, 0]);
 
-    // resp = await MalTay.call('(list-struct (getfrom "UpdatableStruct" 0))')
-    // expect(resp).toEqual(['0x11223344', 2]);
+        resp = await MalTay.call('(list-struct (getfrom UpdatableStruct 0))')
+        expect(resp).toEqual(['0x11223344', 2]);
+    });
 
-    // resp = await MalTay.call('(update! Bytes4 0 "0x11223355")');
-    // console.log('resp', resp);
+    it('test static length update', async function() {
+        await MalTay.send(`(list
+            (update! Bytes4 0 "0x11223355")
+            (update! Uint 0 5)
+        )`);
+        resp = await MalTay.call('(list-struct (getfrom UpdatableStruct 0))')
+        expect(resp).toEqual(['0x11223355', 5]);
+    });
 
-    // await MalTay.send('(update! Bytes4 0 "0x11223355")');
-    // await MalTay.send('(update! Uint 0 5)');
-
-    // resp = await MalTay.call('(list-struct (getfrom "UpdatableStruct" 0))')
-    // expect(resp).toEqual(['0x11223355', 5]);
-
-    // resp = await MalTay.call('(update! "UpdatableStruct" 0 (list "0x88223399" 8))');
-    // console.log('resp', resp);
-    // return
-
-
-    // (list )
-
+    it('test struct components update', async function() {
+        await MalTay.send(`(let* (
+                stypes (defstruct UpdatableStruct)
+                indexes (refs-struct (getfrom UpdatableStruct 0))
+            )
+            (list
+                (update! (nth stypes 0) (nth indexes 0) "0x55667788")
+                (update! (nth stypes 1) (nth indexes 1) 7)
+            )
+        )`);
     
-    
-    await MalTay.send('(update! "UpdatableStruct" 0 (list "0x88223399" 8))');
+        resp = await MalTay.call('(refs-struct (getfrom UpdatableStruct 0))')
+        expect(resp).toEqual([0, 0]);
 
-    // console.log('.....', await MalTay.call('(getfrom "UpdatableStruct" 0)'))
-
-    resp = await MalTay.call('(getfrom Bytes4 1)')
-    expect(resp).toEqual('0x88223399');
-
-    resp = await MalTay.call('(getfrom Uint 1)')
-    expect(resp).toEqual(8);
-
-
-    resp = await MalTay.call('(list-struct (getfrom "UpdatableStruct" 0))')
-    expect(resp).toEqual(['0x88223399', 8]);
-})
+        resp = await MalTay.call('(list-struct (getfrom UpdatableStruct 0))')
+        expect(resp).toEqual(['0x55667788', 7]);
+    });
+});

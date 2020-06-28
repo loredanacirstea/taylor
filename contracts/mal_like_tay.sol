@@ -467,7 +467,7 @@ object "Taylor" {
             }
             // defstruct!
             case 0x900000c4 {
-                let ssig := _defstruct(add(arg_ptrs_ptr, 32))
+                let ssig := _defstruct_bang(add(arg_ptrs_ptr, 32))
                 result_ptr := allocate(8)
                 mslicestore(result_ptr, uconcat(buildBytesSig(4), ssig, 4), 8)
             }
@@ -509,7 +509,8 @@ object "Taylor" {
                 _return(add(arg_ptrs_ptr, 32))
             }
             case 0x8800011c {
-                result_ptr := _list_from_struct(add(arg_ptrs_ptr, 32))
+                let struct_ptr := mload(add(arg_ptrs_ptr, 32))
+                result_ptr := _list_from_struct(struct_ptr)
             }
             case 0x9800011e {
                 let ssig := _defmap(add(arg_ptrs_ptr, 32))
@@ -529,6 +530,14 @@ object "Taylor" {
                 let index_ptr := mload(add(arg_ptrs_ptr, 64))
                 let value_ptr := mload(add(arg_ptrs_ptr, 96))
                 result_ptr := _update_bang(name_ptr, index_ptr, value_ptr)
+            }
+            case 0x88000126 {
+                let name_ptr := mload(add(arg_ptrs_ptr, 32))
+                result_ptr := _defstruct(name_ptr)
+            }
+            case 0x88000128 {
+                let struct_ptr := mload(add(arg_ptrs_ptr, 32))
+                result_ptr := _list_refs_from_struct(struct_ptr)
             }
 
             default {
@@ -1953,7 +1962,7 @@ object "Taylor" {
             }
         }
 
-        function _defstruct(ptrs) -> sig {
+        function _defstruct_bang(ptrs) -> sig {
             let name_ptr := mload(ptrs)
             let typelist_ptr := mload(add(ptrs, 32))
             let arity := listTypeSize(mslice(typelist_ptr, 4))
@@ -1969,6 +1978,16 @@ object "Taylor" {
             sig := structSigFromId(id, arity, 0)
 
             _name_bang(name_ptr, struct_abstract_id, sig, 4)
+        }
+
+        function _defstruct(name_ptr) -> result_ptr {
+            let sig := getSignature(sigPtrFromNameOrSig(name_ptr))
+            let struct_id := structIdFromSig(sig)
+
+            // Get struct component types
+            result_ptr := _getfromInner(0x20000000, 4, 0, struct_id)
+            // Return the list without the bytes signature
+            result_ptr := add(result_ptr, 4)
         }
 
         function _struct(ptrs) -> result_ptr {
@@ -2036,8 +2055,7 @@ object "Taylor" {
             }
         }
 
-        function _list_from_struct(ptrs) -> result_ptr {
-            let struct_ptr := mload(ptrs)
+        function _list_from_struct(struct_ptr) -> result_ptr {
             let sig := mslice(struct_ptr, 4)
             let struct_id := structIdFromSig(sig)
             let arity := structSize(sig)
@@ -2070,6 +2088,25 @@ object "Taylor" {
             }
 
             result_ptr := _list(arity, list_ptrs)
+        }
+
+        function _list_refs_from_struct(struct_ptr) -> result_ptr {
+            let sig := mslice(struct_ptr, 4)
+            let arity := structSize(sig)
+            let index_ptr := add(struct_ptr, 4)
+            
+            // list sig + arity * (u4sig + index)
+            result_ptr := allocate(add(4, mul(arity, 8)))
+            mslicestore(result_ptr, buildListTypeSig(arity), 4)
+            
+            let now_ptr := add(result_ptr, 4)
+            let indexsig := buildUintSig(4)
+            for { let i := 0 } lt(i, arity) { i := add(i, 1) } {
+                mslicestore(now_ptr, indexsig, 4)
+                mslicestore(add(now_ptr, 4), mslice(index_ptr, 4), 4)
+                index_ptr := add(index_ptr, 4)
+                now_ptr := add(now_ptr, 8)
+            }
         }
 
         function _rcall(structsig_ptr, index_ptr, data_ptr) -> result_ptr {
@@ -2398,6 +2435,7 @@ object "Taylor" {
             let typesig := getSignature(sigPtrFromNameOrSig(name_ptr))
             let index := extractValue(index_ptr)
             let value_len := getValueLength(value_ptr)
+            value_ptr := add(value_ptr, getSignatureLength(value_ptr))
 
             _updateInnerStaticSize(typesig, index, value_len, value_ptr)
         }
