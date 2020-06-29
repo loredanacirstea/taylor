@@ -1,5 +1,5 @@
 require('../src/extensions.js');
-const { getTaylor, getMalBackend } = require('./setup/fixtures.js');
+const { deployTaylor, getMalBackend } = require('./setup/fixtures.js');
 const { decode, encode, expr2h, b2h, u2b, expr2s } = require('../src/index.js');
 const BN = require('bn.js');
 const ethers = require('ethers');
@@ -8,7 +8,7 @@ let MalTay;
 let MalB = getMalBackend();
 
 beforeAll(() => {
-  return getTaylor().then(t => {
+  return deployTaylor().then(t => {
     MalTay = t;
     console.log('****MalTay', MalTay.address);
     return MalTay.init();
@@ -82,8 +82,8 @@ it('test bytes contig', async function () {
 it('test registration & executing from root contract', async function () {
     let expr, resp;
 
-    const maltay2 = await getTaylor();
-    const maltay3 = await getTaylor();
+    const maltay2 = await deployTaylor();
+    const maltay3 = await deployTaylor();
 
     // Register
     // TODO: type integer
@@ -477,7 +477,7 @@ describe.each([
 ])(' (%s)', (backendname, instance) => {
     if (backendname === 'chain') {
         beforeAll(() => {
-            return getTaylor().then(t => {
+            return deployTaylor().then(t => {
                 instance = t;
               console.log('****MalTay', MalTay.address);
             });
@@ -1134,7 +1134,7 @@ describe('test mapping', function () {
         let resp;
 
         await MalTay.sendAndWait('(defstruct! SomeStruct (list Uint Bool Uint))');
-        await MalTay.sendAndWait('(defmap! "structbyaddr" Address "SomeStruct")');
+        await MalTay.sendAndWait('(defmap! "structbyaddr" Address SomeStruct)');
 
         // TODO: (getsig Voter)
         resp = await MalTay.call('(getfrom Map 1)');
@@ -1148,10 +1148,10 @@ describe('test mapping', function () {
         resp = await MalTay.call(`(list-struct (mapget structbyaddr (caller)))`);
         expect(resp).toEqual([3, 1, 66]);
 
-        resp = await MalTay.call(`(let* ( somvar (list-struct (mapget "structbyaddr" (caller))) ) somvar)`);
+        resp = await MalTay.call(`(let* ( somvar (list-struct (mapget structbyaddr (caller))) ) somvar)`);
         expect(resp).toEqual([3, 1, 66]);
 
-        resp = await MalTay.call(`(let* ( somvar (list-struct (mapget "structbyaddr" (caller))) ) (nth somvar 2))`);
+        resp = await MalTay.call(`(let* ( somvar (list-struct (mapget structbyaddr (caller))) ) (nth somvar 2))`);
         expect(resp).toEqual(66);
     });
 });

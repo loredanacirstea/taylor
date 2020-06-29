@@ -49,7 +49,7 @@ const deployContract = signer => async filePath => {
   return receipt.contractAddress;
 }
 
-const _getTaylor = async () => {
+const deployTaylor = async () => {
   const address = await deployContract(signer)(MALLT_PATH);
   return getTaylor(provider, signer)(address);
 }
@@ -60,6 +60,6 @@ module.exports = {
   signer,
   compileContract,
   deployContract,
-  getTaylor: _getTaylor,
+  deployTaylor,
   getMalBackend: mal.getBackend,
 }

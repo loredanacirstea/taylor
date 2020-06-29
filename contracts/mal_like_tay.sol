@@ -1669,7 +1669,8 @@ object "Taylor" {
 
         // value_ptr does not contain the signature
         function _saveInnerStaticSize(typesig, value_len, value_ptr) -> _index {
-            _index := add(getStorageCount(typesig), 1)
+            _index := getStorageCount(typesig)
+            _index := add(_index, 1)
             let storage_pos := mul(_index, value_len)
 
             storeAtPos(storage_pos, typesig, value_len, value_ptr)
@@ -1893,9 +1894,9 @@ object "Taylor" {
 
             let head_len := min(sub(32, storage_offset), data_len)
             let head := mslice(data_ptr, head_len)
-            mslicestore(add(value_ptr, storage_offset), head, head_len)
+            mstorehead(add(value_ptr, storage_offset), head, head_len)
             sstore(key, mload(value_ptr))
-            setTxPayable()
+            // setTxPayable()
 
             if gt(data_len, head_len) {
                 let rest := sub(data_len, head_len)

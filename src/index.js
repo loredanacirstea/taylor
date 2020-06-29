@@ -258,7 +258,7 @@ const decodeInner = (inidata) => {
     } else if (isStruct(sig)) {
         const arity = structSize(sig);
         result = { sig };
-        [...new Array(arity)].forEach((_, i) => result[i] = parseInt(data.substring(i*8, (i+1)*8)));
+        [...new Array(arity)].forEach((_, i) => result[i] = parseInt(data.substring(i*8, (i+1)*8), 16));
         data = data.substring(arity*8);
         return { result, data };
     } else if (isBytelike(sig)) {
@@ -644,8 +644,12 @@ const getTaylor = (provider, signer) => (address, deploymentBlock = 0) => {
     
     interpreter.call = async (mal_expression, txObj) => decode(await interpreter.call_raw(expr2h(mal_expression, interpreter.alltypes()), txObj));
     interpreter.send = async (expression, txObj={}, newsigner=null) => {
-        if(!txObj.value) {
+        if(!txObj.value && !newsigner) {
             txObj.value = await interpreter.calculateCost(expression);
+        }
+        if(!txObj.gasLimit && !newsigner) {
+            txObj.gasLimit = await interpreter.estimateGas(expression, txObj).catch(console.log);
+            txObj.gasLimit = txObj.gasLimit ? (txObj.gasLimit.toNumber() + 100000) : 1000000;
         }
         if (!newsigner) {
             return interpreter.send_raw(expr2h(expression, interpreter.alltypes()), txObj);
