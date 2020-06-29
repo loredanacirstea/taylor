@@ -1156,7 +1156,8 @@ describe('test mapping', function () {
     });
 });
 
-it('ballot contract', async function() {
+describe('ballot contract', function() {
+    let voter1, voter2, voter3, voter1_addr, voter2_addr, voter3_addr;
 
     const init = `(list 
         ; weight, voted, delegate, vote (proposal index)
@@ -1186,7 +1187,7 @@ it('ballot contract', async function() {
     const giveRightToVote = `(def! giveRightToVote! (fn* (voterAddress)
         (if (eq (caller) (sload 0 Address))
             (if (nil? (mapget voters voterAddress))
-                (mapset! voters voterAddress (struct! Voter (list 1 0 0 0)))
+                (mapset! voters voterAddress (struct! Voter (list 1 false "0x0000000000000000000000000000000000000000" 0)))
                 (revert "The voter already voted.")
             )
             (revert "Only chairperson can give right to vote.")
@@ -1194,111 +1195,175 @@ it('ballot contract', async function() {
     ))`
 
     let vote = `(def! vote! (fn* (proposalIndex)
-        (let* (sender (mapget "voters" (caller)))
-            (if (or (eq 0 (nth 0 sender)) (true? (nth 1 sender)))
-                (revert "Has no right to vote")
-                (list
-                    (mapset! "voters" (caller) 
-                        (struct! "Voter" (list sender.0 true sender.2 proposalIndex))
-                    )
-                    (let proposal (getfrom "Proposal" proposalIndex)
-                        (modify! (set proposal.1 (add proposal.1 sender.1)))
-                    )
-                )
+        (let* (
+                sender_raw (mapget voters (caller))
+                sender (list-struct sender_raw)
+                sender_types (defstruct Voter)
+                sender_indexes (refs-struct sender_raw)
+                proposal_raw (getfrom Proposal proposalIndex)
+                proposal (list-struct proposal_raw)
+                proposal_types (defstruct Proposal)
+                proposal_indexes (refs-struct proposal_raw)
             )
-        )
-    ))`
-
-    await MalTay.sendAndWait(init);
-    await MalTay.sendAndWait(init2);
-
-    resp = await MalTay.call(checkinit);
-    expect(resp[0]).toEqual(['proposal1', 0]);
-    expect(resp[1]).toEqual(['proposal2', 0]);
-    expect(resp[2]).toEqual(['proposal3', 0]);
-
-    resp = await MalTay.call('(eq (caller) (sload 0 Address))');
-    expect(resp).toBe(1);
-
-    resp = await MalTay.call('(nil? (mapget voters "0xe8B7665DE12D67bC802aEcb8eef4D8bd34741C51"))');
-    expect(resp).toBe(true);
-
-    resp = await MalTay.call('(nil? (list-struct (mapget voters "0xe8B7665DE12D67bC802aEcb8eef4D8bd34741C51")))');
-    expect(resp).toBe(true);
-
-    await MalTay.sendAndWait(giveRightToVote);
-    await MalTay.send('(giveRightToVote! "0xe8B7665DE12D67bC802aEcb8eef4D8bd34741C51")');
-
-    resp = await MalTay.call('(nil? (mapget "voters" "0xe8B7665DE12D67bC802aEcb8eef4D8bd34741C51"))');
-    expect(resp).toBe(false);
-
-    resp = await MalTay.call('(nil? (list-struct (mapget voters "0xe8B7665DE12D67bC802aEcb8eef4D8bd34741C51")))');
-    expect(resp).toBe(false);
-
-    resp = await MalTay.call('(list-struct (mapget voters "0xe8B7665DE12D67bC802aEcb8eef4D8bd34741C51"))')
-    expect(resp).toEqual([1, 0, '0x0000000000000000000000000000000000000000', 0]);
-    
-    await MalTay.send('(giveRightToVote! (caller))');
-
-    vote = `(def! vote! (fn* (proposalIndex)
-        (let* (sender (list-struct (mapget "voters" (caller))) )
             (if (or 
                     (or (nil? sender) (true? (nth sender 1)))
                     (lt (nth sender 0) 1)
                 )
                 (revert "Has no right to vote")
                 (list
-            ;        (mapset! "voters" (caller) 
-            ;            (struct! "Voter" (list sender.0 true sender.2 proposalIndex))
-            ;        )
-            ;        (let proposal (getfrom "Proposal" proposalIndex)
-            ;            (modify! (set proposal.1 (add proposal.1 sender.1)))
-            ;        )
+                    ; sender.voted = true
+                    (update! (nth sender_types 1) (nth sender_indexes 1) true)
+                    ; sender.vote = proposal
+                    (update! (nth sender_types 3) (nth sender_indexes 3) proposalIndex)
+                    
+                    ; proposals[proposal].voteCount += sender.weight
+                    (update! (nth proposal_types 1) (nth proposal_indexes 1) (add (nth sender 0) (nth proposal 1)))
                 )
             )
         )
     ))`
 
-    await MalTay.sendAndWait(vote);
-    // await MalTay.send('(vote! 1)');
+    let delegate = `(def! delegate! (fn* (to_address)
+        (let* (
+                sender_raw (mapget voters (caller))
+                sender (list-struct sender_raw)
+                sender_types (defstruct Voter)
+                sender_indexes (refs-struct sender_raw)
+                delegate_raw (mapget voters to_address)
+                delegate (list-struct delegate_raw)
+            )
+            (if (true? (nth sender 1))
+                (revert "You already voted.")
+                (if (eq to_address (caller))
+                    (revert "Self-delegation is disallowed.")
+                    (list
+                        ; sender.voted = true
+                        (update! (nth sender_types 1) (nth sender_indexes 1) true)
+                        ; sender.delegate = to
+                        (update! (nth sender_types 2) (nth sender_indexes 2) to_address)
+                        (if (true? (nth delegate 1))
+                            ; proposals[delegate_.vote].voteCount += sender.weight
+                            (let* (
+                                    proposal_raw (getfrom Proposal (nth delegate 3))
+                                    proposal (list-struct proposal_raw)
+                                    proposal_types (defstruct Proposal)
+                                    proposal_indexes (refs-struct proposal_raw)
+                                )
+                                (update! (nth proposal_types 1) (nth proposal_indexes 1) (add (nth sender 0) (nth proposal 1)))
+                            )
 
-    resp = await MalTay.call('(vote! 1)');
-    console.log('resp', resp);
+                            ; delegate_.weight += sender.weight
+                            (let* (
+                                    delegate_types (defstruct Voter)
+                                    delegate_indexes (refs-struct delegate_raw)
+                                )
+                                (update! (nth delegate_types 0) (nth delegate_indexes 0) (add (nth delegate 0) (nth sender 0)))
+                            )
+                        )
+                    )
+                )
+            )
+        )
+    ))`
 
-    return
+    it('prep accounts', async function() {
+        voter1 = MalTay.provider.getSigner(3);
+        voter2 = MalTay.provider.getSigner(4);
+        voter3 = MalTay.provider.getSigner(5);
+        voter1_addr = (await voter1.getAddress()).toLowerCase();
+        voter2_addr = (await voter2.getAddress()).toLowerCase();
+        voter3_addr = (await voter3.getAddress()).toLowerCase();
+    }, 20000);
 
-    // resp = await MalTay.call('(update! "Proposal" 1 (list "proposal22" 3) )');
-    // console.log('resp', resp);
+    it('initialize types & save proposals', async function() {
+        await MalTay.sendAndWait(init);
+        await MalTay.sendAndWait(init2);
 
-    await MalTay.send(`(update! String32 1 "proposal22")`);
+        resp = await MalTay.call(checkinit);
+        expect(resp[0]).toEqual(['proposal1', 0]);
+        expect(resp[1]).toEqual(['proposal2', 0]);
+        expect(resp[2]).toEqual(['proposal3', 0]);
 
-    resp = await MalTay.call('(list-struct (getfrom "Proposal" 1))')
-    expect(resp[1]).toEqual(['proposal22', 0]);
+        resp = await MalTay.call('(eq (caller) (sload 0 Address))');
+        expect(resp).toBe(1);
+    }, 20000);
 
-    return
-    
-    // await MalTay.send(`(update! "voters" "0xe8B7665DE12D67bC802aEcb8eef4D8bd34741C51" (list 6 1 "0xe8B7665DE12D67bC802aEcb8eef4D8bd34741C51" 3) )`);
+    it('giveRightToVote!', async function() {
+        resp = await MalTay.call('(nil? (mapget voters "0xe8B7665DE12D67bC802aEcb8eef4D8bd34741C51"))');
+        expect(resp).toBe(true);
 
+        resp = await MalTay.call('(nil? (list-struct (mapget voters "0xe8B7665DE12D67bC802aEcb8eef4D8bd34741C51")))');
+        expect(resp).toBe(true);
 
-    // await MalTay.send(`(update! "Proposal" 1 (list "proposal22" 3) )`);
-    // await MalTay.send(`(update! "voters" "0xe8B7665DE12D67bC802aEcb8eef4D8bd34741C51" (list 6 1 "0xe8B7665DE12D67bC802aEcb8eef4D8bd34741C51" 3) )`);
-    
-    
-    resp = await MalTay.call('(list-struct (getfrom "Proposal" 1))')
-    expect(resp[1]).toEqual(['proposal22', 2]);
+        await MalTay.sendAndWait(giveRightToVote);
+        
+        await MalTay.send('(giveRightToVote! "0xe8B7665DE12D67bC802aEcb8eef4D8bd34741C51")');
 
-    
-    resp = await MalTay.call('(list-struct (mapget "voters" "0xe8B7665DE12D67bC802aEcb8eef4D8bd34741C51"))')
-    expect(resp).toEqual([6, 1, '0xe8B7665DE12D67bC802aEcb8eef4D8bd34741C51', 3]);
+        resp = await MalTay.call('(nil? (mapget "voters" "0xe8B7665DE12D67bC802aEcb8eef4D8bd34741C51"))');
+        expect(resp).toBe(false);
 
+        resp = await MalTay.call('(nil? (list-struct (mapget voters "0xe8B7665DE12D67bC802aEcb8eef4D8bd34741C51")))');
+        expect(resp).toBe(false);
 
-    // await MalTay.sendAndWait(vote);
-    // await MalTay.send('(vote! 1)');
+        resp = await MalTay.call('(list-struct (mapget voters "0xe8B7665DE12D67bC802aEcb8eef4D8bd34741C51"))')
+        expect(resp).toEqual([1, 0, '0x0000000000000000000000000000000000000000', 0]);
 
-    // resp = await MalTay.call('(list-struct (getfrom "Proposal" 1))');
-    // expect(resp[0]).toEqual(['proposal2', 1]);
+        await MalTay.send('(giveRightToVote! (caller))');
+        resp = await MalTay.call('(list-struct (mapget voters (caller)))')
+        expect(resp).toEqual([1, 0, '0x0000000000000000000000000000000000000000', 0]);
 
-}, 10000);
+        await MalTay.send(`(giveRightToVote! "${voter1_addr}")`);
+        resp = await MalTay.call(`(list-struct (mapget voters "${voter1_addr}"))`)
+        expect(resp).toEqual([1, 0, '0x0000000000000000000000000000000000000000', 0]);
+
+        await MalTay.send(`(giveRightToVote! "${voter2_addr}")`);
+        resp = await MalTay.call(`(list-struct (mapget voters "${voter2_addr}"))`)
+        expect(resp).toEqual([1, 0, '0x0000000000000000000000000000000000000000', 0]);
+
+        await MalTay.send(`(giveRightToVote! "${voter3_addr}")`);
+        resp = await MalTay.call(`(list-struct (mapget voters "${voter3_addr}"))`)
+        expect(resp).toEqual([1, 0, '0x0000000000000000000000000000000000000000', 0]);
+    }, 20000);
+
+    it('vote!', async function() {
+        await MalTay.sendAndWait(vote);
+        await MalTay.send('(vote! 2)');
+
+        resp = await MalTay.call('(list-struct (getfrom Proposal 2))')
+        expect(resp).toEqual(['proposal3', 1]);
+
+        resp = await MalTay.call('(list-struct (mapget voters (caller)))')
+        expect(resp).toEqual([1, 1, '0x0000000000000000000000000000000000000000', 2]);
+    }, 20000);
+
+    it('delegate!', async function() {
+        await MalTay.sendAndWait(delegate);
+        
+        resp = await MalTay.call(`(list-struct (mapget voters "${voter1_addr}" ))`)
+        expect(resp).toEqual([1, 0, '0x0000000000000000000000000000000000000000', 0]);
+
+        // voter1 delegates to voter2
+        await MalTay.send(`(delegate! "${voter2_addr}" )`, {}, voter1);
+
+        resp = await MalTay.call(`(list-struct (mapget voters "${voter1_addr}" ))`)
+        expect(resp).toEqual([1, 1, voter2_addr, 0]);
+
+        resp = await MalTay.call(`(list-struct (mapget voters "${voter2_addr}" ))`)
+        expect(resp).toEqual([2, 0, '0x0000000000000000000000000000000000000000', 0]);
+
+        // // voter2 votes
+        await MalTay.send(`(vote! 1)`, {}, voter2);
+
+        resp = await MalTay.call('(list-struct (getfrom Proposal 1))')
+        expect(resp).toEqual(['proposal2', 2]);
+
+        resp = await MalTay.call(`(list-struct (mapget voters "${voter1_addr}" ))`)
+        expect(resp).toEqual([1, 1, voter2_addr, 0]);
+
+        resp = await MalTay.call(`(list-struct (mapget voters "${voter2_addr}" ))`)
+        expect(resp).toEqual([2, 1, '0x0000000000000000000000000000000000000000', 1]);
+    });
+}, 30000);
 
 describe('test update!', function() {
     it('update setup struct', async function() {
