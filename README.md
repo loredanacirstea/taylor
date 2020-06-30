@@ -8,7 +8,7 @@ Demos: https://www.youtube.com/playlist?list=PL323JufuD9JAgnda2E8mGn_GDcD5ef4mH
 
 Examples to try out: (!only one line at a time)
 
-```
+```lisp
 (add (add (sub 7 2) 1) 41)
 (list 5 4 (add 6 2) 3 (sub 6 1))
 (if (gt 4 9) ((fn* (a b) (add a b)) 2 3) (add (sub 7 2) 1))
@@ -30,4 +30,9 @@ Examples to try out: (!only one line at a time)
 # higher order functions
 (map _fib (list 5 8 2))
 ```
+
+## Ballot 
+
+Implementing Solidity's Ballot contract from https://solidity.readthedocs.io/en/v0.6.10/solidity-by-example.html#voting. See https://github.com/loredanacirstea/taylor/blob/ff253038d8b83f48b4d897f3b6b455924ef848a2/tests/maltay.test.js#L1159 for ver. 0.0.2.
+
 
