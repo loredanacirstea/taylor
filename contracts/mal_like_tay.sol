@@ -560,6 +560,11 @@ object "Taylor" {
                 let item_ptr := mload(add(arg_ptrs_ptr, 32))
                 result_ptr := _length(item_ptr)
             }
+            case 0x90000130 {
+                let ptr1 := mload(add(arg_ptrs_ptr, 32))
+                let ptr2 := mload(add(arg_ptrs_ptr, 64))
+                result_ptr := _join(ptr1, ptr2)
+            }
 
             default {
                 let isthis := 0
@@ -1016,6 +1021,10 @@ object "Taylor" {
         function buildBytesSig(length) -> signature {
             // signature :=  '000001' * bit26 length
             signature := add(exp(2, 26), length)
+        }
+
+        function buildBytelikeSig(length, encoding) -> signature {
+            signature := add(add(exp(2, 26), shl(16, encoding)), length)
         }
 
         function buildLambdaSig(bodylen) -> signature {
@@ -1762,6 +1771,31 @@ object "Taylor" {
             result_ptr := allocate(8)
             mslicestore(result_ptr, buildUintSig(4), 4)
             mslicestore(add(result_ptr, 4), vallen, 4)
+        }
+
+        function _join(ptr1, ptr2) -> result_ptr {
+            let siglen1 := getSignatureLength(ptr1)
+            let siglen2 := getSignatureLength(ptr2)
+            let vallen1 := getValueLength(ptr1)
+            let vallen2 := getValueLength(ptr2)
+            let alllen := add(4, add(vallen1, vallen2))
+            let sig := 0
+
+            result_ptr := allocate(alllen)
+            switch and(isString(ptr1), isString(ptr2))
+            case 1 {
+                let encoding1 := bytesEncoding(get4b(ptr1))
+                let encoding2 := bytesEncoding(get4b(ptr2))
+                sig := buildBytelikeSig(add(vallen1, vallen2), min(encoding1, encoding2))
+            }
+            default {
+                sig := buildBytesSig(add(vallen1, vallen2))
+            }
+            mslicestore(result_ptr, sig, 4)
+            let current_ptr := add(result_ptr, 4)
+            mmultistore(current_ptr, add(ptr1, siglen1), vallen1)
+            current_ptr := add(current_ptr, vallen1)
+            mmultistore(current_ptr, add(ptr2, siglen2), vallen2)
         }
 
         function _save(ptrs) -> result_ptr {

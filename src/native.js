@@ -161,6 +161,7 @@ const _nativeEnv = {
     push:      { mutable: false, arity: 2 },
     slice:     { mutable: false, arity: 2 },
     length:    { mutable: false, arity: 1},
+    join:     { mutable: false, arity: 2 },
 
     // TODO: curry
     // TODO: pay

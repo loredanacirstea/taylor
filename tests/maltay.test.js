@@ -1175,6 +1175,25 @@ it('test length', async function() {
     // TODO same function for array length (diff behaviour per type);
 });
 
+
+it('test join', async function() {
+    let resp;
+    resp = await MalTay.call(`(join "0x112233" "0x445566"))`);
+    expect(resp).toBe('0x112233445566');
+
+    resp = await MalTay.call(`(join "0x112233" 8))`);
+    expect(resp).toBe('0x11223300000008');
+
+    resp = await MalTay.call(`(join "hello" "yello"))`);
+    expect(resp).toBe('helloyello');
+
+    resp = await MalTay.call(`(join "0x112233" "hello"))`);
+    expect(resp).toBe('0x1122330000000000000000000000000000000000000000000000680065006c006c006f');
+
+    resp = await MalTay.call(`(join "0x" "0x445566"))`);
+    expect(resp).toBe('0x445566');
+});
+
 describe('test mapping', function () {
     it('value: simple type', async function() {
         let resp;

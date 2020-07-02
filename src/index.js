@@ -341,7 +341,7 @@ const ast2h = (ast, parent=null, unkownMap={}, defenv={}) => {
         for (let i = 0; i < arity; i += 2) {
             const elem = ast[1][i];
             unkownMap[elem.value] = unknown(Object.keys(unkownMap).length);
-            definitions += getbytesid(8) + unkownMap[elem.value];
+            definitions += unkownMap[elem.value];
             const encodedvalue = ast2h([ast[1][i+1]], ast[1], unkownMap, defenv);
             definitions += encodedvalue;
         }
