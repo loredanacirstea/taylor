@@ -158,6 +158,9 @@ const _nativeEnv = {
     'update!': { mutable: false, arity: 3 },
     defstruct: { mutable: false, arity: 1 },
     'refs-struct': { mutable: false, arity: 1 },
+    push:      { mutable: false, arity: 2 },
+    slice:     { mutable: false, arity: 2 },
+    length:    { mutable: false, arity: 1},
 
     // TODO: curry
     // TODO: pay

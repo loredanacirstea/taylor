@@ -1129,6 +1129,46 @@ describe.each([
     });
 });
 
+it('test push', async function() {
+    let resp;
+    resp = await MalTay.call(`(push (array 4 5 6) 20)`);
+    expect(resp).toEqual([4, 5, 6, 20]);
+
+    resp = await MalTay.call(`(push (array (array 4 5 6) (array 7 8 9) ) (array 10 11 12) 1)`);
+    expect(resp).toEqual([[4, 5, 6], [7, 8, 9], [10, 11, 12]]);
+
+    resp = await MalTay.call(`(push (array "0x1122" "0x3344" "0x5566") "0x7788")`);
+    expect(resp).toEqual(['0x1122', '0x3344', '0x5566', '0x7788']);
+
+    resp = await MalTay.call(`(push (array) "0x7788")`);
+    expect(resp).toEqual(['0x7788']);
+
+    resp = await MalTay.call(`(push (array) 20)`);
+    expect(resp).toEqual([20]);
+});
+
+it('test slice', async function() {
+    let resp;
+
+    resp = await MalTay.call(`(slice "0x11223344556677" 3)`);
+    expect(resp).toEqual(['0x112233', '0x44556677']);
+
+    resp = await MalTay.call(`(slice "0x1122334455" 5)`);
+    expect(resp).toEqual(['0x1122334455', '0x']);
+
+    resp = await MalTay.call(`(slice "0x" 5)`);
+    expect(resp).toEqual(['0x', '0x']);
+});
+
+it('test length', async function() {
+    let resp;
+
+    resp = await MalTay.call(`(length "0x11223344556677")`);
+    expect(resp).toBe(7);
+
+    // TODO same function for array length (diff behaviour per type);
+});
+
 describe('test mapping', function () {
     it('value: simple type', async function() {
         let resp;
