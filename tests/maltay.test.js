@@ -1175,6 +1175,42 @@ it('test length', async function() {
     // TODO same function for array length (diff behaviour per type);
 });
 
+it('test bytesToArray', async function() {
+    let resp;
+    let bytesToArray = `(def! bytesToArray (fn* (bval slotLen offset accum) 
+        (let* (
+                sliced (slice bval (add slotLen offset))
+                newaccum (push accum (nth sliced 0))
+            )
+            (if (lt (length bval) slotLen)
+                newaccum
+                (bytesToArray (nth sliced 1) slotLen 0 newaccum)
+            )
+        )
+    ))`;
+    bytesToArray = `(def! bytesToArray (fn* (bval slotLen offset accum)
+        (if (lt (length bval) slotLen)
+            accum
+            (let* (
+                    sliced (slice bval (add slotLen offset))
+                    newaccum (push accum (nth sliced 0))
+                )
+                (bytesToArray (nth sliced 1) slotLen 0 newaccum)
+            )
+        )
+    ))`
+
+    await MalTay.sendAndWait(bytesToArray);
+
+    resp = await MalTay.call(`(bytesToArray "0x1122334455667788" 4 0 (array))`);
+    expect(resp).toEqual(['0x11223344', '0x55667788']);
+
+    resp = await MalTay.call(`(bytesToArray "0x1122334455667788" 4 0 (array "0x11223344"))`);
+    expect(resp).toEqual(['0x11223344', '0x11223344', '0x55667788']);
+
+    resp = await MalTay.call(`(bytesToArray "0x1122334455667788" 2 0 (array))`);
+    expect(resp).toEqual(['0x1122', '0x3344', '0x5566', '0x7788']);
+});
 
 it('test join', async function() {
     let resp;
@@ -1192,6 +1228,16 @@ it('test join', async function() {
 
     resp = await MalTay.call(`(join "0x" "0x445566"))`);
     expect(resp).toBe('0x445566');
+});
+
+it('test arrayToBytes', async function() {
+    let resp;
+
+    await MalTay.sendAndWait(`(def! arrayToBytes (fn* (somearray)
+        (reduce join somearray "0x")
+    ))`);
+    resp = await MalTay.call(`(arrayToBytes (array "0x112233" "0x445566" "0x778899"))`);
+    expect(resp).toBe('0x112233445566778899');
 });
 
 describe('test mapping', function () {
