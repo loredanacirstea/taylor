@@ -730,6 +730,9 @@ describe.each([
     
         resp = await instance.call('(reduce sub (list 45 8 2) 100)');
         expect(resp).toBe(45);
+
+        resp = await instance.call('(reduce sub (array 45 8 2) 100)');
+        expect(resp).toBe(45);
         
         await instance.sendAndWait('(def! myfunc2 (fn* (a b) (add a b)) )');
     
@@ -740,6 +743,9 @@ describe.each([
         expect(resp).toBe(5);
       
         resp = await instance.call('(reduce myfunc2 (list 5 8 2) 0)');
+        expect(resp).toBe(15);
+
+        resp = await instance.call('(reduce myfunc2 (array 5 8 2) 0)');
         expect(resp).toBe(15);
     });
 
