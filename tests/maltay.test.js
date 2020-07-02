@@ -786,6 +786,27 @@ describe.each([
         expect(resp).toEqual(['0x2233', 'hello', '0x44556677', 'someword']);
     });
 
+    it('test range', async function() {
+        resp = await instance.call('(range 1 5 1)');
+        expect(resp).toEqual([1, 2, 3, 4, 5]);
+
+        resp = await instance.call('(range 3 19 3)');
+        expect(resp).toEqual([3, 6, 9, 12, 15, 18]);
+
+        resp = await instance.call('(range 89 168 20)');
+        expect(resp).toEqual([89, 109, 129, 149]);
+
+        resp = await instance.call('(range 1 1 1)');
+        expect(resp).toEqual([1]);
+
+        resp = await instance.call('(range 0 0 1)');
+        expect(resp).toEqual([0]);
+
+        // TODO: support negative step
+        // resp = await instance.call('(range 5 1 -1)');
+        // expect(resp).toEqual([5, 4, 3, 2, 1]);
+    });
+
     test(`add`, async () => {
         resp = await instance.call('(add 9 3)');
         expect(resp).toBe(12);

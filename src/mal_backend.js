@@ -76,7 +76,8 @@ modifyEnv('js-eval', (orig_func, str) => {
             } catch(e) {}
 
             return value;
-        }
+        },
+        range: (start, stop, step) => [...Array(stop + 1).keys()].slice(start, stop+1).filter((no, i) => i % step === 0)
     }
     let answ = eval(str.toString());
 
@@ -98,6 +99,8 @@ mal.reps(`
 (def! sload (fn* (key type) (js-eval (str "utils.sload(" key ",'" type "')") )))
 
 (def! array (fn* (& xs) xs ))
+
+(def! range (fn* (start stop step) (js-eval (str "utils.range(" start "," stop "," step ")" )) ))
 `)
 
 /* EVM */

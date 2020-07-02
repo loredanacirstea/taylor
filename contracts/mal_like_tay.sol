@@ -565,6 +565,12 @@ object "Taylor" {
                 let ptr2 := mload(add(arg_ptrs_ptr, 64))
                 result_ptr := _join(ptr1, ptr2)
             }
+            case 0x98000132 {
+                let start_ptr := mload(add(arg_ptrs_ptr, 32))
+                let stop_ptr := mload(add(arg_ptrs_ptr, 64))
+                let step_ptr := mload(add(arg_ptrs_ptr, 96))
+                result_ptr := _range(start_ptr, stop_ptr, step_ptr)
+            }
 
             default {
                 let isthis := 0
@@ -1796,6 +1802,23 @@ object "Taylor" {
             mmultistore(current_ptr, add(ptr1, siglen1), vallen1)
             current_ptr := add(current_ptr, vallen1)
             mmultistore(current_ptr, add(ptr2, siglen2), vallen2)
+        }
+
+        function _range(start_ptr, stop_ptr, step_ptr) -> result_ptr {
+            let start := extractValue(start_ptr)
+            let stopp := extractValue(stop_ptr)
+            let step := extractValue(step_ptr)
+            // let arity := div(add(sub(stopp, start), 1), step)
+            let arity := add(div(sub(stopp, start), step), 1)
+
+            result_ptr := allocate(add(8, mul(4, arity)))
+            mslicestore(result_ptr, buildArraySig(arity), 4)
+            mslicestore(add(result_ptr, 4), buildUintSig(4), 4)
+            let current_ptr := add(result_ptr, 8)
+            for { let i := start } lt(i, add(stopp, 1)) { i := add(i, step) } {
+                mslicestore(current_ptr, i, 4)
+                current_ptr := add(current_ptr, 4)
+            }
         }
 
         function _save(ptrs) -> result_ptr {
