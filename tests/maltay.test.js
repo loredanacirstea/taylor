@@ -608,16 +608,28 @@ describe.each([
         expect(resp).toBe(false);
     });
     
-    it('test list functions', async function() {
+    it('test iterator functions', async function() {
         let resp;
         resp = await instance.call('(first (list 5 3 7))');
         expect(resp).toBe(5);
     
-        resp = await instance.call('(rest (list 5 3 7))');
-        expect(resp).toEqual([3, 7]);
-    
         resp = await instance.call('(nth (list 5 3 7) 2)');
         expect(resp).toBe(7);
+
+        resp = await instance.call('(rest (list 5 3 7))');
+        expect(resp).toEqual([3, 7]);
+
+        resp = await instance.call('(first (array 5 3 7))');
+        expect(resp).toBe(5);
+    
+        resp = await instance.call('(nth (array 5 3 7) 2)');
+        expect(resp).toBe(7);
+
+        resp = await instance.call('(nth (array (array 5 3 7) (array 8 4 2) (array 9 11 12)) 1)');
+        expect(resp).toEqual([8, 4, 2]);
+
+        resp = await instance.call('(rest (array 5 3 7))');
+        expect(resp).toEqual([3, 7]);
     });
 
     it('test let* & nested scopes', async function() {

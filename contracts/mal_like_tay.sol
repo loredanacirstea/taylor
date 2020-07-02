@@ -422,13 +422,17 @@ object "Taylor" {
                 result_ptr := _reduce(arg_ptrs_ptr, env_ptr)
             }
             case 0x90000054 {
-                result_ptr := _nth(add(arg_ptrs_ptr, 32))
+                let list_ptr := mload(add(arg_ptrs_ptr, 32))
+                let index_ptr := mload(add(arg_ptrs_ptr, 64))
+                result_ptr := _nth(list_ptr, index_ptr)
             }
             case 0x88000056 {
-                result_ptr := _first(add(arg_ptrs_ptr, 32))
+                let iter_ptr := mload(add(arg_ptrs_ptr, 32))
+                result_ptr := _first(iter_ptr)
             }
             case 0x88000058 {
-                result_ptr := _rest(add(arg_ptrs_ptr, 32))
+                let iter_ptr := mload(add(arg_ptrs_ptr, 32))
+                result_ptr := _rest(iter_ptr)
             }
             case 0x8800005a {
                 result_ptr := _empty(mload(add(arg_ptrs_ptr, 32)))
@@ -1574,11 +1578,24 @@ object "Taylor" {
             }
         }
 
-        function _nth(ptrs) -> result_ptr {
-            let list_ptr := mload(ptrs)
-            let index := mslice(add(mload(add(ptrs, 32)), 4), 4)
-            let list_arity := listTypeSize(mslice(list_ptr, 4))
+        function _nth(iter_ptr, index_ptr) -> result_ptr {
+            let sig := get4b(iter_ptr)
+            let index := mslice(add(index_ptr, 4), 4)
+            let done := 0
 
+            if isListType(sig) {
+                result_ptr := _nth_list(iter_ptr, index)
+                done := 1
+            }
+            if and(eq(done, 0), isArrayType(iter_ptr)) {
+                result_ptr := _nth_array(iter_ptr, index)
+                done := 1
+            }
+            dtrequire(eq(done, 1), 0xee09)
+        }
+
+        function _nth_list(list_ptr, index) -> result_ptr {
+            let list_arity := listTypeSize(mslice(list_ptr, 4))
             dtrequire(lt(index, list_arity), 0xe011)
             let nth_ptr := add(list_ptr, 4)
 
@@ -1588,17 +1605,49 @@ object "Taylor" {
             result_ptr := nth_ptr
         }
 
-        function _first(ptrs) -> result_ptr {
-            let list_ptr := mload(ptrs)
-            // first item is after the list signature
-            result_ptr := add(list_ptr, 4)
+        function _nth_array(array_ptr, index) -> result_ptr {
+            let siglen := getSignatureLength(array_ptr)
+            let values_ptr := add(array_ptr, siglen)
+            let itemsig_ptr := add(array_ptr, 4)
+            let itemsig_len := getSignatureLength(itemsig_ptr)
+            let itemsize := getValueLength(itemsig_ptr)
+            let offset := mul(index, itemsize)
+
+            result_ptr := allocate(add(itemsig_len, itemsize))
+            mslicestore(result_ptr, mslice(itemsig_ptr, itemsig_len), itemsig_len)
+            mmultistore(
+                add(result_ptr, itemsig_len),
+                add(values_ptr, offset),
+                itemsize
+            )
         }
 
-        function _rest(ptrs) -> result_ptr {
-            let list_ptr := mload(ptrs)
+        function _first(iter_ptr) -> result_ptr {
+            // first item is after the list signature
+            result_ptr := _nth(iter_ptr, 0)
+        }
+
+        function _rest(iter_ptr) -> result_ptr {
+            let sig := get4b(iter_ptr)
+            let done := 0
+
+            if isListType(sig) {
+                result_ptr := _rest_list(iter_ptr)
+                done := 1
+            }
+            if and(eq(done, 0), isArrayType(iter_ptr)) {
+                result_ptr := _rest_array(iter_ptr)
+                done := 1
+            }
+            dtrequire(eq(done, 1), 0xee09)
+        }
+
+        function _rest_list(list_ptr) -> result_ptr {
             let list_arity := listTypeSize(mslice(list_ptr, 4))
-            let newlistid := buildListTypeSig(sub(list_arity, 1))
-            let newlist := allocate(4)
+            let newarity := sub(list_arity, 1)
+            let newlistid := buildListTypeSig(newarity)
+            let elem_length := getTypedLength(add(list_ptr, 4))
+            let newlist := allocate(add(4, mul(newarity, elem_length)))
             result_ptr := newlist
 
             mslicestore(newlist, newlistid, 4)
@@ -1606,15 +1655,34 @@ object "Taylor" {
 
             // skip signature &  first item
             list_ptr := add(list_ptr, 4)
-            let elem_length := getTypedLength(list_ptr)
+            
             list_ptr := add(list_ptr, elem_length)
 
-            for { let i := 0 } lt(i, sub(list_arity, 1)) { i := add(i, 1) } {
+            for { let i := 0 } lt(i, newarity) { i := add(i, 1) } {
                 elem_length := getTypedLength(list_ptr)
                 mmultistore(newlist, list_ptr, elem_length)
                 list_ptr := add(list_ptr, elem_length)
                 newlist := add(newlist, elem_length)
             }
+        }
+
+        function _rest_array(array_ptr) -> result_ptr {
+            let siglen := getSignatureLength(array_ptr)
+            let vallen := getValueLength(array_ptr)
+            let arity := arrayTypeSize(get4b(array_ptr))
+            let values_ptr := add(array_ptr, siglen)
+            let itemsig_ptr := add(array_ptr, 4)
+            let itemsize := getValueLength(itemsig_ptr)
+            let restofsig := sub(siglen, 4)
+
+            result_ptr := allocate(sub(add(siglen, vallen), itemsize))
+            mslicestore(result_ptr, buildArraySig(sub(arity, 1)), 4)
+            mslicestore(add(result_ptr, 4), mslice(itemsig_ptr, restofsig), restofsig)
+            mmultistore(
+                add(result_ptr, siglen),
+                add(values_ptr, itemsize),
+                sub(vallen, itemsize)
+            )
         }
 
         function _save(ptrs) -> result_ptr {

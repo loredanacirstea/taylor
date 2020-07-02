@@ -96,6 +96,8 @@ mal.reps(`
 (def! store! (fn* (key value) (js-eval (str "utils.store(" key ",'" value "')") )))
 
 (def! sload (fn* (key type) (js-eval (str "utils.sload(" key ",'" type "')") )))
+
+(def! array (fn* (& xs) xs ))
 `)
 
 /* EVM */
