@@ -708,6 +708,12 @@ describe.each([
         resp = await instance.call('(map myfunc (list 5 8 2))');
         expect(resp).toEqual([18, 27, 9]);
 
+        resp = await instance.call(`(map
+            (fn* (a) (mul (add a 1) 3))
+            (list 5 8 2)
+        )`);
+        expect(resp).toEqual([18, 27, 9]);
+
         if (backendname === 'chain') {
             resp = await instance.getFns();
             expect(resp.length).toBe(3);
@@ -746,6 +752,13 @@ describe.each([
         expect(resp).toBe(15);
 
         resp = await instance.call('(reduce myfunc2 (array 5 8 2) 0)');
+        expect(resp).toBe(15);
+
+        resp = await instance.call(`(reduce
+            (fn* (a b) (add a b))
+            (list 5 8 2)
+            0
+        )`);
         expect(resp).toBe(15);
     });
 

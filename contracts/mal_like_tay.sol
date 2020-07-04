@@ -416,7 +416,9 @@ object "Taylor" {
                 result_ptr := _concat(ptr1, ptr2)
             }
             case 0x90000050 {
-                result_ptr := _map(arg_ptrs_ptr, env_ptr)
+                let fptr := mload(add(arg_ptrs_ptr, 32))
+                let list_ptr := mload(add(arg_ptrs_ptr, 64))
+                result_ptr := _map(fptr, list_ptr, env_ptr)
             }
             case 0x98000052 {
                 let fptr := mload(add(arg_ptrs_ptr, 32))
@@ -1217,18 +1219,18 @@ object "Taylor" {
             end_ptr := add(add(cond_end, branch1len), branch2len)
         }
 
-        function _map(ptrs, env_ptr) -> result_ptr {
-            // first arg is arity = 2
-            let fptr := mload(add(ptrs, 32))
-            let list_ptr := mload(add(ptrs, 64))
-
+        function _map(fptr, list_ptr, env_ptr) -> result_ptr {
             let sigsig := mslice(fptr, 4)
             switch sigsig
             case 0x04000004 {
                 result_ptr := _mapInnerNative(mslice(add(fptr, 4), 4), list_ptr, env_ptr)
             }
             default {
-                result_ptr := _mapInnerLambda(add(fptr, 4), list_ptr, env_ptr)
+                result_ptr := _mapInnerLambda(
+                    resolveLambdaPtr(fptr),
+                    list_ptr,
+                    env_ptr
+                )
             }
         }
 
@@ -1289,7 +1291,12 @@ object "Taylor" {
                 result_ptr := _reduceInnerNative(mslice(add(fptr, 4), 4), iter_ptr, accum_ptr, env_ptr)
             }
             default {
-                result_ptr := _reduceInnerLambda(add(fptr, 4), iter_ptr, accum_ptr, env_ptr)
+                result_ptr := _reduceInnerLambda(
+                    resolveLambdaPtr(fptr),
+                    iter_ptr,
+                    accum_ptr,
+                    env_ptr
+                )
             }
         }
 
@@ -1341,6 +1348,19 @@ object "Taylor" {
             }
 
             result_ptr := accum_ptr
+        }
+
+        function resolveLambdaPtr(fptr) -> _lambda_body_ptr {
+            // Local lambda - fptr is a pointer to the lambda body pointer
+            // Stored lambda - fptr is a pointer to the lambda body
+            switch isListType(mslice(add(fptr, 4), 4))
+            // stored lambda: <sig><lambda_body> ; lambda_body starts with a list of arguments
+            case 1 {
+                _lambda_body_ptr := add(fptr, 4)
+            }
+            default {
+                _lambda_body_ptr := mload(fptr)
+            }
         }
        
         // TODO: auto cast if overflow
