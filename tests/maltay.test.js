@@ -860,6 +860,26 @@ describe.each([
         expect(resp).toBe(21);
     });
 
+    it('test recursive lambda', async function () {
+        let resp;
+
+        resp = await instance.call(`(let* 
+            (recursivefn 
+                (fn* (n) (if (gt n 5) n (recursivefn (add n 1)) ) )
+            )
+            (recursivefn 2)
+        )`);
+        expect(resp).toBe(6);
+
+        resp = await instance.call(`(let* 
+            (localfibo 
+                (fn* (n) (if (or (eq n 1) (eq n 2)) 1 (add(localfibo (sub n 1)) (localfibo (sub n 2)) ) ))
+            )
+            (localfibo 8)
+        )`);
+        expect(resp).toBe(21);
+    });
+
     it('test byte-like', async function() {
         resp = await instance.call('(list "0x2233" "hello" "0x44556677" "someword")');
         expect(resp).toEqual(['0x2233', 'hello', '0x44556677', 'someword']);

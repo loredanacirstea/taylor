@@ -344,7 +344,6 @@ const ast2h = (ast, parent=null, unkownMap={}, defenv={}) => {
             const elem = ast[1][i];
             unkownMap[elem.value] = unknown(Object.keys(unkownMap).length);
             definitions += unkownMap[elem.value];
-            const encodedvalue = ast2h(ast[1][i+1], ast, unkownMap, defenv);
 
             if (
                 ast[1][i+1]
@@ -359,6 +358,7 @@ const ast2h = (ast, parent=null, unkownMap={}, defenv={}) => {
                 }
             }
             
+            const encodedvalue = ast2h(ast[1][i+1], ast, unkownMap, defenv);
             definitions += encodedvalue;
         }
         const execution = ast2h([ast[2]], ast, unkownMap, defenv);
