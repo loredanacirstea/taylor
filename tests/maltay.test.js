@@ -701,6 +701,9 @@ describe.each([
 
         resp = await instance.call('(map iszero (list 5 0 2))');
         expect(resp).toEqual([0, 1, 0]);
+
+        resp = await instance.call('(map iszero (array 5 0 2))');
+        expect(resp).toEqual([0, 1, 0]);
     
         await instance.sendAndWait('(def! myfunc (fn* (a) (mul (add a 1) 3)))');
         
@@ -710,6 +713,12 @@ describe.each([
         resp = await instance.call(`(map
             (fn* (a) (mul (add a 1) 3))
             (list 5 8 2)
+        )`);
+        expect(resp).toEqual([18, 27, 9]);
+
+        resp = await instance.call(`(map
+            (fn* (a) (mul (add a 1) 3))
+            (array 5 8 2)
         )`);
         expect(resp).toEqual([18, 27, 9]);
 
@@ -724,6 +733,13 @@ describe.each([
                 somelambda (fn* (a) (mul (add a 1) 3))
             )
             (map somelambda (list 5 8 2) )
+        )`);
+        expect(resp).toEqual([18, 27, 9]);
+
+        resp = await instance.call(`(let* (
+                somelambda (fn* (a) (mul (add a 1) 3))
+            )
+            (map somelambda (array 5 8 2) )
         )`);
         expect(resp).toEqual([18, 27, 9]);
 
