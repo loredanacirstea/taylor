@@ -21,6 +21,19 @@ const toHex = bnval => {
     if (hex.length % 2 === 1) hex = '0' + hex;
     return '0x' + hex;
 }
+
+const isArray = val => {
+    try {
+        val = JSON.parse(val);
+    } catch(e) {};
+    
+    if (!(val instanceof Array)) return false;
+    
+    // TODO deep type check
+    let itemtype = typeof val[0];
+    return !val.some(it => (typeof it) !== itemtype);
+}
+
 mal.globalStorage = {};
 
 modifyEnv('nil?', (orig_func, value) => {
@@ -32,6 +45,11 @@ modifyEnv('nil?', (orig_func, value) => {
     );
     return interop.js_to_mal(nil ? true : false);
 });
+
+// modifyEnv('list?', (orig_func, value) => {
+//     if (isArray(value)) return interop.js_to_mal(false);
+//     return orig_func(value);
+// });
 
 modifyEnv('js-eval', (orig_func, str) => {
     const utils = {
@@ -77,7 +95,8 @@ modifyEnv('js-eval', (orig_func, str) => {
 
             return value;
         },
-        range: (start, stop, step) => [...Array(stop + 1).keys()].slice(start, stop+1).filter((no, i) => i % step === 0)
+        range: (start, stop, step) => [...Array(stop + 1).keys()].slice(start, stop+1).filter((no, i) => i % step === 0),
+        isArray,
     }
     let answ = eval(str.toString());
 
@@ -99,6 +118,8 @@ mal.reps(`
 (def! sload (fn* (key type) (js-eval (str "utils.sload(" key ",'" type "')") )))
 
 (def! array (fn* (& xs) xs ))
+
+(def! array? (fn* (arr) (js-eval (str "utils.isArray" arr ) ) ))
 
 (def! range (fn* (start stop step) (js-eval (str "utils.range(" start "," stop "," step ")" )) ))
 `)

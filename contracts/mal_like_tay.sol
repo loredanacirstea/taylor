@@ -453,6 +453,21 @@ object "Taylor" {
                 result_ptr := allocate(4)
                 mslicestore(result_ptr, buildBoolSig(answ), 4)
             }
+            case 0x88000068 {
+                let answ := _list_q(mload(add(arg_ptrs_ptr, 32)))
+                result_ptr := allocate(4)
+                mslicestore(result_ptr, buildBoolSig(answ), 4)
+            }
+            case 0x8800006c {
+                let answ := _array_q(mload(add(arg_ptrs_ptr, 32)))
+                result_ptr := allocate(4)
+                mslicestore(result_ptr, buildBoolSig(answ), 4)
+            }
+            case 0x8800006e {
+                let answ := _sequential_q(mload(add(arg_ptrs_ptr, 32)))
+                result_ptr := allocate(4)
+                mslicestore(result_ptr, buildBoolSig(answ), 4)
+            }
             // register!
             case 0x880000c0 {
                 result_ptr := allocate(32)
@@ -1665,6 +1680,21 @@ object "Taylor" {
             if and(eq(isBool(sig), 0), and(isNumber(ptr1), eq(numberSize(sig), 1))) {
                 answ := eq(mslice(add(ptr1, 4), 1), 0)
             }
+        }
+        
+        function _list_q(ptr1) -> answ {
+            answ := isListType(get4b(ptr1))
+        }
+
+        function _array_q(ptr1) -> answ {
+            answ := isArrayType(ptr1)
+        }
+
+        function _sequential_q(ptr1) -> answ {
+            answ := or(
+                isListType(get4b(ptr1)),
+                isArrayType(ptr1)
+            )
         }
 
         function _nth(iter_ptr, index_ptr) -> result_ptr {

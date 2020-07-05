@@ -606,6 +606,63 @@ describe.each([
         resp = await instance.call('(nil? "0x22")');
         expect(resp).toBe(false);
     });
+
+    it('test list?', async function() {
+        let resp;
+    
+        resp = await instance.call('(list? (list))');
+        expect(resp).toBe(true);
+
+        resp = await instance.call('(list? (list 1 5))');
+        expect(resp).toBe(true);
+
+        resp = await instance.call('(list? 4)');
+        expect(resp).toBe(false);
+
+        // TODO on js side there if no way now to differentiate between
+        // a list and array if the internal types are the same
+        if (backendname === 'chain') {
+            resp = await instance.call('(list? (array 1 5))');
+            expect(resp).toBe(false);
+        }
+    });
+
+    if (backendname === 'chain') {
+        it('test array?', async function() {
+            let resp;
+
+            resp = await instance.call('(array? (array))');
+            expect(resp).toBe(true);
+
+            resp = await instance.call('(array? (array 1 5))');
+            expect(resp).toBe(true);
+
+            resp = await instance.call('(array? 4)');
+            expect(resp).toBe(false);
+
+            resp = await instance.call('(array? (list 1 5))');
+            expect(resp).toBe(false);
+        });
+    }
+
+    it('test sequential?', async function() {
+        let resp;
+    
+        resp = await instance.call('(sequential? (list))');
+        expect(resp).toBe(true);
+
+        resp = await instance.call('(sequential? (array))');
+        expect(resp).toBe(true);
+
+        resp = await instance.call('(sequential? (list 1 5))');
+        expect(resp).toBe(true);
+
+        resp = await instance.call('(sequential? (array 1 5))');
+        expect(resp).toBe(true);
+
+        resp = await instance.call('(sequential? 4)');
+        expect(resp).toBe(false);
+    });
     
     it('test iterator functions', async function() {
         let resp;
