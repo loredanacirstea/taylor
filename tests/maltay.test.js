@@ -494,9 +494,8 @@ describe.each([
 
     test(`lambda`, async () => {
         // TODO: return function type?
-        // expr = '(fn* (a) a)';
-        // resp = await instance.call(expr);
-        // expect(resp).toBe(expr);
+        // resp = await instance.call('(fn* (a) a)');
+        // expect(resp).toBe('(fn* (a) a)');
 
         resp = await instance.call('( (fn* (a) a) 7)');
         expect(resp).toBe(7);
@@ -714,6 +713,20 @@ describe.each([
         )`);
         expect(resp).toEqual([18, 27, 9]);
 
+        resp = await instance.call(`(let* (
+                somelambda (fn* (a) (add a 1))
+            )
+            (map somelambda (list 5 8 2) )
+        )`);
+        expect(resp).toEqual([6, 9, 3]);
+
+        resp = await instance.call(`(let* (
+                somelambda (fn* (a) (mul (add a 1) 3))
+            )
+            (map somelambda (list 5 8 2) )
+        )`);
+        expect(resp).toEqual([18, 27, 9]);
+
         if (backendname === 'chain') {
             resp = await instance.getFns();
             expect(resp.length).toBe(3);
@@ -723,10 +736,6 @@ describe.each([
 
     it('test reduce', async function () {
         let resp;
-
-        if (backendname === 'chain') {
-            await instance.sendAndWait('(def! reduce (fn* (f xs init) (if (empty? xs) init (reduce f (rest xs) (f init (first xs)) ))))');
-        }
 
         resp = await instance.call('(reduce add (list) 2)');
         expect(resp).toBe(2);
@@ -760,6 +769,31 @@ describe.each([
             0
         )`);
         expect(resp).toBe(15);
+
+        resp = await instance.call(`(let* (
+                somelambda (fn* (a b) (add a b))
+            )
+            (reduce somelambda (list 5 8 2) 0)
+        )`);
+        expect(resp).toEqual(15);
+
+        resp = await instance.call(`(let* (
+                reduce (fn* (f xs init) (if (empty? xs) init (reduce f (rest xs) (f init (first xs)) )))
+                somelambda (fn* (a b) (add a b))
+            )
+            (reduce somelambda (list 5 8 2) 0)
+        )`);
+        expect(resp).toEqual(15);
+        
+        // TODO fixme
+        await instance.sendAndWait('(def! reduce2 (fn* (f xs init) (if (empty? xs) init (reduce f (rest xs) (f init (first xs)) ))))');
+
+        // resp = await instance.call(`(let* (
+        //         somelambda (fn* (a b) (add a b))
+        //     )
+        //     (reduce2 somelambda (list 5 8 2) 0)
+        // )`);
+        // expect(resp).toEqual(15);
     });
 
     it('test reduce recursive', async function () {

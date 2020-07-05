@@ -1119,7 +1119,7 @@ object "Taylor" {
             let arity := mload(arg_ptrs)
             
             // lambda_ptr can be a signature or a lambda pointer
-            let lambda_body_ptr := mload(mload(add(arg_ptrs, 32)))
+            let lambda_body_ptr := mload(add(arg_ptrs, 32))
             
             // TODO: if signature -> call eval
 
@@ -1150,8 +1150,8 @@ object "Taylor" {
         }
 
         function _lambda(arg_ptrs) -> _data_ptr {
-            // skip arity, just point to the lambda body
-            _data_ptr := add(arg_ptrs, 32)
+            // skip arity, just point to the lambda body pointer
+            _data_ptr := mload(add(arg_ptrs, 32))
         }
 
         function copy_env(env_ptr) -> new_ptr {
@@ -1219,28 +1219,28 @@ object "Taylor" {
             end_ptr := add(add(cond_end, branch1len), branch2len)
         }
 
-        function _map(fptr, list_ptr, env_ptr) -> result_ptr {
+        function _map(fptr, iter_ptr, env_ptr) -> result_ptr {
             let sigsig := mslice(fptr, 4)
             switch sigsig
             case 0x04000004 {
-                result_ptr := _mapInnerNative(mslice(add(fptr, 4), 4), list_ptr, env_ptr)
+                result_ptr := _mapInnerNative(mslice(add(fptr, 4), 4), iter_ptr, env_ptr)
             }
             default {
                 result_ptr := _mapInnerLambda(
                     resolveLambdaPtr(fptr),
-                    list_ptr,
+                    iter_ptr,
                     env_ptr
                 )
             }
         }
 
-        function _mapInnerNative(sig, list_ptr, env_ptr) -> result_ptr {
-            let list_arity := listTypeSize(mslice(list_ptr, 4))
-            let arg_ptr := add(list_ptr, 4)
-            let results_ptrs := allocate(mul(list_arity, 32))
+        function _mapInnerNative(sig, iter_ptr, env_ptr) -> result_ptr {
+            let arity := listTypeSize(mslice(iter_ptr, 4))
+            let arg_ptr := add(iter_ptr, 4)
+            let results_ptrs := allocate(mul(arity, 32))
 
             // iterate over list & apply function on each arg
-            for { let i := 0 } lt(i, list_arity) { i := add(i, 1) } {
+            for { let i := 0 } lt(i, arity) { i := add(i, 1) } {
                 let arglen := getTypedLength(arg_ptr)
                 let dataptr := allocate(add(4, arglen))
                 mslicestore(dataptr, sig, 4)
@@ -1254,24 +1254,27 @@ object "Taylor" {
             }
 
             // Recreate list from result pointers
-            result_ptr := _list(list_arity, results_ptrs)
+            result_ptr := _list(arity, results_ptrs)
         }
 
-        function _mapInnerLambda(lambda_body_ptr, list_ptr, env_ptr) -> result_ptr {
-            let list_arity := listTypeSize(mslice(list_ptr, 4))
-            let arg_ptr := add(list_ptr, 4)
-            let results_ptrs := allocate(mul(list_arity, 32))
+        function _mapInnerLambda(lambda_body_ptr, iter_ptr, env_ptr) -> result_ptr {
+            let arity := listTypeSize(mslice(iter_ptr, 4))
+            let arg_ptr := add(iter_ptr, 4)
+            let results_ptrs := allocate(mul(arity, 32))
 
             // should always have 1 arg
             let args_arity := listTypeSize(get4b(lambda_body_ptr))
             dtrequire(eq(args_arity, 1), 0xeebb)
+
+            // <list_sig><var_sig><index>
+            let arg_index := mslice(add(lambda_body_ptr, 8), 4)
             // lambda_body_ptr := add(add(lambda_body_ptr, 4), mul(args_arity, 8)))
             lambda_body_ptr := add(lambda_body_ptr, 12)
 
             // iterate over list & apply function on each arg
-            for { let i := 0 } lt(i, list_arity) { i := add(i, 1) } {
+            for { let i := 0 } lt(i, arity) { i := add(i, 1) } {
                 let new_env_ptr := copy_env(env_ptr)
-                addto_env(new_env_ptr, 0, arg_ptr)
+                addto_env(new_env_ptr, arg_index, arg_ptr)
                 
                 let endd, res := eval(lambda_body_ptr, new_env_ptr)
                 mstore(add(results_ptrs, mul(i, 32)), res)
@@ -1281,7 +1284,7 @@ object "Taylor" {
             }
 
             // Recreate list from result pointers
-            result_ptr := _list(list_arity, results_ptrs)
+            result_ptr := _list(arity, results_ptrs)
         }
 
         function _reduce(fptr, iter_ptr, accum_ptr, env_ptr) -> result_ptr {
@@ -1330,6 +1333,11 @@ object "Taylor" {
             // should always have 2 arg
             let args_arity := listTypeSize(get4b(lambda_body_ptr))
             dtrequire(eq(args_arity, 2), 0xeebb)
+            
+            // <list_sig><var_sig><index>
+            let arg1_index := mslice(add(lambda_body_ptr, 8), 4)
+            let arg2_index := mslice(add(lambda_body_ptr, 16), 4)
+
             // lambda_body_ptr := add(add(lambda_body_ptr, 4), mul(args_arity, 8)))
             lambda_body_ptr := add(lambda_body_ptr, 20)
 
@@ -1340,9 +1348,10 @@ object "Taylor" {
                 iter_ptr := _rest(iter_ptr)
                 let arg_length := getTypedLength(arg_ptr)
                 let new_env_ptr := copy_env(env_ptr)
-                addto_env(new_env_ptr, 0, accum_ptr)
-                addto_env(new_env_ptr, 1, arg_ptr)
-                
+
+                addto_env(new_env_ptr, arg1_index, accum_ptr)
+                addto_env(new_env_ptr, arg2_index, arg_ptr)
+
                 let endd, res := eval(lambda_body_ptr, new_env_ptr)
                 mmultistore(accum_ptr, res, getTypedLength(res))
             }
@@ -1359,7 +1368,7 @@ object "Taylor" {
                 _lambda_body_ptr := add(fptr, 4)
             }
             default {
-                _lambda_body_ptr := mload(fptr)
+                _lambda_body_ptr := fptr
             }
         }
        
