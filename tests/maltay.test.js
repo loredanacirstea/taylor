@@ -769,6 +769,96 @@ describe.each([
         }
     }, 10000);
 
+    it('test slice array', async function () {
+        let resp;
+
+        await MalTay.sendAndWait(`(def! slicea (fn* (somearr start stop)
+            (map (fn* (pos) (nth somearr pos)) (range start stop 1))
+        ))`);
+
+        await MalTay.sendAndWait(`(def! slicemultia (fn* (somearr rangeIndexList)
+            (let* (
+                    nextRange (first rangeIndexList)
+                    restRange (rest rangeIndexList)
+                )
+                (if (empty? restRange)
+                    (slicemultia somearr nextRange)
+                    (if (sequential? nextRange)
+                        (map
+                            (fn* (arr) (slicemultia arr restRange))
+                            (slicemultia somearr nextRange )
+                        )
+                        (slicea somearr (nth rangeIndexList 0) (nth rangeIndexList 1) )
+                    )
+                )
+            )    
+        ))`);
+
+        resp = await MalTay.call(`( (fn* (somearr start stop)
+            (map (fn* (pos) (nth somearr pos)) (range start stop 1))
+        ) (array 1 2 6 7 8 6) 2 4)`);
+        expect(resp).toEqual([6, 7, 8]);
+
+        await MalTay.sendAndWait(`(def! slicea (fn* (somearr start stop)
+            (map (fn* (pos) (nth somearr pos)) (range start stop 1))
+        ))`);
+        resp = await MalTay.call(`(slicea (array 1 2 6 7 8 6) 2 4)`);
+        expect(resp).toEqual([6, 7, 8]);
+
+        resp = await MalTay.call(`(slicea (list 1 2 6 7 8 6) 2 4)`);
+        expect(resp).toEqual([6, 7, 8]);
+
+        resp = await MalTay.call(`(slicemultia
+            (list 1 2 6 7 8 6) (list 2 4)
+        )`);
+        expect(resp).toEqual([6, 7, 8]);
+
+        resp = await MalTay.call(`(slicemultia
+            (array 
+                (array 7 8 9 10 11 12)
+                (array 1 2 6 7 8 6)
+                (array 13 14 15 16 17 18)
+                (array 11 12 16 17 18 16)
+            )
+            (list (list 0 1) (list 2 4) )
+        )`);
+        expect(resp).toEqual([[9, 10, 11], [6, 7, 8]]);
+
+        resp = await MalTay.call(`(slicemultia
+            (array 
+                (array 
+                    (array 7 8 9 10 11 12)
+                    (array 1 2 6 7 8 6)
+                    (array 13 14 15 16 17 18)
+                    (array 11 12 16 17 18 16)
+                )
+                (array 
+                    (array 27 28 29 210 211 212)
+                    (array 21 22 26 27 28 26)
+                    (array 213 214 215 216 217 218)
+                    (array 221 222 226 227 228 226)
+                )
+                (array 
+                    (array 47 48 49 410 411 412)
+                    (array 41 42 46 47 48 46)
+                    (array 413 414 415 416 417 418)
+                    (array 441 442 446 447 448 446)
+                )
+            )
+            (list (list 1 2) (list 2 3) (list 2 4))
+        )`);
+        expect(resp).toEqual([
+            [
+                [215, 216, 217],
+                [226, 227, 228],
+            ],
+            [
+                [415, 416, 417],
+                [446, 447, 448],
+            ]
+        ]);
+    }, 30000);
+
     it('test map', async function () {
         let resp;
 
