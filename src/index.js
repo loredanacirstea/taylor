@@ -345,6 +345,20 @@ const ast2h = (ast, parent=null, unkownMap={}, defenv={}) => {
             unkownMap[elem.value] = unknown(Object.keys(unkownMap).length);
             definitions += unkownMap[elem.value];
             const encodedvalue = ast2h(ast[1][i+1], ast, unkownMap, defenv);
+
+            if (
+                ast[1][i+1]
+                && ast[1][i+1] instanceof Array
+                && typeof ast[1][i+1][0] === 'object'
+                && ast[1][i+1][0].value === 'fn*'
+            ) {
+                const applyArity = ast[1][i+1][1].length + 1;
+                unkownMap[elem.value] = {
+                    apply: nativeEnv.apply.hex(applyArity),
+                    unknown: unkownMap[elem.value]
+                }
+            }
+            
             definitions += encodedvalue;
         }
         const execution = ast2h([ast[2]], ast, unkownMap, defenv);
@@ -399,6 +413,14 @@ const ast2h = (ast, parent=null, unkownMap={}, defenv={}) => {
                 // lambda argument definition
                 if (!unkownMap[elem.value]) {
                     unkownMap[elem.value] = unknown(Object.keys(unkownMap).length);
+                }
+                // if unknown is a lambda function:
+                // if it is first arg, it is executed
+                if (unkownMap[elem.value] instanceof Object) {
+                    if (ast[0].value === elem.value) {
+                        return unkownMap[elem.value].apply + unkownMap[elem.value].unknown;
+                    }
+                    return unkownMap[elem.value].unknown;
                 }
                 return unkownMap[elem.value];
             }

@@ -1042,6 +1042,15 @@ object "Taylor" {
                 shl(1, bodylen)
             )
         }
+        // arity: 1 + number of args
+        function buildApplySig(arity) -> signature {
+            arity := add(arity, 1)
+            // signature :=  '1' * bit4 arity * bit26 id * 0
+            signature := add(
+                add(exp(2, 31), shl(27, arity)),
+                shl(1, 32)
+            )
+        }
 
         // Type list (not function)
         // TODO type

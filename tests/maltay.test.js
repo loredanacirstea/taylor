@@ -650,6 +650,22 @@ describe.each([
         expect(resp).toBe(9);
     });
 
+    it('test let* & lambda', async function() {
+        resp = await instance.call(`(let* (
+                somelambda (fn* (a) (add a 1))
+            )
+            (somelambda 3)
+        )`);
+        expect(resp).toBe(4);
+
+        resp = await instance.call(`(let* (
+            somelambda (fn* (a) (add a 1))
+            )
+            (map somelambda (array 3 4))
+        )`);
+        expect(resp).toEqual([4, 5]);
+    });
+
     it('test use stored fn 1', async function () {
         let resp;
         let name = 'func1'
