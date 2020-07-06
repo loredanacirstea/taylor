@@ -1144,6 +1144,10 @@ object "Taylor" {
             
             // lambda_ptr can be a signature or a lambda pointer
             let lambda_body_ptr := mload(add(arg_ptrs, 32))
+
+            if isLambda(get4b(lambda_body_ptr)) {
+                lambda_body_ptr := add(lambda_body_ptr, 4)
+            }
             
             // TODO: if signature -> call eval
 

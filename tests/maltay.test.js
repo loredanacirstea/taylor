@@ -1546,6 +1546,50 @@ describe('test mapping', function () {
     });
 });
 
+test('new-array', async function() {
+    let resp;
+
+    let diagonal_fill = `(def! diagonal-fill (fn* (listIndexes)
+        (if (eq (nth listIndexes 0) (nth listIndexes 1))
+            (if (eq (length listIndexes) 2)
+                1
+                (diagonal-fill (rest listIndexes))
+            )
+            0
+        )
+    ))`
+    
+    new_array = `(def! new-array (fn* (func elemList rangesArray)
+        (if (empty? rangesArray)
+            (apply func elemList)
+            (let* (
+                    currentRange (first rangesArray)
+                    restRanges (rest rangesArray)
+                )
+                (map
+                    (fn* (index) (new-array func (push elemList index) restRanges) )
+                    (range (nth currentRange 0) (nth currentRange 1) 1)
+                )
+            )
+        )
+    ))`
+
+    await MalTay.sendAndWait(diagonal_fill);
+    await MalTay.sendAndWait(new_array);
+
+    resp = await MalTay.call('(diagonal-fill (list 1 1 1))');
+    expect(resp).toEqual(1);
+
+    resp = await MalTay.call('(diagonal-fill (list 1 0 1))');
+    expect(resp).toEqual(0);
+    
+    resp = await MalTay.call(`(new-array diagonal-fill (array) (array (array 0 1) (array 0 1)) )`);
+    expect(resp).toEqual([[1, 0], [0, 1]])
+    
+    resp = await MalTay.call(`(new-array diagonal-fill (array) (array (array 0 2) (array 0 2)))`);
+    expect(resp).toEqual([[1, 0, 0], [0, 1, 0], [0, 0, 1]]);
+}, 20000);
+
 describe('ballot contract', function() {
     let voter1, voter2, voter3,
         voter1_addr, voter2_addr, voter3_addr;
