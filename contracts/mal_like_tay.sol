@@ -1844,6 +1844,9 @@ object "Taylor" {
 
         function _length(item_ptr) -> result_ptr {
             let vallen := getValueLength(item_ptr)
+            if _sequential_q(item_ptr) {
+                vallen := iterTypeSize(item_ptr)
+            }
             result_ptr := allocate(8)
             mslicestore(result_ptr, buildUintSig(4), 4)
             mslicestore(add(result_ptr, 4), vallen, 4)
