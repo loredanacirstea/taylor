@@ -913,6 +913,23 @@ describe.each([
         }
     }, 10000);
 
+    it.only('test map multi', async function () {
+        let resp;
+
+        // resp = await instance.call('(map iszero (list 5 0 2))');
+        // expect(resp).toEqual([0, 1, 0]);
+
+        // resp = await instance.call('(map add (list 5 0 2) (list 15 10 12))');
+        // expect(resp).toEqual([20, 10, 14]);
+
+        resp = await instance.call(`(let* (
+                somelambda (fn* (a b c) (sub (add a b) c))
+            )
+            (map somelambda (list 5 8 2) (list 15 10 12) (list 2 4 9))
+        )`);
+        expect(resp).toEqual([18, 14, 5]);
+    });
+
     it('test reduce', async function () {
         let resp;
 

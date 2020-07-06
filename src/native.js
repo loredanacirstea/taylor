@@ -41,7 +41,7 @@ const _nativeEnv = {
     if:           { mutable: false, arity: 3 },
     contig:       { mutable: false, arity: 2, inputs: [{type: 'uint', name: 'times'}, {type: 'bytes', name: 'bytes'}], outputs: [{type: 'bytes', name: 'bytes'}] },
     concat:       { mutable: false, arity: 2, inputs: [{type: 'bytes', name: 'arg1'}, {type: 'bytes', name: 'arg2'}], outputs: [{type: 'bytes', name: 'bytes'}] },
-    map:          { mutable: false, arity: 2, inputs: [{type: 'function', name: 'function'}, {type: 'list', name: 'list'}], outputs: [{type: 'list', name: 'list'}] },
+    map:          { mutable: false, arity: null, inputs: [{type: 'function', name: 'function'}, {type: 'list', name: 'list'}], outputs: [{type: 'list', name: 'list'}] },
     reduce:       { mutable: false, arity: 3, inputs: [{type: 'function', name: 'function'}, {type: 'list', name: 'list'}, {type: 'uint', name: 'accumulator'}], outputs: [{type: 'uint', name: 'result'}] },
     nth:          { mutable: false, arity: 2, inputs: [{type: 'list', name: 'list'}, {type: 'uint', name: 'index'}], outputs: [{type: 'any', name: 'item'}] },
     first:        { mutable: false, arity: 1, inputs: [{type: 'list', name: 'list'}], outputs: [{type: 'any', name: 'item'}] },

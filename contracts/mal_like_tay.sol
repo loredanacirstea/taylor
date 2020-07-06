@@ -415,11 +415,11 @@ object "Taylor" {
                 let ptr2 := mload(add(arg_ptrs_ptr, 64))
                 result_ptr := _concat(ptr1, ptr2)
             }
-            case 0x90000050 {
-                let fptr := mload(add(arg_ptrs_ptr, 32))
-                let list_ptr := mload(add(arg_ptrs_ptr, 64))
-                result_ptr := _map(fptr, list_ptr, env_ptr)
-            }
+            // case 0x90000050 {
+            //     let fptr := mload(add(arg_ptrs_ptr, 32))
+            //     let list_ptr := mload(add(arg_ptrs_ptr, 64))
+            //     result_ptr := _map(fptr, list_ptr, env_ptr)
+            // }
             case 0x98000052 {
                 let fptr := mload(add(arg_ptrs_ptr, 32))
                 let iter_ptr := mload(add(arg_ptrs_ptr, 64))
@@ -624,6 +624,15 @@ object "Taylor" {
                         result_ptr := _keccak256(arg_ptrs_ptr)
                     }
                 }
+
+                if eq(isthis, 0) {
+                    isthis := isMapFunction(fsig)
+                    if eq(isthis, 1) {
+                        let arity := mload(arg_ptrs_ptr)
+                        let fptr := mload(add(arg_ptrs_ptr, 32))
+                        result_ptr := _map(sub(arity, 1), fptr, add(arg_ptrs_ptr, 64), env_ptr)
+                    }
+                }
                 
                 if eq(isthis, 0) {
                     isthis := isGetByName(fsig)
@@ -762,32 +771,39 @@ object "Taylor" {
         function isLambdaUnknown(vartype) -> islu {
             islu := eq(vartype, 0x1000000)
         }
+        function getFunctionId(sig) -> _id {
+            _id := and(sig, 0x7fffffe)
+        }
         // 10000000000000000000000001000000
         function isApply(sig) -> isapp {
             // 00000111111111111111111111111110
-            let id := and(sig, 0x7fffffe)
+            let id := getFunctionId(sig)
             // 1000000
             isapp := eq(id, 0x40)
+        }
+        function isMapFunction(sig) -> ismapf {
+            let id := getFunctionId(sig)
+            ismapf := eq(id, 0x50)
         }
         // 10000000000000000000000000111110
         function isList(sig) -> isl {
             // 00000111111111111111111111111110
-            let id := and(sig, 0x7fffffe)
+            let id := getFunctionId(sig)
             isl := eq(id, 0x3e)
         }
         // 10011000000000000000000001001000
         function isGetByName(sig) -> isget {
             // 00000111111111111111111111111110
-            let id := and(sig, 0x7fffffe)
+            let id := getFunctionId(sig)
             // 1001000
             isget := eq(id, 0x48)
         }
         function isKeccak256(sig) -> isa {
-            let id := and(sig, 0x7fffffe)
+            let id := getFunctionId(sig)
             isa := eq(id, 0x34)
         }
         function isArray(sig) -> isa {
-            let id := and(sig, 0x7fffffe)
+            let id := getFunctionId(sig)
             isa := eq(id, 0x10c)
         }
         // 01000000000000000000000000000000
@@ -1243,72 +1259,229 @@ object "Taylor" {
             end_ptr := add(add(cond_end, branch1len), branch2len)
         }
 
-        function _map(fptr, iter_ptr, env_ptr) -> result_ptr {
+        function _map(arity, fptr, _iter_ptrs, env_ptr) -> result_ptr {
             let sigsig := mslice(fptr, 4)
+            let iter_sig := get4b(mload(_iter_ptrs))
             let results_ptrs := 0
             
-            switch sigsig
-            case 0x04000004 {
-                results_ptrs := _mapInnerNative(mslice(add(fptr, 4), 4), iter_ptr, env_ptr)
+            // // ! _iter_ptrs are changed in place
+            // switch sigsig
+            // case 0x04000004 {
+            //     results_ptrs := _mapInnerNative(arity, mslice(add(fptr, 4), 4), _iter_ptrs, env_ptr)
+            // }
+            // default {
+            //     // results_ptrs := _mapInnerLambda(
+            //     //     arity,
+            //     //     resolveLambdaPtr(fptr),
+            //     //     _iter_ptrs,
+            //     //     env_ptr
+            //     // )
+            // }
+
+            // results_ptrs := _mapInnerNative(arity, get4b(add(fptr, 4)), _iter_ptrs, env_ptr)
+
+            results_ptrs := _mapInnerLambda(arity, resolveLambdaPtr(fptr), _iter_ptrs, env_ptr)
+
+            result_ptr := _iter(iter_sig, results_ptrs)
+        }
+
+        function _iter(iter_sig, results_ptrs) -> result_ptr {
+            // Recreate list from result pointers
+            switch isListType(iter_sig)
+            case 1 {
+                result_ptr := _list(listTypeSize(iter_sig), results_ptrs)
             }
             default {
-                results_ptrs := _mapInnerLambda(
-                    resolveLambdaPtr(fptr),
-                    iter_ptr,
-                    env_ptr
-                )
-            }
-
-            // Recreate list from result pointers
-            if isListType(get4b(iter_ptr)) {
-                result_ptr := _list(iterTypeSize(iter_ptr), results_ptrs)
-            }
-            if isArrayType(iter_ptr) {
-                result_ptr := _array(iterTypeSize(iter_ptr), results_ptrs)
+                result_ptr := _array(arrayTypeSize(iter_sig), results_ptrs)
             }
         }
 
-        function _mapInnerNative(sig, iter_ptr, env_ptr) -> results_ptrs {
-            let arity := iterTypeSize(iter_ptr)
+        function collectArgs(farity, iter_ptrs) -> args_ptrs, data_lengths, total_length {
+            args_ptrs := allocate(mul(32, farity))
+            data_lengths := allocate(mul(32, farity))
+            total_length := 0
+
+            for { let j := 0 } lt(j, farity) { j := add(j, 1) } {
+                let offset := mul(32, j)
+                let iter_ptr := mload(add(iter_ptrs, offset))
+                let arg_ptr := _first(iter_ptr)
+                iter_ptr := _rest(iter_ptr)
+                let arglen := getTypedLength(arg_ptr)
+
+                mstore(add(args_ptrs, offset), arg_ptr)
+                mstore(add(iter_ptrs, offset), iter_ptr)
+                mstore(add(data_lengths, offset), arglen)
+                total_length := add(total_length, arglen)
+            }
+        }
+
+        function writeMapArgs(farity, args_ptrs, data_lengths, dataptr) {
+            for { let k := 0 } lt(k, farity) { k := add(k, 1) } {
+                let offset := mul(32, k)
+                let arg_ptr := mload(add(args_ptrs, offset))
+                let arglen := mload(add(data_lengths, offset))
+                mmultistore(dataptr, arg_ptr, arglen)
+                dataptr := add(dataptr, arglen)
+            }
+        }
+
+        // function mapWrapppp(sig, farity, iter_ptrs) -> dataptr {
+        //     let args_ptrs, data_lengths, total_length := collectArgs(farity, iter_ptrs)
+
+        //     dataptr := allocate(add(4, total_length))
+        //     mslicestore(dataptr, sig, 4)
+        //     writeMapArgs(farity, args_ptrs, data_lengths, add(dataptr, 4))
+        // }
+
+        // function collectArgs2(iter_ptrs__, farity, sig) -> dataptr {
+        //     let iter_ptrs := mload(iter_ptrs__)
+        //     let args_ptrs := allocate(mul(32, farity))
+        //     let data_lengths := allocate(mul(32, farity))
+        //     let total_length := 0
+
+        //     for { let j := 0 } lt(j, farity) { j := add(j, 1) } {
+        //         let offset := mul(32, j)
+        //         let __iter_ptrs := add(iter_ptrs, offset)
+        //         let iter_ptr := mload(__iter_ptrs)
+        //         let arg_ptr := _first(iter_ptr)
+        //         iter_ptr := _rest(iter_ptr)
+        //         let arglen := getTypedLength(arg_ptr)
+
+        //         mstore(add(args_ptrs, offset), arg_ptr)
+        //         mstore(__iter_ptrs, iter_ptr)
+        //         mstore(add(data_lengths, offset), arglen)
+        //         total_length := add(total_length, arglen)
+        //     }
+        //     dataptr := allocate(add(4, total_length))
+        //     mslicestore(dataptr, sig, 4)
+        //     for { let k := 0 } lt(k, farity) { k := add(k, 1) } {
+        //         let offset := mul(32, k)
+        //         let arg_ptr := mload(add(args_ptrs, offset))
+        //         let arglen := mload(add(data_lengths, offset))
+        //         mmultistore(dataptr, arg_ptr, arglen)
+        //         dataptr := add(dataptr, arglen)
+        //     }
+        // }
+
+        function collectArgs3(iter_ptrs__, farity, sig) -> dataptr {
+            let iter_ptrs := mload(iter_ptrs__)
+            let args_ptrs := allocate(mul(32, farity))
+            
+            let data_lengths := allocate(mul(32, farity))
+            let total_length := 0
+
+            for { let j := 0 } lt(j, farity) { j := add(j, 1) } {
+                let offset := mul(32, j)
+                let __iter_ptrs := add(iter_ptrs, offset)
+                let iter_ptr := mload(__iter_ptrs)
+                // return (iter_ptr, 32)
+                
+                let arg_ptr := _first(iter_ptr)
+                iter_ptr := _rest(iter_ptr)
+                let arglen := getTypedLength(arg_ptr)
+
+                mstore(add(args_ptrs, offset), arg_ptr)
+                mstore(__iter_ptrs, iter_ptr)
+                mstore(add(data_lengths, offset), arglen)
+                total_length := add(total_length, arglen)
+            }
+            dataptr := allocate(add(4, total_length))
+            mslicestore(dataptr, sig, 4)
+            let current_ptr := add(dataptr, 4)
+            for { let k := 0 } lt(k, farity) { k := add(k, 1) } {
+                let offset := mul(32, k)
+                let arg_ptr := mload(add(args_ptrs, offset))
+                // return (arg_ptr, 32)
+                
+                let arglen := mload(add(data_lengths, offset))
+                mmultistore(current_ptr, arg_ptr, arglen)
+                current_ptr := add(current_ptr, arglen)
+            }
+        }
+
+        function _mapInnerNative(farity, sig, iter_ptrs, env_ptr) -> results_ptrs {
+            let arity := iterTypeSize(mload(iter_ptrs))
             results_ptrs := allocate(mul(arity, 32))
+
+            let newptr := allocate(32)
+            mstore(newptr, iter_ptrs)
+
+            // TODO all iters should have same arity
 
             // iterate over list & apply function on each arg
             for { let i := 0 } lt(i, arity) { i := add(i, 1) } {
-                let arg_ptr := _first(iter_ptr)
-                iter_ptr := _rest(iter_ptr)
+                // let args_ptrs, data_lengths, total_length := collectArgs(farity, iter_ptrs)
+
+                // let dataptr := allocate(add(4, total_length))
+                // mslicestore(dataptr, sig, 4)
+                // writeMapArgs(farity, args_ptrs, data_lengths, add(dataptr, 4))
+
                 
-                let arglen := getTypedLength(arg_ptr)
-                let dataptr := allocate(add(4, arglen))
-                mslicestore(dataptr, sig, 4)
-                mmultistore(add(dataptr, 4), arg_ptr, arglen)
+                // let dataptr := mapWrapppp(sig, farity, iter_ptrs)
+
+                // let dataptr := collectArgs2(iter_ptrs, farity, sig)
+                let dataptr := collectArgs3(newptr, farity, sig)
+
+                // return (dataptr, 64)
 
                 let endd, res := eval(dataptr, env_ptr)
+                // return (res, 32)
                 mstore(add(results_ptrs, mul(i, 32)), res)
             }
         }
 
-        function _mapInnerLambda(lambda_body_ptr, iter_ptr, env_ptr) -> results_ptrs {
-            let arity := iterTypeSize(iter_ptr)
+        function _mapInnerLambda(farity, lambda_body_ptr, iter_ptrs, env_ptr) -> results_ptrs {
+            let arity := iterTypeSize(mload(iter_ptrs))
             results_ptrs := allocate(mul(arity, 32))
 
-            // should always have 1 arg
-            let args_arity := listTypeSize(get4b(lambda_body_ptr))
-            dtrequire(eq(args_arity, 1), 0xeebb)
+            // // should always have 1 arg
+            // let args_arity := listTypeSize(get4b(lambda_body_ptr))
+            // dtrequire(eq(args_arity, 1), 0xeebb)
 
             // <list_sig><var_sig><index>
-            let arg_index := mslice(add(lambda_body_ptr, 8), 4)
-            // lambda_body_ptr := add(add(lambda_body_ptr, 4), mul(args_arity, 8)))
-            lambda_body_ptr := add(lambda_body_ptr, 12)
+            // let arg_index := mslice(add(lambda_body_ptr, 8), 4)
+            // // lambda_body_ptr := add(add(lambda_body_ptr, 4), mul(args_arity, 8)))
+
+            let indexes := lambda_body_ptr
+            // return (indexes, 32)
+            // lambda_body_ptr := add(lambda_body_ptr, 12)
+
+            lambda_body_ptr := add(lambda_body_ptr, getTypedLength(lambda_body_ptr))
+
+            // return (lambda_body_ptr, 32)
 
             // iterate over list & apply function on each arg
             for { let i := 0 } lt(i, arity) { i := add(i, 1) } {
-                let arg_ptr := _first(iter_ptr)
-                iter_ptr := _rest(iter_ptr)
+                // let arg_ptr := _first(iter_ptr)
+                // iter_ptr := _rest(iter_ptr)
                 
+                // let new_env_ptr := copy_env(env_ptr)
+                // addto_env(new_env_ptr, arg_index, arg_ptr)
+
                 let new_env_ptr := copy_env(env_ptr)
-                addto_env(new_env_ptr, arg_index, arg_ptr)
-                
+
+                for { let j := 0 } lt(j, farity) { j := add(j, 1) } {
+                    let offset := mul(32, j)
+                    let iter_ptr := mload(add(iter_ptrs, offset))
+                    let arg_ptr := _first(iter_ptr)
+                    iter_ptr := _rest(iter_ptr)
+
+                    // if eq(j, 1) { return (arg_ptr, 32) }
+                    
+                    let arg_index := extractValue(_nth(indexes, j))
+
+                    return (indexes, 32)
+
+                    // if eq(j, 2) { mstore(0, arg_index) return (0, 32) }
+
+
+                    new_env_ptr := copy_env(new_env_ptr)
+                    addto_env(new_env_ptr, arg_index, arg_ptr)
+                }
+                // return (mload(add(new_env_ptr, 32)), 32)
+
                 let endd, res := eval(lambda_body_ptr, new_env_ptr)
+                // return (res, 32)
                 mstore(add(results_ptrs, mul(i, 32)), res)
             }
         }
