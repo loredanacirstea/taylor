@@ -55,11 +55,14 @@ object "Taylor" {
             case 0 {
                 switch isLambdaUnknown(mslice(data_ptr, 4))
                 case 1 {
+                    // return (data_ptr, 64)
                     // replace variables from lambdas
                     let index := mslice(add(data_ptr, 4), 4)
                     let value_ptr := add(add(env_ptr, 32), mul(index, 32))
                     result_ptr := mload(value_ptr)
                     end_ptr := add(data_ptr, 8)
+                    // return (result_ptr, 64)
+                    // if eq(index, 2) { return (result_ptr, 64) }
                 }
                 case 0 {
                     let size := getTypedLength(data_ptr)
@@ -84,11 +87,14 @@ object "Taylor" {
                 let isl := isLambda(sig)
                 switch isl
                 case 1 {
-                    // store lambda body ptr
-                    mstore(args_ptrs_now, end_ptr)
+                    // // store lambda body ptr
+                    // mstore(args_ptrs_now, end_ptr)
+                    // end_ptr := add(end_ptr, lambdaLength(sig))
+                    // // apply function on arguments
+                    // result_ptr := evalWithEnv(sig, args_ptrs, env_ptr)
+
+                    result_ptr := data_ptr
                     end_ptr := add(end_ptr, lambdaLength(sig))
-                    // apply function on arguments
-                    result_ptr := evalWithEnv(sig, args_ptrs, env_ptr)
                 }
                 case 0 {
                     let isIf := eq(sig, 0x9800004a)
@@ -103,7 +109,9 @@ object "Taylor" {
                         }
                         default {
                             for { let i := 0 } lt(i, arity) { i := add(i, 1) } {
+                                // return (end_ptr, 64)
                                 let _end_ptr, arg_ptr := eval(end_ptr, env_ptr)
+                                // return (arg_ptr, 64)
                                 // store pointer to argument value
                                 mstore(args_ptrs_now, arg_ptr)
                                 end_ptr := _end_ptr
@@ -112,6 +120,8 @@ object "Taylor" {
 
                             // apply function on arguments
                             result_ptr := evalWithEnv(sig, args_ptrs, env_ptr)
+
+                            // return (result_ptr, 64)
                         }
                     }
                     case 1 {
@@ -597,12 +607,12 @@ object "Taylor" {
                     result_ptr := _list(mload(arg_ptrs_ptr), add(arg_ptrs_ptr, 32))
                 }
 
-                if eq(isthis, 0) {
-                    isthis := isLambda(fsig)
-                    if eq(isthis, 1) {
-                        result_ptr := _lambda(arg_ptrs_ptr)
-                    }
-                }
+                // if eq(isthis, 0) {
+                //     isthis := isLambda(fsig)
+                //     if eq(isthis, 1) {
+                //         result_ptr := _lambda(arg_ptrs_ptr)
+                //     }
+                // }
 
                 if eq(isthis, 0) {
                     isthis := isApply(fsig)
@@ -904,6 +914,9 @@ object "Taylor" {
             let done := 0
             if and(eq(done, 0), isFunction(ptr)) {
                 _vallen := 0
+                if isLambda(sig) {
+                    _vallen := lambdaLength(sig)
+                }
                 done := 1
             }
             if and(eq(done, 0), isArrayType(ptr)) {
@@ -1112,6 +1125,23 @@ object "Taylor" {
         function mapIdFromSig(signature) -> index {
             index := and(signature, 0x7fffff)
         }
+
+        // function lambdaHash(lambda_ptr) -> _hash {
+        //     let body_len := lambdaLength(get4b(lambda_ptr))
+        //     _hash := keccak256(add(lambda_ptr, 4), body_len)
+        // }
+
+        // function mstoreLambdaEnv(lambda_ptr, env_ptr) {
+        //     let env_mem_ptr := lambdaHash(lambda_ptr)
+        //     // mstore(0, env_mem_ptr)
+        //     // return (0, 32)
+        //     mstore(env_mem_ptr, env_ptr)
+        // }
+
+        // function mloadLambdaEnv(lambda_ptr) -> _env_ptr {
+        //     let env_mem_ptr := lambdaHash(lambda_ptr)
+        //     _env_ptr := mload(env_mem_ptr)
+        // }
         
         // function read(str) -> _str {
         //     _str := str
@@ -1145,16 +1175,33 @@ object "Taylor" {
             // lambda_ptr can be a signature or a lambda pointer
             let lambda_body_ptr := mload(add(arg_ptrs, 32))
 
-            if isLambda(get4b(lambda_body_ptr)) {
-                lambda_body_ptr := add(lambda_body_ptr, 4)
-            }
+            // if isLambda(get4b(lambda_body_ptr)) {
+            //     lambda_body_ptr := add(lambda_body_ptr, 4)
+            // }
+
+            // return (lambda_body_ptr, 96)
+            // return (mload(add(env_ptr, 64)), 64)
             
             // TODO: if signature -> call eval
 
             _data_ptr := _applyInner(arity, lambda_body_ptr, add(arg_ptrs, 64), env_ptr)
         }
 
-        function _applyInner(arity, lambda_body_ptr, arg_ptrs, env_ptr) -> _data_ptr {
+        function _applyInner(arity, lambda_ptr, arg_ptrs, env_ptr) -> _data_ptr {
+
+            let lambda_body_ptr := lambda_ptr
+            let is_lambda := isLambda(get4b(lambda_ptr))
+            let orig_env := 0
+            
+            // let lambda_body_ptr := add(lambda_ptr, 4)
+            if is_lambda {
+                lambda_body_ptr := add(lambda_ptr, 4)
+                if eq(isListType(get4b(lambda_body_ptr)), 0) {
+                    orig_env := mload(lambda_body_ptr)
+                    lambda_body_ptr := add(lambda_body_ptr, 32)
+                }
+            }
+
             // lambda_body_ptr: args list + body
             // args_arity should be the same as received arity
             let args_arity := listTypeSize(get4b(lambda_body_ptr))
@@ -1162,25 +1209,96 @@ object "Taylor" {
             // TODO: why are they different
             // dtrequire(eq(args_arity, arity), 0xeebb)
 
+            // return (lambda_body_ptr, 64)
+
             let argdef_ptr := add(lambda_body_ptr, 4) // after list sig
-            let new_env_ptr := copy_env(env_ptr)
+            let new_env_ptr := 0
+            // let has_orig_env := 0
+
+            // if is_lambda {
+            //     let orig_env := mloadLambdaEnv(lambda_ptr)
+            //     if gt(mload(orig_env), 0) {
+            //         has_orig_env := orig_env
+            //     }
+            // }
+            
+            // return (0, 0)
+
+            switch orig_env
+            case 0 {
+                new_env_ptr := copy_env(env_ptr)
+            }
+            default {
+                new_env_ptr := copy_env(env_ptr)
+                meld_env(new_env_ptr, orig_env)
+
+                // new_env_ptr := copy_env(orig_env)
+
+                // if gt(orig_env, 0) { 
+                //     // return (mload(add(orig_env, 160)), 32)
+                //     return (mload(add(new_env_ptr, 160)), 32)
+                //     // return (lambda_body_ptr, 64)
+                // }
+
+
+                // meld_env(new_env_ptr, env_ptr)
+                // return (new_env_ptr, 256)
+            }
+
+            // if gt(orig_env, 0) { 
+            //     // return (mload(add(orig_env, 160)), 32)
+            //     return (mload(add(new_env_ptr, 160)), 32)
+            //     // return (lambda_body_ptr, 64)
+            // }
+
+            // if gt(orig_env, 0) { return (new_env_ptr, 64) }
+            // if gt(orig_env, 0) { mstore(0, args_arity) return (0, 32) }
             
             for { let i := 0 } lt(i, args_arity) { i := add(i, 1) } {
                 // index of unknown variable
                 let index := mslice(add(argdef_ptr, 4), 4)
-                addto_env(new_env_ptr, index, mload(add(arg_ptrs, mul(32, i))))
+                let arg_ptr := mload(add(arg_ptrs, mul(32, i)))
+                // return (arg_ptr, 64)
+                addto_env(new_env_ptr, index, arg_ptr)
                 argdef_ptr := add(argdef_ptr, 8)
             }
 
+            // if gt(orig_env, 0) { return (new_env_ptr, 256) }
+
             lambda_body_ptr := argdef_ptr
-            let endd, res := eval(lambda_body_ptr, new_env_ptr)
-            _data_ptr := res
+
+            // if lambda_body_ptr begins with lambda -> the execution
+            // returned a function & we do not evaluate it now
+            // but we keep track of its original environment
+            switch isLambda(get4b(lambda_body_ptr))
+            case 1 {
+                // copy lambda to a free ptr & add the orig env ptr after sig
+                let sig := get4b(lambda_body_ptr)
+                let body_length := lambdaLength(sig)
+
+                _data_ptr := allocate(add(36, body_length))
+                mslicestore(_data_ptr, buildLambdaSig(add(body_length, 32)), 4)
+                mstore(add(_data_ptr, 4), new_env_ptr)
+                mmultistore(add(_data_ptr, 36), add(lambda_body_ptr, 4),body_length)
+                
+                // return (_data_ptr, 96)
+                // mstoreLambdaEnv(lambda_body_ptr, new_env_ptr)
+            }
+            default {
+                // if gt(orig_env, 0) { 
+                //     return (mload(add(new_env_ptr, 96)), 32)
+                //     // return (lambda_body_ptr, 64)
+                // }
+                // return (mload(add(new_env_ptr, 32)), 32)
+                let endd, res := eval(lambda_body_ptr, new_env_ptr)
+                _data_ptr := res
+            }
         }
 
-        function _lambda(arg_ptrs) -> _data_ptr {
-            // skip arity, just point to the lambda body pointer
-            _data_ptr := mload(add(arg_ptrs, 32))
-        }
+        // function _lambda(arg_ptrs) -> _data_ptr {
+        //     // skip arity, just point to the lambda body pointer
+        //     _data_ptr := mload(add(arg_ptrs, 32))
+        // }
 
         function copy_env(env_ptr) -> new_ptr {
             let arity := mload(env_ptr)
@@ -1196,6 +1314,24 @@ object "Taylor" {
             }
         }
 
+        function meld_env(target_ptr, source_ptr) {
+            let arity := mload(source_ptr)
+            let offset := 32
+            for { let i := 0 } lt(i, arity) { i := add(i, 1) } {
+                let val_ptr := mload(add(source_ptr, offset))
+                if gt(val_ptr, 0) {
+                    // addto_env(target_ptr, i, mload(current_ptr))
+                    mstore(add(target_ptr, offset), val_ptr)
+                }
+                offset := add(offset, 32)
+            }
+            let old_arity := mload(target_ptr)
+            mstore(target_ptr, max(arity, old_arity))
+            if gt(arity, old_arity) {
+                let temp := allocate(mul(32, sub(arity, old_arity)))
+            }
+        }
+
         function addto_env(env_ptr, index, var_ptr) {
             let arity := mload(env_ptr)
             let index_ptrs := add(env_ptr, 32)
@@ -1204,7 +1340,7 @@ object "Taylor" {
                 var_ptr
             )
             
-            // we assume addto_env always comes after a copy_env
+            // we assume addto_env always comes after a copy_env or meld_env
             if or(eq(index, arity), gt(index, arity)) {
                 let new_arity := add(index, 1)
                 mstore(env_ptr, new_arity)
@@ -1618,6 +1754,7 @@ object "Taylor" {
         }
 
         function _let_asterix(let_variables_ptr, env_ptr) -> _end_ptr, result_ptr {
+            // return (0, 0)
             let arity := listTypeSize(mslice(let_variables_ptr, 4))
             arity := div(arity, 2)
 
@@ -1630,7 +1767,14 @@ object "Taylor" {
                 let val_end := 0
 
                 var_ptr := add(var_ptr, 8)
+
+                // if eq(i, 1) { return(var_ptr, 32) }
+
+                // if eq(i, 1) { return(mload(add(new_env_ptr, 32)), 64) }
+                
                 val_end, var_ptr := eval(var_ptr, new_env_ptr)
+
+                // if eq(i, 1) { return(var_ptr, 32) }
 
                 new_env_ptr := copy_env(new_env_ptr)
                 addto_env(new_env_ptr, pos_index, var_ptr)
@@ -1639,7 +1783,9 @@ object "Taylor" {
             }
 
             let let_body_ptr := var_ptr
+            // return (let_body_ptr, 64)
             let endd, res := eval(let_body_ptr, new_env_ptr)
+            // return (res, 64)
             result_ptr := res
         }
 
@@ -2656,7 +2802,8 @@ object "Taylor" {
         function _revert(ptrs) {
             let data_ptr := mload(ptrs)
             let data_len := getTypedLength(data_ptr)
-            revert(data_ptr, data_len)
+            // revert(data_ptr, data_len)
+            return (data_ptr, data_len)
         }
 
         function _return(ptrs) {

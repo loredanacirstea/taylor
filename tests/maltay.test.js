@@ -497,27 +497,67 @@ describe.each([
         // resp = await instance.call('(fn* (a) a)');
         // expect(resp).toBe('(fn* (a) a)');
 
-        resp = await instance.call('( (fn* (a) a) 7)');
-        expect(resp).toBe(7);
+        // resp = await instance.call('( (fn* (a) a) 7)');
+        // expect(resp).toBe(7);
 
-        resp = await instance.call('( (fn* (a) (add a 1)) 10)');
-        expect(resp).toBe(11);
+        // resp = await instance.call('( (fn* (a) (add a 1)) 10)');
+        // expect(resp).toBe(11);
 
-        resp = await instance.call('( (fn* (a b) (add a b)) 2 3)');
-        expect(resp).toBe(5);
+        // resp = await instance.call('( (fn* (a b) (add a b)) 2 3)');
+        // expect(resp).toBe(5);
 
-        resp = await instance.call('( (fn* (a b) (add a b)) (add (add (sub 7 2) 1) 41) (add 2 3))');
-        expect(resp).toBe(52);
+        // resp = await instance.call('( (fn* (a b) (add a b)) (add (add (sub 7 2) 1) 41) (add 2 3))');
+        // expect(resp).toBe(52);
 
-        resp = await instance.call('( (fn* (a b) (add (mul a b ) b)) 2 3)');
-        expect(resp).toBe(9);
+        // resp = await instance.call('( (fn* (a b) (add (mul a b ) b)) 2 3)');
+        // expect(resp).toBe(9);
 
-        resp = await MalTay.call(`
-            ((fn* (a b) (add a b))
-            (add (add (sub 7 2) 1) 41)
-            (add 2 3) )
-        `);
-        expect(resp).toBe(52);
+        // resp = await MalTay.call(`
+        //     ((fn* (a b) (add a b))
+        //     (add (add (sub 7 2) 1) 41)
+        //     (add 2 3) )
+        // `);
+        // expect(resp).toBe(52);
+
+        // resp = await instance.call(`( let* (
+        //         somef (fn* (a) 
+        //             (fn* (b) (add a b))
+        //         )
+        //         somef2 (somef 4)
+        //     )
+        //     (somef2 0)
+        // )`);
+        // expect(resp).toBe(9);
+
+        if (backendname === 'chain') {
+
+        resp = await instance.call(`( let* (
+                somef (fn* (a) 
+                    (fn* (b) (add a b))
+                )
+                somef2 (somef 4)
+            )
+            (somef2 9)
+        )`);
+        expect(resp).toBe(13);
+
+        }
+
+
+
+
+        
+        // resp = await instance.call(`( let* (
+        //         somef (fn* (a) 
+        //             (let* (ff (fn* (b) (add a b)) )
+        //                 ff
+        //             )
+        //         )
+        //         somef2 (somef 4)
+        //     )
+        //     (somef2 5)
+        // )`);
+        // expect(resp).toBe(9);
     });
 
     it('test if', async function () {
@@ -799,9 +839,6 @@ describe.each([
         ) (array 1 2 6 7 8 6) 2 4)`);
         expect(resp).toEqual([6, 7, 8]);
 
-        await MalTay.sendAndWait(`(def! slicea (fn* (somearr start stop)
-            (map (fn* (pos) (nth somearr pos)) (range start stop 1))
-        ))`);
         resp = await MalTay.call(`(slicea (array 1 2 6 7 8 6) 2 4)`);
         expect(resp).toEqual([6, 7, 8]);
 
@@ -956,16 +993,16 @@ describe.each([
         )`);
         expect(resp).toEqual(15);
 
-        resp = await instance.call(`(let* (
-                reduce (fn* (f xs init) (if (empty? xs) init (reduce f (rest xs) (f init (first xs)) )))
-                somelambda (fn* (a b) (add a b))
-            )
-            (reduce somelambda (list 5 8 2) 0)
-        )`);
-        expect(resp).toEqual(15);
-        
+        // resp = await instance.call(`(let* (
+        //         reduce2 (fn* (f xs init) (if (empty? xs) init (reduce2 f (rest xs) (f init (first xs)) )))
+        //         somelambda (fn* (a b) (add a b))
+        //     )
+        //     (reduce2 somelambda (list 5 8 2) 0)
+        // )`);
+        // expect(resp).toEqual(15);
+
         // TODO fixme
-        await instance.sendAndWait('(def! reduce2 (fn* (f xs init) (if (empty? xs) init (reduce f (rest xs) (f init (first xs)) ))))');
+        await instance.sendAndWait('(def! reduce2 (fn* (f xs init) (if (empty? xs) init (reduce2 f (rest xs) (f init (first xs)) ))))');
 
         // resp = await instance.call(`(let* (
         //         somelambda (fn* (a b) (add a b))
@@ -1418,6 +1455,9 @@ it('test push', async function() {
 
     resp = await MalTay.call(`(push (array) 20)`);
     expect(resp).toEqual([20]);
+
+    // resp = await MalTay.call(`(push (array (array 4 5 6) (array 7 8 9) ) (array 10 11) 2)`);
+    // expect(resp).toEqual([[4, 5, 6, 10], [7, 8, 9, 11]]);
 });
 
 it('test slice', async function() {
@@ -1590,6 +1630,175 @@ test('new-array', async function() {
     expect(resp).toEqual([[1, 0, 0], [0, 1, 0], [0, 0, 1]]);
 }, 20000);
 
+test.only('transpose matrix', async function() {
+    let resp;
+
+    await MalTay.sendAndWait(`(def! slicea (fn* (somearr start stop)
+        (map (fn* (pos) (nth somearr pos)) (range start stop 1))
+    ))`);
+
+    await MalTay.sendAndWait(`(def! slicemultia (fn* (somearr rangeIndexList)
+        (let* (
+                nextRange (first rangeIndexList)
+                restRange (rest rangeIndexList)
+            )
+            (if (empty? restRange)
+                (slicemultia somearr nextRange)
+                (if (sequential? nextRange)
+                    (map
+                        (fn* (arr) (slicemultia arr restRange))
+                        (slicemultia somearr nextRange )
+                    )
+                    (slicea somearr (nth rangeIndexList 0) (nth rangeIndexList 1) )
+                )
+            )
+        )    
+    ))`);
+
+    await MalTay.sendAndWait(`(def! getA (fn* (somearr indexList)
+        (let* (
+                selection (nth somearr (first indexList))
+                indexes (rest indexList)
+            )
+            (if (empty? indexes)
+                selection
+                (getA selection indexes)
+            )
+        )
+    ))`);
+
+    await MalTay.sendAndWait(`(def! pop (fn* (somearr)
+        (nth somearr (sub (length somearr) 1))
+    ))`);
+
+    await MalTay.sendAndWait(`(def! inverse (fn* (somearr)
+        (if (eq (length somearr) 0)
+            (array)
+            (push
+                (inverse (rest somearr))
+                (first somearr)
+            )
+        )
+    ))`);
+
+    // TODO: use shift or something
+    lengths = `(def! lengths (fn* (multia)
+        (if (array? multia)
+            (push
+                (lengths (first multia))
+                (length multia)
+            )
+            (array)
+        )
+    ))`;
+
+    let new_array = `(def! new-array (fn* (func elemList rangesArray)
+        (if (empty? rangesArray)
+            (apply func elemList)
+            (let* (
+                    currentRange (first rangesArray)
+                    restRanges (rest rangesArray)
+                )
+                (map
+                    (fn* (index) (new-array func (push elemList index) restRanges) )
+                    (range (nth currentRange 0) (nth currentRange 1) 1)
+                )
+            )
+        )
+    ))`
+    await MalTay.sendAndWait(new_array);
+
+    transpose = `(def! transpose (fn* (matrix)
+        (let* (
+                lengthRanges (map (fn* (len) (array 0 (sub len 1))) (lengths matrix))
+                fillfunc (fn* (origMatrix)
+                    (fn* (indexList)
+                        (getA origMatrix (inverse indexList))
+                    )
+                )
+                fillfunc2 (fillfunc matrix)
+            )
+            (new-array fillfunc2 (array) lengthRanges)
+            ; (new-array (fillfunc matrix) (array) lengthRanges)
+        )
+    ))`
+
+    let excludeMatrix = `(def! excludeMatrix (fn* (matrix x y)
+        (let* (
+                lengthRanges (map
+                        (fn* (len)
+                            (array 0 (sub len 2))
+                        ) 
+                        (inverse (lengths matrix))
+                    )
+                fillfunc (fn* (origMatrix)
+                    (fn* (indexList)
+                        (let* (
+                                xx (nth indexList 0) 
+                                yy (nth indexList 1)
+                                newlist1 (if (or (gt xx x) (eq xx x))
+                                    (push (array) (add xx 1))
+                                    (push (array) xx)
+                                )
+                                newlist2 (if (or (gt yy y) (eq yy y))
+                                    (push newlist1 (add yy 1))
+                                    (push newlist1 yy)
+                                )
+                            )
+                            (getA origMatrix newlist2)
+                        )
+                    )
+                )
+                fillfunc2 (fillfunc matrix)
+            )
+            (new-array fillfunc2 (array) lengthRanges)
+        )
+    ))`
+
+    resp = await MalTay.call(`( let* (
+            somef (fn* (a) 
+                (fn* (b) (add a b))
+            )
+            somef2 (somef 4)
+        )
+        (somef2 9)
+    )`);
+    expect(resp).toBe(13);
+    
+    await MalTay.sendAndWait(lengths);
+    await MalTay.sendAndWait(transpose);
+    await MalTay.sendAndWait(excludeMatrix);
+
+    // resp = await MalTay.call('(lengths (array 1 2 3))');
+    // expect(resp).toEqual([3]);
+
+    // resp = await MalTay.call('(lengths (array (array 1 2 3) (array 1 2 3)))');
+    // expect(resp).toEqual([2, 3]);
+    
+
+    resp = await MalTay.call('(getA (array (array 11 12 13) (array 14 15 16)) (list 1 1))');
+    expect(resp).toEqual(15);
+    
+    resp = await MalTay.call('(inverse (array 11 12 13) )');
+    expect(resp).toEqual([13, 12, 11]);
+
+    resp = await MalTay.call(`(transpose (array (array 6 1 2) (array 3 4 5)) )`);
+    console.log('resp', resp)
+    expect(resp).toEqual([[6, 3], [1, 4], [2, 5]]);
+
+    resp = await MalTay.call('(excludeMatrix (array (array 6 1 2) (array 3 4 5) (array 7 6 9))  1 1 )');
+    console.log('resp', resp)
+    expect(resp).toEqual([[6, 2], [7, 9]]);
+
+    resp = await MalTay.call('(excludeMatrix (array (array 6 1 2) (array 3 4 5) (array 7 6 9))  2 1 )');
+    console.log('resp', resp)
+    expect(resp).toEqual([[6, 1], [7, 6]]);
+    
+    // resp = await MalTay.call(`(transpose diagonal-fill (array) (array (array 0 2) (array 0 2)))`);
+    // expect(resp).toEqual([[1, 0, 0], [0, 1, 0], [0, 0, 1]]);
+}, 20000);
+
+
 describe('ballot contract', function() {
     let voter1, voter2, voter3,
         voter1_addr, voter2_addr, voter3_addr;
@@ -1632,10 +1841,17 @@ describe('ballot contract', function() {
     let vote = `(def! vote! (fn* (proposalIndex)
         (let* (
                 sender_raw (mapget voters (caller))
+                ; values for: weight, voted, delegate, vote
                 sender (list-struct sender_raw)
+                
+                ; types for: weight, voted, delegate, vote
                 sender_types (defstruct Voter)
+                
+                ; DB index for each struct component
                 sender_indexes (refs-struct sender_raw)
+                
                 proposal_raw (getfrom Proposal proposalIndex)
+                ; values: name, voteCount
                 proposal (list-struct proposal_raw)
                 proposal_types (defstruct Proposal)
                 proposal_indexes (refs-struct proposal_raw)
@@ -1657,6 +1873,26 @@ describe('ballot contract', function() {
             )
         )
     ))`
+
+    // vote = `(def! vote! (fn* (proposalIndex)
+    //     (let* (
+    //             senderIndex (mapgetraw voters (caller))
+    //             sender (list-struct (mapget voters (caller)))
+    //             proposal (list-struct (getfrom Proposal proposalIndex))
+    //         )
+    //         (if (or 
+    //                 (or (nil? sender) (true? (nth sender 1)))
+    //                 (lt (nth sender 0) 1)
+    //             )
+    //             (revert "Has no right to vote")
+    //             (list
+    //                 (update! Voter senderIndex (list nil true nil proposalIndex))
+    //                 (update! Proposal proposalIndex (list nil (add (nth sender 0) (nth proposal 1))))
+    //             )
+    //         )
+    //     )
+        
+    // ))`
 
     let recursiveDelegation = `(def! recDelegation (fn* (to_address)
         (let* (
@@ -1845,30 +2081,19 @@ describe('ballot contract', function() {
 }, 30000);
 
 describe.skip('test update!', function() {
+    let indexes;
     it('update setup struct', async function() {
         await MalTay.send('(defstruct! UpdatableStruct (list Bytes4 Uint) )');
         await MalTay.send('(struct! UpdatableStruct (list "0x11223344" 2))');
 
-        resp = await MalTay.call('(getfrom Bytes4 0)')
-        expect(resp).toEqual('0x11223344');
-
-        resp = await MalTay.call('(getfrom Uint 0)')
-        expect(resp).toEqual(2);
-
-        resp = await MalTay.call('(refs-struct (getfrom UpdatableStruct 0))')
-        expect(resp).toEqual([0, 0]);
-
         resp = await MalTay.call('(list-struct (getfrom UpdatableStruct 0))')
         expect(resp).toEqual(['0x11223344', 2]);
-    });
 
-    it('test static length update', async function() {
-        await MalTay.send(`(list
-            (update! Bytes4 0 "0x11223355")
-            (update! Uint 0 5)
-        )`);
-        resp = await MalTay.call('(list-struct (getfrom UpdatableStruct 0))')
-        expect(resp).toEqual(['0x11223355', 5]);
+        indexes = await MalTay.call('(refs-struct (getfrom UpdatableStruct 0))')
+        resp = await MalTay.call(`(getfrom Bytes4 ${indexes[0]})`)
+        expect(resp).toEqual('0x11223344');
+        resp = await MalTay.call(`(getfrom Uint ${indexes[1]})`);
+        expect(resp).toEqual(2);
     });
 
     it('test struct components update', async function() {
@@ -1881,11 +2106,50 @@ describe.skip('test update!', function() {
                 (update! (nth stypes 1) (nth indexes 1) 7)
             )
         )`);
-    
-        resp = await MalTay.call('(refs-struct (getfrom UpdatableStruct 0))')
-        expect(resp).toEqual([0, 0]);
 
         resp = await MalTay.call('(list-struct (getfrom UpdatableStruct 0))')
         expect(resp).toEqual(['0x55667788', 7]);
+
+        resp = await MalTay.call(`(getfrom Bytes4 ${indexes[0]})`)
+        expect(resp).toEqual('0x55667788');
+        resp = await MalTay.call(`(getfrom Uint ${indexes[1]})`);
+        expect(resp).toEqual(7);
+    });
+});
+
+describe.skip('test update! bytes8', function() {
+    let indexes;
+    it('update setup struct', async function() {
+        await MalTay.send('(defstruct! UpdatableStruct (list Bytes8 Uint) )');
+        await MalTay.send('(struct! UpdatableStruct (list "0x1122334455667788" 2))');
+
+        resp = await MalTay.call('(list-struct (getfrom UpdatableStruct 0))')
+        expect(resp).toEqual(['0x1122334455667788', 2]);
+
+        indexes = await MalTay.call('(refs-struct (getfrom UpdatableStruct 0))')
+        resp = await MalTay.call(`(getfrom Bytes8 ${indexes[0]})`)
+        expect(resp).toEqual('0x1122334455667788');
+        resp = await MalTay.call(`(getfrom Uint ${indexes[1]})`);
+        expect(resp).toEqual(2);
+    });
+
+    it('test struct components update', async function() {
+        await MalTay.send(`(let* (
+                stypes (defstruct UpdatableStruct)
+                indexes (refs-struct (getfrom UpdatableStruct 0))
+            )
+            (list
+                (update! (nth stypes 0) (nth indexes 0) "0x5566778899101112")
+                (update! (nth stypes 1) (nth indexes 1) 7)
+            )
+        )`);
+
+        resp = await MalTay.call('(list-struct (getfrom UpdatableStruct 0))')
+        expect(resp).toEqual(['0x5566778899101112', 7]);
+        
+        resp = await MalTay.call(`(getfrom Bytes8 ${indexes[0]})`)
+        expect(resp).toEqual('0x5566778899101112');
+        resp = await MalTay.call(`(getfrom Uint ${indexes[1]})`);
+        expect(resp).toEqual(7);
     });
 });

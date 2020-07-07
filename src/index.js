@@ -196,6 +196,8 @@ Object.keys(fulltypeidHex).forEach(key => nativeTypes[typekey(key)] = fulltypeid
     nativeTypes['String' + (i+1)] = getbytesid(i+1, 1);
 });
 
+// console.log('nativeTypes', nativeTypes)
+
 const encodeInner = (types, values) => {
     if (types.length !== values.length) throw new Error('Encode - different lengths.');
    return types.map((t, i) => {
@@ -288,13 +290,16 @@ const decodeInner = (inidata) => {
             return item.result;
         });
         return { result, data };
+    } else if (isFunction(sig)) {
+        return expr2string(inidata);
     } else {
-        throw new Error(`decode type not supported: ${sig} ; ${data}`);
+        throw new Error(`decode type not supported: ${sig} ; ${inidata}`);
     }
 }
 
 const decode = data => {
     const inidata = data;
+    // console.log('decode', inidata);
     data = strip0x(data);
     const decoded = [];
 
@@ -313,7 +318,8 @@ const decode = data => {
 
 const ast2h = (ast, parent=null, unkownMap={}, defenv={}) => {
     if (!(ast instanceof Array)) ast = [ast];
-    
+    // console.log('--ast', ast)
+
     // do not count the function itselt
     const arity = ast.length - 1;
 
@@ -344,14 +350,23 @@ const ast2h = (ast, parent=null, unkownMap={}, defenv={}) => {
             const elem = ast[1][i];
             unkownMap[elem.value] = unknown(Object.keys(unkownMap).length);
             definitions += unkownMap[elem.value];
-
             if (
                 ast[1][i+1]
                 && ast[1][i+1] instanceof Array
                 && typeof ast[1][i+1][0] === 'object'
-                && ast[1][i+1][0].value === 'fn*'
+                && (
+                    ast[1][i+1][0].value === 'fn*'
+                    || unkownMap[ast[1][i+1][0].value]
+                )
             ) {
-                const applyArity = ast[1][i+1][1].length + 1;
+                // console.log('--- apply', ast[1][i], ast[1][i+1]);
+                let applyArity;
+                if (ast[1][i+1][0].value === 'fn*') {
+                    applyArity = ast[1][i+1][1].length + 1;
+                } else {
+                    applyArity = ast[1][i+1].length;
+                }
+                
                 unkownMap[elem.value] = {
                     apply: nativeEnv.apply.hex(applyArity),
                     unknown: unkownMap[elem.value]
@@ -361,24 +376,27 @@ const ast2h = (ast, parent=null, unkownMap={}, defenv={}) => {
             const encodedvalue = ast2h(ast[1][i+1], ast, unkownMap, defenv);
             definitions += encodedvalue;
         }
-        const execution = ast2h([ast[2]], ast, unkownMap, defenv);
+        const execution = ast2h(ast[2], ast, unkownMap, defenv);
         definitions += execution;
         return definitions;
     }
 
-    if (ast[0].value === 'fn*') {
+    if (ast[0] && ast[0].value === 'fn*') {
         const arity = ast[1].length;
-        const lambdaArgs = listTypeId(arity) + ast2h([ast[1]], ast, unkownMap, defenv);
-        const lambdaBody = ast2h([ast[2]], ast, unkownMap, defenv);
+        const lambdaArgs = listTypeId(arity) + ast2h(ast[1], ast, unkownMap, defenv);
+        const lambdaBody = ast2h(ast[2], ast, unkownMap, defenv);
         let encoded = nativeEnv.lambda.hex(lambdaArgs.length + lambdaBody.length)
             + lambdaArgs + lambdaBody;
 
         // we execute it with apply only if there is a parent ast
         // with this lambda at index 0
         if (parent && parent[0][0] && parent[0][0].value === ast[0].value) {
+            // console.log('--**apply', ast);
+            // console.log('--apply parent', parent);
             // apply arity: 1 + number of args
             encoded = nativeEnv.apply.hex(arity + 1) + encoded;
         }
+        // console.log('encoded', encoded)
         return encoded;
     }
 
@@ -426,8 +444,8 @@ const ast2h = (ast, parent=null, unkownMap={}, defenv={}) => {
             }
             if (elem.value === 'if') {
                 const unknownMap_cpy = JSON.parse(JSON.stringify(unkownMap))
-                const action1body = ast2h([ast[2]], null, unknownMap_cpy, defenv);
-                const action2body = ast2h([ast[3]], null, unknownMap_cpy, defenv);
+                const action1body = ast2h(ast[2], null, unknownMap_cpy, defenv);
+                const action2body = ast2h(ast[3], null, unknownMap_cpy, defenv);
                 return nativeEnv[elem.value].hex
                     + u2h(action1body.length / 2).padStart(8, '0')
                     + u2h(action2body.length / 2).padStart(8, '0');
@@ -484,7 +502,9 @@ const ast2h = (ast, parent=null, unkownMap={}, defenv={}) => {
 
 const expr2h = (expression, defenv) => {
     const ast = malReader.read_str(expression);
-    return x0(ast2h(ast, null, {}, defenv));
+    const encoded = x0(ast2h(ast, null, {}, defenv));
+    // console.log('encoded', encoded);
+    return encoded;
 }
 
 const expr2string = (inidata, pos=0, accum='') => {
@@ -537,6 +557,9 @@ const expr2string = (inidata, pos=0, accum='') => {
         } else if (isLambda(sigu)) {
             accum += '( fn* () '
             const bodylen = tableSig.lambda.offsets(sigu);
+            if (!isListType(get4bsig(inidata))) {
+                inidata = inidata.substring(64);
+            }
             const res = expr2string(inidata, pos, accum)
             accum = res.accum;
         } else if (isGetByName(sigu)) {
