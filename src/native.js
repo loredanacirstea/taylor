@@ -55,10 +55,11 @@ const _nativeEnv = {
     cons:         { mutable: false, arity: 2, notimp: true },  // prepend item to list
     concat2:      { mutable: false, arity: null, notimp: true },  // concats lists
     'nil?':       { mutable: false, arity: 1 },
-    'list?':      { mutable: false, arity: 1, notimp: true },
+    'list?':      { mutable: false, arity: 1 },
     vector:       { mutable: false, arity: null, notimp: true },
-    'vector?':    { mutable: false, arity: 1, notimp: true },
-    'sequential?':{ mutable: false, arity: 1, notimp: true },
+    // 'vector?':    { mutable: false, arity: 1, notimp: true },
+    'array?':     { mutable: false, arity: 1 },
+    'sequential?':{ mutable: false, arity: 1 },
     'hash-map':   { mutable: false, arity: null, notimp: true },
     'map?':       { mutable: false, arity: 1, notimp: true },
     assoc:        { mutable: false, arity: null, notimp: true },
@@ -158,6 +159,11 @@ const _nativeEnv = {
     'update!': { mutable: false, arity: 3 },
     defstruct: { mutable: false, arity: 1 },
     'refs-struct': { mutable: false, arity: 1 },
+    push:      { mutable: false, arity: 2 },
+    slice:     { mutable: false, arity: 2 },
+    length:    { mutable: false, arity: 1},
+    join:      { mutable: false, arity: 2 },
+    range:     { mutable: false, arity: 3 },
 
     // TODO: curry
     // TODO: pay

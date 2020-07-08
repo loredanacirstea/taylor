@@ -312,6 +312,8 @@ const decode = data => {
 }
 
 const ast2h = (ast, parent=null, unkownMap={}, defenv={}) => {
+    if (!(ast instanceof Array)) ast = [ast];
+    
     // do not count the function itselt
     const arity = ast.length - 1;
 
@@ -341,8 +343,22 @@ const ast2h = (ast, parent=null, unkownMap={}, defenv={}) => {
         for (let i = 0; i < arity; i += 2) {
             const elem = ast[1][i];
             unkownMap[elem.value] = unknown(Object.keys(unkownMap).length);
-            definitions += getbytesid(8) + unkownMap[elem.value];
-            const encodedvalue = ast2h([ast[1][i+1]], ast[1], unkownMap, defenv);
+            definitions += unkownMap[elem.value];
+
+            if (
+                ast[1][i+1]
+                && ast[1][i+1] instanceof Array
+                && typeof ast[1][i+1][0] === 'object'
+                && ast[1][i+1][0].value === 'fn*'
+            ) {
+                const applyArity = ast[1][i+1][1].length + 1;
+                unkownMap[elem.value] = {
+                    apply: nativeEnv.apply.hex(applyArity),
+                    unknown: unkownMap[elem.value]
+                }
+            }
+            
+            const encodedvalue = ast2h(ast[1][i+1], ast, unkownMap, defenv);
             definitions += encodedvalue;
         }
         const execution = ast2h([ast[2]], ast, unkownMap, defenv);
@@ -397,6 +413,14 @@ const ast2h = (ast, parent=null, unkownMap={}, defenv={}) => {
                 // lambda argument definition
                 if (!unkownMap[elem.value]) {
                     unkownMap[elem.value] = unknown(Object.keys(unkownMap).length);
+                }
+                // if unknown is a lambda function:
+                // if it is first arg, it is executed
+                if (unkownMap[elem.value] instanceof Object) {
+                    if (ast[0].value === elem.value) {
+                        return unkownMap[elem.value].apply + unkownMap[elem.value].unknown;
+                    }
+                    return unkownMap[elem.value].unknown;
                 }
                 return unkownMap[elem.value];
             }

@@ -494,9 +494,8 @@ describe.each([
 
     test(`lambda`, async () => {
         // TODO: return function type?
-        // expr = '(fn* (a) a)';
-        // resp = await instance.call(expr);
-        // expect(resp).toBe(expr);
+        // resp = await instance.call('(fn* (a) a)');
+        // expect(resp).toBe('(fn* (a) a)');
 
         resp = await instance.call('( (fn* (a) a) 7)');
         expect(resp).toBe(7);
@@ -607,17 +606,86 @@ describe.each([
         resp = await instance.call('(nil? "0x22")');
         expect(resp).toBe(false);
     });
+
+    it('test list?', async function() {
+        let resp;
     
-    it('test list functions', async function() {
+        resp = await instance.call('(list? (list))');
+        expect(resp).toBe(true);
+
+        resp = await instance.call('(list? (list 1 5))');
+        expect(resp).toBe(true);
+
+        resp = await instance.call('(list? 4)');
+        expect(resp).toBe(false);
+
+        // TODO on js side there if no way now to differentiate between
+        // a list and array if the internal types are the same
+        if (backendname === 'chain') {
+            resp = await instance.call('(list? (array 1 5))');
+            expect(resp).toBe(false);
+        }
+    });
+
+    if (backendname === 'chain') {
+        it('test array?', async function() {
+            let resp;
+
+            resp = await instance.call('(array? (array))');
+            expect(resp).toBe(true);
+
+            resp = await instance.call('(array? (array 1 5))');
+            expect(resp).toBe(true);
+
+            resp = await instance.call('(array? 4)');
+            expect(resp).toBe(false);
+
+            resp = await instance.call('(array? (list 1 5))');
+            expect(resp).toBe(false);
+        });
+    }
+
+    it('test sequential?', async function() {
+        let resp;
+    
+        resp = await instance.call('(sequential? (list))');
+        expect(resp).toBe(true);
+
+        resp = await instance.call('(sequential? (array))');
+        expect(resp).toBe(true);
+
+        resp = await instance.call('(sequential? (list 1 5))');
+        expect(resp).toBe(true);
+
+        resp = await instance.call('(sequential? (array 1 5))');
+        expect(resp).toBe(true);
+
+        resp = await instance.call('(sequential? 4)');
+        expect(resp).toBe(false);
+    });
+    
+    it('test iterator functions', async function() {
         let resp;
         resp = await instance.call('(first (list 5 3 7))');
         expect(resp).toBe(5);
     
-        resp = await instance.call('(rest (list 5 3 7))');
-        expect(resp).toEqual([3, 7]);
-    
         resp = await instance.call('(nth (list 5 3 7) 2)');
         expect(resp).toBe(7);
+
+        resp = await instance.call('(rest (list 5 3 7))');
+        expect(resp).toEqual([3, 7]);
+
+        resp = await instance.call('(first (array 5 3 7))');
+        expect(resp).toBe(5);
+    
+        resp = await instance.call('(nth (array 5 3 7) 2)');
+        expect(resp).toBe(7);
+
+        resp = await instance.call('(nth (array (array 5 3 7) (array 8 4 2) (array 9 11 12)) 1)');
+        expect(resp).toEqual([8, 4, 2]);
+
+        resp = await instance.call('(rest (array 5 3 7))');
+        expect(resp).toEqual([3, 7]);
     });
 
     it('test let* & nested scopes', async function() {
@@ -637,6 +705,22 @@ describe.each([
         ) 2 1
         )`);
         expect(resp).toBe(9);
+    });
+
+    it('test let* & lambda', async function() {
+        resp = await instance.call(`(let* (
+                somelambda (fn* (a) (add a 1))
+            )
+            (somelambda 3)
+        )`);
+        expect(resp).toBe(4);
+
+        resp = await instance.call(`(let* (
+            somelambda (fn* (a) (add a 1))
+            )
+            (map somelambda (array 3 4))
+        )`);
+        expect(resp).toEqual([4, 5]);
     });
 
     it('test use stored fn 1', async function () {
@@ -685,15 +769,141 @@ describe.each([
         }
     }, 10000);
 
+    it('test slice array', async function () {
+        let resp;
+
+        await MalTay.sendAndWait(`(def! slicea (fn* (somearr start stop)
+            (map (fn* (pos) (nth somearr pos)) (range start stop 1))
+        ))`);
+
+        await MalTay.sendAndWait(`(def! slicemultia (fn* (somearr rangeIndexList)
+            (let* (
+                    nextRange (first rangeIndexList)
+                    restRange (rest rangeIndexList)
+                )
+                (if (empty? restRange)
+                    (slicemultia somearr nextRange)
+                    (if (sequential? nextRange)
+                        (map
+                            (fn* (arr) (slicemultia arr restRange))
+                            (slicemultia somearr nextRange )
+                        )
+                        (slicea somearr (nth rangeIndexList 0) (nth rangeIndexList 1) )
+                    )
+                )
+            )    
+        ))`);
+
+        resp = await MalTay.call(`( (fn* (somearr start stop)
+            (map (fn* (pos) (nth somearr pos)) (range start stop 1))
+        ) (array 1 2 6 7 8 6) 2 4)`);
+        expect(resp).toEqual([6, 7, 8]);
+
+        await MalTay.sendAndWait(`(def! slicea (fn* (somearr start stop)
+            (map (fn* (pos) (nth somearr pos)) (range start stop 1))
+        ))`);
+        resp = await MalTay.call(`(slicea (array 1 2 6 7 8 6) 2 4)`);
+        expect(resp).toEqual([6, 7, 8]);
+
+        resp = await MalTay.call(`(slicea (list 1 2 6 7 8 6) 2 4)`);
+        expect(resp).toEqual([6, 7, 8]);
+
+        resp = await MalTay.call(`(slicemultia
+            (list 1 2 6 7 8 6) (list 2 4)
+        )`);
+        expect(resp).toEqual([6, 7, 8]);
+
+        resp = await MalTay.call(`(slicemultia
+            (array 
+                (array 7 8 9 10 11 12)
+                (array 1 2 6 7 8 6)
+                (array 13 14 15 16 17 18)
+                (array 11 12 16 17 18 16)
+            )
+            (list (list 0 1) (list 2 4) )
+        )`);
+        expect(resp).toEqual([[9, 10, 11], [6, 7, 8]]);
+
+        resp = await MalTay.call(`(slicemultia
+            (array 
+                (array 
+                    (array 7 8 9 10 11 12)
+                    (array 1 2 6 7 8 6)
+                    (array 13 14 15 16 17 18)
+                    (array 11 12 16 17 18 16)
+                )
+                (array 
+                    (array 27 28 29 210 211 212)
+                    (array 21 22 26 27 28 26)
+                    (array 213 214 215 216 217 218)
+                    (array 221 222 226 227 228 226)
+                )
+                (array 
+                    (array 47 48 49 410 411 412)
+                    (array 41 42 46 47 48 46)
+                    (array 413 414 415 416 417 418)
+                    (array 441 442 446 447 448 446)
+                )
+            )
+            (list (list 1 2) (list 2 3) (list 2 4))
+        )`);
+        expect(resp).toEqual([
+            [
+                [215, 216, 217],
+                [226, 227, 228],
+            ],
+            [
+                [415, 416, 417],
+                [446, 447, 448],
+            ]
+        ]);
+    }, 30000);
+
     it('test map', async function () {
         let resp;
 
         resp = await instance.call('(map iszero (list 5 0 2))');
         expect(resp).toEqual([0, 1, 0]);
+
+        resp = await instance.call('(map iszero (array 5 0 2))');
+        expect(resp).toEqual([0, 1, 0]);
     
         await instance.sendAndWait('(def! myfunc (fn* (a) (mul (add a 1) 3)))');
         
         resp = await instance.call('(map myfunc (list 5 8 2))');
+        expect(resp).toEqual([18, 27, 9]);
+
+        resp = await instance.call(`(map
+            (fn* (a) (mul (add a 1) 3))
+            (list 5 8 2)
+        )`);
+        expect(resp).toEqual([18, 27, 9]);
+
+        resp = await instance.call(`(map
+            (fn* (a) (mul (add a 1) 3))
+            (array 5 8 2)
+        )`);
+        expect(resp).toEqual([18, 27, 9]);
+
+        resp = await instance.call(`(let* (
+                somelambda (fn* (a) (add a 1))
+            )
+            (map somelambda (list 5 8 2) )
+        )`);
+        expect(resp).toEqual([6, 9, 3]);
+
+        resp = await instance.call(`(let* (
+                somelambda (fn* (a) (mul (add a 1) 3))
+            )
+            (map somelambda (list 5 8 2) )
+        )`);
+        expect(resp).toEqual([18, 27, 9]);
+
+        resp = await instance.call(`(let* (
+                somelambda (fn* (a) (mul (add a 1) 3))
+            )
+            (map somelambda (array 5 8 2) )
+        )`);
         expect(resp).toEqual([18, 27, 9]);
 
         if (backendname === 'chain') {
@@ -706,10 +916,6 @@ describe.each([
     it('test reduce', async function () {
         let resp;
 
-        if (backendname === 'chain') {
-            await instance.sendAndWait('(def! reduce (fn* (f xs init) (if (empty? xs) init (reduce f (rest xs) (f init (first xs)) ))))');
-        }
-
         resp = await instance.call('(reduce add (list) 2)');
         expect(resp).toBe(2);
     
@@ -717,6 +923,9 @@ describe.each([
         expect(resp).toBe(15);
     
         resp = await instance.call('(reduce sub (list 45 8 2) 100)');
+        expect(resp).toBe(45);
+
+        resp = await instance.call('(reduce sub (array 45 8 2) 100)');
         expect(resp).toBe(45);
         
         await instance.sendAndWait('(def! myfunc2 (fn* (a b) (add a b)) )');
@@ -729,6 +938,41 @@ describe.each([
       
         resp = await instance.call('(reduce myfunc2 (list 5 8 2) 0)');
         expect(resp).toBe(15);
+
+        resp = await instance.call('(reduce myfunc2 (array 5 8 2) 0)');
+        expect(resp).toBe(15);
+
+        resp = await instance.call(`(reduce
+            (fn* (a b) (add a b))
+            (list 5 8 2)
+            0
+        )`);
+        expect(resp).toBe(15);
+
+        resp = await instance.call(`(let* (
+                somelambda (fn* (a b) (add a b))
+            )
+            (reduce somelambda (list 5 8 2) 0)
+        )`);
+        expect(resp).toEqual(15);
+
+        resp = await instance.call(`(let* (
+                reduce (fn* (f xs init) (if (empty? xs) init (reduce f (rest xs) (f init (first xs)) )))
+                somelambda (fn* (a b) (add a b))
+            )
+            (reduce somelambda (list 5 8 2) 0)
+        )`);
+        expect(resp).toEqual(15);
+        
+        // TODO fixme
+        await instance.sendAndWait('(def! reduce2 (fn* (f xs init) (if (empty? xs) init (reduce f (rest xs) (f init (first xs)) ))))');
+
+        // resp = await instance.call(`(let* (
+        //         somelambda (fn* (a b) (add a b))
+        //     )
+        //     (reduce2 somelambda (list 5 8 2) 0)
+        // )`);
+        // expect(resp).toEqual(15);
     });
 
     it('test reduce recursive', async function () {
@@ -763,9 +1007,50 @@ describe.each([
         expect(resp).toBe(21);
     });
 
+    it('test recursive lambda', async function () {
+        let resp;
+
+        resp = await instance.call(`(let* 
+            (recursivefn 
+                (fn* (n) (if (gt n 5) n (recursivefn (add n 1)) ) )
+            )
+            (recursivefn 2)
+        )`);
+        expect(resp).toBe(6);
+
+        resp = await instance.call(`(let* 
+            (localfibo 
+                (fn* (n) (if (or (eq n 1) (eq n 2)) 1 (add(localfibo (sub n 1)) (localfibo (sub n 2)) ) ))
+            )
+            (localfibo 8)
+        )`);
+        expect(resp).toBe(21);
+    });
+
     it('test byte-like', async function() {
         resp = await instance.call('(list "0x2233" "hello" "0x44556677" "someword")');
         expect(resp).toEqual(['0x2233', 'hello', '0x44556677', 'someword']);
+    });
+
+    it('test range', async function() {
+        resp = await instance.call('(range 1 5 1)');
+        expect(resp).toEqual([1, 2, 3, 4, 5]);
+
+        resp = await instance.call('(range 3 19 3)');
+        expect(resp).toEqual([3, 6, 9, 12, 15, 18]);
+
+        resp = await instance.call('(range 89 168 20)');
+        expect(resp).toEqual([89, 109, 129, 149]);
+
+        resp = await instance.call('(range 1 1 1)');
+        expect(resp).toEqual([1]);
+
+        resp = await instance.call('(range 0 0 1)');
+        expect(resp).toEqual([0]);
+
+        // TODO: support negative step
+        // resp = await instance.call('(range 5 1 -1)');
+        // expect(resp).toEqual([5, 4, 3, 2, 1]);
     });
 
     test(`add`, async () => {
@@ -1117,6 +1402,111 @@ describe.each([
     });
 });
 
+it('test push', async function() {
+    let resp;
+    resp = await MalTay.call(`(push (array 4 5 6) 20)`);
+    expect(resp).toEqual([4, 5, 6, 20]);
+
+    resp = await MalTay.call(`(push (array (array 4 5 6) (array 7 8 9) ) (array 10 11 12) 1)`);
+    expect(resp).toEqual([[4, 5, 6], [7, 8, 9], [10, 11, 12]]);
+
+    resp = await MalTay.call(`(push (array "0x1122" "0x3344" "0x5566") "0x7788")`);
+    expect(resp).toEqual(['0x1122', '0x3344', '0x5566', '0x7788']);
+
+    resp = await MalTay.call(`(push (array) "0x7788")`);
+    expect(resp).toEqual(['0x7788']);
+
+    resp = await MalTay.call(`(push (array) 20)`);
+    expect(resp).toEqual([20]);
+});
+
+it('test slice', async function() {
+    let resp;
+
+    resp = await MalTay.call(`(slice "0x11223344556677" 3)`);
+    expect(resp).toEqual(['0x112233', '0x44556677']);
+
+    resp = await MalTay.call(`(slice "0x1122334455" 5)`);
+    expect(resp).toEqual(['0x1122334455', '0x']);
+
+    resp = await MalTay.call(`(slice "0x" 5)`);
+    expect(resp).toEqual(['0x', '0x']);
+});
+
+it('test length', async function() {
+    let resp;
+
+    resp = await MalTay.call(`(length "0x11223344556677")`);
+    expect(resp).toBe(7);
+
+    // TODO same function for array length (diff behaviour per type);
+});
+
+it('test bytesToArray', async function() {
+    let resp;
+    let bytesToArray = `(def! bytesToArray (fn* (bval slotLen offset accum) 
+        (let* (
+                sliced (slice bval (add slotLen offset))
+                newaccum (push accum (nth sliced 0))
+            )
+            (if (lt (length bval) slotLen)
+                newaccum
+                (bytesToArray (nth sliced 1) slotLen 0 newaccum)
+            )
+        )
+    ))`;
+    bytesToArray = `(def! bytesToArray (fn* (bval slotLen offset accum)
+        (if (lt (length bval) slotLen)
+            accum
+            (let* (
+                    sliced (slice bval (add slotLen offset))
+                    newaccum (push accum (nth sliced 0))
+                )
+                (bytesToArray (nth sliced 1) slotLen 0 newaccum)
+            )
+        )
+    ))`
+
+    await MalTay.sendAndWait(bytesToArray);
+
+    resp = await MalTay.call(`(bytesToArray "0x1122334455667788" 4 0 (array))`);
+    expect(resp).toEqual(['0x11223344', '0x55667788']);
+
+    resp = await MalTay.call(`(bytesToArray "0x1122334455667788" 4 0 (array "0x11223344"))`);
+    expect(resp).toEqual(['0x11223344', '0x11223344', '0x55667788']);
+
+    resp = await MalTay.call(`(bytesToArray "0x1122334455667788" 2 0 (array))`);
+    expect(resp).toEqual(['0x1122', '0x3344', '0x5566', '0x7788']);
+});
+
+it('test join', async function() {
+    let resp;
+    resp = await MalTay.call(`(join "0x112233" "0x445566"))`);
+    expect(resp).toBe('0x112233445566');
+
+    resp = await MalTay.call(`(join "0x112233" 8))`);
+    expect(resp).toBe('0x11223300000008');
+
+    resp = await MalTay.call(`(join "hello" "yello"))`);
+    expect(resp).toBe('helloyello');
+
+    resp = await MalTay.call(`(join "0x112233" "hello"))`);
+    expect(resp).toBe('0x1122330000000000000000000000000000000000000000000000680065006c006c006f');
+
+    resp = await MalTay.call(`(join "0x" "0x445566"))`);
+    expect(resp).toBe('0x445566');
+});
+
+it('test arrayToBytes', async function() {
+    let resp;
+
+    await MalTay.sendAndWait(`(def! arrayToBytes (fn* (somearray)
+        (reduce join somearray "0x")
+    ))`);
+    resp = await MalTay.call(`(arrayToBytes (array "0x112233" "0x445566" "0x778899"))`);
+    expect(resp).toBe('0x112233445566778899');
+});
+
 describe('test mapping', function () {
     it('value: simple type', async function() {
         let resp;
@@ -1155,6 +1545,50 @@ describe('test mapping', function () {
         expect(resp).toEqual(66);
     });
 });
+
+test('new-array', async function() {
+    let resp;
+
+    let diagonal_fill = `(def! diagonal-fill (fn* (listIndexes)
+        (if (eq (nth listIndexes 0) (nth listIndexes 1))
+            (if (eq (length listIndexes) 2)
+                1
+                (diagonal-fill (rest listIndexes))
+            )
+            0
+        )
+    ))`
+    
+    new_array = `(def! new-array (fn* (func elemList rangesArray)
+        (if (empty? rangesArray)
+            (apply func elemList)
+            (let* (
+                    currentRange (first rangesArray)
+                    restRanges (rest rangesArray)
+                )
+                (map
+                    (fn* (index) (new-array func (push elemList index) restRanges) )
+                    (range (nth currentRange 0) (nth currentRange 1) 1)
+                )
+            )
+        )
+    ))`
+
+    await MalTay.sendAndWait(diagonal_fill);
+    await MalTay.sendAndWait(new_array);
+
+    resp = await MalTay.call('(diagonal-fill (list 1 1 1))');
+    expect(resp).toEqual(1);
+
+    resp = await MalTay.call('(diagonal-fill (list 1 0 1))');
+    expect(resp).toEqual(0);
+    
+    resp = await MalTay.call(`(new-array diagonal-fill (array) (array (array 0 1) (array 0 1)) )`);
+    expect(resp).toEqual([[1, 0], [0, 1]])
+    
+    resp = await MalTay.call(`(new-array diagonal-fill (array) (array (array 0 2) (array 0 2)))`);
+    expect(resp).toEqual([[1, 0, 0], [0, 1, 0], [0, 0, 1]]);
+}, 20000);
 
 describe('ballot contract', function() {
     let voter1, voter2, voter3,
