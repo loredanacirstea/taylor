@@ -587,6 +587,11 @@ object "Taylor" {
                 let step_ptr := mload(add(arg_ptrs_ptr, 96))
                 result_ptr := _range(start_ptr, stop_ptr, step_ptr)
             }
+            case 0x90000134 {
+                let iter_ptr := mload(add(arg_ptrs_ptr, 32))
+                let value_ptr := mload(add(arg_ptrs_ptr, 64))
+                result_ptr := _shift(iter_ptr, value_ptr)
+            }
 
             default {
                 let isthis := 0
@@ -1177,7 +1182,6 @@ object "Taylor" {
                 new_env_ptr := copy_env(env_ptr)
                 meld_env(new_env_ptr, orig_env)
             }
-
             
             for { let i := 0 } lt(i, args_arity) { i := add(i, 1) } {
                 // index of unknown variable
@@ -2532,6 +2536,45 @@ object "Taylor" {
 
             // Internal index starts at 1
             _index := sub(last_index, 1)
+        }
+
+        function _shift(iter_ptr, value_ptr) -> result_ptr {
+            let item_sig := getSignature(add(iter_ptr, 4))
+            let value_sig := getSignature(value_ptr)
+            let arity := iterTypeSize(iter_ptr)
+            let new_arity := add(arity, 1)
+            
+            switch arity
+            case 0 {
+                let value_sig_len := getSignatureLength(value_ptr)
+                let value_len := getValueLength(value_ptr)
+                result_ptr := allocate(add(add(value_sig_len, 4), value_len))
+                let current_ptr := result_ptr
+                mslicestore(current_ptr, buildArraySig(new_arity), 4)
+                current_ptr := add(current_ptr, 4)
+                mmultistore(current_ptr, value_ptr, value_sig_len)
+                current_ptr := add(current_ptr, value_sig_len)
+                mmultistore(current_ptr, add(value_ptr, getSignatureLength(value_ptr)), value_len)
+            }
+            default {
+                dtrequire(eq(item_sig, value_sig), 0xee12)
+                let item_len := getValueLength(add(iter_ptr, 4))
+                let sig_len := getSignatureLength(iter_ptr)
+                result_ptr := allocate(add(mul(new_arity, item_len), sig_len))
+
+                let current_ptr := result_ptr
+                
+                // change arity
+                mslicestore(current_ptr, buildArraySig(new_arity), 4)
+                // rest of signature
+                mmultistore(add(current_ptr, 4), add(iter_ptr, 4), sub(sig_len, 4))
+                current_ptr := add(result_ptr, sig_len)
+                // store value
+                mmultistore(current_ptr, add(value_ptr, getSignatureLength(value_ptr)), item_len)
+                // store the rest
+                current_ptr := add(current_ptr, item_len)
+                mmultistore(current_ptr, add(iter_ptr, sig_len), mul(item_len, arity))
+            }
         }
 
         function _push(array_ptr, value_ptr) -> result_ptr {

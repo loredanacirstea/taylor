@@ -164,6 +164,7 @@ const _nativeEnv = {
     length:    { mutable: false, arity: 1},
     join:      { mutable: false, arity: 2 },
     range:     { mutable: false, arity: 3 },
+    shift:     { mutable: false, arity: 2 },
 
     // TODO: curry
     // TODO: pay
