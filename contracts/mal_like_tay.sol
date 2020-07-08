@@ -84,11 +84,10 @@ object "Taylor" {
                 let isl := isLambda(sig)
                 switch isl
                 case 1 {
-                    // store lambda body ptr
-                    mstore(args_ptrs_now, end_ptr)
+                    // don't to anything
+                    // lambdas can be returned from functions as they are
+                    result_ptr := data_ptr
                     end_ptr := add(end_ptr, lambdaLength(sig))
-                    // apply function on arguments
-                    result_ptr := evalWithEnv(sig, args_ptrs, env_ptr)
                 }
                 case 0 {
                     let isIf := eq(sig, 0x9800004a)
@@ -588,6 +587,11 @@ object "Taylor" {
                 let step_ptr := mload(add(arg_ptrs_ptr, 96))
                 result_ptr := _range(start_ptr, stop_ptr, step_ptr)
             }
+            case 0x90000134 {
+                let iter_ptr := mload(add(arg_ptrs_ptr, 32))
+                let value_ptr := mload(add(arg_ptrs_ptr, 64))
+                result_ptr := _shift(iter_ptr, value_ptr)
+            }
 
             default {
                 let isthis := 0
@@ -595,13 +599,6 @@ object "Taylor" {
                 isthis := isList(fsig)
                 if eq(isthis, 1) {
                     result_ptr := _list(mload(arg_ptrs_ptr), add(arg_ptrs_ptr, 32))
-                }
-
-                if eq(isthis, 0) {
-                    isthis := isLambda(fsig)
-                    if eq(isthis, 1) {
-                        result_ptr := _lambda(arg_ptrs_ptr)
-                    }
                 }
 
                 if eq(isthis, 0) {
@@ -904,6 +901,9 @@ object "Taylor" {
             let done := 0
             if and(eq(done, 0), isFunction(ptr)) {
                 _vallen := 0
+                if isLambda(sig) {
+                    _vallen := lambdaLength(sig)
+                }
                 done := 1
             }
             if and(eq(done, 0), isArrayType(ptr)) {
@@ -1145,16 +1145,25 @@ object "Taylor" {
             // lambda_ptr can be a signature or a lambda pointer
             let lambda_body_ptr := mload(add(arg_ptrs, 32))
 
-            if isLambda(get4b(lambda_body_ptr)) {
-                lambda_body_ptr := add(lambda_body_ptr, 4)
-            }
-            
             // TODO: if signature -> call eval
 
             _data_ptr := _applyInner(arity, lambda_body_ptr, add(arg_ptrs, 64), env_ptr)
         }
 
-        function _applyInner(arity, lambda_body_ptr, arg_ptrs, env_ptr) -> _data_ptr {
+        function _applyInner(arity, lambda_ptr, arg_ptrs, env_ptr) -> _data_ptr {
+
+            let lambda_body_ptr := lambda_ptr
+            let is_lambda := isLambda(get4b(lambda_ptr))
+            let orig_env := 0
+
+            if is_lambda {
+                lambda_body_ptr := add(lambda_ptr, 4)
+                if eq(isListType(get4b(lambda_body_ptr)), 0) {
+                    orig_env := mload(lambda_body_ptr)
+                    lambda_body_ptr := add(lambda_body_ptr, 32)
+                }
+            }
+
             // lambda_body_ptr: args list + body
             // args_arity should be the same as received arity
             let args_arity := listTypeSize(get4b(lambda_body_ptr))
@@ -1163,23 +1172,45 @@ object "Taylor" {
             // dtrequire(eq(args_arity, arity), 0xeebb)
 
             let argdef_ptr := add(lambda_body_ptr, 4) // after list sig
-            let new_env_ptr := copy_env(env_ptr)
+            let new_env_ptr := 0
+
+            switch orig_env
+            case 0 {
+                new_env_ptr := copy_env(env_ptr)
+            }
+            default {
+                new_env_ptr := copy_env(env_ptr)
+                meld_env(new_env_ptr, orig_env)
+            }
             
             for { let i := 0 } lt(i, args_arity) { i := add(i, 1) } {
                 // index of unknown variable
                 let index := mslice(add(argdef_ptr, 4), 4)
-                addto_env(new_env_ptr, index, mload(add(arg_ptrs, mul(32, i))))
+                let arg_ptr := mload(add(arg_ptrs, mul(32, i)))
+                addto_env(new_env_ptr, index, arg_ptr)
                 argdef_ptr := add(argdef_ptr, 8)
             }
 
             lambda_body_ptr := argdef_ptr
-            let endd, res := eval(lambda_body_ptr, new_env_ptr)
-            _data_ptr := res
-        }
 
-        function _lambda(arg_ptrs) -> _data_ptr {
-            // skip arity, just point to the lambda body pointer
-            _data_ptr := mload(add(arg_ptrs, 32))
+            // if lambda_body_ptr begins with lambda -> the execution
+            // returned a function & we do not evaluate it now
+            // but we keep track of its original environment
+            switch isLambda(get4b(lambda_body_ptr))
+            case 1 {
+                // copy lambda to a free ptr & add the orig env ptr after sig
+                let sig := get4b(lambda_body_ptr)
+                let body_length := lambdaLength(sig)
+
+                _data_ptr := allocate(add(36, body_length))
+                mslicestore(_data_ptr, buildLambdaSig(add(body_length, 32)), 4)
+                mstore(add(_data_ptr, 4), new_env_ptr)
+                mmultistore(add(_data_ptr, 36), add(lambda_body_ptr, 4),body_length)
+            }
+            default {
+                let endd, res := eval(lambda_body_ptr, new_env_ptr)
+                _data_ptr := res
+            }
         }
 
         function copy_env(env_ptr) -> new_ptr {
@@ -1196,6 +1227,23 @@ object "Taylor" {
             }
         }
 
+        function meld_env(target_ptr, source_ptr) {
+            let arity := mload(source_ptr)
+            let offset := 32
+            for { let i := 0 } lt(i, arity) { i := add(i, 1) } {
+                let val_ptr := mload(add(source_ptr, offset))
+                if gt(val_ptr, 0) {
+                    mstore(add(target_ptr, offset), val_ptr)
+                }
+                offset := add(offset, 32)
+            }
+            let old_arity := mload(target_ptr)
+            mstore(target_ptr, max(arity, old_arity))
+            if gt(arity, old_arity) {
+                let temp := allocate(mul(32, sub(arity, old_arity)))
+            }
+        }
+
         function addto_env(env_ptr, index, var_ptr) {
             let arity := mload(env_ptr)
             let index_ptrs := add(env_ptr, 32)
@@ -1204,7 +1252,7 @@ object "Taylor" {
                 var_ptr
             )
             
-            // we assume addto_env always comes after a copy_env
+            // we assume addto_env always comes after a copy_env or meld_env
             if or(eq(index, arity), gt(index, arity)) {
                 let new_arity := add(index, 1)
                 mstore(env_ptr, new_arity)
@@ -2488,6 +2536,45 @@ object "Taylor" {
 
             // Internal index starts at 1
             _index := sub(last_index, 1)
+        }
+
+        function _shift(iter_ptr, value_ptr) -> result_ptr {
+            let item_sig := getSignature(add(iter_ptr, 4))
+            let value_sig := getSignature(value_ptr)
+            let arity := iterTypeSize(iter_ptr)
+            let new_arity := add(arity, 1)
+            
+            switch arity
+            case 0 {
+                let value_sig_len := getSignatureLength(value_ptr)
+                let value_len := getValueLength(value_ptr)
+                result_ptr := allocate(add(add(value_sig_len, 4), value_len))
+                let current_ptr := result_ptr
+                mslicestore(current_ptr, buildArraySig(new_arity), 4)
+                current_ptr := add(current_ptr, 4)
+                mmultistore(current_ptr, value_ptr, value_sig_len)
+                current_ptr := add(current_ptr, value_sig_len)
+                mmultistore(current_ptr, add(value_ptr, getSignatureLength(value_ptr)), value_len)
+            }
+            default {
+                dtrequire(eq(item_sig, value_sig), 0xee12)
+                let item_len := getValueLength(add(iter_ptr, 4))
+                let sig_len := getSignatureLength(iter_ptr)
+                result_ptr := allocate(add(mul(new_arity, item_len), sig_len))
+
+                let current_ptr := result_ptr
+                
+                // change arity
+                mslicestore(current_ptr, buildArraySig(new_arity), 4)
+                // rest of signature
+                mmultistore(add(current_ptr, 4), add(iter_ptr, 4), sub(sig_len, 4))
+                current_ptr := add(result_ptr, sig_len)
+                // store value
+                mmultistore(current_ptr, add(value_ptr, getSignatureLength(value_ptr)), item_len)
+                // store the rest
+                current_ptr := add(current_ptr, item_len)
+                mmultistore(current_ptr, add(iter_ptr, sig_len), mul(item_len, arity))
+            }
         }
 
         function _push(array_ptr, value_ptr) -> result_ptr {
