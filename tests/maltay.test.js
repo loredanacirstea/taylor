@@ -512,12 +512,22 @@ describe.each([
         resp = await instance.call('( (fn* (a b) (add (mul a b ) b)) 2 3)');
         expect(resp).toBe(9);
 
-        resp = await MalTay.call(`
-            ((fn* (a b) (add a b))
+        resp = await MalTay.call(`(
+            (fn* (a b) (add a b))
             (add (add (sub 7 2) 1) 41)
-            (add 2 3) )
-        `);
+            (add 2 3)
+        )`);
         expect(resp).toBe(52);
+
+        resp = await instance.call(`( let* (
+                somef (fn* (a) 
+                    (fn* (b) (add a b))
+                )
+                somef2 (somef 4)
+            )
+            (somef2 9)
+        )`);
+        expect(resp).toBe(13);
     });
 
     it('test if', async function () {
