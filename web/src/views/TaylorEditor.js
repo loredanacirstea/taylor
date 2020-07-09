@@ -5,7 +5,7 @@ import MonacoEditor from 'react-monaco-editor';
 import { editorOpts } from '../utils/config.js';
 import MalTayContract from '../components/MalTayContract.js';
 import * as taylorUtils from '../utils/taylor.js';
-import maltay from '@pipeos/taylor';
+import taylor from '@pipeos/taylor';
 import { monacoTaylorExtension } from '../utils/taylor_editor.js';
 
 import ReactJson from 'custom-react-json-view'
@@ -19,7 +19,7 @@ class TaylorEditor extends Component {
     super(props);
 
     const code =  taylorUtils.getCode();
-    const encoded = maltay.expr2h(code);
+    const encoded = taylor.expr2h(code);
 
     this.state = {
       ...this.getWindowDimensions(),
@@ -99,7 +99,7 @@ class TaylorEditor extends Component {
   }
 
   onFunctionsChange(functions={}) {
-    monacoTaylorExtension(this.monaco, Object.assign({}, functions, maltay.nativeEnv));
+    monacoTaylorExtension(this.monaco, Object.assign({}, functions, taylor.nativeEnv));
   }
 
   async executeInner(backend, interpreter, callback, {encdata, code, force=false}={}) {
@@ -220,7 +220,7 @@ class TaylorEditor extends Component {
   }
 
   editorWillMount(monaco) {
-    monacoTaylorExtension(monaco, maltay.nativeEnv);
+    monacoTaylorExtension(monaco, taylor.nativeEnv);
   }
 
   onTextChange(code) {
