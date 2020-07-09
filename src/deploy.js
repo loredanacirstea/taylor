@@ -14,7 +14,7 @@ const deployContract = signer => async compiled => {
   }
 
 const deploy = (signer) => {
-    return deployContract(signer)(compiledTaylor);
+    return deployContract(signer)({evm: compiledTaylor});
 }
 
 const bootstrap = async (taylor, functions) => {

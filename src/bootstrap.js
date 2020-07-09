@@ -115,7 +115,7 @@ const functions = {
 
     transpose: `(def! transpose (fn* (matrix)
     (let* (
-        matrixLengths (inverse (lengths matrix))
+            matrixLengths (inverse (lengths matrix))
             fillfunc (fn* (origMatrix)
                 (fn* (indexList)
                     (pick origMatrix (inverse indexList))

@@ -1,18 +1,17 @@
 import React, { Component } from 'react';
 import { Dimensions, ScrollView } from 'react-native';
-import { View, Button, Icon, Text } from 'native-base';
+import { View, Button, Icon, Text, Content, Body, ListItem, CheckBox } from 'native-base';
 import MonacoEditor from 'react-monaco-editor';
-import { editorOpts } from '../utils/config.js';
+import { editorOpts, priceApi } from '../utils/config.js';
 import MalTayContract from '../components/MalTayContract.js';
 import * as taylorUtils from '../utils/taylor.js';
 import taylor from '@pipeos/taylor';
 import { monacoTaylorExtension } from '../utils/taylor_editor.js';
-
 import ReactJson from 'custom-react-json-view'
 
 const MIN_WIDTH = 800;
 
-const getGasRate = async (currency) => (await (await fetch('https://api.coingecko.com/api/v3/simple/price?ids=ethereum&vs_currencies=' + currency)).json()).ethereum[currency];
+const getGasRate = async (currency) => (await (await fetch(priceApi + currency)).json()).ethereum[currency];
 
 class TaylorEditor extends Component {
   constructor(props) {
@@ -20,6 +19,7 @@ class TaylorEditor extends Component {
 
     const code =  taylorUtils.getCode();
     const encoded = taylor.expr2h(code);
+    this.scrollRef = React.createRef();
 
     this.state = {
       ...this.getWindowDimensions(),
@@ -35,6 +35,8 @@ class TaylorEditor extends Component {
       malbackend: null,
       backend: 'javascript',
       gasprofile: {currency: 'eur', ethrate: null, profile: 'average'},
+      functionsToDeploy: this.defaultFToD(),
+      currentDeployment: {},
     }
 
     this.onContentSizeChange = this.onContentSizeChange.bind(this);
@@ -45,6 +47,9 @@ class TaylorEditor extends Component {
     this.onFunctionsChange = this.onFunctionsChange.bind(this);
     this.editorDidMount = this.editorDidMount.bind(this);
     this.onGasprofileChange = this.onGasprofileChange.bind(this);
+    this.onDeploy = this.onDeploy.bind(this);
+    this.onDeployScreen = this.onDeployScreen.bind(this);
+    this.onSelectFToD = this.onSelectFToD.bind(this);
 
     this.editor = null;
     this.monaco = null;
@@ -54,6 +59,14 @@ class TaylorEditor extends Component {
     });
 
     this.setEthrate(this.state.gasprofile);
+  }
+
+  defaultFToD() {
+    let functionsToDeploy = {};
+    Object.keys(taylor.bootstrap_functions).forEach(name => {
+      functionsToDeploy[name] = true;
+    });
+    return functionsToDeploy;
   }
 
   onRootChange(backend, tayinterpreter, malbackend) {
@@ -115,7 +128,7 @@ class TaylorEditor extends Component {
       if (!isTransaction || backend === 'javascript') {
         let result, error;
         try {
-          result = await interpreter.call(code);
+          result = await interpreter.call(code, {from: interpreter.signer._address});
         } catch (e) {
           error = e.message;
         }
@@ -152,7 +165,7 @@ class TaylorEditor extends Component {
 
     const getResult =  ({ result, receipt, encdata, error, backend, gascost, isTransaction }) => {
       const resultObj = {};
-      if (result) resultObj.result = result;
+      resultObj.result = result;
       if (receipt) resultObj.receipt = receipt;
       if (encdata) resultObj.data = encdata;
       if (backend) resultObj.backend = backend;
@@ -224,12 +237,42 @@ class TaylorEditor extends Component {
   }
 
   onTextChange(code) {
+      this.setState({ code });
+      taylorUtils.storeCode(code);
       try {
-        const encoded = maltay.expr2h(code);
-        this.setState({ code });
-        taylorUtils.storeCode(code);
+        const encoded = taylor.expr2h(code);
         this.execute({encdata: encoded, code});
       } catch(e) {}
+  }
+
+  async onDeployScreen() {
+    let { width } = this.state;
+    this.scrollRef.current.scrollTo({x: width - 100});
+  }
+
+  async onDeploy() {
+    const { tayinterpreter, functionsToDeploy } = this.state;
+    const ftod = Object.keys(functionsToDeploy).filter(key => functionsToDeploy[key]).map(name => taylor.bootstrap_functions[name]);
+
+    let receipt = await taylor.deploy(tayinterpreter.signer);
+    console.log('deploy receipt', receipt);
+    let currentDeployment = {address: receipt.contractAddress };
+    if (ftod.length > 0) currentDeployment.waiting = true;
+    this.setState({ currentDeployment });
+
+    let newtay = taylor.getTaylor(tayinterpreter.provider, tayinterpreter.signer)(receipt.contractAddress);
+    
+    receipt = await taylor.bootstrap(newtay, ftod);
+    console.log('bootstrap receipt', receipt);
+
+    currentDeployment.waiting = false;
+    this.setState({ functionsToDeploy: this.defaultFToD(), currentDeployment });
+  }
+
+  onSelectFToD(name) {
+    let { functionsToDeploy } = this.state;
+    functionsToDeploy[name] = !(functionsToDeploy[name] || false);
+    this.setState({ functionsToDeploy });
   }
 
   render() {
@@ -237,7 +280,7 @@ class TaylorEditor extends Component {
       width,
       height,
     } = this.state;
-    const {code, result, result2, errors, errors2, backend} = this.state;
+    const {code, result, result2, errors, errors2, backend, functionsToDeploy, currentDeployment} = this.state;
 
     let editorStyles = { width, height: height * 4 / 7 };
     let consoleStyles = { width, height: height - editorStyles.height };
@@ -254,15 +297,15 @@ class TaylorEditor extends Component {
     if (backend === 'both' && width <= MIN_WIDTH) {
       resultFlexDirection = 'column';
     }
-
+    
     return (
       <ScrollView
+          ref={this.scrollRef}
           horizontal={true}
           pagingEnabled={true}
           scrollEnabled={true}
           scrollEventThrottle={100}
           nestedScrollEnabled={true}
-          contentContainerStyle={{width: "100%"}}
           onContentSizeChange={this.onContentSizeChange}
       >
         <MonacoEditor
@@ -360,7 +403,51 @@ class TaylorEditor extends Component {
               onRootChange={this.onRootChange}
               onFunctionsChange={this.onFunctionsChange}
               onGasprofileChange={this.onGasprofileChange}
+              onDeploy={this.onDeployScreen}
           />
+        </ScrollView>
+        <ScrollView
+          horizontal={false}
+          scrollEnabled={true}
+          scrollEventThrottle={100}
+          nestedScrollEnabled={true}
+          contentContainerStyle={editorStyles}
+        >
+          <View style={{
+            ...editorStyles,
+          }}>
+            <Content>
+              {
+                Object.keys(functionsToDeploy).map(name => {
+                  return (<ListItem>
+                    <CheckBox
+                      checked={functionsToDeploy[name] ? true : false}
+                      onClick={() => this.onSelectFToD(name)}
+                    />
+                    <Body>
+                      <Text style={textStyle}>{name}</Text>
+                    </Body>
+                  </ListItem>)
+                })
+              }
+              
+            </Content>
+            <br></br>
+            <Button light
+              onClick={this.onDeploy}
+              style={{ width: '55px', marginLeft: '50%' }}
+            >
+            <Icon name='rocket' type="FontAwesome" />
+            </Button>
+            {currentDeployment.address
+              ? <Text style={textStyle}>Deployed: {currentDeployment.address}</Text>
+              : <div></div>
+            }
+            {currentDeployment.waiting
+              ? <Text style={textStyle}>...bootstrapping</Text>
+              : <div></div>
+            }
+          </View>
         </ScrollView>
       </ScrollView>
     );
@@ -368,3 +455,9 @@ class TaylorEditor extends Component {
 }
 
 export default TaylorEditor;
+
+const textStyle = {
+  color: 'beige',
+  fontSize: editorOpts.fontSize,
+  fontFamily: 'monospace',
+}
