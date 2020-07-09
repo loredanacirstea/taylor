@@ -917,6 +917,12 @@ describe.each([
 
         resp = await instance.call('(reduce sub (array 45 8 2) 100)');
         expect(resp).toBe(45);
+
+        resp = await instance.call(`(list
+            (reduce add (list 5 8 2) 0)
+            (reduce sub (list 45 8 2) 100)
+        )`);
+        expect(resp).toEqual([15, 45]);
         
         await instance.sendAndWait('(def! myfunc2 (fn* (a b) (add a b)) )');
     
@@ -931,6 +937,18 @@ describe.each([
 
         resp = await instance.call('(reduce myfunc2 (array 5 8 2) 0)');
         expect(resp).toBe(15);
+
+        resp = await instance.call(`(list
+            (reduce myfunc2 (list 5 8 2) 0)
+            (reduce sub (list 45 8 2) 100)
+        )`);
+        expect(resp).toEqual([15, 45]);
+
+        resp = await instance.call(`(add
+            (reduce sub (list 45 8 2) 100)
+            (reduce myfunc2 (list 5 8 2) 0)
+        )`);
+        expect(resp).toEqual(60);
 
         resp = await instance.call(`(reduce
             (fn* (a b) (add a b))

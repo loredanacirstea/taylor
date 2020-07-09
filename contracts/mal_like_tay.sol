@@ -1383,30 +1383,32 @@ object "Taylor" {
 
         function _reduceInnerNative(sig, iter_ptr, accum_ptr, env_ptr) -> result_ptr {
             let arity := iterTypeSize(iter_ptr)
+            let accum_length := getTypedLength(accum_ptr)
+            let new_accum := accum_ptr
 
             // iterate & apply function on each arg
             for { let i := 0 } lt(i, arity) { i := add(i, 1) } {
-
-                let accum_length := getTypedLength(accum_ptr)
                 let arg_ptr := _first(iter_ptr)
                 iter_ptr := _rest(iter_ptr)
 
                 let arg_length := getTypedLength(arg_ptr)
                 let dataptr := allocate(add(add(4, arg_length), accum_length))
                 mslicestore(dataptr, sig, 4)
-                mmultistore(add(dataptr, 4), accum_ptr, accum_length)
+                mmultistore(add(dataptr, 4), new_accum, accum_length)
                 mmultistore(add(add(dataptr, 4), accum_length), arg_ptr, arg_length)
 
                 let endd, res := eval(dataptr, env_ptr)
-                mmultistore(accum_ptr, res, getTypedLength(res))
+                accum_length := getTypedLength(res)
+                new_accum := res
             }
 
-            result_ptr := accum_ptr
+            result_ptr := new_accum
         }
 
         function _reduceInnerLambda(lambda_body_ptr, iter_ptr, accum_ptr, env_ptr) -> result_ptr {
             let arity := iterTypeSize(iter_ptr)
             let accum_length := getTypedLength(accum_ptr)
+            let new_accum := accum_ptr
 
             // should always have 2 arg
             let args_arity := listTypeSize(get4b(lambda_body_ptr))
@@ -1427,14 +1429,15 @@ object "Taylor" {
                 let arg_length := getTypedLength(arg_ptr)
                 let new_env_ptr := copy_env(env_ptr)
 
-                addto_env(new_env_ptr, arg1_index, accum_ptr)
+                addto_env(new_env_ptr, arg1_index, new_accum)
                 addto_env(new_env_ptr, arg2_index, arg_ptr)
 
                 let endd, res := eval(lambda_body_ptr, new_env_ptr)
-                mmultistore(accum_ptr, res, getTypedLength(res))
+                accum_length := getTypedLength(res)
+                new_accum := res
             }
 
-            result_ptr := accum_ptr
+            result_ptr := new_accum
         }
 
         function resolveLambdaPtr(fptr) -> _lambda_body_ptr {
