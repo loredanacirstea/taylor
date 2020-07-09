@@ -1616,9 +1616,24 @@ describe('matrix/n-dim array functions', function () {
         let resp;
         await MalTay.sendAndWait(bootstrap.prod);
         
-        resp = await MalTay.call('(prod (array (array 3 5) (array 4 6) (array 3 4)) (array (array 2 3) (array 3 4)))');
+        resp = await MalTay.call(`(prod 
+            (array (array 3 5) (array 4 6) (array 3 4))
+            (array (array 2 3) (array 3 4))
+        )`);
         expect(resp).toEqual([[21, 29], [26, 36], [18, 25]]);
-    }, 20000);
+
+        // resp = await MalTay.call(`(prod
+        //     (array (array 3 5 3 5) (array 4 6 3 5) (array 3 4 3 5))
+        //     (array (array 2 3) (array 3 4) (array 2 3) (array 3 4))
+        // )`);
+        // expect(resp).toEqual([[42, 58], [47, 65], [39, 54]]);
+
+        // resp = await MalTay.call(`(prod 
+        //     (array (array 3 5 9 2) (array 1 15 19 12) (array 2 3 4 2) ) 
+        //     (array (array 1 1 1) (array 3 3 3) (array 2 2 2) (array 1 1 1) )
+        // )`);
+        // expect(resp).toEqual([[38, 38, 38], [96, 96, 96], [21, 21, 21]]);
+    }, 50000);
 });
 
 describe('ballot contract', function() {

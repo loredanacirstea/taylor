@@ -179,7 +179,10 @@ prod: `(def! prod (fn* (matrix1 matrix2)
             )
             fillfunc2 (fillfunc matrix1 matrix2)
         )
-        (new-array fillfunc2 matrixLengths3)
+        (if (eq midLen (nth matrixLengths2 0))
+            (new-array fillfunc2 matrixLengths3)
+            (revert "No common dimension")
+        )
     )
 ))`
 }
