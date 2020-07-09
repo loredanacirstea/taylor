@@ -3,7 +3,7 @@ const bootstrap_functions = require('./bootstrap.js');
 
 const deployContract = signer => async compiled => {
     const transaction = {
-      data: '0x' + compiled.bytecode.object,
+      data: '0x' + compiled.evm.bytecode.object,
       gasLimit: 6000000,
       value: 0,
     };

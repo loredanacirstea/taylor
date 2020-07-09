@@ -1546,19 +1546,19 @@ describe('matrix/n-dim array functions', function () {
     test('new-array', async function() {
         let resp;
 
-        await MalTay.sendAndWait(bootstrap.diagonal_fill);
+        await MalTay.sendAndWait(bootstrap.same_q);
         await MalTay.sendAndWait(bootstrap.new_array);
 
-        resp = await MalTay.call('(diagonal-fill (list 1 1 1))');
+        resp = await MalTay.call('(same? (list 1 1 1))');
         expect(resp).toEqual(1);
 
-        resp = await MalTay.call('(diagonal-fill (list 1 0 1))');
+        resp = await MalTay.call('(same? (list 1 0 1))');
         expect(resp).toEqual(0);
         
-        resp = await MalTay.call(`(new-array diagonal-fill (array) (array (array 0 1) (array 0 1)) )`);
+        resp = await MalTay.call(`(new-array same? (list 2 2) )`);
         expect(resp).toEqual([[1, 0], [0, 1]])
         
-        resp = await MalTay.call(`(new-array diagonal-fill (array) (array (array 0 2) (array 0 2)))`);
+        resp = await MalTay.call(`(new-array same? (list 3 3) )`);
         expect(resp).toEqual([[1, 0, 0], [0, 1, 0], [0, 0, 1]]);
     }, 20000);
 

@@ -40,27 +40,38 @@ const functions = {
     arrayToBytes: `(def! arrayToBytes (fn* (somearray)
     (reduce join somearray "0x")
 ))`,
-    
-    new_array: `(def! new-array (fn* (func elemList rangesArray)
-    (if (empty? rangesArray)
-        (apply func elemList)
-        (let* (
-                currentRange (first rangesArray)
-                restRanges (rest rangesArray)
+
+    new_array: `(def! new-array (fn* (func lengthsList)
+    (let* (
+            limits (fn* (len) (array 0 (sub len 1)) )
+            _new-array (fn* (func elemList rangesArray)
+                (if (empty? rangesArray)
+                    (apply func elemList)
+                    (let* (
+                            currentRange (first rangesArray)
+                            restRanges (rest rangesArray)
+                        )
+                        (map
+                            (fn* (index) (_new-array func (push elemList index) restRanges) )
+                            (range (nth currentRange 0) (nth currentRange 1) 1)
+                        )
+                    )
+                )
             )
-            (map
-                (fn* (index) (new-array func (push elemList index) restRanges) )
-                (range (nth currentRange 0) (nth currentRange 1) 1)
-            )
+        )
+        (_new-array
+            func
+            (array)
+            (map limits lengthsList)
         )
     )
 ))`,
 
-    diagonal_fill: `(def! diagonal-fill (fn* (listIndexes)
+    same_q: `(def! same? (fn* (listIndexes)
         (if (eq (nth listIndexes 0) (nth listIndexes 1))
             (if (eq (length listIndexes) 2)
                 1
-                (diagonal-fill (rest listIndexes))
+                (same? (rest listIndexes))
             )
             0
         )
@@ -104,7 +115,7 @@ const functions = {
 
     transpose: `(def! transpose (fn* (matrix)
     (let* (
-            lengthRanges (map (fn* (len) (array 0 (sub len 1))) (inverse (lengths matrix)))
+        matrixLengths (inverse (lengths matrix))
             fillfunc (fn* (origMatrix)
                 (fn* (indexList)
                     (pick origMatrix (inverse indexList))
@@ -112,19 +123,15 @@ const functions = {
             )
             fillfunc2 (fillfunc matrix)
         )
-        (new-array fillfunc2 (array) lengthRanges)
-        ; (new-array (fillfunc matrix) (array) lengthRanges)
+        (new-array fillfunc2 matrixLengths)
+        ; (new-array (fillfunc matrix) matrixLengths)
     )
 ))`,
 
     excludeMatrix: `(def! excludeMatrix (fn* (matrix x y)
     (let* (
-            lengthRanges (map
-                    (fn* (len)
-                        (array 0 (sub len 2))
-                    ) 
-                    (lengths matrix)
-                )
+            sub1 (fn* (a) (sub a 1))
+            lengthRanges (map sub1 (lengths matrix))
             fillfunc (fn* (origMatrix)
                 (fn* (indexList)
                     (let* (
@@ -143,9 +150,8 @@ const functions = {
                     )
                 )
             )
-            fillfunc2 (fillfunc matrix)
         )
-        (new-array fillfunc2 (array) lengthRanges)
+        (new-array (fillfunc matrix) lengthRanges)
     )
 ))`,
 }
