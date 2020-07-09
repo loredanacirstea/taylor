@@ -154,6 +154,34 @@ const functions = {
         (new-array (fillfunc matrix) lengthRanges)
     )
 ))`,
+
+prod: `(def! prod (fn* (matrix1 matrix2)
+    (let* (
+            matrixLengths1 (lengths matrix1)
+            matrixLengths2 (lengths matrix2)
+            midLen (nth matrixLengths1 1)
+            matrixLengths3 (list (nth matrixLengths1 0) (nth matrixLengths2 1))
+            fillfunc (fn* (m1 m2)
+                (fn* (indexList)
+                    (reduce
+                        add
+                        (map
+                            (fn* (midx)
+                                (mul 
+                                    (pick m1 (list (nth indexList 0) midx)) (pick m2 (list midx (nth indexList 1))) 
+                                )
+                            )
+                            (range 0 midLen 1)
+                        )
+                        0
+                    )
+                )
+            )
+            fillfunc2 (fillfunc matrix1 matrix2)
+        )
+        (new-array fillfunc2 matrixLengths3)
+    )
+))`
 }
 
 module.exports = functions;

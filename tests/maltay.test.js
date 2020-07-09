@@ -1611,8 +1611,15 @@ describe('matrix/n-dim array functions', function () {
         resp = await MalTay.call('(excludeMatrix (array (array 6 1 2) (array 3 4 5) (array 7 6 9))  2 1 )');
         expect(resp).toEqual([[6, 2], [3, 5]]);
     }, 30000);
-});
 
+    test('prod matrix', async function() {
+        let resp;
+        await MalTay.sendAndWait(bootstrap.prod);
+        
+        resp = await MalTay.call('(prod (array (array 3 5) (array 4 6) (array 3 4)) (array (array 2 3) (array 3 4)))');
+        expect(resp).toEqual([[21, 29], [26, 36], [18, 25]]);
+    }, 20000);
+});
 
 describe('ballot contract', function() {
     let voter1, voter2, voter3,
