@@ -3,7 +3,6 @@
   "version": "0.0.3",
   "description": "Lisp-like functional language, interpreted by WebAssembly & the Ethereum Virtual Machine",
   "main": "src/index.js",
-  "browser": "dist/index.js",
   "directories": {
     "test": "tests"
   },

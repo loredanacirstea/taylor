@@ -1,8 +1,8 @@
 import React, { Component } from 'react';
-import { View, Item, Input, Text, Button, Icon, Picker } from 'native-base';
+import { View, Item, Text, Button, Icon, Picker } from 'native-base';
 import { getProvider } from '../utils/web3.js';
 import { addAddress, getAddresses, getConfig, setConfig, DEPL_BLOCKS } from '../utils/taylor.js';
-import maltay from '@pipeos/taylor';
+import taylor from '@pipeos/taylor';
 import { editorOpts } from '../utils/config.js';
 import { argsDisplay } from '../utils/taylor_editor.js';
 
@@ -30,7 +30,7 @@ class MalTayContract extends Component {
       rootAddress: {},
       addresses: {},
       rootFunctions: [],
-      nativeFunctions: maltay.nativeEnv,
+      nativeFunctions: taylor.nativeEnv,
       addrToBeRegistered: null,
       registered: {},
       backend: config.backend || 'injected',
@@ -43,7 +43,6 @@ class MalTayContract extends Component {
     this.onAddressSave = this.onAddressSave.bind(this);
     this.onChangeRootAddress = this.onChangeRootAddress.bind(this);
     this.onChangeRegisteredAddress = this.onChangeRegisteredAddress.bind(this);
-    this.onRegister = this.onRegister.bind(this);
     this.onChangeBackend = this.onChangeBackend.bind(this);
     this.onChangeCurrency = this.onChangeCurrency.bind(this);
     this.onChangeGasprofile = this.onChangeGasprofile.bind(this);
@@ -55,7 +54,7 @@ class MalTayContract extends Component {
     const { provider, signer } = await getProvider();
     if (!provider) {
       this.setState({ backend: 'javascript' })
-      this.props.onRootChange('javascript', this.web3util, maltay.malBackend.getBackend());
+      this.props.onRootChange('javascript', this.web3util, taylor.malBackend.getBackend());
       return;
     }
     const chainid = (await provider.getNetwork()).chainId;
@@ -63,7 +62,7 @@ class MalTayContract extends Component {
     const rootAddress = {name: addresses.root, address: addresses[addresses.root]};
     this.setState({ addresses, rootAddress, provider, signer });
     
-    this._web3util = maltay.getTaylor(provider, signer);
+    this._web3util = taylor.getTaylor(provider, signer);
     await this.setContract(rootAddress.address);
   }
 
@@ -82,7 +81,7 @@ class MalTayContract extends Component {
       this.setState({ registered: this.web3util.registered });
       this.setState({ rootFunctions: this.web3util.functions });
       
-      this.props.onRootChange(backend, this.web3util, maltay.malBackend.getBackend());
+      this.props.onRootChange(backend, this.web3util, taylor.malBackend.getBackend());
 
       this.web3util.watch(({ logtype, log }) => {
         if (logtype === 'function') {
@@ -115,7 +114,7 @@ class MalTayContract extends Component {
     }
     
     this.setState({ backend });
-    this.props.onRootChange(backend, this.web3util, maltay.malBackend.getBackend());
+    this.props.onRootChange(backend, this.web3util, taylor.malBackend.getBackend());
     setConfig({ backend });
   }
 
@@ -153,13 +152,6 @@ class MalTayContract extends Component {
 
   onChangeRegisteredAddress(newval) {
     this.setState({ addrToBeRegistered: newval });
-  }
-
-  async onRegister() {
-    const { addrToBeRegistered } = this.state;
-    
-    const expr = maltay.expr2h('(register! 0x"' + addrToBeRegistered.substring(2) + '")');
-    await this.web3util.sendAndWait(expr);
   }
 
   render() {
@@ -229,15 +221,23 @@ class MalTayContract extends Component {
           
           <br></br><br></br>
           <Text style={textStyle}>select root Taylor contract:</Text>
-          <Item picker style={{ borderColor: false}}>
+          <Item picker style={{ borderColor: false, marginRight: '10px' }}>
             <Picker
               mode="dropdown"
-              style={{ width: styles.width, ...pickerStyle }}
+              style={{ width: styles.width, ...pickerStyle, marginRight: '15px' }}
               selectedValue={this.state.rootAddress.name}
               onValueChange={this.onChangeRootAddress}
             >
               { rootOptions }
             </Picker>
+            {this.state.backend === 'injected' || this.state.backend === 'both'
+              ? <Button small light 
+                  onClick={this.props.onDeploy}
+                >
+                  <Icon name='rocket' type="FontAwesome" style={{ marginLeft: '5px', marginRight: '5px' }} />
+                </Button>
+              : <div></div>
+            }
           </Item>
 
           <br></br><br></br>
@@ -286,45 +286,9 @@ class MalTayContract extends Component {
           </Item>
 
           <br></br><br></br>
-          <Text style={textStyle}>register a Taylor contract @root:</Text>
-          <Item style={{ width: styles.width }}>
-            <Input
-              style={textStyle}
-              placeholder='address'
-              label='address'
-              onChangeText={this.onChangeRegisteredAddress}
-            />
-            <Button small light onClick={this.onRegister}>
-              <Icon name='save' style={btniconStyle} />
-            </Button>
-          </Item>
-
-          <br></br><br></br>
         </View>
     );
   }
 }
 
 export default MalTayContract;
-
-//           <br></br><br></br><br></br>
-//           <Text style={textStyle}>declare another Taylor root:</Text>
-//           <Item style={{ width: styles.width }}>
-//             <Input
-//               style={textStyle}
-//               placeholder='address'
-//               label='address'
-//               onChangeText={this.onChangeAddress}
-//             />
-//           </Item>
-//           <Item style={{ width: styles.width, marginBottom: 5 }}>
-//             <Input
-//               style={textStyle}
-//               placeholder='name'
-//               label='name'
-//               onChangeText={this.onChangeCurrentName}
-//             />
-//             <Button small light onClick={this.onAddressSave}>
-//               <Icon name='save' />
-//             </Button>
-//           </Item>

@@ -1,7 +1,8 @@
 const fs = require('fs')
 const solc = require('solc')
 require('./extensions.js');
-const { getTaylor } = require('./index.js');
+const { getTaylor } = require('./taylor.js');
+const { deployContract } = require('./deploy.js');
 
 let cpath = __dirname.split('/');
 cpath.pop();
@@ -28,30 +29,23 @@ const compileContract = filePath => {
   return Object.values(output.contracts['input.yul'])[0];
 }
 
-const deployContract = signer => async filePath => {
+const deployContractFromPath = signer => async filePath => {
   const compiled = compileContract(filePath);
   if (!compiled) throw new Error('not compiled');
-  const transaction = {
-    data: '0x' + compiled.evm.bytecode.object,
-    gasLimit: 6000000,
-    value: 0,
-  };
-  const response = await signer.sendTransaction(transaction);
-  const receipt = await response.wait();
-  console.log('* Deploy ' + filePath + ': ' + receipt.gasUsed);
-  return receipt.contractAddress;
+  return deployContract(signer)(compiled);
 }
 
 const compileTaylor = () => compileContract(TAYLOR_PATH);
 
-const deployTaylor = (provider, signer) => async () => {
-  const address = await deployContract(signer)(TAYLOR_PATH);
-  return getTaylor(provider, signer)(address);
+const deployTaylorFromPath = (provider, signer) => async () => {
+  const receipt = await deployContractFromPath(signer)(TAYLOR_PATH);
+  return getTaylor(provider, signer)(receipt.contractAddress);
 }
 
 module.exports = {
   compileContract,
   deployContract,
+  deployContractFromPath,
   compileTaylor,
-  deployTaylor,
+  deployTaylorFromPath,
 }
