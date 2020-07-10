@@ -319,9 +319,11 @@ class TaylorEditor extends Component {
             editorWillMount={this.editorWillMount}
             editorDidMount={this.editorDidMount}
         />
+
         <View style={{
           ...consoleStyles,
           flex: 1,
+          flexDirection: resultFlexDirection,
           position: 'fixed',
           bottom: '0px',
           left: '0px'
@@ -332,57 +334,53 @@ class TaylorEditor extends Component {
                 type="FontAwesome"
                 style={{
                   color: result && result2 && JSON.stringify(result.result) === JSON.stringify(result2.result) ? 'green' : 'red',
-                  fontWeight: 'bold', position: 'relative', left: '50%' 
+                  fontWeight: 'bold', position: 'absolute', left: '47%', top: '-10px', zIndex: 10 
                 }}
               />
             : <div></div>
           }
-          <View style={{
-            flexDirection: resultFlexDirection,
-            justifyContent: "space-between",
-            alignItems: "center",
-          }}>
-            <ScrollView
-              horizontal={false}
-              scrollEnabled={true}
-              scrollEventThrottle={100}
-              nestedScrollEnabled={true}
-            >
-              {errors
-                  ? <Text style={{color: 'firebrick', fontSize: editorOpts.fontSize }}>{errors}</Text>
+          <ScrollView
+            horizontal={false}
+            scrollEnabled={true}
+            scrollEventThrottle={100}
+            nestedScrollEnabled={true}
+          >
+            {errors
+                ? <Text style={{color: 'firebrick', fontSize: editorOpts.fontSize }}>{errors}</Text>
+                : <ReactJson
+                src={result || {}}
+                name={null}
+                theme="twilight"
+                collapsed={6}
+                shouldCollapse={field => field.name === 'cost' }
+                style={{ fontSize: editorOpts.fontSize }}
+                />
+            }
+          </ScrollView>
+          <ScrollView
+            horizontal={false}
+            scrollEnabled={true}
+            scrollEventThrottle={100}
+            nestedScrollEnabled={true}
+          >
+            {backend === 'both'
+              ? (errors2
+                  ? <Text style={{color: 'firebrick', fontSize: editorOpts.fontSize }}>{errors2}</Text>
                   : <ReactJson
-                  src={result || {}}
+                  src={result2 || {}}
                   name={null}
                   theme="twilight"
                   collapsed={6}
-                  shouldCollapse={field => field.name === 'cost' }
-                  style={{ fontSize: editorOpts.fontSize }}
+                  shouldCollapse={field => field.name === 'd' }
+                  style={{  fontSize: editorOpts.fontSize }}
                   />
-              }
-            </ScrollView>
-            <ScrollView
-              horizontal={false}
-              scrollEnabled={true}
-              scrollEventThrottle={100}
-              nestedScrollEnabled={true}
-            >
-              {backend === 'both'
-                ? (errors2
-                    ? <Text style={{color: 'firebrick', fontSize: editorOpts.fontSize }}>{errors2}</Text>
-                    : <ReactJson
-                    src={result2 || {}}
-                    name={null}
-                    theme="twilight"
-                    collapsed={6}
-                    shouldCollapse={field => field.name === 'd' }
-                    style={{  fontSize: editorOpts.fontSize }}
-                    />
-                  )
-                : <div></div>
-              }
-            </ScrollView>
-          </View>
+                )
+              : <div></div>
+            }
+          </ScrollView>
+        
         </View>
+
         <Button
             small
             light
