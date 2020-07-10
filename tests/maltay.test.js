@@ -1655,12 +1655,20 @@ describe('test mapping', function () {
 });
 
 describe('matrix/n-dim array functions', function () {
-    test('new-array', async function() {
-        let resp;
-
+    test('insert matrix functions', async function() {
         await MalTay.sendAndWait(bootstrap.same_q);
         await MalTay.sendAndWait(bootstrap.new_array);
-
+        await MalTay.sendAndWait(bootstrap.pick);
+        await MalTay.sendAndWait(bootstrap.pop);
+        await MalTay.sendAndWait(bootstrap.inverse);
+        await MalTay.sendAndWait(bootstrap.lengths);
+        await MalTay.sendAndWait(bootstrap.transpose);
+        await MalTay.sendAndWait(bootstrap.excludeMatrix);
+        await MalTay.sendAndWait(bootstrap.prod);
+    }, 20000);
+    
+    test('new-array', async function() {
+        let resp;
         resp = await MalTay.call('(same? (list 1 1 1))');
         expect(resp).toEqual(1);
 
@@ -1676,14 +1684,6 @@ describe('matrix/n-dim array functions', function () {
 
     test('transpose matrix', async function() {
         let resp;
-
-        await MalTay.sendAndWait(bootstrap.pick);
-        await MalTay.sendAndWait(bootstrap.pop);
-        await MalTay.sendAndWait(bootstrap.inverse);
-        await MalTay.sendAndWait(bootstrap.lengths);
-        await MalTay.sendAndWait(bootstrap.transpose);
-        await MalTay.sendAndWait(bootstrap.excludeMatrix);
-
         resp = await MalTay.call('(lengths (array 1 2 3))');
         expect(resp).toEqual([3]);
 
@@ -1708,13 +1708,17 @@ describe('matrix/n-dim array functions', function () {
 
     test('prod matrix', async function() {
         let resp;
-        await MalTay.sendAndWait(bootstrap.prod);
-        
         resp = await MalTay.call(`(prod 
             (array (array 3 5) (array 4 6) (array 3 4))
             (array (array 2 3) (array 3 4))
         )`);
         expect(resp).toEqual([[21, 29], [26, 36], [18, 25]]);
+
+        resp = await MalTay.call(`(prod 
+            (array (array -3 -5) (array -4 6) (array -3 4))
+            (array (array -2 3) (array 3 4))
+        )`);
+        expect(resp).toEqual([[-9, -29], [26, 12], [18, 7]]);
 
         // resp = await MalTay.call(`(prod
         //     (array (array 3 5 3 5) (array 4 6 3 5) (array 3 4 3 5))
