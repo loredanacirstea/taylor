@@ -1084,6 +1084,12 @@ describe.each([
 
         resp = await instance.call('(add 3 -9)');
         expect(resp).toBe(-6);
+        
+        resp = await instance.call('(add 9 0)');
+        expect(resp).toBe(9);
+
+        resp = await instance.call('(add 0 0)');
+        expect(resp).toBe(0);
     });
     
     test(`sub`, async () => {
@@ -1101,9 +1107,19 @@ describe.each([
 
         resp = await instance.call('(sub 3 19)');
         expect(resp).toBe(-16);
+
+        resp = await instance.call('(sub 0 0)');
+        expect(resp).toBe(0);
     });
 
     test(`mul`, async () => {
+        resp = await instance.call('(mul 0 3)');
+        expect(resp).toBe(0);
+        resp = await instance.call('(mul -9 0)');
+        expect(resp).toBe(0);
+        resp = await instance.call('(mul 0 0)');
+        expect(resp).toBe(0);
+
         resp = await instance.call('(mul 9 3)');
         expect(resp).toBe(27);
         resp = await instance.call('(mul 9 -3)');
@@ -1126,6 +1142,16 @@ describe.each([
 
         resp = await instance.call('(div -9 -3)');
         expect(resp).toBe(3);
+
+        resp = await instance.call('(div 0 3)');
+        expect(resp).toBe(0);
+
+        resp = await instance.call('(div 0 -3)');
+        expect(resp).toBe(0);
+
+        // TODO
+        // resp = await instance.call('(div 3 0)');
+        // expect(resp).toBe(0);
     });
 
     test.skip(`sdiv`, async () => {
@@ -1144,6 +1170,11 @@ describe.each([
         expect(resp).toBe(-2);
         resp = await instance.call('(mod -10 -4)');
         expect(resp).toBe(-2);
+        resp = await instance.call('(mod 0 3)');
+        expect(resp).toBe(0);
+        // TODO
+        // resp = await instance.call('(mod 12 0)');
+        // expect(resp).toBe(0);
     });
 
     test.skip(`smod`, async () => {
@@ -1164,6 +1195,10 @@ describe.each([
         expect(resp.toNumber()).toBe(4294967296);
         resp = await instance.call('(exp -2 33)');
         expect(resp.toNumber()).toBe(-8589934592);
+        resp = await instance.call('(exp 2 0)');
+        expect(resp).toBe(1);
+        resp = await instance.call('(exp 0 8)');
+        expect(resp).toBe(0);
     });
 
     test.skip(`not`, async () => {
