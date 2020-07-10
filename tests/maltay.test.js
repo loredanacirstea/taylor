@@ -1166,6 +1166,12 @@ describe.each([
 
         resp = await instance.call('(lt 3 2)');
         expect(resp).toBe(0);
+
+        resp = await instance.call('(lt -3 2)');
+        expect(resp).toBe(1);
+
+        resp = await instance.call('(lt 3 -7)');
+        expect(resp).toBe(0);
     });
     
     test(`gt`, async () => {
@@ -1173,6 +1179,12 @@ describe.each([
         expect(resp).toBe(0);
 
         resp = await instance.call('(gt 3 2)');
+        expect(resp).toBe(1);
+
+        resp = await instance.call('(gt -3 2)');
+        expect(resp).toBe(0);
+
+        resp = await instance.call('(gt 3 -7)');
         expect(resp).toBe(1);
     });
     
@@ -1189,10 +1201,24 @@ describe.each([
     test(`eq`, async () => {
         resp = await instance.call('(eq 7 7)');
         expect(resp).toBe(1);
+
+        resp = await instance.call('(eq -7 -7)');
+        expect(resp).toBe(1);
+
+        resp = await instance.call('(eq -7 7)');
+        expect(resp).toBe(0);
+
+        // TODO when we cast-reduce to the minimum size
+        // resp = await instance.call('(eq -4294967295 4294967295)');
+        // expect(resp).toBe(0);
     });
     
     test(`iszero`, async () => {
         resp = await instance.call('(iszero 4)');
+        expect(resp).toBe(0);
+        resp = await instance.call('(iszero 0)');
+        expect(resp).toBe(1);
+        resp = await instance.call('(iszero -4)');
         expect(resp).toBe(0);
     });
     

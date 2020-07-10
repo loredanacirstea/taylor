@@ -1636,12 +1636,18 @@ object "Taylor" {
         }
         
         function _lt(ptr1, ptr2) -> result_ptr {
-            let c := lt(extractValue(ptr1), extractValue(ptr2))
+            let c := lt(_abs(ptr1), _abs(ptr2))
+            if or(_isnegative(ptr1), _isnegative(ptr2)) {
+                c := sub(1, c)
+            }
             result_ptr := allocateTyped(c, buildUintSig(1), 4)
         }
         
         function _gt(ptr1, ptr2) -> result_ptr {
-            let c := gt(extractValue(ptr1), extractValue(ptr2))
+            let c := gt(_abs(ptr1), _abs(ptr2))
+            if or(_isnegative(ptr1), _isnegative(ptr2)) {
+                c := sub(1, c)
+            }
             result_ptr := allocateTyped(c, buildUintSig(1), 4)
         }
         
