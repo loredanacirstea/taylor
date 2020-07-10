@@ -15,6 +15,7 @@ const h2u = value => parseInt(value, 16);
 const h2b = value => u2b(h2u(value));
 const x0 = value => '0x' + value;
 const strip0x = value => value.substring(0, 2) === '0x' ? value.substring(2) : value;
+const underNumberLimit = bnval => bnval.abs().lt(new BN(2).pow(new BN(16)));
 
 const bytesMarker = '0x';
 const arityb = arity => u2b(arity).padStart(4, '0');
@@ -92,7 +93,7 @@ Object.keys(nativeEnv).forEach(key => {
 // console.log('reverseNativeEnv', reverseNativeEnv)
 
 const formatId = id => strip0x(hexZeroPad(x0(b2h(id)), 4));
-const getnumberid = size => formatId(typeid.number + numberid.uint + u2b(size).padStart(16, '0'))
+const getnumberid = (size, ntype='uint') => formatId(typeid.number + numberid[ntype] + u2b(size).padStart(16, '0'))
 const getboolid = value => formatId(typeid.number + numberid.bool + u2b(value ? 1 : 0).padStart(16, '0'));
 const getbytesid = (length, encoding=0) => formatId(typeid.bytelike + u2b(encoding).padStart(10, '0') + u2b(length).padStart(16, '0'));
 // signature :=  '001' * bit4 arity * bit24 id * bit1 stored?
@@ -128,6 +129,9 @@ const isBytelike = sig => ((sig >> 26) & 0x3f) === 1;
 const isEnum = sig => (sig & 0x2000000) !== 0;
 const isLambdaUnknown = sig => (sig & 0x1000000) !== 0;
 const isGetByName = sig => (sig & 0x7fffffe) === 0x48;
+
+const isUint = sig => isNumber(sig) && ((sig & 0x7ff0000) === parseInt(numberid.uint + '0000000000000000', 2));
+const isInt = sig => isNumber(sig) && ((sig & 0x7ff0000) === parseInt(numberid.int + '0000000000000000', 2));
 
 const numberSize = sig => sig & 0xffff;
 const listTypeSize = sig => sig & 0xffffff;
@@ -186,6 +190,7 @@ Object.keys(typeid).forEach(key => nativeTypes[typekey(key)] = formatId(typeid[k
 Object.keys(numberid).forEach(key => nativeTypes[typekey(key)] = formatId(typeid.number, numberid[key], u2b(4).padStart(16, '0')))
 nativeTypes.Bool = getnumberid(1)
 nativeTypes.Uint = getnumberid(4)
+nativeTypes.Int = getnumberid(4, 'int')
 nativeTypes.Address = getbytesid(20)
 nativeTypes.Bytes = getbytesid(0)
 nativeTypes.String = getbytesid(0, 1)
@@ -194,6 +199,8 @@ Object.keys(fulltypeidHex).forEach(key => nativeTypes[typekey(key)] = fulltypeid
 [...new Array(32)].forEach((_, i) => {
     nativeTypes['Bytes' + (i+1)] = getbytesid(i+1);
     nativeTypes['String' + (i+1)] = getbytesid(i+1, 1);
+    nativeTypes['Uint' + (i+1)] = getnumberid(i+1);
+    nativeTypes['Int' + (i+1)] = getnumberid(i+1, 'int');
 });
 
 // console.log('nativeTypes', nativeTypes)
@@ -210,6 +217,13 @@ const encodeInner = (types, values) => {
                     t.size
                 ));
                 return id + padded;
+            case 'int':
+                const valuee = x0(ethers.utils.defaultAbiCoder.encode(
+                    ['int' + (t.size*8)], 
+                    [parseInt(values[i])],
+                ).substring(66-t.size*2));
+                const paddedd = strip0x(hexZeroPad(valuee, t.size));
+                return getnumberid(t.size, 'int') + paddedd;
             case 'bytes':
                 if (!ethers.utils.isHexString(x0(strip0x(values[i])))) {
                     throw new Error('Invalid bytes literal.')
@@ -251,9 +265,12 @@ const decodeInner = (inidata) => {
     }
     if (isNumber(sig)) {
         const size = numberSize(sig);
-        result = new BN(data.substring(0, size*2), 16);
+        const ntype = isUint(sig) ? 'uint' : 'int';
+        result = ethers.utils.defaultAbiCoder.decode([ntype+(size*8)], '0x' + data.substring(0, size*2).padStart(64, '0'))[0];
 
-        result = result.lt(new BN(2).pow(new BN(16))) ? result.toNumber() : result;
+        if (typeof result === 'object' && result._hex) result = new BN(strip0x(result._hex), 16);
+        if (!BN.isBN(result)) result = new BN(result);
+        result = underNumberLimit(result) ? result.toNumber() : result;
 
         data = data.substring(size*2);
         return { result, data };
@@ -392,7 +409,6 @@ const ast2h = (ast, parent=null, unkownMap={}, defenv={}) => {
             // apply arity: 1 + number of args
             encoded = nativeEnv.apply.hex(arity + 1) + encoded;
         }
-        // console.log('encoded', encoded)
         return encoded;
     }
 
@@ -481,12 +497,16 @@ const ast2h = (ast, parent=null, unkownMap={}, defenv={}) => {
             return encodeInner([{type: 'uint', size: 1}], [elem ? 1 : 0]);
         }
 
-        // TODO
+        const maybeint = parseInt(elem);
         if (
-            (parseInt(elem) || parseInt(elem) === 0)
+            (maybeint || maybeint === 0)
             && (!ast[i - 1] || ast[i - 1].value !== bytesMarker)
         ) {
-            return encodeInner([{type: 'uint', size: 4}], [elem]);
+            if (maybeint >= 0) {
+                return encodeInner([{type: 'uint', size: 4}], [elem]);
+            } else {
+                return encodeInner([{type: 'int', size: 4}], [elem]);
+            }
         }
 
         // default - treat as string
