@@ -297,11 +297,22 @@ describe('test arrays & structs', function () {
     
         resp = await MalTay.call('(array 4 8 9)');
         expect(resp).toEqual([4, 8, 9]);
+
+        resp = await MalTay.call('(array 4 -8 9)');
+        expect(resp).toEqual([4, -8, 9]);
+
+        resp = await MalTay.call('(array (array (array 4 8 9) (array 4 8 9)) (array (array 4 8 9) (array 4 -8 9)))');
+        expect(resp).toEqual([[[4, 8, 9], [4, 8, 9]], [[4, 8, 9], [4, -8, 9]]]);
     
         await MalTay.send('(save! (array 4 8 9) )');
     
         resp = await MalTay.call(`(getfrom "0x400000030a910004" 0)`);
         expect(resp).toEqual([4, 8, 9]);
+
+        await MalTay.send('(save! (array 4 -8 9) )');
+    
+        resp = await MalTay.call(`(getfrom "0x400000030a890004" 0)`);
+        expect(resp).toEqual([4, -8, 9]);
     });
 
     it('struct: astruct2 with u32 array', async function() {

@@ -203,6 +203,18 @@ Object.keys(fulltypeidHex).forEach(key => nativeTypes[typekey(key)] = fulltypeid
     nativeTypes['Int' + (i+1)] = getnumberid(i+1, 'int');
 });
 
+const getItemType = value => {
+    if (typeof value === 'number') {
+        if (value === parseInt(value)) {
+            if (value >= 0) return 'uint';
+            return 'int';
+        }
+        return 'float';
+    }
+    if (value.substring(0, 2) === '0x') return 'hex';
+    return 'string';
+}
+
 // console.log('nativeTypes', nativeTypes)
 
 const encodeInner = (types, values) => {
@@ -333,7 +345,7 @@ const decode = data => {
     return decoded.length > 1 ? decoded : decoded[0];
 }
 
-const ast2h = (ast, parent=null, unkownMap={}, defenv={}) => {
+const ast2h = (ast, parent=null, unkownMap={}, defenv={}, arrItemType=null) => {
     if (!(ast instanceof Array)) ast = [ast];
     
     // do not count the function itselt
@@ -410,6 +422,31 @@ const ast2h = (ast, parent=null, unkownMap={}, defenv={}) => {
             encoded = nativeEnv.apply.hex(arity + 1) + encoded;
         }
         return encoded;
+    }
+
+    if (ast[0] && ast[0].value === 'array') {
+        const getArrayItemType = (array_ast, itype) => {
+            array_ast.slice(1).forEach(item => {
+                if (typeof item !== 'object') {
+                    const it = getItemType(item);
+                    if (!itype) itype = it;
+                    if (itype !== it && it.includes('int')) itype = 'int';
+                } else if (item instanceof Array) {
+                    itype = getArrayItemType(item, itype);
+                } else {
+                    // indeterminate operations, so we choose the less restrictive type
+                    itype = 'int';
+                }
+            });
+            return itype;
+        }
+
+        if (arity === 0) return nativeEnv.array.hex(arity);
+
+        const itype = arrItemType || getArrayItemType(ast);
+        return nativeEnv.array.hex(arity) + ast.slice(1).map(item => {
+            return ast2h(item, ast, unkownMap, defenv, itype);
+        }).join('');
     }
 
     return ast.map((elem, i) => {
@@ -502,6 +539,7 @@ const ast2h = (ast, parent=null, unkownMap={}, defenv={}) => {
             (maybeint || maybeint === 0)
             && (!ast[i - 1] || ast[i - 1].value !== bytesMarker)
         ) {
+            if (arrItemType === 'int') return encodeInner([{type: 'int', size: 4}], [elem]);
             if (maybeint >= 0) {
                 return encodeInner([{type: 'uint', size: 4}], [elem]);
             } else {
