@@ -899,6 +899,13 @@ object "Taylor" {
                 _size := listTypeSize(get4b(ptr))
             }
         }
+
+        function splitArraySig(ptr) -> sig1, sig2 {
+            let siglen := getSignatureLength(ptr)
+            let firstlen := sub(siglen, 4)
+            sig1 := mslice(ptr, firstlen)
+            sig2 := mslice(add(ptr, firstlen), 4)
+        }
         
         // 11111111111111111111111110
         function lambdaLength(sig) -> _blength {
@@ -1539,6 +1546,24 @@ object "Taylor" {
                 if gt(offset, maxindex) {
                     current_byte := 0x11
                     offset := sub(offset, 1)
+                }
+            }
+        }
+        
+        function equalDowncastOrRevert(sig, referenceSig) -> _newsig {
+            let same := eq(sig, referenceSig)
+            switch same
+            case 1 {
+                _newsig := sig
+            }
+            default {
+                let isnumber := and(_isNumber(sig), _isNumber(referenceSig))
+                switch isnumber
+                case 1 {
+                    _newsig := min(sig, referenceSig)
+                }
+                default {
+                    dtrequire(false, 0xeecc)
                 }
             }
         }
@@ -2632,18 +2657,22 @@ object "Taylor" {
 
                 let ptr := add(add(result_ptr, 4), typesig_len)
                 let iniptrs := ptrs
-
-                let typesig := get4b(typesig_ptr)
+                let arraysigs, itemsig := splitArraySig(typesig_ptr)
 
                 for { let i := 0 } lt(i, arity) { i := add(i, 1) } {
                     let item_ptr := mload(iniptrs)
+                    let item_arraysigs, item_itemsig := splitArraySig(item_ptr)
                     
-                    // TODO fix sig comparison
-                    dtrequire(eq(get4b(item_ptr), typesig), 0xeecc)
+                    dtrequire(eq(arraysigs, item_arraysigs), 0xee12)
+                    itemsig := equalDowncastOrRevert(item_itemsig, itemsig)
+
                     mmultistore(ptr, add(item_ptr, typesig_len), val_len)
                     ptr := add(ptr, val_len)
                     iniptrs := add(iniptrs, 32)
                 }
+
+                // overwrite item sig
+                mstorehead(add(result_ptr, 4), uconcat(arraysigs, itemsig, 4), typesig_len)
             }
             case 1 {
                 result_ptr := allocate(4)
@@ -3098,7 +3127,7 @@ object "Taylor" {
         function mstorehead(_ptr, value, length) {
             let slot := 32
             let temp := add(
-                mslice(add(_ptr, 4), sub(slot, 4)),
+                mslice(add(_ptr, length), sub(slot, length)),
                 shl(mul(sub(slot, length), 8), value)
             )
             mstore(_ptr, temp)

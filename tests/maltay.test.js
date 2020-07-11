@@ -315,6 +315,17 @@ describe('test arrays & structs', function () {
         expect(resp).toEqual([4, -8, 9]);
     });
 
+    it('test array with negative numbers', async function() {
+        let resp;
+
+        resp = await MalTay.call(`(let* (
+                ff (fn* (a) (if (eq (mod a 2) 0) 1 -1))
+            )
+            (map ff (range 0 3 1))
+        )`);
+        expect(resp).toEqual([1, -1, 1, -1]);
+    });
+
     it('struct: astruct2 with u32 array', async function() {
         await MalTay.sendAndWait('(defstruct! astruct2 (list "0x400000030a910004" "0x400000030a910004") )');
         scount += 1;
