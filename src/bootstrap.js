@@ -3,17 +3,17 @@ const functions = {
     (map (fn* (pos) (nth somearr pos)) (range start stop 1))
 ))`,
     
-    slicemultia: `(def! slicemultia (fn* (somearr rangeIndexList)
+    nslice: `(def! nslice (fn* (somearr rangeIndexList)
     (let* (
             nextRange (first rangeIndexList)
             restRange (rest rangeIndexList)
         )
         (if (empty? restRange)
-            (slicemultia somearr nextRange)
+            (nslice somearr nextRange)
             (if (sequential? nextRange)
                 (map
-                    (fn* (arr) (slicemultia arr restRange))
-                    (slicemultia somearr nextRange )
+                    (fn* (arr) (nslice arr restRange))
+                    (nslice somearr nextRange )
                 )
                 (slicea somearr (nth rangeIndexList 0) (nth rangeIndexList 1) )
             )
@@ -155,7 +155,7 @@ const functions = {
     )
 ))`,
 
-prod: `(def! prod (fn* (matrix1 matrix2)
+    prod: `(def! prod (fn* (matrix1 matrix2)
     (let* (
             matrixLengths1 (lengths matrix1)
             matrixLengths2 (lengths matrix2)
@@ -182,6 +182,46 @@ prod: `(def! prod (fn* (matrix1 matrix2)
         (if (eq midLen (nth matrixLengths2 0))
             (new-array fillfunc2 matrixLengths3)
             (revert "No common dimension")
+        )
+    )
+))`,
+
+    pow_m: `(def! pow-m (fn* (num)
+    (if (eq (mod num 2) 0) 1 -1)
+))`,
+
+det: `(def! det (fn* (multia)
+    (let* (
+            alengths (lengths multia)
+        )
+        (if (same? alengths)
+            (if (eq (length alengths) 1)
+                (nth multia 0)
+                (if (and (eq (nth alengths 0) 1) (same? alengths))
+                    (det (nth multia 0))
+                    (let* (
+                            redf (fn* (ndx)
+                                (mul
+                                    (mul
+                                        (nth (nth multia 0) ndx)
+                                        (pow-m ndx)
+                                    )
+                                    (det (excludeMatrix multia 0 ndx))
+                                )
+                            )
+                        )
+                        (reduce
+                            add
+                            (map
+                                redf
+                                (range 0 (sub (nth alengths 0) 1) 1)
+                            )
+                            0
+                        )
+                    )
+                )
+            )
+            (revert "not square")
         )
     )
 ))`

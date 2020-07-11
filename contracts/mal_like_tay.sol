@@ -810,9 +810,31 @@ object "Taylor" {
 
         // 00001000000000000000000000000000
         // 11111 - 1f
-        function isNumber(ptr) -> isi {
-            let sig := get4b(ptr)
+        function _isNumber(sig) -> isi {
             isi := eq(and(shr(27, sig), 0x1f), 1)
+        }
+
+        function isNumber(ptr) -> isi {
+            isi := _isNumber(get4b(ptr))
+        }
+
+        // 00000111111111110000000000000000
+        // 00000010100100010000000000000000
+        function _isUint(sig) -> isuint {
+            isuint := and(
+                _isNumber(sig),
+                // eq(shr(21, shl(5, get4b(ptr))), 657)
+                eq(and(sig, 0x7ff0000), 0x2910000)
+            )
+        }
+        // 00000111111111110000000000000000
+        // 00000010100010010000000000000000
+        function _isInt(sig) -> isint {
+            isint := and(
+                _isNumber(sig),
+                // eq(shr(21, shl(5, get4b(ptr))), 649)
+                eq(and(sig, 0x7ff0000), 0x2890000)
+            )
         }
 
         function isBool(sig) -> isi {
@@ -876,6 +898,13 @@ object "Taylor" {
             if isListType(get4b(ptr)) {
                 _size := listTypeSize(get4b(ptr))
             }
+        }
+
+        function splitArraySig(ptr) -> sig1, sig2 {
+            let siglen := getSignatureLength(ptr)
+            let firstlen := sub(siglen, 4)
+            sig1 := mslice(ptr, firstlen)
+            sig2 := mslice(add(ptr, firstlen), 4)
         }
         
         // 11111111111111111111111110
@@ -1077,7 +1106,17 @@ object "Taylor" {
         function buildUintSig(size) -> signature {
             // typeid.number + numberid.uint + bit16 size
             // 00001 * 01010010001 * 0000000000000000
-            signature := add(0xa910000, size)
+            signature := add(0x0a910000, size)
+        }
+
+        function buildIntSig(size) -> signature {
+            // typeid.number + numberid.uint + bit16 size
+            // 00001 * 01010001001 * 0000000000000000
+            signature := add(0x0a890000, size)
+        }
+
+        function changeNumberSize(sig, size) -> signature {
+            signature := add(shl(16, shr(16, sig)), size)
         }
 
         function buildArraySig(arity) -> signature {
@@ -1452,47 +1491,168 @@ object "Taylor" {
                 _lambda_body_ptr := fptr
             }
         }
+
+        function _cast_negative(value, size) -> _value {
+            _value := sub(exp(2, mul(size, 8)), value)
+        }
+
+        function _isnegative(ptr1) -> isn {
+            let sig := get4b(ptr1)
+            let _absolute := extractValue(ptr1)
+            if _isInt(sig) {
+                let size := numberSize(get4b(ptr1))
+                let uintlimit := exp(2, mul(sub(size, 1), 8))
+                if gt(_absolute, sub(uintlimit, 1)) {
+                    isn := 1
+                }
+            }
+        }
+
+        function _abs(ptr1) -> _absolute {
+            _absolute := extractValue(ptr1)
+            if _isnegative(ptr1) {
+                let size := numberSize(get4b(ptr1))
+                _absolute := sub(exp(2, mul(size, 8)), _absolute)
+            }
+        }
+
+        function _cast_sig(neg_sign, value, sig1, sig2) -> sig, _value {
+            let minsize := _minsize(value)
+            let size := max(max(numberSize(sig1), numberSize(sig2)), minsize)
+            switch neg_sign
+            case 1 {
+                _value := _cast_negative(value, size)
+                sig := buildIntSig(size)
+            }
+            default {
+                // we take the least restrictive type and the maximum size
+                sig := changeNumberSize(min(sig1, sig2), size)
+                _value := value
+            }
+        }
+
+        function _minsize(value) -> _size {
+            let value_ptr := allocate(32)
+            mstore(value_ptr, value)
+            let index := firstSignificantByte(32, value_ptr)
+            _size := sub(32, index)
+        }
+
+        function firstSignificantByte(maxindex, value_ptr) -> offset {
+            let current_byte := mslice(value_ptr, 1)
+            for { } eq(current_byte, 0x00) { } {
+                offset := add(offset, 1)
+                current_byte := mslice(add(value_ptr, offset), 1)
+                if gt(offset, maxindex) {
+                    current_byte := 0x11
+                    offset := sub(offset, 1)
+                }
+            }
+        }
+        
+        function equalDowncastOrRevert(sig, referenceSig) -> _newsig {
+            let same := eq(sig, referenceSig)
+            switch same
+            case 1 {
+                _newsig := sig
+            }
+            default {
+                let isnumber := and(_isNumber(sig), _isNumber(referenceSig))
+                switch isnumber
+                case 1 {
+                    _newsig := min(sig, referenceSig)
+                }
+                default {
+                    dtrequire(false, 0xeecc)
+                }
+            }
+        }
        
         // TODO: auto cast if overflow
         function _add(ptr1, ptr2) -> result_ptr {
             let c := add(extractValue(ptr1), extractValue(ptr2))
-            result_ptr := allocateTyped(c, get4b(ptr1), 4)
+            result_ptr := allocateTyped(c, min(get4b(ptr1), get4b(ptr2)), 4)
         }
 
         function _sub(ptr1, ptr2) -> result_ptr {
-            let c := sub(extractValue(ptr1), extractValue(ptr2))
-            result_ptr := allocateTyped(c, get4b(ptr1), 4)
+            let a := extractValue(ptr1)
+            let b := extractValue(ptr2)
+            let c := sub(a, b)
+            let sig := min(get4b(ptr1), get4b(ptr2))
+            if gt(b, a) {
+                sig := buildIntSig(numberSize(sig))
+            }
+            result_ptr := allocateTyped(c, sig, 4)
         }
         
         function _mul(ptr1, ptr2) -> result_ptr {
             let c := mul(extractValue(ptr1), extractValue(ptr2))
-            result_ptr := allocateTyped(c, get4b(ptr1), 4)
+            result_ptr := allocateTyped(c, min(get4b(ptr1), get4b(ptr2)), 4)
         }
         
         function _div(ptr1, ptr2) -> result_ptr {
-            let c := div(extractValue(ptr1), extractValue(ptr2))
-            result_ptr := allocateTyped(c, get4b(ptr1), 4)
+            let neg_sign := add(_isnegative(ptr1), _isnegative(ptr2))
+            let sig, value := _cast_sig(
+                neg_sign,
+                div(_abs(ptr1), _abs(ptr2)),
+                get4b(ptr1),
+                get4b(ptr2)
+            )
+            result_ptr := allocateTyped(value, sig, 4)
         }
         
         function _sdiv(ptr1, ptr2) -> result_ptr {
-            let c := sdiv(extractValue(ptr1), extractValue(ptr2))
-            result_ptr := allocateTyped(c, get4b(ptr1), 4)
+            let neg_sign := add(_isnegative(ptr1), _isnegative(ptr2))
+            let sig, value := _cast_sig(
+                neg_sign,
+                sdiv(_abs(ptr1), _abs(ptr2)),
+                get4b(ptr1),
+                get4b(ptr2)
+            )
+            result_ptr := allocateTyped(value, sig, 4)
         }
         
         function _mod(ptr1, ptr2) -> result_ptr {
-            let c := mod(extractValue(ptr1), extractValue(ptr2))
-            result_ptr := allocateTyped(c, get4b(ptr1), 4)
+            let neg_sign := _isnegative(ptr1)
+            let sig, value := _cast_sig(
+                neg_sign,
+                mod(_abs(ptr1), _abs(ptr2)),
+                get4b(ptr1),
+                get4b(ptr2)
+            )
+            result_ptr := allocateTyped(value, sig, 4)
         }
         
         function _smod(ptr1, ptr2) -> result_ptr {
-            let c := smod(extractValue(ptr1), extractValue(ptr2))
-            result_ptr := allocateTyped(c, get4b(ptr1), 4)
+            let neg_sign := _isnegative(ptr1)
+            let sig, value := _cast_sig(
+                neg_sign,
+                smod(_abs(ptr1), _abs(ptr2)),
+                get4b(ptr1),
+                get4b(ptr2)
+            )
+            result_ptr := allocateTyped(value, sig, 4)
         }
         
         function _exp(ptr1, ptr2) -> result_ptr {
-            let c := exp(extractValue(ptr1), extractValue(ptr2))
-            // get max sig size ; exp - size: 
-            result_ptr := allocateTyped(c, get4b(ptr1), 4)
+            // no float, just return 0 now
+            switch _isnegative(ptr2)
+            case 1 {
+                result_ptr := allocateTyped(0, get4b(ptr1), 4)
+            }
+            default {
+                let neg_sign := and(
+                    _isnegative(ptr1),
+                    eq(mod(extractValue(ptr2), 2), 1)
+                )
+                let sig, value := _cast_sig(
+                    neg_sign,
+                    exp(_abs(ptr1), _abs(ptr2)),
+                    get4b(ptr1),
+                    get4b(ptr2)
+                )
+                result_ptr := allocateTyped(value, sig, 4)
+            }
         }
         
         function _not(ptr1) -> result_ptr {
@@ -1501,12 +1661,18 @@ object "Taylor" {
         }
         
         function _lt(ptr1, ptr2) -> result_ptr {
-            let c := lt(extractValue(ptr1), extractValue(ptr2))
+            let c := lt(_abs(ptr1), _abs(ptr2))
+            if or(_isnegative(ptr1), _isnegative(ptr2)) {
+                c := sub(1, c)
+            }
             result_ptr := allocateTyped(c, buildUintSig(1), 4)
         }
         
         function _gt(ptr1, ptr2) -> result_ptr {
-            let c := gt(extractValue(ptr1), extractValue(ptr2))
+            let c := gt(_abs(ptr1), _abs(ptr2))
+            if or(_isnegative(ptr1), _isnegative(ptr2)) {
+                c := sub(1, c)
+            }
             result_ptr := allocateTyped(c, buildUintSig(1), 4)
         }
         
@@ -2491,18 +2657,22 @@ object "Taylor" {
 
                 let ptr := add(add(result_ptr, 4), typesig_len)
                 let iniptrs := ptrs
-
-                let typesig := get4b(typesig_ptr)
+                let arraysigs, itemsig := splitArraySig(typesig_ptr)
 
                 for { let i := 0 } lt(i, arity) { i := add(i, 1) } {
                     let item_ptr := mload(iniptrs)
+                    let item_arraysigs, item_itemsig := splitArraySig(item_ptr)
                     
-                    // TODO fix sig comparison
-                    dtrequire(eq(get4b(item_ptr), typesig), 0xeecc)
+                    dtrequire(eq(arraysigs, item_arraysigs), 0xee12)
+                    itemsig := equalDowncastOrRevert(item_itemsig, itemsig)
+
                     mmultistore(ptr, add(item_ptr, typesig_len), val_len)
                     ptr := add(ptr, val_len)
                     iniptrs := add(iniptrs, 32)
                 }
+
+                // overwrite item sig
+                mstorehead(add(result_ptr, 4), uconcat(arraysigs, itemsig, 4), typesig_len)
             }
             case 1 {
                 result_ptr := allocate(4)
@@ -2957,7 +3127,7 @@ object "Taylor" {
         function mstorehead(_ptr, value, length) {
             let slot := 32
             let temp := add(
-                mslice(add(_ptr, 4), sub(slot, 4)),
+                mslice(add(_ptr, length), sub(slot, length)),
                 shl(mul(sub(slot, length), 8), value)
             )
             mstore(_ptr, temp)

@@ -97,10 +97,16 @@ modifyEnv('js-eval', (orig_func, str) => {
         },
         range: (start, stop, step) => [...Array(stop + 1).keys()].slice(start, stop+1).filter((no, i) => i % step === 0),
         isArray,
+        limited_pow: (a, b) => {
+            // no floats yet
+            if (b < 0) return 0;
+            return utils.BN(a).pow(utils.BN(b));
+        }
     }
+    
     let answ = eval(str.toString());
 
-    if (BN.isBN(answ)) answ = { _hex: toHex(answ) }
+    if (BN.isBN(answ)) answ = { _hex: '0x' + answ.toString(16) }
     if (typeof answ === 'boolean') answ = { _hex: toHex(answ ? 1 : 0)}
 
     return interop.js_to_mal(answ);
@@ -141,7 +147,9 @@ mal.reps(`
 
 ;smod
 
-(def! exp (fn* (a b) (js-eval (str "utils.BN(" a ").pow(utils.BN(" b "))"))))
+;(def! exp (fn* (a b) (js-eval (str "utils.BN(" a ").pow(utils.BN(" b "))"))))
+
+(def! exp (fn* (a b) (js-eval (str "utils.limited_pow(" a "," b ")"))))
 
 (def! lt (fn* (a b) (js-eval (str "utils.BN(" a ").lt(utils.BN(" b "))"))))
 
@@ -243,6 +251,8 @@ const DEFAULT_TXOBJ = {
     gasPrice: 10
 }
 
+const underNumberLimit = bnval => bnval.abs().lt(new BN(2).pow(new BN(16)));
+
 mal.getBackend = (address) => {
     address = address || '0x81bD2984bE297E18F310BAef6b895ea089484968';
     const dec = bnval => {
@@ -256,7 +266,7 @@ mal.getBackend = (address) => {
         }
         
         if (BN.isBN(bnval)) {
-            return bnval.lt(new BN(2).pow(new BN(16))) ? bnval.toNumber() : bnval;
+            return underNumberLimit(bnval) ? bnval.toNumber() : bnval;
         }
         return bnval;
     }

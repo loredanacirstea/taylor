@@ -297,11 +297,33 @@ describe('test arrays & structs', function () {
     
         resp = await MalTay.call('(array 4 8 9)');
         expect(resp).toEqual([4, 8, 9]);
+
+        resp = await MalTay.call('(array 4 -8 9)');
+        expect(resp).toEqual([4, -8, 9]);
+
+        resp = await MalTay.call('(array (array (array 4 8 9) (array 4 8 9)) (array (array 4 8 9) (array 4 -8 9)))');
+        expect(resp).toEqual([[[4, 8, 9], [4, 8, 9]], [[4, 8, 9], [4, -8, 9]]]);
     
         await MalTay.send('(save! (array 4 8 9) )');
     
         resp = await MalTay.call(`(getfrom "0x400000030a910004" 0)`);
         expect(resp).toEqual([4, 8, 9]);
+
+        await MalTay.send('(save! (array 4 -8 9) )');
+    
+        resp = await MalTay.call(`(getfrom "0x400000030a890004" 0)`);
+        expect(resp).toEqual([4, -8, 9]);
+    });
+
+    it('test array with negative numbers', async function() {
+        let resp;
+
+        resp = await MalTay.call(`(let* (
+                ff (fn* (a) (if (eq (mod a 2) 0) 1 -1))
+            )
+            (map ff (range 0 3 1))
+        )`);
+        expect(resp).toEqual([1, -1, 1, -1]);
     });
 
     it('struct: astruct2 with u32 array', async function() {
@@ -785,7 +807,7 @@ describe.each([
 
         await MalTay.sendAndWait(bootstrap.slicea);
 
-        await MalTay.sendAndWait(bootstrap.slicemultia);
+        await MalTay.sendAndWait(bootstrap.nslice);
 
         resp = await MalTay.call(`( (fn* (somearr start stop)
             (map (fn* (pos) (nth somearr pos)) (range start stop 1))
@@ -798,12 +820,12 @@ describe.each([
         resp = await MalTay.call(`(slicea (list 1 2 6 7 8 6) 2 4)`);
         expect(resp).toEqual([6, 7, 8]);
 
-        resp = await MalTay.call(`(slicemultia
+        resp = await MalTay.call(`(nslice
             (list 1 2 6 7 8 6) (list 2 4)
         )`);
         expect(resp).toEqual([6, 7, 8]);
 
-        resp = await MalTay.call(`(slicemultia
+        resp = await MalTay.call(`(nslice
             (array 
                 (array 7 8 9 10 11 12)
                 (array 1 2 6 7 8 6)
@@ -814,7 +836,7 @@ describe.each([
         )`);
         expect(resp).toEqual([[9, 10, 11], [6, 7, 8]]);
 
-        resp = await MalTay.call(`(slicemultia
+        resp = await MalTay.call(`(nslice
             (array 
                 (array 
                     (array 7 8 9 10 11 12)
@@ -1064,16 +1086,83 @@ describe.each([
     test(`add`, async () => {
         resp = await instance.call('(add 9 3)');
         expect(resp).toBe(12);
+
+        resp = await instance.call('(add -9 -3)');
+        expect(resp).toBe(-12);
+
+        resp = await instance.call('(add -9 3)');
+        expect(resp).toBe(-6);
+
+        resp = await instance.call('(add 3 -9)');
+        expect(resp).toBe(-6);
+        
+        resp = await instance.call('(add 9 0)');
+        expect(resp).toBe(9);
+
+        resp = await instance.call('(add 0 0)');
+        expect(resp).toBe(0);
     });
     
     test(`sub`, async () => {
         resp = await instance.call('(sub 9 3)');
         expect(resp).toBe(6);
+
+        resp = await instance.call('(sub -9 -3)');
+        expect(resp).toBe(-6);
+
+        resp = await instance.call('(sub -9 3)');
+        expect(resp).toBe(-12);
+
+        resp = await instance.call('(sub 3 -9)');
+        expect(resp).toBe(12);
+
+        resp = await instance.call('(sub 3 19)');
+        expect(resp).toBe(-16);
+
+        resp = await instance.call('(sub 0 0)');
+        expect(resp).toBe(0);
+    });
+
+    test(`mul`, async () => {
+        resp = await instance.call('(mul 0 3)');
+        expect(resp).toBe(0);
+        resp = await instance.call('(mul -9 0)');
+        expect(resp).toBe(0);
+        resp = await instance.call('(mul 0 0)');
+        expect(resp).toBe(0);
+
+        resp = await instance.call('(mul 9 3)');
+        expect(resp).toBe(27);
+        resp = await instance.call('(mul 9 -3)');
+        expect(resp).toBe(-27);
+        resp = await instance.call('(mul -9 3)');
+        expect(resp).toBe(-27);
+        resp = await instance.call('(mul -9 -3)');
+        expect(resp).toBe(27);
     });
 
     test(`div`, async () => {
         resp = await instance.call('(div 9 3)');
         expect(resp).toBe(3);
+
+        resp = await instance.call('(div 9 -3)');
+        expect(resp).toBe(-3);
+
+        resp = await instance.call('(div -9 3)');
+        expect(resp).toBe(-3);
+
+        resp = await instance.call('(div -9 -3)');
+        expect(resp).toBe(3);
+
+        resp = await instance.call('(div 0 3)');
+        expect(resp).toBe(0);
+
+        resp = await instance.call('(div 0 -3)');
+        expect(resp).toBe(0);
+
+        // TODO
+        // resp = await instance.call('(div 3 0)');
+        // expect(resp).toBe(0);
     });
 
     test.skip(`sdiv`, async () => {
@@ -1086,6 +1175,17 @@ describe.each([
         expect(resp).toBe(0);
         resp = await instance.call('(mod 10 3)');
         expect(resp).toBe(1);
+        resp = await instance.call('(mod 10 -4)');
+        expect(resp).toBe(2);
+        resp = await instance.call('(mod -10 4)');
+        expect(resp).toBe(-2);
+        resp = await instance.call('(mod -10 -4)');
+        expect(resp).toBe(-2);
+        resp = await instance.call('(mod 0 3)');
+        expect(resp).toBe(0);
+        // TODO
+        // resp = await instance.call('(mod 12 0)');
+        // expect(resp).toBe(0);
     });
 
     test.skip(`smod`, async () => {
@@ -1096,6 +1196,20 @@ describe.each([
     test(`exp`, async () => {
         resp = await instance.call('(exp 2 8)');
         expect(resp).toBe(256);
+        resp = await instance.call('(exp -2 8)');
+        expect(resp).toBe(256);
+        resp = await instance.call('(exp -2 7)');
+        expect(resp).toBe(-128);
+        resp = await instance.call('(exp 2 -8)');
+        expect(resp).toBe(0); // no floats yet
+        resp = await instance.call('(exp 2 32)');
+        expect(resp.toNumber()).toBe(4294967296);
+        resp = await instance.call('(exp -2 33)');
+        expect(resp.toNumber()).toBe(-8589934592);
+        resp = await instance.call('(exp 2 0)');
+        expect(resp).toBe(1);
+        resp = await instance.call('(exp 0 8)');
+        expect(resp).toBe(0);
     });
 
     test.skip(`not`, async () => {
@@ -1109,6 +1223,12 @@ describe.each([
 
         resp = await instance.call('(lt 3 2)');
         expect(resp).toBe(0);
+
+        resp = await instance.call('(lt -3 2)');
+        expect(resp).toBe(1);
+
+        resp = await instance.call('(lt 3 -7)');
+        expect(resp).toBe(0);
     });
     
     test(`gt`, async () => {
@@ -1116,6 +1236,12 @@ describe.each([
         expect(resp).toBe(0);
 
         resp = await instance.call('(gt 3 2)');
+        expect(resp).toBe(1);
+
+        resp = await instance.call('(gt -3 2)');
+        expect(resp).toBe(0);
+
+        resp = await instance.call('(gt 3 -7)');
         expect(resp).toBe(1);
     });
     
@@ -1132,10 +1258,24 @@ describe.each([
     test(`eq`, async () => {
         resp = await instance.call('(eq 7 7)');
         expect(resp).toBe(1);
+
+        resp = await instance.call('(eq -7 -7)');
+        expect(resp).toBe(1);
+
+        resp = await instance.call('(eq -7 7)');
+        expect(resp).toBe(0);
+
+        // TODO when we cast-reduce to the minimum size
+        // resp = await instance.call('(eq -4294967295 4294967295)');
+        // expect(resp).toBe(0);
     });
     
     test(`iszero`, async () => {
         resp = await instance.call('(iszero 4)');
+        expect(resp).toBe(0);
+        resp = await instance.call('(iszero 0)');
+        expect(resp).toBe(1);
+        resp = await instance.call('(iszero -4)');
         expect(resp).toBe(0);
     });
     
@@ -1561,12 +1701,22 @@ describe('test mapping', function () {
 });
 
 describe('matrix/n-dim array functions', function () {
-    test('new-array', async function() {
-        let resp;
-
+    test('insert matrix functions', async function() {
         await MalTay.sendAndWait(bootstrap.same_q);
         await MalTay.sendAndWait(bootstrap.new_array);
-
+        await MalTay.sendAndWait(bootstrap.pick);
+        await MalTay.sendAndWait(bootstrap.pop);
+        await MalTay.sendAndWait(bootstrap.inverse);
+        await MalTay.sendAndWait(bootstrap.lengths);
+        await MalTay.sendAndWait(bootstrap.transpose);
+        await MalTay.sendAndWait(bootstrap.excludeMatrix);
+        await MalTay.sendAndWait(bootstrap.prod);
+        await MalTay.sendAndWait(bootstrap.pow_m);
+        await MalTay.sendAndWait(bootstrap.det);
+    }, 20000);
+    
+    test('new-array', async function() {
+        let resp;
         resp = await MalTay.call('(same? (list 1 1 1))');
         expect(resp).toEqual(1);
 
@@ -1582,14 +1732,6 @@ describe('matrix/n-dim array functions', function () {
 
     test('transpose matrix', async function() {
         let resp;
-
-        await MalTay.sendAndWait(bootstrap.pick);
-        await MalTay.sendAndWait(bootstrap.pop);
-        await MalTay.sendAndWait(bootstrap.inverse);
-        await MalTay.sendAndWait(bootstrap.lengths);
-        await MalTay.sendAndWait(bootstrap.transpose);
-        await MalTay.sendAndWait(bootstrap.excludeMatrix);
-
         resp = await MalTay.call('(lengths (array 1 2 3))');
         expect(resp).toEqual([3]);
 
@@ -1614,13 +1756,18 @@ describe('matrix/n-dim array functions', function () {
 
     test('prod matrix', async function() {
         let resp;
-        await MalTay.sendAndWait(bootstrap.prod);
-        
+
         resp = await MalTay.call(`(prod 
-            (array (array 3 5) (array 4 6) (array 3 4))
+            (array (array 3 5) (array 3 4))
             (array (array 2 3) (array 3 4))
         )`);
-        expect(resp).toEqual([[21, 29], [26, 36], [18, 25]]);
+        expect(resp).toEqual([[21, 29], [18, 25]]);
+
+        resp = await MalTay.call(`(prod 
+            (array (array -3 -5) (array -3 4))
+            (array (array -2 3) (array 3 4))
+        )`);
+        expect(resp).toEqual([[-9, -29], [18, 7]]);
 
         // resp = await MalTay.call(`(prod
         //     (array (array 3 5 3 5) (array 4 6 3 5) (array 3 4 3 5))
@@ -1634,6 +1781,27 @@ describe('matrix/n-dim array functions', function () {
         // )`);
         // expect(resp).toEqual([[38, 38, 38], [96, 96, 96], [21, 21, 21]]);
     }, 50000);
+
+    test(`matrix determinant`, async () => {
+        resp = await MalTay.call(`(pow-m 0)`);
+        expect(resp).toBe(1);
+
+        resp = await MalTay.call(`(pow-m 4)`);
+        expect(resp).toBe(1);
+
+        resp = await MalTay.call(`(pow-m 3)`);
+        expect(resp).toBe(-1);
+
+        resp = await MalTay.call(`(det (array 11))`);
+        expect(resp).toBe(11);
+
+        resp = await MalTay.call(`(det (array (array 11 12) (array 14 13)))`);
+        expect(resp).toBe(-25);
+
+        // TODO fixme
+        // resp = await MalTay.call(`(det (array (array 11 12 11) (array 14 13 11) (array 11 12 18) ))`);
+        // expect(resp).toBe(-175);
+    });
 });
 
 describe('ballot contract', function() {
