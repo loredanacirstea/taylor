@@ -1711,6 +1711,8 @@ describe('matrix/n-dim array functions', function () {
         await MalTay.sendAndWait(bootstrap.transpose);
         await MalTay.sendAndWait(bootstrap.excludeMatrix);
         await MalTay.sendAndWait(bootstrap.prod);
+        await MalTay.sendAndWait(bootstrap.pow_m);
+        await MalTay.sendAndWait(bootstrap.det);
     }, 20000);
     
     test('new-array', async function() {
@@ -1754,17 +1756,18 @@ describe('matrix/n-dim array functions', function () {
 
     test('prod matrix', async function() {
         let resp;
-        resp = await MalTay.call(`(prod 
-            (array (array 3 5) (array 4 6) (array 3 4))
-            (array (array 2 3) (array 3 4))
-        )`);
-        expect(resp).toEqual([[21, 29], [26, 36], [18, 25]]);
 
         resp = await MalTay.call(`(prod 
-            (array (array -3 -5) (array -4 6) (array -3 4))
+            (array (array 3 5) (array 3 4))
+            (array (array 2 3) (array 3 4))
+        )`);
+        expect(resp).toEqual([[21, 29], [18, 25]]);
+
+        resp = await MalTay.call(`(prod 
+            (array (array -3 -5) (array -3 4))
             (array (array -2 3) (array 3 4))
         )`);
-        expect(resp).toEqual([[-9, -29], [26, 12], [18, 7]]);
+        expect(resp).toEqual([[-9, -29], [18, 7]]);
 
         // resp = await MalTay.call(`(prod
         //     (array (array 3 5 3 5) (array 4 6 3 5) (array 3 4 3 5))
@@ -1778,6 +1781,27 @@ describe('matrix/n-dim array functions', function () {
         // )`);
         // expect(resp).toEqual([[38, 38, 38], [96, 96, 96], [21, 21, 21]]);
     }, 50000);
+
+    test(`matrix determinant`, async () => {
+        resp = await MalTay.call(`(pow-m 0)`);
+        expect(resp).toBe(1);
+
+        resp = await MalTay.call(`(pow-m 4)`);
+        expect(resp).toBe(1);
+
+        resp = await MalTay.call(`(pow-m 3)`);
+        expect(resp).toBe(-1);
+
+        resp = await MalTay.call(`(det (array 11))`);
+        expect(resp).toBe(11);
+
+        resp = await MalTay.call(`(det (array (array 11 12) (array 14 13)))`);
+        expect(resp).toBe(-25);
+
+        // TODO fixme
+        // resp = await MalTay.call(`(det (array (array 11 12 11) (array 14 13 11) (array 11 12 18) ))`);
+        // expect(resp).toBe(-175);
+    });
 });
 
 describe('ballot contract', function() {
