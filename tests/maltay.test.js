@@ -796,7 +796,7 @@ describe.each([
 
         await MalTay.sendAndWait(bootstrap.slicea);
 
-        await MalTay.sendAndWait(bootstrap.slicemultia);
+        await MalTay.sendAndWait(bootstrap.nslice);
 
         resp = await MalTay.call(`( (fn* (somearr start stop)
             (map (fn* (pos) (nth somearr pos)) (range start stop 1))
@@ -809,12 +809,12 @@ describe.each([
         resp = await MalTay.call(`(slicea (list 1 2 6 7 8 6) 2 4)`);
         expect(resp).toEqual([6, 7, 8]);
 
-        resp = await MalTay.call(`(slicemultia
+        resp = await MalTay.call(`(nslice
             (list 1 2 6 7 8 6) (list 2 4)
         )`);
         expect(resp).toEqual([6, 7, 8]);
 
-        resp = await MalTay.call(`(slicemultia
+        resp = await MalTay.call(`(nslice
             (array 
                 (array 7 8 9 10 11 12)
                 (array 1 2 6 7 8 6)
@@ -825,7 +825,7 @@ describe.each([
         )`);
         expect(resp).toEqual([[9, 10, 11], [6, 7, 8]]);
 
-        resp = await MalTay.call(`(slicemultia
+        resp = await MalTay.call(`(nslice
             (array 
                 (array 
                     (array 7 8 9 10 11 12)

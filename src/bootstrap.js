@@ -3,17 +3,17 @@ const functions = {
     (map (fn* (pos) (nth somearr pos)) (range start stop 1))
 ))`,
     
-    slicemultia: `(def! slicemultia (fn* (somearr rangeIndexList)
+    nslice: `(def! nslice (fn* (somearr rangeIndexList)
     (let* (
             nextRange (first rangeIndexList)
             restRange (rest rangeIndexList)
         )
         (if (empty? restRange)
-            (slicemultia somearr nextRange)
+            (nslice somearr nextRange)
             (if (sequential? nextRange)
                 (map
-                    (fn* (arr) (slicemultia arr restRange))
-                    (slicemultia somearr nextRange )
+                    (fn* (arr) (nslice arr restRange))
+                    (nslice somearr nextRange )
                 )
                 (slicea somearr (nth rangeIndexList 0) (nth rangeIndexList 1) )
             )
