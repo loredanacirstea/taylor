@@ -224,7 +224,40 @@ det: `(def! det (fn* (multia)
             (revert "not square")
         )
     )
+))`,
+
+smap: `(def! smap (fn* (func value iterValue)
+    (let* (
+            resultRange (range 0 (sub (length iterValue) 1) 1)
+            wrapper (fn* (_func _value _iterValue)
+                (fn* (index)
+                    (apply _func _value (nth _iterValue index))
+                )
+            )
+            mappedf (wrapper func value iterValue)
+        )
+        (map
+            mappedf
+            resultRange
+        )
+    )
+))`,
+
+smap2: `(def! smap (fn* (func value iterValue)
+    (let* (
+            wrappedf (fn* (_value _iterValue)
+                (fn* (indexList)
+                    (apply func _value (pick _iterValue indexList))
+                )
+            )
+        )
+        (new-array 
+            (wrappedf value iterValue)
+            (lengths iterValue)
+        )
+    )
 ))`
+
 }
 
 module.exports = functions;

@@ -949,6 +949,22 @@ describe.each([
         expect(resp).toEqual([18, 14, 5]);
     });
 
+    it('test map with partially applied function', async function () {
+        let resp;
+    
+        resp = await instance.call(`(let* (
+                pappliedf (fn* (a b)
+                    (fn* (c) (add c (add a b)) )
+                )
+            )
+            (map
+                (pappliedf 4 6)
+                (list 1 2 3 4)
+            )
+        )`);
+        expect(resp).toEqual([11, 12, 13, 14]);
+    });
+
     it('test reduce', async function () {
         let resp;
 
@@ -1750,7 +1766,8 @@ describe('matrix/n-dim array functions', function () {
         await MalTay.sendAndWait(bootstrap.prod);
         await MalTay.sendAndWait(bootstrap.pow_m);
         await MalTay.sendAndWait(bootstrap.det);
-    }, 20000);
+        await MalTay.sendAndWait(bootstrap.smap);
+    }, 30000);
     
     test('new-array', async function() {
         let resp;
@@ -1838,6 +1855,11 @@ describe('matrix/n-dim array functions', function () {
         // TODO fixme
         // resp = await MalTay.call(`(det (array (array 11 12 11) (array 14 13 11) (array 11 12 18) ))`);
         // expect(resp).toBe(-175);
+    });
+
+    test(`smap`, async () => {
+        resp = await MalTay.call(`(smap add 10 (array 1 2 3 4))`);
+        expect(resp).toEqual([11, 12, 13, 14]);
     });
 });
 

@@ -1467,19 +1467,12 @@ object "Taylor" {
             let args_arity := listTypeSize(get4b(lambda_body_ptr))
 
             // <list_sig><var_sig><index>
-            let arg_list :=lambda_body_ptr
-            lambda_body_ptr := add(add(lambda_body_ptr, 4), mul(args_arity, 8))
+            let arg_list := lambda_body_ptr
 
             // iterate over list & apply function on each arg
             for { let i := 0 } lt(i, result_arity) { i := add(i, 1) } {
                 let item_ptrs := _getFromIters(arity, iter_ptrs, i)
-                
-                let new_env_ptr := copy_env(env_ptr)
-                for { let ind := 0 } lt(ind, arity) { ind := add(ind, 1) } {
-                    let arg_index := mslice(add(_nth_list(arg_list, ind), 4), 4)
-                    addto_env(new_env_ptr, arg_index, mload(add(item_ptrs, mul(ind, 32))))
-                }
-                let endd, res := eval(lambda_body_ptr, new_env_ptr)
+                let res := _applyInner(arity, lambda_body_ptr, item_ptrs, env_ptr)
                 mstore(add(results_ptrs, mul(i, 32)), res)
             }
         }
