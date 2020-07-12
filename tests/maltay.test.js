@@ -925,6 +925,30 @@ describe.each([
         }
     }, 10000);
 
+    it('test map multi array/list', async function () {
+        let resp;
+    
+        resp = await MalTay.call('(map add (list 5 0 2) (list 15 10 12))');
+        expect(resp).toEqual([20, 10, 14]);
+    
+        resp = await MalTay.call('(map add (array 5 0 2) (array 15 10 12))');
+        expect(resp).toEqual([20, 10, 14]);
+    
+        resp = await MalTay.call(`(let* (
+                somelambda (fn* (a b c) (sub (add a b) c))
+            )
+            (map somelambda (list 5 8 2) (list 15 10 12) (list 2 4 9))
+        )`);
+        expect(resp).toEqual([18, 14, 5]);
+    
+        resp = await MalTay.call(`(let* (
+                somelambda (fn* (a b c) (sub (add a b) c))
+            )
+            (map somelambda (array 5 8 2) (array 15 10 12) (list 2 4 9))
+        )`);
+        expect(resp).toEqual([18, 14, 5]);
+    });
+
     it('test reduce', async function () {
         let resp;
 
@@ -1782,7 +1806,7 @@ describe('matrix/n-dim array functions', function () {
         // expect(resp).toEqual([[38, 38, 38], [96, 96, 96], [21, 21, 21]]);
     }, 50000);
 
-    test(`matrix determinant`, async () => {
+    test.skip(`matrix determinant`, async () => {
         resp = await MalTay.call(`(pow-m 0)`);
         expect(resp).toBe(1);
 
