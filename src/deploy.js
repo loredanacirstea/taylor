@@ -4,7 +4,7 @@ const bootstrap_functions = require('./bootstrap.js');
 const deployContract = signer => async compiled => {
     const transaction = {
       data: '0x' + compiled.evm.bytecode.object,
-      gasLimit: 6000000,
+      gasLimit: 7000000,
       value: 0,
     };
     const response = await signer.sendTransaction(transaction);

@@ -1210,15 +1210,40 @@ object "Taylor" {
 
             // TODO: if signature -> call eval
 
-            _data_ptr := _applyInner(arity, lambda_body_ptr, add(arg_ptrs, 64), env_ptr)
+            let isFuncSignature := isBytes(lambda_body_ptr)
+            switch isFuncSignature
+            case 1 {
+                _data_ptr := _applyInnerBySignature(arity, lambda_body_ptr, add(arg_ptrs, 64), env_ptr)
+            }
+            default {
+                _data_ptr := _applyInner(arity, lambda_body_ptr, add(arg_ptrs, 64), env_ptr)
+            }
+        }
+
+        function _applyInnerBySignature(arity, lambda_body_ptr, arg_ptrs, env_ptr) -> _data_ptr {
+            let sig := mslice(add(lambda_body_ptr, 4), 4)
+            let fptr := freeMemPtr()
+            mslicestore(fptr, sig, 4)
+            
+            let args_len := _join_ptrs2(
+                sub(arity, 1),
+                arg_ptrs,
+                add(fptr, 4)
+            )
+            fptr := allocate(add(args_len, 4))
+
+
+            let endd, res := eval(fptr, env_ptr)
+            _data_ptr := res
         }
 
         function _applyInner(arity, lambda_ptr, arg_ptrs, env_ptr) -> _data_ptr {
-
             let lambda_body_ptr := lambda_ptr
             let is_lambda := isLambda(get4b(lambda_ptr))
             let orig_env := 0
-
+            
+            // we can receive the body of the function directly (starts with arg list)
+            // or a lambda function that might have a pointer to an env (starts with lambda sig)
             if is_lambda {
                 lambda_body_ptr := add(lambda_ptr, 4)
                 if eq(isListType(get4b(lambda_body_ptr)), 0) {

@@ -1081,6 +1081,19 @@ describe.each([
         expect(resp).toBe(21);
     });
 
+    it('test apply', async function() {
+        await instance.sendAndWait('(def! myfunc4 (fn* (a b c) (add (add a b) c) ) )');
+        
+        resp = await instance.call('(apply add 4 5)');
+        expect(resp).toBe(9);
+
+        resp = await instance.call('(apply myfunc4 4 5 9)');
+        expect(resp).toBe(18);
+
+        resp = await instance.call('(apply (fn* (a b) (add a b)) 4 5)');
+        expect(resp).toBe(9);
+    });
+
     it('test byte-like', async function() {
         resp = await instance.call('(list "0x2233" "hello" "0x44556677" "someword")');
         expect(resp).toEqual(['0x2233', 'hello', '0x44556677', 'someword']);
@@ -1569,7 +1582,7 @@ describe.each([
     it('test logs', async function() {
         if (backendname === 'chain') {
             const resp = await instance.getFns();
-            expect(resp.length).toBe(7);
+            expect(resp.length).toBe(8);
         }
     });
 });
