@@ -826,6 +826,7 @@ const getTaylor = (provider, signer) => (address, deploymentBlock = 0) => {
 
     interpreter.bootstrap = async (functions) => {
         functions = functions || Object.values(bootstrap_functions);
+        let receipts = [];
 
         const step = 12;
         for (let i = 0 ; i <= functions.length ; i += step) {
@@ -833,7 +834,15 @@ const getTaylor = (provider, signer) => (address, deploymentBlock = 0) => {
             const expr = `(list ${funcs.join(' ')} )`;
             let receipt = await interpreter.sendAndWait(expr);
             console.log('bootstrap batch', receipt.gasUsed.toNumber());
+            receipts.push(receipt);
         }
+        
+        // TODO - fixme: https://github.com/loredanacirstea/taylor/issues/67
+        const funcs = functions.slice(0, 2);
+        const expr = `(list ${funcs.join(' ')} )`;
+        await interpreter.sendAndWait(expr);
+
+        return receipts;
     }
 
     // populates with all functions, including those stored in registered contracts

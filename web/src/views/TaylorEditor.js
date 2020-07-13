@@ -287,9 +287,9 @@ class TaylorEditor extends Component {
     this.setState({ currentDeployment });
 
     let newtay = taylor.getTaylor(tayinterpreter.provider, tayinterpreter.signer)(receipt.contractAddress);
+    receipt = await newtay.bootstrap(ftod);
+    console.log('bootstrap receipt', receipt);
     
-    receipt = await taylor.bootstrap(newtay, ftod);
-
     currentDeployment.waiting = false;
     this.setState({ functionsToDeploy: this.defaultFToD(), currentDeployment });
   }
