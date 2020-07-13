@@ -8,6 +8,7 @@ import * as taylorUtils from '../utils/taylor.js';
 import taylor from '@pipeos/taylor';
 import { monacoTaylorExtension } from '../utils/taylor_editor.js';
 import ReactJson from 'custom-react-json-view';
+import {debounce} from '../utils/utils.js';
 
 const MIN_WIDTH = 800;
 
@@ -68,6 +69,12 @@ class TaylorEditor extends Component {
     });
 
     this.setEthrate(this.state.gasprofile);
+
+    this.debouncedTextChange = debounce(function(newcode) {
+      setTimeout(function () {
+          this.executeCode(newcode);
+      }.bind(this), 300);
+    }, 800);
   }
 
   defaultFToD() {
@@ -254,10 +261,15 @@ class TaylorEditor extends Component {
       taylorUtils.storeCode(code);
 
       if (!this.state.livepreview) return;
-      try {
-        const encoded = taylor.expr2h(code);
-        this.execute({encdata: encoded, code});
-      } catch(e) {}
+      this.debouncedTextChange(code);
+  }
+
+  executeCode(code) {
+    code = code || this.state.code;
+    try {
+      const encoded = taylor.expr2h(code);
+      this.execute({encdata: encoded, code});
+    } catch(e) {}
   }
 
   async onDeployScreen() {
