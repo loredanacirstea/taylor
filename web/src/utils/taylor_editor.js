@@ -43,7 +43,7 @@ const monacoTaylorExtension = (monaco, taylorFunctions) => {
         return {
             label: name + (func.own ? ' *' : (func.registered ? ' **' : '')),
             kind: monaco.languages.CompletionItemKind.Function,
-            insertText: insertText + ')',
+            insertText: insertText,
             detail: '(' + argsdetail + ')',
             documentation: func.docs,
             range
@@ -68,6 +68,31 @@ const monacoTaylorExtension = (monaco, taylorFunctions) => {
 
     const config = {"surroundingPairs":[{"open":"(","close":")"}],"autoClosingPairs":[{"open":"(","close":")"}],"brackets":[["(",")"]]}
     monaco.languages.setLanguageConfiguration("taylor", config);
+
+    // Register a tokens provider for the language
+    monaco.languages.setMonarchTokensProvider('taylor', {
+        keywords: Object.keys(taylorFunctions),
+        brackets: [
+            { open: '(', close: ')', token: 'delimiter.parenthesis' },
+        ],
+        tokenizer: {
+            root: [
+                // [/\([\w|*|!|?]+/, 'function-name'],
+                [/(?:\()([\w|*|!|?]+)/g, 'function-name'],
+                [/\(|\)/, 'parenthesis'],
+            ]
+        }
+    });
+
+    // Define a new theme that contains only rules that match this language
+    monaco.editor.defineTheme('tay-dark', {
+        base: 'vs-dark',
+        inherit: true,
+        rules: [
+            { token: 'function-name', foreground: 'cca768', fontStyle: 'bold' },
+            { token: 'parenthesis', foreground: '9b703f' },
+        ]
+    });
 }
 
 export {

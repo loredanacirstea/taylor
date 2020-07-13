@@ -111,6 +111,19 @@ object "Taylor" {
 
                             // apply function on arguments
                             result_ptr := evalWithEnv(sig, args_ptrs, env_ptr)
+
+                            // _def_bang
+                            // TODO: maybe move end_ptr calculation in evalWithEnv
+                            // needs tests to see if it would be more efficient
+                            if eq(sig, 0x90000046) {
+                                // signature length (4) has been added
+                                // add name & body length: 32 + 4
+                                // we subtract 8 ... because
+                                end_ptr := add(end_ptr, 28)
+                                // add expression length
+                                let expr_ptr := add(mload(add(args_ptrs, 32)), 32)
+                                end_ptr := add(end_ptr, mslice(expr_ptr, 4))
+                            }
                         }
                     }
                     case 1 {
@@ -392,7 +405,7 @@ object "Taylor" {
             }
             // def!
             case 0x90000046 {
-                // TODO: encode mutability! 
+                // _def_bang
                 let arity := mload(arg_ptrs_ptr)
                 let name := mload(mload(add(arg_ptrs_ptr, 32)))
                 let expr_ptr := add(mload(add(arg_ptrs_ptr, 32)), 32)

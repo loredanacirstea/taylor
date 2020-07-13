@@ -1,11 +1,12 @@
 const ethers = require('ethers');
+const BN = require('bn.js');
 const { hexZeroPad } = ethers.utils;
+require('./extensions.js');
 const malReader = require('./mal/reader.js');
 const malTypes = require('./mal/types.js');
 const _nativeEnv = require('./native.js');
 const malBackend = require('./mal_backend.js');
-require('./extensions.js');
-const BN = require('bn.js');
+const bootstrap_functions = require('./bootstrap.js');
 
 const u2b = value => value.toString(2);
 const u2h = value => value.toString(16);
@@ -821,6 +822,27 @@ const getTaylor = (provider, signer) => (address, deploymentBlock = 0) => {
             await interpreter.setRegistered();
         }
         return receipt;
+    }
+
+    interpreter.bootstrap = async (functions) => {
+        functions = functions || Object.values(bootstrap_functions);
+        let receipts = [];
+
+        const step = 12;
+        for (let i = 0 ; i <= functions.length ; i += step) {
+            const funcs = functions.slice(i, i + step);
+            const expr = `(list ${funcs.join(' ')} )`;
+            let receipt = await interpreter.sendAndWait(expr);
+            console.log('bootstrap batch', receipt.gasUsed.toNumber());
+            receipts.push(receipt);
+        }
+        
+        // TODO - fixme: https://github.com/loredanacirstea/taylor/issues/67
+        const funcs = functions.slice(0, 2);
+        const expr = `(list ${funcs.join(' ')} )`;
+        await interpreter.sendAndWait(expr);
+
+        return receipts;
     }
 
     // populates with all functions, including those stored in registered contracts

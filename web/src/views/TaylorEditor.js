@@ -7,7 +7,8 @@ import MalTayContract from '../components/MalTayContract.js';
 import * as taylorUtils from '../utils/taylor.js';
 import taylor from '@pipeos/taylor';
 import { monacoTaylorExtension } from '../utils/taylor_editor.js';
-import ReactJson from 'custom-react-json-view'
+import ReactJson from 'custom-react-json-view';
+import {debounce} from '../utils/utils.js';
 
 const MIN_WIDTH = 800;
 
@@ -17,8 +18,15 @@ class TaylorEditor extends Component {
   constructor(props) {
     super(props);
 
-    const code =  taylorUtils.getCode();
-    const encoded = taylor.expr2h(code);
+    let code =  taylorUtils.getCode();
+    let encoded;
+    try {
+      encoded = taylor.expr2h(code);
+    } catch (e) {
+      code = '(add 12 12)';
+      encoded = taylor.expr2h(code);
+    }
+    
     this.scrollRef = React.createRef();
 
     this.state = {
@@ -37,6 +45,7 @@ class TaylorEditor extends Component {
       gasprofile: {currency: 'eur', ethrate: null, profile: 'average'},
       functionsToDeploy: this.defaultFToD(),
       currentDeployment: {},
+      livepreview: true,
     }
 
     this.onContentSizeChange = this.onContentSizeChange.bind(this);
@@ -50,6 +59,7 @@ class TaylorEditor extends Component {
     this.onDeploy = this.onDeploy.bind(this);
     this.onDeployScreen = this.onDeployScreen.bind(this);
     this.onSelectFToD = this.onSelectFToD.bind(this);
+    this.onChangeLivePreview = this.onChangeLivePreview.bind(this);
 
     this.editor = null;
     this.monaco = null;
@@ -59,6 +69,12 @@ class TaylorEditor extends Component {
     });
 
     this.setEthrate(this.state.gasprofile);
+
+    this.debouncedTextChange = debounce(function(newcode) {
+      setTimeout(function () {
+          this.executeCode(newcode);
+      }.bind(this), 300);
+    }, 800);
   }
 
   defaultFToD() {
@@ -215,6 +231,10 @@ class TaylorEditor extends Component {
     this.setState(this.getWindowDimensions());
   }
 
+  onChangeLivePreview(livepreview) {
+    this.setState({ livepreview });
+  }
+
   getWindowDimensions() {
     let wdims = Dimensions.get('window');
     let rootDims = document.getElementById('TaylorRoot').getBoundingClientRect();
@@ -239,10 +259,17 @@ class TaylorEditor extends Component {
   onTextChange(code) {
       this.setState({ code });
       taylorUtils.storeCode(code);
-      try {
-        const encoded = taylor.expr2h(code);
-        this.execute({encdata: encoded, code});
-      } catch(e) {}
+
+      if (!this.state.livepreview) return;
+      this.debouncedTextChange(code);
+  }
+
+  executeCode(code) {
+    code = code || this.state.code;
+    try {
+      const encoded = taylor.expr2h(code);
+      this.execute({encdata: encoded, code});
+    } catch(e) {}
   }
 
   async onDeployScreen() {
@@ -255,16 +282,14 @@ class TaylorEditor extends Component {
     const ftod = Object.keys(functionsToDeploy).filter(key => functionsToDeploy[key]).map(name => taylor.bootstrap_functions[name]);
 
     let receipt = await taylor.deploy(tayinterpreter.signer);
-    console.log('deploy receipt', receipt);
     let currentDeployment = {address: receipt.contractAddress };
     if (ftod.length > 0) currentDeployment.waiting = true;
     this.setState({ currentDeployment });
 
     let newtay = taylor.getTaylor(tayinterpreter.provider, tayinterpreter.signer)(receipt.contractAddress);
-    
-    receipt = await taylor.bootstrap(newtay, ftod);
+    receipt = await newtay.bootstrap(ftod);
     console.log('bootstrap receipt', receipt);
-
+    
     currentDeployment.waiting = false;
     this.setState({ functionsToDeploy: this.defaultFToD(), currentDeployment });
   }
@@ -312,7 +337,7 @@ class TaylorEditor extends Component {
             width={editorStyles.width}
             height={editorStyles.height}
             language="taylor"
-            theme="vs-dark"
+            theme="tay-dark"
             value={code}
             options={editorOpts}
             onChange={this.onTextChange}
@@ -398,10 +423,12 @@ class TaylorEditor extends Component {
         >
           <MalTayContract
               styles={{...panelStyles}}
+              livepreview={this.state.livepreview}
               onRootChange={this.onRootChange}
               onFunctionsChange={this.onFunctionsChange}
               onGasprofileChange={this.onGasprofileChange}
               onDeploy={this.onDeployScreen}
+              onChangeLivePreview={this.onChangeLivePreview}
           />
         </ScrollView>
         <ScrollView
@@ -417,7 +444,7 @@ class TaylorEditor extends Component {
             <Content>
               {
                 Object.keys(functionsToDeploy).map(name => {
-                  return (<ListItem>
+                  return (<ListItem key={name}>
                     <CheckBox
                       checked={functionsToDeploy[name] ? true : false}
                       onClick={() => this.onSelectFToD(name)}
