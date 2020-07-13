@@ -325,7 +325,7 @@ class TaylorEditor extends Component {
             width={editorStyles.width}
             height={editorStyles.height}
             language="taylor"
-            theme="vs-dark"
+            theme="tay-dark"
             value={code}
             options={editorOpts}
             onChange={this.onTextChange}
