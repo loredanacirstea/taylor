@@ -1,5 +1,5 @@
 import React, { Component } from 'react';
-import { View, Item, Text, Button, Icon, Picker } from 'native-base';
+import { View, Item, Text, Button, Icon, Picker, CheckBox } from 'native-base';
 import { getProvider } from '../utils/web3.js';
 import { addAddress, getAddresses, getConfig, setConfig, DEPL_BLOCKS } from '../utils/taylor.js';
 import taylor from '@pipeos/taylor';
@@ -36,6 +36,7 @@ class MalTayContract extends Component {
       backend: config.backend || 'injected',
       currency: 'eur',
       gasprofile: 'average',
+      livepreview: this.props.livepreview,
     }
 
     this.onChangeAddress = this.onChangeAddress.bind(this);
@@ -46,6 +47,7 @@ class MalTayContract extends Component {
     this.onChangeBackend = this.onChangeBackend.bind(this);
     this.onChangeCurrency = this.onChangeCurrency.bind(this);
     this.onChangeGasprofile = this.onChangeGasprofile.bind(this);
+    this.onChangeLivePreview = this.onChangeLivePreview.bind(this);
   
     this.setWeb3();
   }
@@ -128,6 +130,13 @@ class MalTayContract extends Component {
     this.props.onGasprofileChange({currency: this.state.currency, profile: gasprofile});
   }
 
+  onChangeLivePreview() {
+    let { livepreview } = this.state;
+    livepreview = !livepreview;
+    this.setState({ livepreview });
+    this.props.onChangeLivePreview(livepreview);
+  }
+
   async onAddressSave() {
     const { rootAddress } = this.state;
     const { provider  } = this.state;
@@ -187,6 +196,15 @@ class MalTayContract extends Component {
               <Picker.Item label="injected web3 provider" value="injected" key="injected"/>
               <Picker.Item label="both" value="both" key="both"/>
             </Picker>
+          </Item>
+
+          <br></br><br></br>
+          <Item picker style={{ borderColor: false, border: 'transparent', marginRight: '60px' }}>
+            <CheckBox
+              checked={this.state.livepreview}
+              onClick={this.onChangeLivePreview}
+            />
+            <Text style={{ ...textStyle, marginLeft: '20px' }}>auto run</Text>
           </Item>
 
           <br></br><br></br>
