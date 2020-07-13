@@ -65,6 +65,9 @@ const monacoTaylorExtension = (monaco, taylorFunctions) => {
         return { suggestions: funcSuggestions(range) };
       }
     });
+
+    const config = {"surroundingPairs":[{"open":"(","close":")"}],"autoClosingPairs":[{"open":"(","close":")"}],"brackets":[["(",")"]]}
+    monaco.languages.setLanguageConfiguration("taylor", config);
 }
 
 export {
