@@ -1,5 +1,4 @@
 const compiledTaylor = require('../build/taylor.js');
-const bootstrap_functions = require('./bootstrap.js');
 
 const deployContract = signer => async compiled => {
     const transaction = {
@@ -17,15 +16,7 @@ const deploy = (signer) => {
     return deployContract(signer)({evm: compiledTaylor});
 }
 
-const bootstrap = async (taylor, functions) => {
-    functions = functions || Object.values(bootstrap_functions);
-    for (let f of functions) {
-        await taylor.sendAndWait(f);
-    }
-}
-
 module.exports = {
     deployContract,
     deploy,
-    bootstrap,
 }

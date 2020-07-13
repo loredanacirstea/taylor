@@ -1,9 +1,9 @@
+const BN = require('bn.js');
+const ethers = require('ethers');
 require('../src/extensions.js');
 const { deployTaylor, getMalBackend } = require('./setup/fixtures.js');
 const { decode, encode, expr2h, b2h, u2b, expr2s } = require('../src/taylor.js');
-const BN = require('bn.js');
-const ethers = require('ethers');
-const bootstrap = require('../src/bootstrap.js');
+const { bootstrap } = require('../src/deploy.js');
 
 let MalTay;
 let MalB = getMalBackend();
@@ -12,9 +12,10 @@ beforeAll(() => {
   return deployTaylor().then(t => {
     MalTay = t;
     console.log('****MalTay', MalTay.address);
-    return MalTay.init();
-  }).then(() => MalTay.watch());
-});
+    return MalTay.bootstrap();
+  }).then(() => MalTay.init())
+    .then(() => MalTay.watch());
+}, 50000);
 
 afterAll(() => {
     if (MalTay) MalTay.unwatch();
@@ -804,11 +805,6 @@ describe.each([
 
     it('test slice array', async function () {
         let resp;
-
-        await MalTay.sendAndWait(bootstrap.slicea);
-
-        await MalTay.sendAndWait(bootstrap.nslice);
-
         resp = await MalTay.call(`( (fn* (somearr start stop)
             (map (fn* (pos) (nth somearr pos)) (range start stop 1))
         ) (array 1 2 6 7 8 6) 2 4)`);
@@ -1035,8 +1031,6 @@ describe.each([
         expect(resp).toEqual(15);
         
         // TODO fixme
-        await instance.sendAndWait(bootstrap.reduce2);
-
         // resp = await instance.call(`(let* (
         //         somelambda (fn* (a b) (add a b))
         //     )
@@ -1062,8 +1056,6 @@ describe.each([
     });
 
     it('test recursive fibonacci', async function () {
-        await MalTay.sendAndWait(bootstrap.fibonacci);
-    
         resp = await MalTay.call('(fibonacci 1)');
         expect(resp).toBe(1);
     
@@ -1598,7 +1590,7 @@ describe.each([
     it('test logs', async function() {
         if (backendname === 'chain') {
             const resp = await instance.getFns();
-            expect(resp.length).toBe(8);
+            expect(resp.length).toBe(7);
         }
     });
 });
@@ -1676,8 +1668,6 @@ it('test length', async function() {
 
 it('test bytesToArray', async function() {
     let resp;
-    await MalTay.sendAndWait(bootstrap.bytesToArray);
-
     resp = await MalTay.call(`(bytesToArray "0x1122334455667788" 4 0 (array))`);
     expect(resp).toEqual(['0x11223344', '0x55667788']);
 
@@ -1708,8 +1698,6 @@ it('test join', async function() {
 
 it('test arrayToBytes', async function() {
     let resp;
-
-    await MalTay.sendAndWait(bootstrap.arrayToBytes);
     resp = await MalTay.call(`(arrayToBytes (array "0x112233" "0x445566" "0x778899"))`);
     expect(resp).toBe('0x112233445566778899');
 });
@@ -1754,29 +1742,16 @@ describe('test mapping', function () {
 });
 
 describe('matrix/n-dim array functions', function () {
-    test('insert matrix functions', async function() {
-        await MalTay.sendAndWait(bootstrap.same_q);
-        await MalTay.sendAndWait(bootstrap.new_array);
-        await MalTay.sendAndWait(bootstrap.pick);
-        await MalTay.sendAndWait(bootstrap.pop);
-        await MalTay.sendAndWait(bootstrap.inverse);
-        await MalTay.sendAndWait(bootstrap.lengths);
-        await MalTay.sendAndWait(bootstrap.transpose);
-        await MalTay.sendAndWait(bootstrap.excludeMatrix);
-        await MalTay.sendAndWait(bootstrap.prod);
-        await MalTay.sendAndWait(bootstrap.pow_m);
-        await MalTay.sendAndWait(bootstrap.det);
-        await MalTay.sendAndWait(bootstrap.smap);
-    }, 30000);
-    
-    test('new-array', async function() {
-        let resp;
+    let resp;
+    test('same?', async function() {
         resp = await MalTay.call('(same? (list 1 1 1))');
         expect(resp).toEqual(1);
 
         resp = await MalTay.call('(same? (list 1 0 1))');
         expect(resp).toEqual(0);
-        
+    });
+
+    test('new-array', async function() {
         resp = await MalTay.call(`(new-array same? (list 2 2) )`);
         expect(resp).toEqual([[1, 0], [0, 1]])
         
@@ -1784,33 +1759,41 @@ describe('matrix/n-dim array functions', function () {
         expect(resp).toEqual([[1, 0, 0], [0, 1, 0], [0, 0, 1]]);
     }, 20000);
 
-    test('transpose matrix', async function() {
-        let resp;
+    test('lengths', async function() {
         resp = await MalTay.call('(lengths (array 1 2 3))');
         expect(resp).toEqual([3]);
 
         resp = await MalTay.call('(lengths (array (array 1 2 3) (array 1 2 3)))');
         expect(resp).toEqual([2, 3]);
-        
+    });
+
+    test('matrix pick', async function() {
         resp = await MalTay.call('(pick (array (array 11 12 13) (array 14 15 16)) (list 1 1))');
         expect(resp).toEqual(15);
-        
+    });
+
+    test('matrix inverse', async function() {
         resp = await MalTay.call('(inverse (array 11 12 13) )');
         expect(resp).toEqual([13, 12, 11]);
+    });
 
+    test('matrix transpose', async function() {
         resp = await MalTay.call(`(transpose (array (array 6 1 2) (array 3 4 5)) )`);
         expect(resp).toEqual([[6, 3], [1, 4], [2, 5]]);
+    }, 20000);
+    
+    test('matrix excludeMatrix', async function() {
+        resp = await MalTay.call('(excludeMatrix (array (array 6 1) (array 3 4) )  1 1 )');
+        expect(resp).toEqual([[6]]);
 
         resp = await MalTay.call('(excludeMatrix (array (array 6 1 2) (array 3 4 5) (array 7 6 9))  1 1 )');
         expect(resp).toEqual([[6, 2], [7, 9]]);
 
         resp = await MalTay.call('(excludeMatrix (array (array 6 1 2) (array 3 4 5) (array 7 6 9))  2 1 )');
         expect(resp).toEqual([[6, 2], [3, 5]]);
-    }, 30000);
+    }, 20000);
 
     test('prod matrix', async function() {
-        let resp;
-
         resp = await MalTay.call(`(prod 
             (array (array 3 5) (array 3 4))
             (array (array 2 3) (array 3 4))
