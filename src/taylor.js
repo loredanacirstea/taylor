@@ -100,6 +100,7 @@ const getbytesid = (length, encoding=0) => formatId(typeid.bytelike + u2b(encodi
 // signature :=  '001' * bit4 arity * bit24 id * bit1 stored?
 const getstructid = (id, arity, stored=false) => formatId(typeid.struct + u2b(arity).padStart(4, '0') + u2b(id).padStart(24, '0') + stored ? '1' : '0')
 const listTypeId = len => formatId(typeid.list + u2b(1).padStart(4, '0') + u2b(len).padStart(24, '0'));
+const arrayTypeid = arity => formatId(typeid.array + u2b(arity).padStart(30, '0'));
 const unknown = index => {
     let id = b2h(typeid.unknown + '0'.padStart(24, '0')).padStart(8, '0');
     let value = u2h(index).padStart(8, '0');
@@ -218,52 +219,114 @@ const getItemType = value => {
 
 // console.log('nativeTypes', nativeTypes)
 
-const encodeInner = (types, values) => {
-    if (types.length !== values.length) throw new Error('Encode - different lengths.');
-   return types.map((t, i) => {
-        switch (t.type) {
-            case 'uint':
-                const id = getnumberid(t.size)
-                const value = parseInt(values[i]);
-                const padded = strip0x(hexZeroPad(
-                    x0(u2h(value)),
-                    t.size
-                ));
-                return id + padded;
-            case 'int':
-                const valuee = x0(ethers.utils.defaultAbiCoder.encode(
-                    ['int' + (t.size*8)], 
-                    [parseInt(values[i])],
-                ).substring(66-t.size*2));
-                const paddedd = strip0x(hexZeroPad(valuee, t.size));
-                return getnumberid(t.size, 'int') + paddedd;
-            case 'bytes':
-                if (!ethers.utils.isHexString(x0(strip0x(values[i])))) {
-                    throw new Error('Invalid bytes literal.')
-                }
-                const val = strip0x(values[i]);
-                const length = val.length / 2;
-                return  getbytesid(length) + val;
-            case 'string':
-                const strval = values[i].hexEncode();
-                const strlength = strval.length / 2;
-                return  getbytesid(strlength, 1) + strval;
-            case 'list':
-                let len = u2b(values[i].length).padStart(24, '0');
-                const lid = listTypeId(len);
+const encodeInner = (jsvalue, t) => {
+    // TODO: properly handle bn
+    if (BN.isBN(jsvalue) || (typeof jsvalue === 'object' && jsvalue._hex)) {
+        jsvalue = jsvalue.toNumber();
+    }
 
-                return lid + values[i].map(value => encodeInner([{type: 'uint', size: 4}], [value]))
-                    .join('');
-            case 'bool':
-                return getboolid(values[i]);
-            default:
-                throw new Error('Not implemented');
-        }
-    }).join('');
+    if (!t) return encodeDefault(jsvalue);
+
+    switch (t.type) {
+        case 'uint':
+            const id = getnumberid(t.size)
+            const value = parseInt(jsvalue);
+            const padded = strip0x(hexZeroPad(
+                x0(u2h(value)),
+                t.size
+            ));
+            return id + padded;
+        case 'int':
+            const valuee = x0(ethers.utils.defaultAbiCoder.encode(
+                ['int' + (t.size*8)], 
+                [parseInt(jsvalue)],
+            ).substring(66-t.size*2));
+            const paddedd = strip0x(hexZeroPad(valuee, t.size));
+            return getnumberid(t.size, 'int') + paddedd;
+        case 'bytes':
+            if (!ethers.utils.isHexString(x0(strip0x(jsvalue)))) {
+                throw new Error('Invalid bytes literal.')
+            }
+            const val = strip0x(jsvalue);
+            const length = val.length / 2;
+            return  getbytesid(length) + val;
+        case 'string':
+            // const strval = jsvalue.hexEncode();
+            // const strlength = strval.length / 2;
+            // return  getbytesid(strlength, 1) + strval;
+            
+            // TODO fixme - strings are now string32
+            return getbytesid(32, 1) + jsvalue.hexEncode().padStart(64, '0');
+
+        case 'list':
+            let len = u2b(jsvalue.length).padStart(24, '0');
+            const lid = listTypeId(len);
+
+            return lid + jsvalue.map((value, k) => {
+                if (t.components && t.components[k]) {
+                    return encodeInner(value, t.components[k]);
+                }
+                return encodeDefault(value);
+            }).join('');
+        case 'bool':
+            // return getboolid(jsvalue);
+            return encodeInner(jsvalue ? 1 : 0, {type: 'uint', size: 1});
+        case 'nil':
+            return fulltypeidHex.Nil();
+        case 'array':
+            return encodeInner(jsvalue, 'list');
+            // TODO
+            // const arity = jsvalue.length;
+            // let encodef = value => encodeDefault(value);
+            // if (t.components && t.components[0]) {
+            //     encodef = value => encodeInner(value, t.components[0]);
+            // }
+            // const itemencoded = encodef(jsvalue);
+            // const siglen = getSignatureLength(itemencoded);
+            // const itemsig = itemencoded.substring(0, siglen * 2);
+            // return arrayTypeid(arity) + itemsig + jsvalue.map(val => {
+            //     const encoded = encodef(val);
+            //     return encoded.substring(siglen * 2);
+            // });
+        default:
+            throw new Error('Not implemented');
+    }
 }
 
-const encode = (types, values) => {
-    return '0x' + encodeInner(types, values);
+const encodeDefault = (value) => {
+    switch (typeof value) {
+        case 'string':
+            if (value.substring(0, 2) === bytesMarker)
+                return encodeInner(value, {type: 'bytes'});
+            return encodeInner(value, {type: 'string'});
+        case 'boolean':
+            return encodeInner(value, {type: 'bool'});
+        case 'number':
+            let size = Math.ceil(Math.log2(Math.abs(value)) / 8);
+            if (value >= 0) return encodeInner(value, {type: 'uint', size});
+            return encodeInner(value, {type: 'int', size});
+        case 'undefined':
+            return encodeInner(value, {type: 'nil'});
+        case 'function':
+            return encodeInner(value, {type: 'function'});
+        case 'object':
+            if (value instanceof Array) {
+                return encodeInner(value, {type: 'list'});
+                // TODO deep check isArray
+                // let posstype = typeof value[0];
+                // let difftypes = value.find(val => posstype !== typeof val);
+                // if (difftypes) return encodeInner(value, {type: 'list'});
+                // else return encodeInner(value, {type: 'array'});
+            } else {
+                throw new Error('Objects not supported yet.')
+            }
+        default:
+            return encodeInner(value, {type: 'string'});
+    }
+}
+
+const encode = (value, vtype) => {
+    return '0x' + encodeInner(value, vtype);
 }
 
 const decodeInner = (inidata) => {
@@ -515,24 +578,17 @@ const ast2h = (ast, parent=null, unkownMap={}, defenv={}, arrItemType=null) => {
             throw new Error('Unexpected native function: ' + elem.value);
         }
 
-        if (typeof elem === 'string') {
-            if (elem.substring(0, 2) === bytesMarker) {
-                const val = elem.substring(2);
-                const typeid = getbytesid(val.length / 2);
-                return  typeid + val;
-            } else {
-                // TODO fixme - strings are now string32
-                return getbytesid(32, 1) + elem.hexEncode().padStart(64, '0');
-            }
-        }
-
         if (elem instanceof Array) {
             return ast2h(elem, ast, unkownMap, defenv);
         }
 
+        if (typeof elem === 'string') {
+            return encodeDefault(elem);
+        }
+
+        // TODO: treat as bool
         if (typeof elem === 'boolean') {
-            // return encodeInner([{type: 'bool'}], [elem]);
-            return encodeInner([{type: 'uint', size: 1}], [elem ? 1 : 0]);
+            return encodeInner(elem ? 1 : 0, {type: 'uint', size: 1});
         }
 
         const maybeint = parseInt(elem);
@@ -540,11 +596,11 @@ const ast2h = (ast, parent=null, unkownMap={}, defenv={}, arrItemType=null) => {
             (maybeint || maybeint === 0)
             && (!ast[i - 1] || ast[i - 1].value !== bytesMarker)
         ) {
-            if (arrItemType === 'int') return encodeInner([{type: 'int', size: 4}], [elem]);
+            if (arrItemType === 'int') return encodeInner(elem, {type: 'int', size: 4});
             if (maybeint >= 0) {
-                return encodeInner([{type: 'uint', size: 4}], [elem]);
+                return encodeInner(elem, {type: 'uint', size: 4});
             } else {
-                return encodeInner([{type: 'int', size: 4}], [elem]);
+                return encodeInner(elem, {type: 'int', size: 4});
             }
         }
 

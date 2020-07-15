@@ -29,7 +29,6 @@ const bnToHex = value => '0x' + evenHex(value.toString(16));
 const getRandomInt = max => Math.floor(Math.random() * Math.floor(max));
 
 it('test expr2h', async function () {
-    
     expect(expr2h('(add 4 7)')).toBe('0x900000020a910004000000040a91000400000007');
     expect(expr2h('(add (add (sub 7 2) 1) 41)')).toBe('0x9000000290000002900000040a910004000000070a910004000000020a910004000000010a91000400000029');
 
@@ -37,29 +36,34 @@ it('test expr2h', async function () {
 });
 
 it('test encoding & decoding', function () {
-    expect(encode([{type: 'list'}], [[5, 4, 8, 3, 5]])).toEqual('0x110000050a910004000000050a910004000000040a910004000000080a910004000000030a91000400000005');
-    expect(decode('0x110000050a910004000000050a910004000000040a910004000000080a910004000000030a91000400000005')).toEqual([5, 4, 8, 3, 5]);
-    expect(decode(encode([{type: 'list'}], [[5, 4, 8, 3, 5]]))).toEqual([5, 4, 8, 3, 5]);
+    expect(decode(encode([[5, 4, 8, 3, 5], [5, 4, 8, 3, 5]]))).toEqual([[5, 4, 8, 3, 5], [5, 4, 8, 3, 5]]);
+    expect(decode(encode(['0x1122', 'hello', 7]))).toEqual(['0x1122', 'hello', 7]);
+
+    expect(encode([5, 4, 8, 3, 5], {type: 'list'})).toEqual('0x110000050a910001050a910001040a910001080a910001030a91000105');
+    expect(decode('0x110000050a910001050a910001040a910001080a910001030a91000105')).toEqual([5, 4, 8, 3, 5]);
+    expect(decode(encode([5, 4, 8, 3, 5], {type: 'list'}))).toEqual([5, 4, 8, 3, 5]);
     
-    expect(encode([{type: 'uint', size: 4}], [7])).toEqual('0x0a91000400000007');
+    expect(encode(7, {type: 'uint', size: 4})).toEqual('0x0a91000400000007');
     expect(decode('0x0a91000400000007')).toEqual(7);
-    expect(decode(encode([{type: 'uint', size: 4}], [7]))).toEqual(7);
+    expect(decode(encode(7, {type: 'uint', size: 4}))).toEqual(7);
 
-    expect(encode([{type: 'bytes'}], ['0x1122'])).toEqual('0x040000021122');
+    expect(encode('0x1122', {type: 'bytes'})).toEqual('0x040000021122');
     expect(decode('0x040000021122')).toEqual('0x1122');
-    expect(decode(encode([{type: 'bytes'}], ['0x1122']))).toEqual('0x1122');
+    expect(decode(encode('0x1122', {type: 'bytes'}))).toEqual('0x1122');
 
-    expect(encode([{type: 'bytes'}], ['0x11aaaabb221111ccdd'])).toEqual('0x0400000911aaaabb221111ccdd');
+    expect(encode('0x11aaaabb221111ccdd', {type: 'bytes'})).toEqual('0x0400000911aaaabb221111ccdd');
     expect(decode('0x0400000911aaaabb221111ccdd')).toEqual('0x11aaaabb221111ccdd');
-    expect(decode(encode([{type: 'bytes'}], ['0x11aaaabb221111ccdd']))).toEqual('0x11aaaabb221111ccdd');
+    expect(decode(encode('0x11aaaabb221111ccdd', {type: 'bytes'}))).toEqual('0x11aaaabb221111ccdd');
+});
 
-    expect(encode([{type: 'bool'}], [true])).toEqual('0x0a800001');
-    expect(decode('0x0a800001')).toEqual(true);
-    expect(decode(encode([{type: 'bool'}], [true]))).toEqual(true);
+it.skip('test encoding & decoding bool', function () {
+    expect(encode(true, {type: 'bool'})).toEqual('0x0a800001');
+    expect(decode('0x0a800001')).toEqual(1);
+    expect(decode(encode(true, {type: 'bool'}))).toEqual(true);
 
-    expect(encode([{type: 'bool'}], [false])).toEqual('0x0a800000');
+    expect(encode(false, {type: 'bool'})).toEqual('0x0a800000');
     expect(decode('0x0a800000')).toEqual(false);
-    expect(decode(encode([{type: 'bool'}], [false]))).toEqual(false);
+    expect(decode(encode(false, {type: 'bool'}))).toEqual(false);
 });
 
 it('test bytes concat', async function () {
@@ -121,7 +125,7 @@ it('test registration & executing from root contract', async function () {
 
     resp = await MalTay.call_raw('0x44444440');
     expect(parseInt(resp, 16)).toBe(2);
-}, 30000);
+}, 40000);
 
 it('test printer', async function () {
     let expr;
@@ -292,7 +296,7 @@ describe('test arrays & structs', function () {
     
         resp = await MalTay.call(`(list-struct (getfrom astruct 0))`);
         expect(resp).toEqual([4, 6]);
-    });
+    }, 20000);
 
     it('test array simple', async function() {
         let resp;
@@ -423,7 +427,7 @@ describe('test arrays & structs', function () {
 
         resp = await MalTay.call(`(list-struct (getfrom struct3 0))`);
         expect(resp).toEqual([array_2_3, array_2_4_3]);
-    });
+    }, 20000);
 });
 
 it('test ownership & costs', async function() {
