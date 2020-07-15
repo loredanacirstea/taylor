@@ -4,6 +4,7 @@ require('../src/extensions.js');
 const { deployTaylor, getMalBackend } = require('./setup/fixtures.js');
 const { decode, encode, expr2h, b2h, u2b, expr2s } = require('../src/taylor.js');
 const { bootstrap } = require('../src/deploy.js');
+const tests = require('./json_tests/index.js');
 
 let MalTay;
 let MalB = getMalBackend();
@@ -495,6 +496,23 @@ describe('test dynamic storage', function () {
     }, 10000);
 });
 
+describe('web3 only', function () {
+    for (name of Object.keys(tests.web3.tests)) {
+        const tts = tests.web3.tests[name]
+        tts.map((tt, i) => {
+            let testapi = test;
+            if (tt.skip) testapi = test.skip;
+            if (tt.only) testapi = test.only;
+
+            testapi(name + '_' + i, async function () {
+                resp = await MalTay.call(tt.test);
+                if (tt.process) resp = tt.process(resp);
+                expect(resp).toEqual(tt.result);
+            });
+        });
+    }
+});
+
 describe.each([
     ['chain', MalTay],
     ['mal', MalB],
@@ -503,259 +521,31 @@ describe.each([
         beforeAll(() => {
             return deployTaylor().then(t => {
                 instance = t;
-              console.log('****MalTay', MalTay.address);
+                console.log('****Taylor', instance.address);
             });
         });
     }
 
-    test(`list`, async () => {
-        resp = await instance.call('(list 5 4 8 3 5)');
-        expect(resp).toEqual([5, 4, 8, 3, 5]);
-
-        resp = await instance.call('(list 5 4 (add 6 5) 3 (sub 6 1))');
-        expect(resp).toEqual([5, 4, 11, 3, 5]);
-    });
-
-    test(`lambda`, async () => {
-        // TODO: return function type?
-        // resp = await instance.call('(fn* (a) a)');
-        // expect(resp).toBe('(fn* (a) a)');
-
-        resp = await instance.call('( (fn* (a) a) 7)');
-        expect(resp).toBe(7);
-
-        resp = await instance.call('( (fn* (a) (add a 1)) 10)');
-        expect(resp).toBe(11);
-
-        resp = await instance.call('( (fn* (a b) (add a b)) 2 3)');
-        expect(resp).toBe(5);
-
-        resp = await instance.call('( (fn* (a b) (add a b)) (add (add (sub 7 2) 1) 41) (add 2 3))');
-        expect(resp).toBe(52);
-
-        resp = await instance.call('( (fn* (a b) (add (mul a b ) b)) 2 3)');
-        expect(resp).toBe(9);
-
-        resp = await MalTay.call(`(
-            (fn* (a b) (add a b))
-            (add (add (sub 7 2) 1) 41)
-            (add 2 3)
-        )`);
-        expect(resp).toBe(52);
-
-        resp = await instance.call(`( let* (
-                somef (fn* (a) 
-                    (fn* (b) (add a b))
-                )
-                somef2 (somef 4)
-            )
-            (somef2 9)
-        )`);
-        expect(resp).toBe(13);
-    });
-
-    it('test if', async function () {
-        let resp;
-
-        resp = await instance.call('(if true 7 8)');
-        expect(resp).toBe(7);
-
-        resp = await instance.call('(if false 7 8)');
-        expect(resp).toBe(8);
-    
-        resp = await instance.call('(if (gt 4 1) 7 8)');
-        expect(resp).toBe(7);
-
-        resp = await instance.call('(if (lt 9 4) 7 8)');
-        expect(resp).toBe(8);
-    
-        resp = await instance.call('(if (gt 4 9) 7 8)');
-        expect(resp).toBe(8);
-    
-        resp = await instance.call('(if (gt 4 1) (add (sub 33 2) 1) (add (sub 7 2) 1))');
-        expect(resp).toBe(32);
-    
-        resp = await instance.call('(if (gt 4 9) (add (sub 33 2) 1) (add (sub 7 2) 1))');
-        expect(resp).toBe(6);
-    });
-
-    it('test if with lambda', async function () {
-        let resp;
-    
-        resp = await MalTay.call(`(if (gt 4 1) 
-            ( (fn* (a b) (add a b)) 2 3 )
-            (add (sub 7 2) 1)
-        )`);
-        expect(resp).toBe(5);
-    
-        resp = await MalTay.call(`(if (gt 4 9)
-            ( (fn* (a b) (add a b)) 2 3 )
-            (add (sub 7 2) 1)
-        )`);
-        expect(resp).toBe(6);
-    });
-
-    it('test empty', async function() {
-        let resp;
-    
-        resp = await instance.call('(empty? (list))');
-        expect(resp).toBe(true);
-        resp = await instance.call('(empty? (list 1))');
-        expect(resp).toBe(false);
-        resp = await instance.call('(empty? (list 0))');
-        expect(resp).toBe(false);
-    });
-    
-    it('test bool checks', async function() {
-        let resp;
-        resp = await instance.call('(true? true)');
-        expect(resp).toBe(true);
-        resp = await instance.call('(true? false)');
-        expect(resp).toBe(false);
-    
-        resp = await instance.call('(false? false)');
-        expect(resp).toBe(true);
-        resp = await instance.call('(false? true)');
-        expect(resp).toBe(false);
-    });
-
-    it('test nil', async function() {
-        let resp;
-    
-        resp = await instance.call('(nil? (list))');
-        expect(resp).toBe(true);
-
-        resp = await instance.call('(nil? (list 1))');
-        expect(resp).toBe(false);
-
-        resp = await instance.call('(nil? false)');
-        expect(resp).toBe(true);
-
-        resp = await instance.call('(nil? true)');
-        expect(resp).toBe(false);
-
-        resp = await instance.call('(nil? "0x")');
-        expect(resp).toBe(true);
-
-        resp = await instance.call('(nil? "0x22")');
-        expect(resp).toBe(false);
-    });
-
-    it('test list?', async function() {
-        let resp;
-    
-        resp = await instance.call('(list? (list))');
-        expect(resp).toBe(true);
-
-        resp = await instance.call('(list? (list 1 5))');
-        expect(resp).toBe(true);
-
-        resp = await instance.call('(list? 4)');
-        expect(resp).toBe(false);
-
-        // TODO on js side there if no way now to differentiate between
-        // a list and array if the internal types are the same
-        if (backendname === 'chain') {
-            resp = await instance.call('(list? (array 1 5))');
-            expect(resp).toBe(false);
+    it('insert both prereq', async function () {
+        for (let tt of tests.both.prereq) {
+            await instance.sendAndWait(tt.expr);
         }
-    });
+    }, 20000);
 
-    if (backendname === 'chain') {
-        it('test array?', async function() {
-            let resp;
+    for (name of Object.keys(tests.both.tests)) {
+        const tts = tests.both.tests[name]
+        tts.map((tt, i) => {
+            let testapi = test;
+            if (tt.skip) testapi = test.skip;
+            if (tt.only) testapi = test.only;
 
-            resp = await instance.call('(array? (array))');
-            expect(resp).toBe(true);
-
-            resp = await instance.call('(array? (array 1 5))');
-            expect(resp).toBe(true);
-
-            resp = await instance.call('(array? 4)');
-            expect(resp).toBe(false);
-
-            resp = await instance.call('(array? (list 1 5))');
-            expect(resp).toBe(false);
+            testapi(name + '_' + i, async function () {
+                resp = await instance.call(tt.test);
+                if (tt.process) resp = tt.process(resp);
+                expect(resp).toEqual(tt.result);
+            });
         });
     }
-
-    it('test sequential?', async function() {
-        let resp;
-    
-        resp = await instance.call('(sequential? (list))');
-        expect(resp).toBe(true);
-
-        resp = await instance.call('(sequential? (array))');
-        expect(resp).toBe(true);
-
-        resp = await instance.call('(sequential? (list 1 5))');
-        expect(resp).toBe(true);
-
-        resp = await instance.call('(sequential? (array 1 5))');
-        expect(resp).toBe(true);
-
-        resp = await instance.call('(sequential? 4)');
-        expect(resp).toBe(false);
-    });
-    
-    it('test iterator functions', async function() {
-        let resp;
-        resp = await instance.call('(first (list 5 3 7))');
-        expect(resp).toBe(5);
-    
-        resp = await instance.call('(nth (list 5 3 7) 2)');
-        expect(resp).toBe(7);
-
-        resp = await instance.call('(rest (list 5 3 7))');
-        expect(resp).toEqual([3, 7]);
-
-        resp = await instance.call('(first (array 5 3 7))');
-        expect(resp).toBe(5);
-    
-        resp = await instance.call('(nth (array 5 3 7) 2)');
-        expect(resp).toBe(7);
-
-        resp = await instance.call('(nth (array (array 5 3 7) (array 8 4 2) (array 9 11 12)) 1)');
-        expect(resp).toEqual([8, 4, 2]);
-
-        resp = await instance.call('(rest (array 5 3 7))');
-        expect(resp).toEqual([3, 7]);
-    });
-
-    it('test let* & nested scopes', async function() {
-        resp = await instance.call('(let* (c 2) c)');
-        expect(resp).toBe(2);
-
-        resp = await instance.call('(let* (a 4 b (add a 2) c (mul b 3)) (sub c b))');
-        expect(resp).toBe(12);
-
-        resp = await instance.call(`(let* (c 2 a (add c 4))
-            ((fn* (d e) (add d e)) a c)
-        )`);
-        expect(resp).toBe(8);
-
-        resp = await instance.call(`( (fn* (d e)
-            (let* (a 6) (add (add a d) e) )
-        ) 2 1
-        )`);
-        expect(resp).toBe(9);
-    });
-
-    it('test let* & lambda', async function() {
-        resp = await instance.call(`(let* (
-                somelambda (fn* (a) (add a 1))
-            )
-            (somelambda 3)
-        )`);
-        expect(resp).toBe(4);
-
-        resp = await instance.call(`(let* (
-            somelambda (fn* (a) (add a 1))
-            )
-            (map somelambda (array 3 4))
-        )`);
-        expect(resp).toEqual([4, 5]);
-    });
 
     it('test use stored fn 1', async function () {
         let resp;
@@ -776,8 +566,8 @@ describe.each([
 
         if (backendname === 'chain') {
             resp = await instance.getFns();
-            expect(resp.length).toBe(1);
-            expect(resp[0].name).toBe('func1');
+            expect(resp.length).toBe(6);
+            expect(resp[5].name).toBe('func1');
         }
     }, 10000);
 
@@ -797,541 +587,11 @@ describe.each([
         
         if (backendname === 'chain') {
             resp = await instance.getFns();
-            expect(resp.length).toBe(2);
-            expect(resp[0].name).toBe('func1');
-            expect(resp[1].name).toBe('func2');
+            expect(resp.length).toBe(7);
+            expect(resp[5].name).toBe('func1');
+            expect(resp[6].name).toBe('func2');
         }
     }, 10000);
-
-    it('test map', async function () {
-        let resp;
-
-        resp = await instance.call('(map iszero (list 5 0 2))');
-        expect(resp).toEqual([0, 1, 0]);
-
-        resp = await instance.call('(map iszero (array 5 0 2))');
-        expect(resp).toEqual([0, 1, 0]);
-    
-        await instance.sendAndWait('(def! myfunc (fn* (a) (mul (add a 1) 3)))');
-        
-        resp = await instance.call('(map myfunc (list 5 8 2))');
-        expect(resp).toEqual([18, 27, 9]);
-
-        resp = await instance.call(`(map
-            (fn* (a) (mul (add a 1) 3))
-            (list 5 8 2)
-        )`);
-        expect(resp).toEqual([18, 27, 9]);
-
-        resp = await instance.call(`(map
-            (fn* (a) (mul (add a 1) 3))
-            (array 5 8 2)
-        )`);
-        expect(resp).toEqual([18, 27, 9]);
-
-        resp = await instance.call(`(let* (
-                somelambda (fn* (a) (add a 1))
-            )
-            (map somelambda (list 5 8 2) )
-        )`);
-        expect(resp).toEqual([6, 9, 3]);
-
-        resp = await instance.call(`(let* (
-                somelambda (fn* (a) (mul (add a 1) 3))
-            )
-            (map somelambda (list 5 8 2) )
-        )`);
-        expect(resp).toEqual([18, 27, 9]);
-
-        resp = await instance.call(`(let* (
-                somelambda (fn* (a) (mul (add a 1) 3))
-            )
-            (map somelambda (array 5 8 2) )
-        )`);
-        expect(resp).toEqual([18, 27, 9]);
-
-        if (backendname === 'chain') {
-            resp = await instance.getFns();
-            expect(resp.length).toBe(3);
-            expect(resp[2].name).toBe('myfunc');
-        }
-    }, 10000);
-
-    it('test map multi array/list', async function () {
-        let resp;
-    
-        resp = await MalTay.call('(map add (list 5 0 2) (list 15 10 12))');
-        expect(resp).toEqual([20, 10, 14]);
-    
-        resp = await MalTay.call('(map add (array 5 0 2) (array 15 10 12))');
-        expect(resp).toEqual([20, 10, 14]);
-    
-        resp = await MalTay.call(`(let* (
-                somelambda (fn* (a b c) (sub (add a b) c))
-            )
-            (map somelambda (list 5 8 2) (list 15 10 12) (list 2 4 9))
-        )`);
-        expect(resp).toEqual([18, 14, 5]);
-    
-        resp = await MalTay.call(`(let* (
-                somelambda (fn* (a b c) (sub (add a b) c))
-            )
-            (map somelambda (array 5 8 2) (array 15 10 12) (list 2 4 9))
-        )`);
-        expect(resp).toEqual([18, 14, 5]);
-    });
-
-    it('test map with partially applied function', async function () {
-        let resp;
-    
-        resp = await instance.call(`(let* (
-                pappliedf (fn* (a b)
-                    (fn* (c) (add c (add a b)) )
-                )
-            )
-            (map
-                (pappliedf 4 6)
-                (list 1 2 3 4)
-            )
-        )`);
-        expect(resp).toEqual([11, 12, 13, 14]);
-    });
-
-    it('test reduce', async function () {
-        let resp;
-
-        resp = await instance.call('(reduce add (list) 2)');
-        expect(resp).toBe(2);
-    
-        resp = await instance.call('(reduce add (list 5 8 2) 0)');
-        expect(resp).toBe(15);
-    
-        resp = await instance.call('(reduce sub (list 45 8 2) 100)');
-        expect(resp).toBe(45);
-
-        resp = await instance.call('(reduce sub (array 45 8 2) 100)');
-        expect(resp).toBe(45);
-
-        resp = await instance.call(`(list
-            (reduce add (list 5 8 2) 0)
-            (reduce sub (list 45 8 2) 100)
-        )`);
-        expect(resp).toEqual([15, 45]);
-        
-        await instance.sendAndWait('(def! myfunc2 (fn* (a b) (add a b)) )');
-    
-        resp = await instance.call('(myfunc2 4 5)'); 
-        expect(resp).toBe(9);
-    
-        resp = await instance.call('(myfunc2 0 5)');
-        expect(resp).toBe(5);
-      
-        resp = await instance.call('(reduce myfunc2 (list 5 8 2) 0)');
-        expect(resp).toBe(15);
-
-        resp = await instance.call('(reduce myfunc2 (array 5 8 2) 0)');
-        expect(resp).toBe(15);
-
-        resp = await instance.call(`(list
-            (reduce myfunc2 (list 5 8 2) 0)
-            (reduce sub (list 45 8 2) 100)
-        )`);
-        expect(resp).toEqual([15, 45]);
-
-        resp = await instance.call(`(add
-            (reduce sub (list 45 8 2) 100)
-            (reduce myfunc2 (list 5 8 2) 0)
-        )`);
-        expect(resp).toEqual(60);
-
-        resp = await instance.call(`(reduce
-            (fn* (a b) (add a b))
-            (list 5 8 2)
-            0
-        )`);
-        expect(resp).toBe(15);
-
-        resp = await instance.call(`(let* (
-                somelambda (fn* (a b) (add a b))
-            )
-            (reduce somelambda (list 5 8 2) 0)
-        )`);
-        expect(resp).toEqual(15);
-
-        resp = await instance.call(`(let* (
-                reduce (fn* (f xs init) (if (empty? xs) init (reduce f (rest xs) (f init (first xs)) )))
-                somelambda (fn* (a b) (add a b))
-            )
-            (reduce somelambda (list 5 8 2) 0)
-        )`);
-        expect(resp).toEqual(15);
-        
-        // TODO fixme
-        // resp = await instance.call(`(let* (
-        //         somelambda (fn* (a b) (add a b))
-        //     )
-        //     (reduce2 somelambda (list 5 8 2) 0)
-        // )`);
-        // expect(resp).toEqual(15);
-    });
-
-    it('test reduce recursive', async function () {
-        let resp;
-        await instance.sendAndWait('(def! myfunc3 (fn* (a b) (add a b)) )');
-        resp = await instance.call('(reduce myfunc3 (list 5 8 2) 0 )');
-        expect(resp).toBe(15);
-    });
-
-    it('test recursive', async function () {
-        let resp;
-        
-        await instance.sendAndWait('(def! recursivefn (fn* (n) (if (gt n 5) n (recursivefn (add n 1)) ) ) )');
-        
-        resp = await instance.call('(recursivefn 2)');
-        expect(resp).toBe(6);
-    });
-
-    it('test recursive fibonacci', async function () {
-        resp = await MalTay.call('(fibonacci 1)');
-        expect(resp).toBe(1);
-    
-        resp = await MalTay.call('(fibonacci 2)');
-        expect(resp).toBe(1);
-    
-        resp = await MalTay.call('(fibonacci 3)');
-        expect(resp).toBe(2);
-    
-        resp = await MalTay.call('(fibonacci 8)');
-        expect(resp).toBe(21);
-    });
-
-    it('test recursive lambda', async function () {
-        let resp;
-
-        resp = await instance.call(`(let* 
-            (recursivefn 
-                (fn* (n) (if (gt n 5) n (recursivefn (add n 1)) ) )
-            )
-            (recursivefn 2)
-        )`);
-        expect(resp).toBe(6);
-
-        resp = await instance.call(`(let* 
-            (localfibo 
-                (fn* (n) (if (or (eq n 1) (eq n 2)) 1 (add(localfibo (sub n 1)) (localfibo (sub n 2)) ) ))
-            )
-            (localfibo 8)
-        )`);
-        expect(resp).toBe(21);
-    });
-
-    it('test apply', async function() {
-        await instance.sendAndWait('(def! myfunc4 (fn* (a b c) (add (add a b) c) ) )');
-        
-        resp = await instance.call('(apply add 4 5)');
-        expect(resp).toBe(9);
-
-        resp = await instance.call('(apply myfunc4 4 5 9)');
-        expect(resp).toBe(18);
-
-        resp = await instance.call('(apply (fn* (a b) (add a b)) 4 5)');
-        expect(resp).toBe(9);
-    });
-
-    it('test byte-like', async function() {
-        resp = await instance.call('(list "0x2233" "hello" "0x44556677" "someword")');
-        expect(resp).toEqual(['0x2233', 'hello', '0x44556677', 'someword']);
-    });
-
-    it('test range', async function() {
-        resp = await instance.call('(range 1 5 1)');
-        expect(resp).toEqual([1, 2, 3, 4, 5]);
-
-        resp = await instance.call('(range 3 19 3)');
-        expect(resp).toEqual([3, 6, 9, 12, 15, 18]);
-
-        resp = await instance.call('(range 89 168 20)');
-        expect(resp).toEqual([89, 109, 129, 149]);
-
-        resp = await instance.call('(range 1 1 1)');
-        expect(resp).toEqual([1]);
-
-        resp = await instance.call('(range 0 0 1)');
-        expect(resp).toEqual([0]);
-
-        // TODO: support negative step
-        // resp = await instance.call('(range 5 1 -1)');
-        // expect(resp).toEqual([5, 4, 3, 2, 1]);
-    });
-
-    test(`add`, async () => {
-        resp = await instance.call('(add 9 3)');
-        expect(resp).toBe(12);
-
-        resp = await instance.call('(add -9 -3)');
-        expect(resp).toBe(-12);
-
-        resp = await instance.call('(add -9 3)');
-        expect(resp).toBe(-6);
-
-        resp = await instance.call('(add 3 -9)');
-        expect(resp).toBe(-6);
-        
-        resp = await instance.call('(add 9 0)');
-        expect(resp).toBe(9);
-
-        resp = await instance.call('(add 0 0)');
-        expect(resp).toBe(0);
-    });
-    
-    test(`sub`, async () => {
-        resp = await instance.call('(sub 9 3)');
-        expect(resp).toBe(6);
-
-        resp = await instance.call('(sub -9 -3)');
-        expect(resp).toBe(-6);
-
-        resp = await instance.call('(sub -9 3)');
-        expect(resp).toBe(-12);
-
-        resp = await instance.call('(sub 3 -9)');
-        expect(resp).toBe(12);
-
-        resp = await instance.call('(sub 3 19)');
-        expect(resp).toBe(-16);
-
-        resp = await instance.call('(sub 0 0)');
-        expect(resp).toBe(0);
-    });
-
-    test(`mul`, async () => {
-        resp = await instance.call('(mul 0 3)');
-        expect(resp).toBe(0);
-        resp = await instance.call('(mul -9 0)');
-        expect(resp).toBe(0);
-        resp = await instance.call('(mul 0 0)');
-        expect(resp).toBe(0);
-
-        resp = await instance.call('(mul 9 3)');
-        expect(resp).toBe(27);
-        resp = await instance.call('(mul 9 -3)');
-        expect(resp).toBe(-27);
-        resp = await instance.call('(mul -9 3)');
-        expect(resp).toBe(-27);
-        resp = await instance.call('(mul -9 -3)');
-        expect(resp).toBe(27);
-    });
-
-    test(`div`, async () => {
-        resp = await instance.call('(div 9 3)');
-        expect(resp).toBe(3);
-
-        resp = await instance.call('(div 9 -3)');
-        expect(resp).toBe(-3);
-
-        resp = await instance.call('(div -9 3)');
-        expect(resp).toBe(-3);
-
-        resp = await instance.call('(div -9 -3)');
-        expect(resp).toBe(3);
-
-        resp = await instance.call('(div 0 3)');
-        expect(resp).toBe(0);
-
-        resp = await instance.call('(div 0 -3)');
-        expect(resp).toBe(0);
-
-        // TODO
-        // resp = await instance.call('(div 3 0)');
-        // expect(resp).toBe(0);
-    });
-
-    test.skip(`sdiv`, async () => {
-        resp = await instance.call('(sdiv 12 3)');
-        expect(resp).toBe(4);
-    });
-
-    test(`mod`, async () => {
-        resp = await instance.call('(mod 12 3)');
-        expect(resp).toBe(0);
-        resp = await instance.call('(mod 10 3)');
-        expect(resp).toBe(1);
-        resp = await instance.call('(mod 10 -4)');
-        expect(resp).toBe(2);
-        resp = await instance.call('(mod -10 4)');
-        expect(resp).toBe(-2);
-        resp = await instance.call('(mod -10 -4)');
-        expect(resp).toBe(-2);
-        resp = await instance.call('(mod 0 3)');
-        expect(resp).toBe(0);
-        // TODO
-        // resp = await instance.call('(mod 12 0)');
-        // expect(resp).toBe(0);
-    });
-
-    test.skip(`smod`, async () => {
-        resp = await instance.call('(smod 12 3)');
-        expect(resp).toBe(0);
-    });
-
-    test(`exp`, async () => {
-        resp = await instance.call('(exp 2 8)');
-        expect(resp).toBe(256);
-        resp = await instance.call('(exp -2 8)');
-        expect(resp).toBe(256);
-        resp = await instance.call('(exp -2 7)');
-        expect(resp).toBe(-128);
-        resp = await instance.call('(exp 2 -8)');
-        expect(resp).toBe(0); // no floats yet
-        resp = await instance.call('(exp 2 32)');
-        expect(resp.toNumber()).toBe(4294967296);
-        resp = await instance.call('(exp -2 33)');
-        expect(resp.toNumber()).toBe(-8589934592);
-        resp = await instance.call('(exp 2 0)');
-        expect(resp).toBe(1);
-        resp = await instance.call('(exp 0 8)');
-        expect(resp).toBe(0);
-    });
-
-    test.skip(`not`, async () => {
-        resp = await instance.call('(not (not 12))');
-        expect(resp).toBe(12);
-    });
-
-    test(`lt`, async () => {
-        resp = await instance.call('(lt 3 7)');
-        expect(resp).toBe(1);
-
-        resp = await instance.call('(lt 3 2)');
-        expect(resp).toBe(0);
-
-        resp = await instance.call('(lt -3 2)');
-        expect(resp).toBe(1);
-
-        resp = await instance.call('(lt 3 -7)');
-        expect(resp).toBe(0);
-    });
-    
-    test(`gt`, async () => {
-        resp = await instance.call('(gt 3 7)');
-        expect(resp).toBe(0);
-
-        resp = await instance.call('(gt 3 2)');
-        expect(resp).toBe(1);
-
-        resp = await instance.call('(gt -3 2)');
-        expect(resp).toBe(0);
-
-        resp = await instance.call('(gt 3 -7)');
-        expect(resp).toBe(1);
-    });
-    
-    test.skip(`slt`, async () => {
-        resp = await instance.call('(slt 3 7)');
-        expect(resp).toBe(1);
-    });
-    
-    test.skip(`sgt`, async () => {
-        resp = await instance.call('(sgt 7 7)');
-        expect(resp).toBe(0);
-    });
-    
-    test(`eq`, async () => {
-        resp = await instance.call('(eq 7 7)');
-        expect(resp).toBe(1);
-
-        resp = await instance.call('(eq -7 -7)');
-        expect(resp).toBe(1);
-
-        resp = await instance.call('(eq -7 7)');
-        expect(resp).toBe(0);
-
-        // TODO when we cast-reduce to the minimum size
-        // resp = await instance.call('(eq -4294967295 4294967295)');
-        // expect(resp).toBe(0);
-    });
-    
-    test(`iszero`, async () => {
-        resp = await instance.call('(iszero 4)');
-        expect(resp).toBe(0);
-        resp = await instance.call('(iszero 0)');
-        expect(resp).toBe(1);
-        resp = await instance.call('(iszero -4)');
-        expect(resp).toBe(0);
-    });
-    
-    test(`and`, async () => {
-        resp = await instance.call('(and (iszero 0) (gt 9 7))');
-        expect(resp).toBe(1);
-    });
-    
-    test(`or`, async () => {
-        resp = await instance.call('(or (iszero 5) (gt 9 7))');
-        expect(resp).toBe(1);
-    });
-    
-    test(`xor`, async () => {
-        resp = await instance.call('(xor (iszero 0) (gt 9 7))');
-        expect(resp).toBe(0);
-    });
-    
-    test.skip(`byte`, async () => {
-        resp = await instance.call('(byte 2 "0x11445566")');
-        expect(resp).toBe('0x44');
-    });
-    
-    test(`shl`, async () => {
-        resp = await instance.call('(shl 2 12)');
-        expect(resp).toBe(0x30);
-    });
-    
-    test(`shr`, async () => {
-        resp = await instance.call('(shr 2 12)');
-        expect(resp).toBe(3);
-    });
-    
-    test.skip(`sar`, async () => {
-        resp = await instance.call('(sar 2 12)');
-        expect(resp).toBe(3);
-    });
-    
-    test.skip(`addmod`, async () => {
-        resp = await instance.call('(addmod 10, 5, 4)');
-        expect(resp).toBe(3);
-    });
-    
-    test.skip(`mulmod`, async () => {
-        resp = await instance.call('(mulmod 10, 5, 4)');
-        expect(resp).toBe(2);
-    });
-    
-    test.skip(`signextend`, async () => {
-        resp = await instance.call('(signextend 2 12)');
-        expect(resp).toBe(0xc);
-    });
-
-    test(`math`, async () => {
-        resp = await instance.call('(add (add 4 7) 10)');
-        expect(resp).toBe(21);
-
-        resp = await instance.call('(div (sub (mul (add 4 7) 10) 44) 5)');
-        expect(resp).toBe(Math.floor(((4 + 7) * 10 - 44) / 5 ));
-    });
-    
-    test(`keccak256`, async () => {
-        let hash;
-        resp = await instance.call('(keccak256 2 12)');
-        hash = ethers.utils.keccak256(ethers.utils.arrayify('0x000000020000000c'));
-        expect(resp).toBe(hash);
-
-        resp = await instance.call('(keccak256 "0x223344")');
-        hash = ethers.utils.keccak256(ethers.utils.arrayify('0x223344'));
-        expect(resp).toBe(hash);
-
-        resp = await instance.call('(keccak256 "0x0a910004" "0x0a910004" 7)');
-        hash = ethers.utils.keccak256(ethers.utils.arrayify('0x0a9100040a91000400000007'));
-        expect(resp).toBe(hash);
-    });
 
     test(`gas`, async () => {
         resp = await instance.call('(gas)', {gasLimit: 200000});
@@ -1503,15 +763,6 @@ describe.each([
             // TODO properly catch this with jest
             // await expect(instance.send('(revert "Error1")')).rejects.toThrow();
         }
-    })
-
-    it('test return', async function() {
-        let resp;
-        
-        resp = await instance.call('(return 44)');
-        expect(parseInt(resp)).toBe(44);
-        resp = await instance.call('(return "0x2233")');
-        expect(resp).toBe('0x2233');
     })
 
     // TBD

@@ -38,7 +38,7 @@ mal.globalStorage = {};
 
 modifyEnv('nil?', (orig_func, value) => {
     let nil = (
-        !value ||
+        (!value && value !== 0) ||
         (value instanceof Object && Object.keys(value).length === 0) ||
         (value instanceof Array && value.length === 0) ||
         (typeof value === 'string' && value.substring(0, 2) === '0x' && value.length === 2)
@@ -226,7 +226,7 @@ mal.reps(`
 
 (def! revert (fn* (a) (throw a) ) )
 
-(def! return (fn* (a) (js-eval (str "'" a "'" )) ) )
+(def! return (fn* (a) a ))
 
 `)
 
