@@ -9,7 +9,7 @@
     "@testing-library/user-event": "^7.1.2",
     "canvas-datagrid": "^0.22.13",
     "custom-react-json-view": "^1.20.1",
-    "ethers": "^4.0.47",
+    "ethers": "^5.0.5",
     "native-base": "^2.13.12",
     "react": "^16.13.1",
     "react-art": "^16.13.1",
