@@ -2,7 +2,7 @@ import React, { Component } from 'react';
 import ReactDOM from 'react-dom'
 import taylor from '@pipeos/taylor';
 import 'canvas-datagrid';
-import { sheet_settings, sheet_style } from './configs.js';
+import { sheet_settings, sheet_style_dark } from './configs.js';
 
 const MARKER_JS = '=', MARKER_WEB3 = '$';
 
@@ -14,9 +14,8 @@ class CanvasDatagrid extends React.Component {
     }
     
     updateAttributes(nextProps) {
-        console.log('props', nextProps)
         const gridprops = Object.keys(this.props).filter(key => !this.tayprops.includes(key))
-        console.log('gridprops', gridprops)
+        
         gridprops.forEach(key => {
             if (!nextProps || this.props[key] !== nextProps[key]) {
                 if (this.grid.attributes[key] !== undefined) {
@@ -26,6 +25,7 @@ class CanvasDatagrid extends React.Component {
                 }
             }
         });
+        this.grid.draw();
     }
     componentWillReceiveProps(nextProps) {
         this.updateAttributes(nextProps);
@@ -178,10 +178,9 @@ class Luxor extends React.Component {
                 }
             },
             React.createElement(CanvasDatagrid, {
-                ...this.props,
                 data: this.state.data,
                 ...sheet_settings,
-                // style: sheet_style,
+                style: sheet_style_dark,
                 formatter: this.formatter,
                 onCellChange: this.onCellChange,
             }),
@@ -199,10 +198,10 @@ function stripNL(source) {
     return source.replace(/\s{1,}/g, ' ');
 }
 
-function luxorTestsData(rows=10, cols=10) {
+function luxorTestsData(rows=10, cols=8) {
     const header = rightPadArray(
         ['Expression', 'JS Result', 'EVM Result', 'Expected'],
-        rows,
+        cols,
         ''
     );
     const data = [header];
@@ -211,10 +210,10 @@ function luxorTestsData(rows=10, cols=10) {
         if (!test.skip && !test.prereq) {
             const expression = stripNL(test.test);
             const rowData = [expression, MARKER_JS + expression, MARKER_WEB3 + expression, test.result];
-            data.push(rightPadArray(rowData, rows, ''));
+            data.push(rightPadArray(rowData, cols, ''));
         }
     }));
-    return rightPadArray(data, cols, []);
+    return rightPadArray(data, rows, []);
 }
 
 export default Luxor;
