@@ -272,7 +272,7 @@ const encodeInner = (jsvalue, t) => {
             // return getboolid(jsvalue);
             return encodeInner(jsvalue ? 1 : 0, {type: 'uint', size: 1});
         case 'nil':
-            return fulltypeidHex.Nil();
+            return fulltypeidHex.Nil;
         case 'array':
             return encodeInner(jsvalue, 'list');
             // TODO
@@ -609,6 +609,23 @@ const ast2h = (ast, parent=null, unkownMap={}, defenv={}, arrItemType=null) => {
         return getbytesid(32) + elem.hexEncode().padStart(64, '0');
 
     }).join('');
+}
+
+const jsval2tay = value => {
+    switch (typeof value) {
+        case 'object':
+            // TODO: array vs.list
+            if (value instanceof Array) {
+                return `(list ${ value.map(jsval2tay).join(' ') })`;
+            }
+            return JSON.stringify(value);
+        case 'undefined':
+            return 'Nil';
+        case 'string':
+            return `"${value}"`;
+        default:
+            return value.toString();
+    }
 }
 
 const expr2h = (expression, defenv) => {
@@ -953,6 +970,7 @@ module.exports = {
     expr2h,
     funcidb,
     expr2s,
+    jsval2tay,
     malBackend,
     getTaylor,
 }

@@ -2,12 +2,13 @@ import React, { Component } from 'react';
 import { Dimensions, ScrollView } from 'react-native';
 import { View, Button, Icon, Text, Content, Body, ListItem, CheckBox } from 'native-base';
 import MonacoEditor from 'react-monaco-editor';
-import { editorOpts, priceApi } from '../utils/config.js';
-import MalTayContract from '../components/MalTayContract.js';
-import * as taylorUtils from '../utils/taylor.js';
-import taylor from '@pipeos/taylor';
-import { monacoTaylorExtension } from '../utils/taylor_editor.js';
 import ReactJson from 'custom-react-json-view';
+import taylor from '@pipeos/taylor';
+import MalTayContract from '../components/MalTayContract.js';
+import Luxor from '../components/luxor/Luxor.js';
+import { editorOpts, priceApi } from '../utils/config.js';
+import * as taylorUtils from '../utils/taylor.js';
+import { monacoTaylorExtension } from '../utils/taylor_editor.js';
 import {debounce} from '../utils/utils.js';
 
 const MIN_WIDTH = 800;
@@ -93,7 +94,7 @@ class TaylorEditor extends Component {
     } else {
       this.execute({ backend, tayinterpreter, malbackend, errors: '' });
 
-      if (this.monaco) {
+      if (this.monaco && tayinterpreter) {
         this.onFunctionsChange(tayinterpreter.functions);
       }
     }
@@ -305,11 +306,12 @@ class TaylorEditor extends Component {
       width,
       height,
     } = this.state;
-    const {code, result, result2, errors, errors2, backend, functionsToDeploy, currentDeployment} = this.state;
+    const {code, result, result2, errors, errors2, backend, functionsToDeploy, currentDeployment, tayinterpreter, malbackend} = this.state;
 
     let editorStyles = { width, height: height * 4 / 7 };
     let consoleStyles = { width, height: height - editorStyles.height };
     let panelStyles = { width, height };
+    let luxorStyles = { width, height };
     
     if (width > MIN_WIDTH) {
       const page = width / 3;
@@ -317,11 +319,14 @@ class TaylorEditor extends Component {
       consoleStyles.width = page * 2;
       panelStyles.width = page;
     }
+    let editorWrapStyles = { ...editorStyles, height }
 
     let resultFlexDirection = 'row';
     if (backend === 'both' && width <= MIN_WIDTH) {
       resultFlexDirection = 'column';
     }
+
+    const activeBackend = backend === 'injected' ? tayinterpreter : malbackend;
     
     return (
       <ScrollView
@@ -333,87 +338,116 @@ class TaylorEditor extends Component {
           nestedScrollEnabled={true}
           onContentSizeChange={this.onContentSizeChange}
       >
-        <MonacoEditor
-            width={editorStyles.width}
-            height={editorStyles.height}
-            language="taylor"
-            theme="tay-dark"
-            value={code}
-            options={editorOpts}
-            onChange={this.onTextChange}
-            editorWillMount={this.editorWillMount}
-            editorDidMount={this.editorDidMount}
-        />
+        <ScrollView
+          horizontal={false}
+          scrollEnabled={true}
+          scrollEventThrottle={100}
+          nestedScrollEnabled={true}
+          contentContainerStyle={luxorStyles}
+        >
+          <View style={{
+            ...luxorStyles,
+          }}>
+            <Luxor
+              styles={luxorStyles}
+              backend={backend}
+              taylor_web3={tayinterpreter}
+              taylor_js={malbackend}
+              taylor={activeBackend}
+            />
+          </View>
+        </ScrollView>
 
-        <View style={{
-          ...consoleStyles,
-          flex: 1,
-          flexDirection: resultFlexDirection,
-          position: 'fixed',
-          bottom: '0px',
-          left: '0px'
-        }}>
-          {backend === 'both'
-            ? <Icon
-                name='circle-o'
-                type="FontAwesome"
-                style={{
-                  color: result && result2 && JSON.stringify(result.result) === JSON.stringify(result2.result) ? 'green' : 'red',
-                  fontWeight: 'bold', position: 'absolute', left: '47%', top: '-10px', zIndex: 10 
-                }}
-              />
-            : <div></div>
-          }
-          <ScrollView
-            horizontal={false}
-            scrollEnabled={true}
-            scrollEventThrottle={100}
-            nestedScrollEnabled={true}
-          >
-            {errors
-                ? <Text style={{color: 'firebrick', fontSize: editorOpts.fontSize }}>{errors}</Text>
-                : <ReactJson
-                src={result || {}}
-                name={null}
-                theme="twilight"
-                collapsed={6}
-                shouldCollapse={field => field.name === 'cost' }
-                style={{ fontSize: editorOpts.fontSize }}
-                />
-            }
-          </ScrollView>
-          <ScrollView
-            horizontal={false}
-            scrollEnabled={true}
-            scrollEventThrottle={100}
-            nestedScrollEnabled={true}
-          >
+        <ScrollView
+          horizontal={false}
+          scrollEnabled={true}
+          scrollEventThrottle={100}
+          nestedScrollEnabled={true}
+          contentContainerStyle={editorWrapStyles}
+        >
+          <MonacoEditor
+              width={editorStyles.width}
+              height={editorStyles.height}
+              language="taylor"
+              theme="tay-dark"
+              value={code}
+              options={editorOpts}
+              onChange={this.onTextChange}
+              editorWillMount={this.editorWillMount}
+              editorDidMount={this.editorDidMount}
+          />
+
+          <View style={{
+            ...consoleStyles,
+            flex: 1,
+            flexDirection: resultFlexDirection,
+            position: 'fixed',
+            bottom: '0px',
+            left: '0px'
+          }}>
             {backend === 'both'
-              ? (errors2
-                  ? <Text style={{color: 'firebrick', fontSize: editorOpts.fontSize }}>{errors2}</Text>
+              ? <Icon
+                  name='circle-o'
+                  type="FontAwesome"
+                  style={{
+                    color: result && result2 && JSON.stringify(result.result) === JSON.stringify(result2.result) ? 'green' : 'red',
+                    fontWeight: 'bold', position: 'absolute', left: '47%', top: '-10px', zIndex: 10 
+                  }}
+                />
+              : <div></div>
+            }
+            <ScrollView
+              horizontal={false}
+              scrollEnabled={true}
+              scrollEventThrottle={100}
+              nestedScrollEnabled={true}
+            >
+              {errors
+                  ? <Text style={{color: 'firebrick', fontSize: editorOpts.fontSize }}>{errors}</Text>
                   : <ReactJson
-                  src={result2 || {}}
+                  src={result || {}}
                   name={null}
                   theme="twilight"
                   collapsed={6}
-                  shouldCollapse={field => field.name === 'd' }
-                  style={{  fontSize: editorOpts.fontSize }}
+                  shouldCollapse={field => field.name === 'cost' }
+                  style={{ fontSize: editorOpts.fontSize }}
                   />
-                )
-              : <div></div>
-            }
-          </ScrollView>
+              }
+            </ScrollView>
+            <ScrollView
+              horizontal={false}
+              scrollEnabled={true}
+              scrollEventThrottle={100}
+              nestedScrollEnabled={true}
+            >
+              {backend === 'both'
+                ? (errors2
+                    ? <Text style={{color: 'firebrick', fontSize: editorOpts.fontSize }}>{errors2}</Text>
+                    : <ReactJson
+                    src={result2 || {}}
+                    name={null}
+                    theme="twilight"
+                    collapsed={6}
+                    shouldCollapse={field => field.name === 'd' }
+                    style={{  fontSize: editorOpts.fontSize }}
+                    />
+                  )
+                : <div></div>
+              }
+            </ScrollView>
         
-        </View>
+          </View>
 
-        <Button
-            small
-            light
-            style={{ position: 'fixed', top: '0px', left: '0px', backgroundColor: 'white',  opacity: 0.5 }}
-            onClick={() => this.execute({force: true})}
-        >
-            <Icon style={{ marginLeft: '10px', marginRight: '10px'}} type="FontAwesome" name='play' />
-        </Button>
+          <Button
+              small
+              light
+              style={{ position: 'fixed', top: '0px', left: '0px', backgroundColor: 'white',  opacity: 0.5 }}
+              onClick={() => this.execute({force: true})}
+          >
+              <Icon style={{ marginLeft: '10px', marginRight: '10px'}} type="FontAwesome" name='play' />
+          </Button>
+        </ScrollView>
+
         <ScrollView
           horizontal={false}
           scrollEnabled={true}

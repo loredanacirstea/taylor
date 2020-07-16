@@ -707,10 +707,12 @@ const tests = {
         {
             test: '(map myfunc (list 5 8 2))',
             result: [18, 27, 9],
+            prereq: ['myfunc'],
         },
         {
             test: '(map myfunc (list 5 8 2))',
             result: [18, 27, 9],
+            prereq: ['myfunc'],
         },
         {
             test: `(map
@@ -793,18 +795,22 @@ const tests = {
         {
             test: '(myfunc2 4 5)',
             result: 9,
+            prereq: ['myfunc2'],
         },
         {
             test: '(myfunc2 0 5)',
             result: 5,
+            prereq: ['myfunc2'],
         },
         {
             test: '(reduce myfunc2 (list 5 8 2) 0)',
             result: 15,
+            prereq: ['myfunc2'],
         },
         {
             test: '(reduce myfunc2 (array 5 8 2) 0)',
             result: 15,
+            prereq: ['myfunc2'],
         },
         {
             test: `(list
@@ -812,6 +818,7 @@ const tests = {
                 (reduce sub (list 45 8 2) 100)
             )`,
             result: [15, 45],
+            prereq: ['myfunc2'],
         },
         {
             test: `(add
@@ -819,6 +826,7 @@ const tests = {
                 (reduce myfunc2 (list 5 8 2) 0)
             )`,
             result: 60,
+            prereq: ['myfunc2'],
         },
         {
             test: `(reduce
@@ -899,6 +907,7 @@ const tests = {
         {
             test: '(apply myfunc3 4 5 9)',
             result: 18,
+            prereq: ['myfunc3'],
         },
         {
             test: '(apply (fn* (a b) (add a b)) 4 5)',
