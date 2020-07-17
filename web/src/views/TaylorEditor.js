@@ -59,6 +59,8 @@ class TaylorEditor extends Component {
     this.onGasprofileChange = this.onGasprofileChange.bind(this);
     this.onDeploy = this.onDeploy.bind(this);
     this.onDeployScreen = this.onDeployScreen.bind(this);
+    this.onLuxorScreen = this.onLuxorScreen.bind(this);
+    this.onEditorScreen = this.onEditorScreen.bind(this);
     this.onSelectFToD = this.onSelectFToD.bind(this);
     this.onChangeLivePreview = this.onChangeLivePreview.bind(this);
 
@@ -273,9 +275,19 @@ class TaylorEditor extends Component {
     } catch(e) {}
   }
 
-  async onDeployScreen() {
+  onEditorScreen() {
     let { width } = this.state;
-    this.scrollRef.current.scrollTo({x: width - 100});
+    this.scrollRef.current.scrollTo({x: width});
+  }
+
+  onLuxorScreen() {
+    this.scrollRef.current.scrollTo({x: 0});
+    this.setState({ showLuxor: true });
+  }
+
+  onDeployScreen() {
+    let { width } = this.state;
+    this.scrollRef.current.scrollTo({x: 2 * width});
   }
 
   async onDeploy() {
@@ -306,7 +318,16 @@ class TaylorEditor extends Component {
       width,
       height,
     } = this.state;
-    const {code, result, result2, errors, errors2, backend, functionsToDeploy, currentDeployment, tayinterpreter, malbackend} = this.state;
+    const {
+      code,
+      result, result2, errors, errors2,
+      backend,
+      functionsToDeploy,
+      currentDeployment,
+      tayinterpreter,
+      malbackend,
+      showLuxor,
+    } = this.state;
 
     let editorStyles = { width, height: height * 4 / 7 };
     let consoleStyles = { width, height: height - editorStyles.height };
@@ -338,6 +359,7 @@ class TaylorEditor extends Component {
           nestedScrollEnabled={true}
           onContentSizeChange={this.onContentSizeChange}
       >
+
         <ScrollView
           horizontal={false}
           scrollEnabled={true}
@@ -345,17 +367,25 @@ class TaylorEditor extends Component {
           nestedScrollEnabled={true}
           contentContainerStyle={luxorStyles}
         >
-          <View style={{
-            ...luxorStyles,
-          }}>
-            <Luxor
-              styles={luxorStyles}
-              backend={backend}
-              taylor_web3={tayinterpreter}
-              taylor_js={malbackend}
-              taylor={activeBackend}
-            />
-          </View>
+          {showLuxor
+            ?<View style={{
+              ...luxorStyles,
+            }}>
+              <Luxor
+                styles={luxorStyles}
+                backend={backend}
+                taylor_web3={tayinterpreter}
+                taylor_js={malbackend}
+                taylor={activeBackend}
+                onEditorScreen={this.onEditorScreen}
+              />
+            </View>
+            : <Button small light style={{ marginLeft: '50%', marginRight: 'auto', marginTop: '20%', marginBottom: 'auto', backgroundColor: 'rgb(155, 112, 63)' }}
+                onClick={this.onLuxorScreen}
+              >
+                <Text style={{ ...textStyle, color: 'rgb(30, 30, 30)' }}>luxor</Text>
+              </Button>
+          }
         </ScrollView>
 
         <ScrollView
@@ -462,6 +492,7 @@ class TaylorEditor extends Component {
               onFunctionsChange={this.onFunctionsChange}
               onGasprofileChange={this.onGasprofileChange}
               onDeploy={this.onDeployScreen}
+              onLuxor={this.onLuxorScreen}
               onChangeLivePreview={this.onChangeLivePreview}
           />
         </ScrollView>

@@ -867,18 +867,22 @@ const tests = {
         {
             test: '(recursivefn 2)',
             result: 6,
+            prereq: ['recursivefn'],
         },
         {
             test: '(fibonacci 1)',
             result: 1,
+            prereq: ['fibonacci'],
         },
         {
             test: '(fibonacci 2)',
             result: 1,
+            prereq: ['fibonacci'],
         },
         {
             test: '(fibonacci 8)',
             result: 21,
+            prereq: ['fibonacci'],
         },
         {
             test: `(let* 

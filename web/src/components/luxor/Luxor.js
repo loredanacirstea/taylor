@@ -1,5 +1,6 @@
 import React, { Component } from 'react';
-import ReactDOM from 'react-dom'
+import ReactDOM from 'react-dom';
+import { Button, Icon, Text} from 'native-base';
 import taylor from '@pipeos/taylor';
 import 'canvas-datagrid';
 import { sheet_settings, sheet_style_dark } from './configs.js';
@@ -184,6 +185,25 @@ class Luxor extends React.Component {
                 formatter: this.formatter,
                 onCellChange: this.onCellChange,
             }),
+            React.createElement(Button, {
+                small: true,
+                icon: true,
+                style: {
+                    backgroundColor: 'rgb(155, 112, 63)',
+                    position: 'absolute',
+                    top: '0px',
+                    left: '0px',
+                    height: '25px',
+                    padding: '2px',
+                },
+                onClick: this.props.onEditorScreen,
+            },
+                React.createElement(Icon, {
+                    name: 'chevron-right',
+                    type: 'FontAwesome',
+                    style: { color: 'rgb(30, 30, 30)' },
+                }),
+            ),
         );
     }
 }
