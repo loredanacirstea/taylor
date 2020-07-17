@@ -47,6 +47,7 @@ class TaylorEditor extends Component {
       functionsToDeploy: this.defaultFToD(),
       currentDeployment: {},
       livepreview: true,
+      showLuxor: false,
     }
 
     this.onContentSizeChange = this.onContentSizeChange.bind(this);
@@ -61,6 +62,7 @@ class TaylorEditor extends Component {
     this.onDeployScreen = this.onDeployScreen.bind(this);
     this.onLuxorScreen = this.onLuxorScreen.bind(this);
     this.onEditorScreen = this.onEditorScreen.bind(this);
+    this.onCloseLuxor = this.onCloseLuxor.bind(this);
     this.onSelectFToD = this.onSelectFToD.bind(this);
     this.onChangeLivePreview = this.onChangeLivePreview.bind(this);
 
@@ -280,6 +282,11 @@ class TaylorEditor extends Component {
     this.scrollRef.current.scrollTo({x: width});
   }
 
+  onCloseLuxor() {
+    this.onEditorScreen();
+    this.setState({ showLuxor: false });
+  }
+
   onLuxorScreen() {
     this.scrollRef.current.scrollTo({x: 0});
     if (!this.state.showLuxor) {
@@ -380,6 +387,7 @@ class TaylorEditor extends Component {
                 taylor_js={malbackend}
                 taylor={activeBackend}
                 onEditorScreen={this.onEditorScreen}
+                onCloseLuxor={this.onCloseLuxor}
               />
             </View>
             : <Button small light style={{ marginLeft: '50%', marginRight: 'auto', marginTop: '20%', marginBottom: 'auto', backgroundColor: 'rgb(155, 112, 63)' }}

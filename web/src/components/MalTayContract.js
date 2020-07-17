@@ -37,7 +37,6 @@ class MalTayContract extends Component {
       currency: 'eur',
       gasprofile: 'average',
       livepreview: this.props.livepreview,
-      showLuxor: false,
     }
 
     this.onChangeAddress = this.onChangeAddress.bind(this);

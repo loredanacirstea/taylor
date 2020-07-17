@@ -154,7 +154,10 @@ class Luxor extends React.Component {
                 for (let j = 0 ; j <= data[i].length; j++) {
                     let value = data[i][j];
                     let key = this.getKeyFromCoords(i, j);
-                    this.formattedData[key] = await this.executeCell(key, value);
+                    // Only calculate what has not been executed
+                    if (typeof this.formattedData[key] === 'undefined' || this.formattedData[key] === value) {
+                        this.formattedData[key] = await this.executeCell(key, value);
+                    }
                 }
             }
         }
@@ -184,16 +187,35 @@ class Luxor extends React.Component {
                     backgroundColor: 'rgb(155, 112, 63)',
                     position: 'absolute',
                     top: '0px',
-                    left: '0px',
+                    right: '40px',
                     height: '25px',
-                    padding: '2px',
+                    padding: '0px',
                 },
                 onClick: this.props.onEditorScreen,
             },
                 React.createElement(Icon, {
                     name: 'chevron-right',
                     type: 'FontAwesome',
-                    style: { color: 'rgb(30, 30, 30)' },
+                    style: iconStyle,
+                }),
+            ),
+            React.createElement(Button, {
+                small: true,
+                icon: true,
+                style: {
+                    backgroundColor: 'rgb(155, 112, 63)',
+                    position: 'absolute',
+                    top: '0px',
+                    right: '0px',
+                    height: '25px',
+                    padding: '0px',
+                },
+                onClick: this.props.onCloseLuxor,
+            },
+                React.createElement(Icon, {
+                    name: 'close',
+                    type: 'FontAwesome',
+                    style: iconStyle,
                 }),
             ),
         );
@@ -237,4 +259,10 @@ const tayextension = {
             // const args = 
         }
     }
+}
+
+const iconStyle = {
+    color: 'rgb(30, 30, 30)',
+    marginLeft: '10px',
+    marginRight: '10px', 
 }
