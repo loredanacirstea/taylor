@@ -6,6 +6,7 @@ import 'canvas-datagrid';
 import { sheet_settings, sheet_style_dark } from './configs.js';
 
 const MARKER_JS = '=', MARKER_WEB3 = '$';
+const SHEET_KEY_REGEX = /([A-Z]{1}[0-9]{1,})/g;
 
 class CanvasDatagrid extends React.Component {
     tayprops = ['formatter', 'onCellChange']
@@ -41,7 +42,6 @@ class CanvasDatagrid extends React.Component {
         const self = this;
         this.grid = ReactDOM.findDOMNode(this);
         this.updateAttributes();
-        console.log('grid', this.grid);
         this.grid.style.height = '100%';
         this.grid.style.width = '100%';
 
@@ -51,18 +51,7 @@ class CanvasDatagrid extends React.Component {
             self.props.onCellChange(e.cell, e.value, self.grid);
         });
     }
-    // dataChanged(e) {
-    //     console.log('dataChanged', e.data)
-    //     const {taylor} = this.props;
-        
-    //     for (let i in e.data) {
-    //         for (let j in e.data[i]) {
-    //             let res = this.executeCell(e.data[i][j]);
-    //             let key = String.fromCharCode(65+parseInt(j)) +(1+parseInt(i));
-    //             this.storeCell(key, res);
-    //         }
-    //     }
-    // }
+
     render() {
         return React.createElement('canvas-datagrid', {});
     }
@@ -81,13 +70,11 @@ class Luxor extends React.Component {
     }
 
     componentDidMount() {
-        this.recalcFormattedData('js');
-        this.recalcFormattedData('web3');
+        this.recalcFormattedData();
     }
 
     componentWillReceiveProps(nextProps) {
-        this.recalcFormattedData('js');
-        this.recalcFormattedData('web3');
+        this.recalcFormattedData();
     }
 
     getKeyFromCell(cell) {
@@ -104,36 +91,41 @@ class Luxor extends React.Component {
         return typeof this.formattedData[key] !== 'undefined' ? this.formattedData[key] : value;
     }
 
-    storeCell(key, value) {
-        if (!this.props.taylor || typeof value === 'undefined') return;
-        const tayvalue = taylor.jsval2tay(value);
-        this.props.taylor.send(`(def! ${key} ${tayvalue} )`);
-    }
-
     async executeCell(key, value) {
         if (!value || typeof value !== 'string') return value;
         let response;
 
         const marker = value.slice(0, 1);
+        if (marker !== MARKER_JS && marker !== MARKER_WEB3) return value;
         let api;
         if (marker === MARKER_JS) {
             api = this.props.taylor_js;
         }
-        if (marker === MARKER_WEB3 || this.props.backend === 'injected') {
+        if (marker === MARKER_WEB3) {
             api = this.props.taylor_web3;
         }
-        
         if (!api) return value;
         
         try {
             let newvalue = value.slice(1);
+            newvalue = this.replaceCellValues(newvalue);
             response = await api.call(newvalue)
         } catch(e) {
+            console.log(e);
             response = value;
         }
-        this.storeCell(key, response);
-        
+
         return response;
+    }
+
+    replaceCellValues(code) {
+        const keys = code.match(SHEET_KEY_REGEX);
+        (keys || []).forEach(cell_key => {
+            const tayvalue = taylor.jsval2tay(this.formattedData[cell_key]);
+            code = code.replace(cell_key, tayvalue);
+        });
+        
+        return code;
     }
 
     // runExtensions(code) {

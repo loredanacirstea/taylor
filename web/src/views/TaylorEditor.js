@@ -282,7 +282,9 @@ class TaylorEditor extends Component {
 
   onLuxorScreen() {
     this.scrollRef.current.scrollTo({x: 0});
-    this.setState({ showLuxor: true });
+    if (!this.state.showLuxor) {
+      this.setState({ showLuxor: true });
+    }
   }
 
   onDeployScreen() {
