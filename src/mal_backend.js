@@ -3,6 +3,7 @@ const malTypes = require('./mal/types.js');
 const interop = require('./mal/interop');
 const BN = require('bn.js');
 const ethers = require('ethers');
+const { sendTransaction, call: eth_call } = require('./web3.js');
 
 mal.re = str => mal.EVAL(mal.READ(str), mal.repl_env)
 mal.reps = lines => lines.split('\n\n')
@@ -34,6 +35,25 @@ const isArray = val => {
     return !val.some(it => (typeof it) !== itemtype);
 }
 
+const callContract = (address, fsig, data, providerOrSigner) => {
+    data = callDataPrep(data);
+    const signature = fsig.split('->').map(val => val.trim());
+    const fname = signature[0].split('(')[0].trim();
+    const abi = [
+        `function ${signature[0]} view ${signature[1] ? 'returns ' + signature[1] : ''}`,
+    ]
+    const contract = new ethers.Contract(address, abi, providerOrSigner);
+    return contract[fname](...data);
+}
+
+const callDataPrep = data => {
+    // data is a list: (4 6)
+    data = data.substring(1, data.length-1).trim();
+    if (!data) data = [];
+    else data = data.split(' ').map(val => val.trim());
+    return data;
+}
+
 mal.globalStorage = {};
 
 modifyEnv('nil?', (orig_func, value) => {
@@ -51,7 +71,7 @@ modifyEnv('nil?', (orig_func, value) => {
 //     return orig_func(value);
 // });
 
-modifyEnv('js-eval', (orig_func, str) => {
+modifyEnv('js-eval', async (orig_func, str) => {
     const utils = {
         BN: n => {
             if (typeof n === 'string' && n.substring(0, 2) === '0x') {
@@ -101,10 +121,18 @@ modifyEnv('js-eval', (orig_func, str) => {
             // no floats yet
             if (b < 0) return 0;
             return utils.BN(a).pow(utils.BN(b));
+        },
+        ethcall: async (address, fsig, data) => {
+            if (!mal.provider) return;
+            return callContract(address, fsig, data, mal.provider)
+        },
+        ethsend: async (address, fsig, data) => {
+            if (!mal.signer) return;
+            return callContract(address, fsig, data, mal.signer).catch(console.log);
         }
     }
     
-    let answ = eval(str.toString());
+    let answ = await eval(str.toString());
 
     if (BN.isBN(answ)) answ = { _hex: '0x' + answ.toString(16) }
     if (typeof answ === 'boolean') answ = { _hex: toHex(answ ? 1 : 0)}
@@ -228,6 +256,10 @@ mal.reps(`
 
 (def! return (fn* (a) a ))
 
+(def! eth-call (fn* (address fsig argList) (js-eval (str "utils.ethcall('" address "','" fsig "','" argList "')" )) ))
+
+(def! eth-call! (fn* (address fsig argList) (js-eval (str "utils.ethsend('" address "','" fsig "','" argList "')" )) ))
+
 `)
 
 // addmod
@@ -253,7 +285,7 @@ const DEFAULT_TXOBJ = {
 
 const underNumberLimit = bnval => bnval.abs().lt(new BN(2).pow(new BN(16)));
 
-mal.getBackend = (address) => {
+mal.getBackend = (address, provider, signer) => {
     address = address || '0x81bD2984bE297E18F310BAef6b895ea089484968';
     const dec = bnval => {
         if(!bnval) return bnval;
@@ -271,12 +303,13 @@ mal.getBackend = (address) => {
         return bnval;
     }
   
-    const from = '0xfCbCE2e4d0E19642d3a2412D84088F24bFB33a48';
+    const DEFAULT_FROM = '0xfCbCE2e4d0E19642d3a2412D84088F24bFB33a48';
   
     const interpreter = {
       address,
-      call: (mal_expression, txObj) => {
+      call: async (mal_expression, txObj) => {
         mal_expression = mal_expression.replace(/_/g, '');
+        const from = await interpreter.signer.getAddress();
         txObj = Object.assign({ from }, DEFAULT_TXOBJ, txObj);
   
         mal.rep(`(def! cenv {
@@ -293,13 +326,18 @@ mal.getBackend = (address) => {
           "difficulty" (js-eval "utils.BN(300)")
           "chainid" 3
         })`);
-  
-        return dec(mal.re(mal_expression));
+
+        const answ = await mal.re(mal_expression);
+        return dec(answ);
       },
-      signer: { getAddress: () => from },
+      provider,
+      signer: signer || { getAddress: () => DEFAULT_FROM },
     }
     interpreter.send = interpreter.call;
     interpreter.sendAndWait = interpreter.send;
+
+    mal.provider = provider;
+    mal.signer = signer;
     return interpreter;
 }
 

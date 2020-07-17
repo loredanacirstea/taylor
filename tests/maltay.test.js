@@ -1,18 +1,19 @@
 const BN = require('bn.js');
 const ethers = require('ethers');
 require('../src/extensions.js');
-const { deployTaylor, getMalBackend } = require('./setup/fixtures.js');
+const { deployTaylor, getMalBackend, getTestCallContract } = require('./setup/fixtures.js');
 const { decode, encode, expr2h, b2h, u2b, expr2s } = require('../src/taylor.js');
 const { bootstrap } = require('../src/deploy.js');
 const tests = require('./json_tests/index.js');
 
 let MalTay;
-let MalB = getMalBackend();
+let MalB;
 
 beforeAll(() => {
   return deployTaylor().then(t => {
     MalTay = t;
     console.log('****MalTay', MalTay.address);
+    MalB = getMalBackend(MalTay.address, MalTay.provider, MalTay.signer);
     return MalTay.bootstrap();
   }).then(() => MalTay.init())
     .then(() => MalTay.watch());
@@ -515,6 +516,46 @@ describe('web3 only', function () {
             });
         });
     }
+});
+
+describe('javascript call & send', function () {
+    let call_send_contract, addr, resp, expected;
+    
+    it('call & send - prereq', async function () {
+        call_send_contract = await getTestCallContract();
+        addr = call_send_contract.address;
+    }, 10000);
+
+    test('eth-call view', async function () {
+        resp = await MalB.call(`(eth-call "${addr}" "somevar()->(uint)" (list) )`);
+        expected = await call_send_contract.somevar();
+        expect(resp).toEqual(5);
+        expect(resp).toEqual(expected.toNumber());
+
+        resp = await MalB.call(`(eth-call "${addr}" "name()->(string memory)" (list) )`);
+        expected = await call_send_contract.name();
+        expect(resp).toEqual("Some Name");
+        expect(resp).toEqual(expected);
+    });
+    
+    test('eth-call pure', async function () {
+        resp = await MalB.call(`(eth-call "${addr}" "add(uint,uint)->(uint)" (list 5 6) )`);
+        expected = await call_send_contract.add(5, 6);
+        expect(resp).toEqual(11);
+        expect(resp).toEqual(expected.toNumber());
+    });
+
+    test.skip('eth-call!', async function () {
+        await MalB.sendAndWait(`(eth-call! "${addr}" "increase(uint)" (list 7) )`);
+        // await call_send_contract.increase(7);
+        resp = await call_send_contract.somevar();
+        expect(resp.toNumber()).toEqual(12);
+
+        await MalB.sendAndWait(`(eth-call! "${addr}" "setname(string memory)" (list "New Name") )`);
+        // await call_send_contract.setname("New Name");
+        resp = await call_send_contract.name();
+        expect(resp).toEqual('New Name');
+    });
 });
 
 describe.each([

@@ -8,25 +8,39 @@ let cpath = __dirname.split('/');
 cpath.pop();
 const TAYLOR_PATH = cpath.join('/') + '/contracts/mal_like_tay.sol';
 
-const solcData = yulsource => JSON.stringify({
+const solcDataYul = yulsource => JSON.stringify({
   language: 'Yul',
-  sources: { 'input.yul': { content: yulsource } },
+  sources: { 'contract_source': { content: yulsource } },
   settings: {
     outputSelection: { '*': { '*': ['*'], '': ['*'] } },
     optimizer: { enabled: true, details: { yul: true } },
   },
 });
 
+var solcDataSol = source => JSON.stringify({
+  language: 'Solidity',
+  sources: { 'contract_source': { content: source } },
+  settings: {
+    outputSelection: { '*': { '*': ['*'] } },
+  }
+});
+
 const compileContract = filePath => {
-  const yulsource = fs.readFileSync(filePath).toString();
-  const output = JSON.parse(solc.compile(solcData(yulsource)));
+  const source = fs.readFileSync(filePath).toString();
+  let solcData = solcDataYul;
+  
+  if (!filePath.includes('tay.sol')) {
+    solcData = solcDataSol;
+  }
+  
+  const output = JSON.parse(solc.compile(solcData(source)));
 
   if (output.errors.length > 1 || !output.contracts) {
     const message = output.errors.map(err => err.formattedMessage).join('\n');
     throw new Error(message)
   }
 
-  return Object.values(output.contracts['input.yul'])[0];
+  return Object.values(output.contracts['contract_source'])[0];
 }
 
 const deployContractFromPath = signer => async filePath => {
