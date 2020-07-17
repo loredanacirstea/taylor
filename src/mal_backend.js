@@ -296,7 +296,7 @@ mal.getBackend = (address) => {
   
         return dec(mal.re(mal_expression));
       },
-      signer: { _address: from },
+      signer: { getAddress: () => from },
     }
     interpreter.send = interpreter.call;
     interpreter.sendAndWait = interpreter.send;

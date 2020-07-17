@@ -1,7 +1,7 @@
 import React, { Component } from 'react';
 import { View, Item, Text, Button, Icon, Picker, CheckBox } from 'native-base';
 import { getProvider } from '../utils/web3.js';
-import { addAddress, getAddresses, getConfig, setConfig, DEPL_BLOCKS } from '../utils/taylor.js';
+import { addAddress, getAddresses, getConfig, setConfig } from '../utils/taylor.js';
 import taylor from '@pipeos/taylor';
 import { editorOpts } from '../utils/config.js';
 import { argsDisplay } from '../utils/taylor_editor.js';
@@ -205,6 +205,12 @@ class MalTayContract extends Component {
               onClick={this.onChangeLivePreview}
             />
             <Text style={{ ...textStyle, marginLeft: '20px' }}>auto run</Text>
+
+            <Button small light style={{ marginRight: '0px', marginLeft: 'auto', backgroundColor: 'rgb(155, 112, 63)' }}
+              onClick={this.props.onLuxor}
+            >
+              <Text style={{ ...textStyle, color: 'rgb(30, 30, 30)' }}>luxor</Text>
+            </Button>
           </Item>
 
           <br></br><br></br>

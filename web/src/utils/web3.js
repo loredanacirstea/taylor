@@ -1,23 +1,14 @@
 import { ethers } from 'ethers';
 
-const connect = async () => {
-    if (window.ethereum) {
-        try {
-            // eslint-disable-next-line
-            await ethereum.enable();
-        } catch (error) {
-            console.log('User rejected dApp connection');
-        }
-    } 
-};
-
 const getProvider = async () => {
-  await connect();
-  if (window.web3 && window.web3.currentProvider) {
-    // eslint-disable-next-line
-    const provider = new ethers.providers.Web3Provider(web3.currentProvider);
-    // const provider = new ethers.providers.JsonRpcProvider('HTTP://192.168.1.140:8545');
-    const signer = provider.getSigner(0);
+  if(window.ethereum) {
+    let provider, signer;
+    try {
+      provider = new ethers.providers.Web3Provider(window.ethereum)
+    } catch(e) {
+      console.log('Use a web3-enabled wallet.')
+    }
+    if (provider) signer = provider.getSigner(0);
     return { provider, signer };
   }
   return {};

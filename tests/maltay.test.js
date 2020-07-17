@@ -618,8 +618,9 @@ describe.each([
     });
 
     test(`caller`, async () => {
-        resp = await instance.call('(caller)', {from: instance.signer._address});
-        expect(resp.toLowerCase()).toBe(instance.signer._address.toLowerCase());
+        const myaddr = await instance.signer.getAddress();
+        resp = await instance.call('(caller)', {from: myaddr});
+        expect(resp.toLowerCase()).toBe(myaddr.toLowerCase());
     });
 
     test(`callvalue`, async () => {
@@ -650,7 +651,8 @@ describe.each([
     });
 
     test.skip(`extcodesize`, async () => {
-        resp = await instance.call('(extcodesize "0x' + MalTay.signer._address.substring(2) + '")');
+        const myaddr = await MalTay.signer.getAddress();
+        resp = await instance.call('(extcodesize "0x' + myaddr.substring(2) + '")');
         expect(resp).toBeGreaterThan(4);
     });
 
@@ -704,8 +706,9 @@ describe.each([
     });
 
     test(`origin`, async () => {
-        resp = await instance.call('(origin)', {from: instance.signer._address});
-        expect(resp.toLowerCase()).toBe(instance.signer._address.toLowerCase());
+        const myaddr = await instance.signer.getAddress();
+        resp = await instance.call('(origin)', {from: myaddr});
+        expect(resp.toLowerCase()).toBe(myaddr.toLowerCase());
     });
 
     // TODO: implement on chain
@@ -715,8 +718,9 @@ describe.each([
     });
 
     test.skip(`blockhash`, async () => {
+        const myaddr = await instance.signer.getAddress();
         resp = await instance.call('(blockhash)');
-        // expect(bnToHex(resp)).toBe(instance.signer._address.toLowerCase());
+        // expect(bnToHex(resp)).toBe(myaddr.toLowerCase());
     });
 
     test(`coinbase`, async () => {
