@@ -549,9 +549,9 @@ describe('javascript call & send', function () {
         resp = await call_send_contract.somevar();
         expect(resp.toNumber()).toEqual(12);
 
-        await MalB.sendAndWait(`(eth-call! "${addr}" "setname(string memory)" (list "NewName") )`);
+        await MalB.sendAndWait(`(eth-call! "${addr}" "setname(string memory)" (list "New Name") )`);
         resp = await call_send_contract.name();
-        expect(resp).toEqual('NewName');
+        expect(resp).toEqual('New Name');
     });
 });
 

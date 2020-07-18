@@ -55,8 +55,16 @@ const callContract = (address, fsig, data, providerOrSigner, isTx=false) => {
 const callDataPrep = data => {
     // data is a list: (4 6)
     data = data.substring(1, data.length-1).trim();
-    if (!data) data = [];
-    else data = data.split(' ').map(val => val.trim());
+    if (!data) return [];
+
+    // fixme: bad for strings with commas in them. do better
+    try {
+        data = JSON.parse(`[${ data.replace(/ /g, ',') }]`);
+        data = data.map(val => typeof val !== 'string' ? val : val.replace(',', ' '));
+    } catch (e) {
+        console.log('callDataPrep', e);
+    }
+
     return data;
 }
 
@@ -264,9 +272,9 @@ await mal.reps(`
 
 (def! return (fn* (a) a ))
 
-(def! eth-call (fn* (address fsig argList) (js-eval (str "utils.ethcall('" address "','" fsig "','" argList "')" )) ))
+(def! eth-call (fn* (address fsig argList) (js-eval (str "utils.ethcall('" address "','" fsig "','" (pr-str argList) "')" )) ))
 
-(def! eth-call! (fn* (address fsig argList) (js-eval (str "utils.ethsend('" address "','" fsig "','" argList "')" )) ))
+(def! eth-call! (fn* (address fsig argList) (js-eval (str "utils.ethsend('" address "','" fsig "','" (pr-str argList) "')" )) ))
 
 `)
 
