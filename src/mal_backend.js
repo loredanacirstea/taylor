@@ -35,17 +35,18 @@ const isArray = val => {
     return !val.some(it => (typeof it) !== itemtype);
 }
 
-const callContract = (address, fsig, data, providerOrSigner) => {
+const callContract = (address, fsig, data, providerOrSigner, isTx=false) => {
     data = callDataPrep(data);
     const signature = fsig.split('->').map(val => val.trim());
     const fname = signature[0].split('(')[0].trim();
     const abi = [
-        `function ${signature[0]} view ${signature[1] ? 'returns ' + signature[1] : ''}`,
+        `function ${signature[0]} ${isTx ? '' : 'view'} ${signature[1] ? 'returns ' + signature[1] : ''}`,
     ]
     const contract = new ethers.Contract(address, abi, providerOrSigner);
     return contract[fname](...data);
 }
 
+// TODO: better mal -> js parsing
 const callDataPrep = data => {
     // data is a list: (4 6)
     data = data.substring(1, data.length-1).trim();
@@ -128,7 +129,7 @@ modifyEnv('js-eval', async (orig_func, str) => {
         },
         ethsend: async (address, fsig, data) => {
             if (!mal.signer) return;
-            return callContract(address, fsig, data, mal.signer).catch(console.log);
+            return callContract(address, fsig, data, mal.signer, true).catch(console.log);
         }
     }
     
