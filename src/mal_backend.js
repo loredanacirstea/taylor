@@ -3,13 +3,18 @@ const malTypes = require('./mal/types.js');
 const interop = require('./mal/interop');
 const BN = require('bn.js');
 const ethers = require('ethers');
-const { sendTransaction, call: eth_call } = require('./web3.js');
 
 mal.re = str => mal.EVAL(mal.READ(str), mal.repl_env)
-mal.reps = lines => lines.split('\n\n')
+mal.reps = async lines => {
+    lines = lines.split('\n\n')
     .map(line => line.replace('\n', ''))
     .filter(line => line.length > 4 && !line.includes(';'))
-    .map(line => mal.rep(line));
+    let newl = [];
+    for (let line of lines) {
+        newl.push(await mal.rep(line));
+    }
+    return newl;
+}
 
 const modifyEnv = (name, func) => {
     const orig_func =  mal.repl_env.get(malTypes._symbol(name));
@@ -141,9 +146,11 @@ modifyEnv('js-eval', async (orig_func, str) => {
     return interop.js_to_mal(answ);
 })
 
+async function init() {
+
 /* Taylor */
 
-mal.reps(`
+await mal.reps(`
 (def! reduce (fn* (f xs init) (if (empty? xs) init (reduce f (rest xs) (f init (first xs)) ))))
 
 (def! encode (fn* (a) (js-eval (str "utils.encode('" a "')") )))
@@ -161,7 +168,7 @@ mal.reps(`
 
 /* EVM */
 
-mal.reps(`
+await mal.reps(`
 (def! add (fn* (a b) (js-eval (str "utils.BN(" a ").add(utils.BN(" b "))"))))
 
 (def! sub (fn* (a b) (js-eval (str "utils.BN(" a ").sub(utils.BN(" b "))"))))
@@ -208,7 +215,7 @@ mal.reps(`
 
 `)
 
-mal.reps(`
+await mal.reps(`
 (def! balances {})
 
 (def! gas (fn* () (get cenv "gas")))
@@ -277,6 +284,7 @@ mal.reps(`
 // delegatecall
 // staticcall
 // logs
+}
 
 const DEFAULT_TXOBJ = {
     gasLimit: 1000000,
@@ -286,16 +294,22 @@ const DEFAULT_TXOBJ = {
 
 const underNumberLimit = bnval => bnval.abs().lt(new BN(2).pow(new BN(16)));
 
-mal.getBackend = (address, provider, signer) => {
+mal.getBackend = async (address, provider, signer) => {
     address = address || '0x81bD2984bE297E18F310BAef6b895ea089484968';
-    const dec = bnval => {
+    const dec = async bnval => {
+        if (bnval instanceof Promise) bnval = await bnval;
         if(!bnval) return bnval;
+        
         if (typeof bnval === 'number') {
             bnval = new BN(bnval);
         } else if (typeof bnval === 'object' && bnval._hex) {
             bnval = new BN(bnval._hex.substring(2), 16);
         } else if (bnval instanceof Array) {
-            return bnval.map(val => dec(val));
+            let vals = []
+            for (let val of bnval) {
+                vals.push(await dec(val));
+            }
+            return vals;
         }
         
         if (BN.isBN(bnval)) {
@@ -304,16 +318,18 @@ mal.getBackend = (address, provider, signer) => {
         return bnval;
     }
   
-    const DEFAULT_FROM = '0xfCbCE2e4d0E19642d3a2412D84088F24bFB33a48';
+    const from = signer ? await signer.getAddress() : '0xfCbCE2e4d0E19642d3a2412D84088F24bFB33a48';
+    const chainid = provider ? (await provider.getNetwork()).chainId : 3;
+
+    await init();
   
     const interpreter = {
       address,
       call: async (mal_expression, txObj) => {
         mal_expression = mal_expression.replace(/_/g, '');
-        const from = await interpreter.signer.getAddress();
         txObj = Object.assign({ from }, DEFAULT_TXOBJ, txObj);
   
-        mal.rep(`(def! cenv {
+        await mal.rep(`(def! cenv {
           "gas" 176000
           "gasLimit" ${txObj.gasLimit}
           "address" (str "${address}")
@@ -325,14 +341,14 @@ mal.getBackend = (address, provider, signer) => {
           "blockhash" (str "0x37b89115ab3653201f2f995d2d0c50cb99b65251f530ed496470b9102e035d5f")
           "origin" (str "${txObj.from}")
           "difficulty" (js-eval "utils.BN(300)")
-          "chainid" 3
+          "chainid" ${chainid}
         })`);
 
         const answ = await mal.re(mal_expression);
         return dec(answ);
       },
       provider,
-      signer: signer || { getAddress: () => DEFAULT_FROM },
+      signer: signer || { getAddress: () => from },
     }
     interpreter.send = interpreter.call;
     interpreter.sendAndWait = interpreter.send;
