@@ -40,27 +40,34 @@ function is_macro_call(ast, env) {
            env.get(ast[0])._ismacro_;
 }
 
-function macroexpand(ast, env) {
+async function macroexpand(ast, env) {
     while (is_macro_call(ast, env)) {
         var mac = env.get(ast[0]);
-        ast = mac.apply(mac, ast.slice(1));
+        ast = await mac.apply(mac, ast.slice(1));
     }
     return ast;
 }
 
-function eval_ast(ast, env) {
+async function eval_ast(ast, env) {
     if (types._symbol_Q(ast)) {
         return env.get(ast);
     } else if (types._list_Q(ast)) {
-        return ast.map(function(a) { return EVAL(a, env); });
+        let aaa = []
+        for (let a of ast) {
+            aaa.push(await EVAL(a, env));
+        }
+        return aaa;
     } else if (types._vector_Q(ast)) {
-        var v = ast.map(function(a) { return EVAL(a, env); });
+        let v = []
+        for (let a of ast) {
+            aaa.push(await EVAL(a, env));
+        }
         v.__isvector__ = true;
         return v;
     } else if (types._hash_map_Q(ast)) {
         var new_hm = {};
         for (k in ast) {
-            new_hm[EVAL(k, env)] = EVAL(ast[k], env);
+            new_hm[await EVAL(k, env)] = await EVAL(ast[k], env);
         }
         return new_hm;
     } else {
@@ -68,7 +75,7 @@ function eval_ast(ast, env) {
     }
 }
 
-function _EVAL(ast, env) {
+async function _EVAL(ast, env) {
     while (true) {
 
     //printer.println("EVAL:", printer._pr_str(ast, true));
@@ -77,7 +84,7 @@ function _EVAL(ast, env) {
     }
 
     // apply list
-    ast = macroexpand(ast, env);
+    ast = await macroexpand(ast, env);
     if (!types._list_Q(ast)) {
         return eval_ast(ast, env);
     }
@@ -88,12 +95,12 @@ function _EVAL(ast, env) {
     var a0 = ast[0], a1 = ast[1], a2 = ast[2], a3 = ast[3];
     switch (a0.value) {
     case "def!":
-        var res = EVAL(a2, env);
+        var res = await EVAL(a2, env);
         return env.set(a1, res);
     case "let*":
         var let_env = new Env(env);
         for (var i=0; i < a1.length; i+=2) {
-            let_env.set(a1[i], EVAL(a1[i+1], let_env));
+            let_env.set(a1[i], await EVAL(a1[i+1], let_env));
         }
         ast = a2;
         env = let_env;
@@ -104,7 +111,7 @@ function _EVAL(ast, env) {
         ast = quasiquote(a1);
         break;
     case 'defmacro!':
-        var func = types._clone(EVAL(a2, env));
+        var func = types._clone(await EVAL(a2, env));
         func._ismacro_ = true;
         return env.set(a1, func);
     case 'macroexpand':
@@ -121,11 +128,11 @@ function _EVAL(ast, env) {
             }
         }
     case "do":
-        eval_ast(ast.slice(1, -1), env);
+        await eval_ast(ast.slice(1, -1), env);
         ast = ast[ast.length-1];
         break;
     case "if":
-        var cond = EVAL(a1, env);
+        var cond = await EVAL(a1, env);
         if (cond === null || cond === false || cond === 0 || (cond._hex && parseInt(cond._hex, 16) === 0)) {
             ast = (typeof a3 !== "undefined") ? a3 : null;
         } else {
@@ -135,7 +142,7 @@ function _EVAL(ast, env) {
     case "fn*":
         return types._function(EVAL, Env, a2, env, a1);
     default:
-        var el = eval_ast(ast, env), f = el[0];
+        var el = await eval_ast(ast, env), f = el[0];
         if (f.__ast__) {
             ast = f.__ast__;
             env = f.__gen_env__(el.slice(1));
@@ -147,8 +154,8 @@ function _EVAL(ast, env) {
     }
 }
 
-function EVAL(ast, env) {
-    var result = _EVAL(ast, env);
+async function EVAL(ast, env) {
+    var result = await _EVAL(ast, env);
     return (typeof result !== "undefined") ? result : null;
 }
 
@@ -159,7 +166,7 @@ function PRINT(exp) {
 
 // repl
 var repl_env = new Env();
-var rep = function(str) { return PRINT(EVAL(READ(str), repl_env)); };
+var rep = async function(str) { return PRINT(await EVAL(READ(str), repl_env)); };
 
 // core.js: defined using javascript
 for (var n in core.ns) { repl_env.set(types._symbol(n), core.ns[n]); }
