@@ -421,9 +421,8 @@ const ast2h = (ast, parent=null, unkownMap={}, defenv={}, arrItemType=null) => {
         const defname = ast[1].value.hexEncode().padStart(64, '0');
         // We add the function as an already stored function
         // -> the contract loads the recursive function from storage each time 
-        const newdefenv = Object.assign({}, defenv);
-        newdefenv[ast[1].value] = true;
-        const exprbody = ast2h(ast[2], ast, unkownMap, newdefenv);
+        defenv[ast[1].value] = true;
+        const exprbody = ast2h(ast[2], ast, unkownMap, defenv);
         const exprlen = u2h(exprbody.length / 2).padStart(8, '0');
         return nativeEnv[elem.value].hex + defname + exprlen + exprbody;
     }
@@ -863,7 +862,7 @@ const getTaylor = (provider, signer) => (address, deploymentBlock = 0) => {
         functions = functions || Object.values(bootstrap_functions);
         let receipts = [];
 
-        const step = 12;
+        const step = 10;
         for (let i = 0 ; i <= functions.length ; i += step) {
             const funcs = functions.slice(i, i + step);
             const expr = `(list ${funcs.join(' ')} )`;
@@ -871,12 +870,6 @@ const getTaylor = (provider, signer) => (address, deploymentBlock = 0) => {
             console.log('bootstrap batch', receipt.gasUsed.toNumber());
             receipts.push(receipt);
         }
-        
-        // TODO - fixme: https://github.com/loredanacirstea/taylor/issues/67
-        const funcs = functions.slice(0, 2);
-        const expr = `(list ${funcs.join(' ')} )`;
-        await interpreter.sendAndWait(expr);
-
         return receipts;
     }
 

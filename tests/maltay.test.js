@@ -1126,7 +1126,7 @@ describe('matrix/n-dim array functions', function () {
         // expect(resp).toEqual([[38, 38, 38], [96, 96, 96], [21, 21, 21]]);
     }, 50000);
 
-    test.skip(`matrix determinant`, async () => {
+    test('matrix pow-m', async function() {
         resp = await MalTay.call(`(pow-m 0)`);
         expect(resp).toBe(1);
 
@@ -1135,7 +1135,9 @@ describe('matrix/n-dim array functions', function () {
 
         resp = await MalTay.call(`(pow-m 3)`);
         expect(resp).toBe(-1);
+    });
 
+    test.skip(`matrix determinant`, async () => {
         resp = await MalTay.call(`(det (array 11))`);
         expect(resp).toBe(11);
 

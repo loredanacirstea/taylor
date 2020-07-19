@@ -9,7 +9,7 @@ const deployContract = signer => async compiled => {
   };
   const response = await signer.sendTransaction(transaction);
   const receipt = await response.wait();
-  console.log('* Deploy Taylor: ' + receipt.gasUsed);
+  console.log(`* Deployed Taylor: ${receipt.contractAddress} ; gas: ${receipt.gasUsed}`);
 
   if (compiled.abi) {
     return new ethers.Contract(receipt.contractAddress, compiled.abi, signer);
