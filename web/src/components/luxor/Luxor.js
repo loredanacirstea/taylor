@@ -6,7 +6,7 @@ import 'canvas-datagrid';
 import { sheet_settings, sheet_style_dark } from './configs.js';
 
 const MARKER_JS = '=', MARKER_WEB3 = '$';
-const SHEET_KEY_REGEX = /([A-Z]{1}[0-9]{1,})/g;
+const SHEET_KEY_REGEX = /(\b[A-Z]{1}[0-9]{1,})/g;
 
 class CanvasDatagrid extends React.Component {
     tayprops = ['formatter', 'onCellChange']

@@ -56,20 +56,20 @@ class MalTayContract extends Component {
     const { provider, signer } = await getProvider();
     if (!provider) {
       this.setState({ backend: 'javascript' })
-      this.props.onRootChange('javascript', this.web3util, taylor.malBackend.getBackend());
+      this.props.onRootChange('javascript', this.web3util, await taylor.malBackend.getBackend());
       return;
     }
+    
     const chainid = (await provider.getNetwork()).chainId;
     const addresses = getAddresses(chainid);
     const rootAddress = {name: addresses.root, address: addresses[addresses.root]};
     this.setState({ addresses, rootAddress, provider, signer });
-    
     this._web3util = taylor.getTaylor(provider, signer);
     await this.setContract(rootAddress.address);
   }
 
   async setContract(address) {
-    const { backend } = this.state;
+    const { backend, provider, signer } = this.state;
     address = address || this.state.rootAddress;
     if (this.web3util) {
       this.web3util.unwatch();
@@ -83,7 +83,7 @@ class MalTayContract extends Component {
       this.setState({ registered: this.web3util.registered });
       this.setState({ rootFunctions: this.web3util.functions });
       
-      this.props.onRootChange(backend, this.web3util, taylor.malBackend.getBackend());
+      this.props.onRootChange(backend, this.web3util, await taylor.malBackend.getBackend(address, provider, signer));
 
       this.web3util.watch(({ logtype, log }) => {
         if (logtype === 'function') {
@@ -109,14 +109,15 @@ class MalTayContract extends Component {
     this.setState({ rootAddress });
   }
 
-  onChangeBackend(backend) {
+  async onChangeBackend(backend) {
     if (backend !== 'javascript' && !this.state.provider) {
       this.setWeb3();
       return;
     }
+    const { provider, signer } = this.state;
     
     this.setState({ backend });
-    this.props.onRootChange(backend, this.web3util, taylor.malBackend.getBackend());
+    this.props.onRootChange(backend, this.web3util, await taylor.malBackend.getBackend(this.web3util.address, provider, signer));
     setConfig({ backend });
   }
 
