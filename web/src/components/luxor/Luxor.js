@@ -1,6 +1,6 @@
-import React, { Component } from 'react';
+import React from 'react';
 import ReactDOM from 'react-dom';
-import { Button, Icon, Text} from 'native-base';
+import { Button, Icon} from 'native-base';
 import taylor from '@pipeos/taylor';
 import 'canvas-datagrid';
 import { sheet_settings, sheet_style_dark } from './configs.js';
@@ -255,14 +255,14 @@ function luxorTestsData(tests, rows=10, cols=8) {
 
 export default Luxor;
 
-const tayextension = {
-    srange: {
-        regex: /\(\s*srange [A-Z]{1}[1-9]{1,} [A-Z]{1}[1-9]{1,}\s*\)/,
-        replacement: (source) => {
-            // const args = 
-        }
-    }
-}
+// const tayextension = {
+//     srange: {
+//         regex: /\(\s*srange [A-Z]{1}[1-9]{1,} [A-Z]{1}[1-9]{1,}\s*\)/,
+//         replacement: (source) => {
+//             // const args = 
+//         }
+//     }
+// }
 
 const iconStyle = {
     color: 'rgb(30, 30, 30)',
