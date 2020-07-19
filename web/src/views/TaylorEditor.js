@@ -6,7 +6,7 @@ import ReactJson from 'custom-react-json-view';
 import taylor from '@pipeos/taylor';
 import MalTayContract from '../components/MalTayContract.js';
 import Luxor from '../components/luxor/Luxor.js';
-import { editorOpts, priceApi } from '../utils/config.js';
+import { editorOpts, priceApi, GH_REPO } from '../utils/config.js';
 import * as taylorUtils from '../utils/taylor.js';
 import { monacoTaylorExtension } from '../utils/taylor_editor.js';
 import {debounce} from '../utils/utils.js';
@@ -301,19 +301,29 @@ class TaylorEditor extends Component {
 
   async onDeploy() {
     const { tayinterpreter, functionsToDeploy } = this.state;
+    const { provider, signer } = tayinterpreter;
     const ftod = Object.keys(functionsToDeploy).filter(key => functionsToDeploy[key]).map(name => taylor.bootstrap_functions[name]);
 
-    let receipt = await taylor.deploy(tayinterpreter.signer);
-    let currentDeployment = {address: receipt.contractAddress };
-    if (ftod.length > 0) currentDeployment.waiting = true;
+    let currentDeployment = {waiting: '...deploying'};
     this.setState({ currentDeployment });
 
-    let newtay = taylor.getTaylor(tayinterpreter.provider, tayinterpreter.signer)(receipt.contractAddress);
-    receipt = await newtay.bootstrap(ftod);
+    const newtay = await taylor.deploy(provider, signer);
+    
+    currentDeployment.address = newtay.address;
+    if (ftod.length > 0) currentDeployment.waiting = '...bootstrapping';
+    this.setState({ currentDeployment });
+    
+    const receipt = await newtay.bootstrap(ftod).catch(e => {
+      console.log('e', e);
+      currentDeployment.waiting = `Something went wrong. Please report: ${GH_REPO}/issues`;
+      this.setState({ currentDeployment });
+    });
     console.log('bootstrap receipt', receipt);
     
-    currentDeployment.waiting = false;
-    this.setState({ functionsToDeploy: this.defaultFToD(), currentDeployment });
+    if (receipt) {
+      currentDeployment.waiting = false;
+      this.setState({ functionsToDeploy: this.defaultFToD(), currentDeployment });
+    }
   }
 
   onSelectFToD(name) {
@@ -544,7 +554,7 @@ class TaylorEditor extends Component {
               : <div></div>
             }
             {currentDeployment.waiting
-              ? <Text style={textStyle}>...bootstrapping</Text>
+              ? <Text style={textStyle}>{currentDeployment.waiting}</Text>
               : <div></div>
             }
           </View>
