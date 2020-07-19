@@ -46,7 +46,6 @@ class CanvasDatagrid extends React.Component {
         this.grid.style.width = '100%';
 
         this.grid.formatters.string = this.props.formatter;
-        this.grid.addEventListener('datachanged', this.dataChanged);
         this.grid.addEventListener('endedit', function(e) {
             self.props.onCellChange(e.cell, e.value, self.grid);
         });
@@ -88,7 +87,9 @@ class Luxor extends React.Component {
     formatter(e) {
         const value = e.cell.value;
         const key = this.getKeyFromCell(e.cell);
-        return typeof this.formattedData[key] !== 'undefined' ? this.formattedData[key] : value;
+        let response = typeof this.formattedData[key] !== 'undefined' ? this.formattedData[key] : value;
+        if (response instanceof Object && !(response instanceof Array)) return JSON.stringify(response);
+        return response;
     }
 
     async executeCell(key, value) {
@@ -225,7 +226,9 @@ class Luxor extends React.Component {
 function rightPadArray(value, size, content='') {
     const vsize = value.length;
     if (vsize >= size || !size) return value;
-    return value.concat([...new Array(size - vsize)].map(_ => content))
+    return JSON.parse(JSON.stringify(
+        value.concat([...new Array(size - vsize)].map(_ => content))
+    ));
 }
 
 function stripNL(source) {
