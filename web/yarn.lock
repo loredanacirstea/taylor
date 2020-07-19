@@ -1572,10 +1572,10 @@
   resolved "https://registry.yarnpkg.com/@nodelib/fs.stat/-/fs.stat-1.1.3.tgz#2b5a3ab3f918cca48a8c754c08168e3f03eba61b"
   integrity sha512-shAmDyaQC4H92APFoIaVDHCx5bStIocgvbwQyxPRrbUY20V1EYTbSDchWbuwlMG3V17cprZhA6+78JfB+3DTPw==
 
-"@pipeos/taylor@^0.0.2":
-  version "0.0.2"
-  resolved "https://registry.yarnpkg.com/@pipeos/taylor/-/taylor-0.0.2.tgz#dba83b9ec1c3deaeabdfd1d78856379c7a564069"
-  integrity sha512-jRup0hFJ1uNyINCJ1Sw53gV8qWXl/7/avrVKwMZWMQRt63UtguvrK3xhSPsC1QddXMKOAToi9mbH270efXYXDQ==
+"@pipeos/taylor@^0.0.4":
+  version "0.0.4"
+  resolved "https://registry.yarnpkg.com/@pipeos/taylor/-/taylor-0.0.4.tgz#822e1238e16fc142eef603fc65f1a78291233ace"
+  integrity sha512-hdy7V9TfG9JK2AGwYgWd7+AYZSN8jB+qfBP65RAHFpWAAHASf9VYVsRrR6jQvAWMDgQc3irZ8XsBeoNPxIuohg==
   dependencies:
     ethers "^5.0.5"
 

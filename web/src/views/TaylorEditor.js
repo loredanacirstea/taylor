@@ -301,6 +301,7 @@ class TaylorEditor extends Component {
 
   async onDeploy() {
     const { tayinterpreter, functionsToDeploy } = this.state;
+    if (!tayinterpreter) return;
     const { provider, signer } = tayinterpreter;
     const ftod = Object.keys(functionsToDeploy).filter(key => functionsToDeploy[key]).map(name => taylor.bootstrap_functions[name]);
 

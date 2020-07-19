@@ -59,7 +59,7 @@ class Luxor extends React.Component {
     constructor(props) {
         super(props);
         this.state = {
-            data: luxorTestsData(),
+            data: luxorTestsData(taylor.tests.both.tests),
         };
 
         this.formattedData = {};
@@ -235,7 +235,7 @@ function stripNL(source) {
     return source.replace(/\s{1,}/g, ' ');
 }
 
-function luxorTestsData(rows=10, cols=8) {
+function luxorTestsData(tests, rows=10, cols=8) {
     const header = rightPadArray(
         ['Expression', 'JS Result', 'EVM Result', 'Expected'],
         cols,
@@ -243,7 +243,7 @@ function luxorTestsData(rows=10, cols=8) {
     );
     const data = [header];
 
-    Object.values(taylor.tests.both.tests).forEach(category => category.forEach(test => {
+    Object.values(tests).forEach(category => category.forEach(test => {
         if (!test.skip && !test.prereq) {
             const expression = stripNL(test.test);
             const rowData = [expression, MARKER_JS + expression, MARKER_WEB3 + expression, test.result];
