@@ -5,10 +5,16 @@ const BN = require('bn.js');
 const ethers = require('ethers');
 
 mal.re = str => mal.EVAL(mal.READ(str), mal.repl_env)
-mal.reps = lines => lines.split('\n\n')
+mal.reps = async lines => {
+    lines = lines.split('\n\n')
     .map(line => line.replace('\n', ''))
     .filter(line => line.length > 4 && !line.includes(';'))
-    .map(line => mal.rep(line));
+    let newl = [];
+    for (let line of lines) {
+        newl.push(await mal.rep(line));
+    }
+    return newl;
+}
 
 const modifyEnv = (name, func) => {
     const orig_func =  mal.repl_env.get(malTypes._symbol(name));
@@ -34,6 +40,34 @@ const isArray = val => {
     return !val.some(it => (typeof it) !== itemtype);
 }
 
+const callContract = (address, fsig, data, providerOrSigner, isTx=false) => {
+    data = callDataPrep(data);
+    const signature = fsig.split('->').map(val => val.trim());
+    const fname = signature[0].split('(')[0].trim();
+    const abi = [
+        `function ${signature[0]} ${isTx ? '' : 'view'} ${signature[1] ? 'returns ' + signature[1] : ''}`,
+    ]
+    const contract = new ethers.Contract(address, abi, providerOrSigner);
+    return contract[fname](...data);
+}
+
+// TODO: better mal -> js parsing
+const callDataPrep = data => {
+    // data is a list: (4 6)
+    data = data.substring(1, data.length-1).trim();
+    if (!data) return [];
+
+    // fixme: bad for strings with commas in them. do better
+    try {
+        data = JSON.parse(`[${ data.replace(/ /g, ',') }]`);
+        data = data.map(val => typeof val !== 'string' ? val : val.replace(',', ' '));
+    } catch (e) {
+        console.log('callDataPrep', e);
+    }
+
+    return data;
+}
+
 mal.globalStorage = {};
 
 modifyEnv('nil?', (orig_func, value) => {
@@ -51,7 +85,7 @@ modifyEnv('nil?', (orig_func, value) => {
 //     return orig_func(value);
 // });
 
-modifyEnv('js-eval', (orig_func, str) => {
+modifyEnv('js-eval', async (orig_func, str) => {
     const utils = {
         BN: n => {
             if (typeof n === 'string' && n.substring(0, 2) === '0x') {
@@ -101,10 +135,18 @@ modifyEnv('js-eval', (orig_func, str) => {
             // no floats yet
             if (b < 0) return 0;
             return utils.BN(a).pow(utils.BN(b));
+        },
+        ethcall: async (address, fsig, data) => {
+            if (!mal.provider) return;
+            return callContract(address, fsig, data, mal.provider)
+        },
+        ethsend: async (address, fsig, data) => {
+            if (!mal.signer) return;
+            return callContract(address, fsig, data, mal.signer, true).catch(console.log);
         }
     }
     
-    let answ = eval(str.toString());
+    let answ = await eval(str.toString());
 
     if (BN.isBN(answ)) answ = { _hex: '0x' + answ.toString(16) }
     if (typeof answ === 'boolean') answ = { _hex: toHex(answ ? 1 : 0)}
@@ -112,9 +154,11 @@ modifyEnv('js-eval', (orig_func, str) => {
     return interop.js_to_mal(answ);
 })
 
+async function init() {
+
 /* Taylor */
 
-mal.reps(`
+await mal.reps(`
 (def! reduce (fn* (f xs init) (if (empty? xs) init (reduce f (rest xs) (f init (first xs)) ))))
 
 (def! encode (fn* (a) (js-eval (str "utils.encode('" a "')") )))
@@ -132,7 +176,7 @@ mal.reps(`
 
 /* EVM */
 
-mal.reps(`
+await mal.reps(`
 (def! add (fn* (a b) (js-eval (str "utils.BN(" a ").add(utils.BN(" b "))"))))
 
 (def! sub (fn* (a b) (js-eval (str "utils.BN(" a ").sub(utils.BN(" b "))"))))
@@ -179,7 +223,7 @@ mal.reps(`
 
 `)
 
-mal.reps(`
+await mal.reps(`
 (def! balances {})
 
 (def! gas (fn* () (get cenv "gas")))
@@ -228,6 +272,10 @@ mal.reps(`
 
 (def! return (fn* (a) a ))
 
+(def! eth-call (fn* (address fsig argList) (js-eval (str "utils.ethcall('" address "','" fsig "','" (pr-str argList) "')" )) ))
+
+(def! eth-call! (fn* (address fsig argList) (js-eval (str "utils.ethsend('" address "','" fsig "','" (pr-str argList) "')" )) ))
+
 `)
 
 // addmod
@@ -244,6 +292,7 @@ mal.reps(`
 // delegatecall
 // staticcall
 // logs
+}
 
 const DEFAULT_TXOBJ = {
     gasLimit: 1000000,
@@ -253,16 +302,22 @@ const DEFAULT_TXOBJ = {
 
 const underNumberLimit = bnval => bnval.abs().lt(new BN(2).pow(new BN(16)));
 
-mal.getBackend = (address) => {
+mal.getBackend = async (address, provider, signer) => {
     address = address || '0x81bD2984bE297E18F310BAef6b895ea089484968';
-    const dec = bnval => {
+    const dec = async bnval => {
+        if (bnval instanceof Promise) bnval = await bnval;
         if(!bnval) return bnval;
+        
         if (typeof bnval === 'number') {
             bnval = new BN(bnval);
         } else if (typeof bnval === 'object' && bnval._hex) {
             bnval = new BN(bnval._hex.substring(2), 16);
         } else if (bnval instanceof Array) {
-            return bnval.map(val => dec(val));
+            let vals = []
+            for (let val of bnval) {
+                vals.push(await dec(val));
+            }
+            return vals;
         }
         
         if (BN.isBN(bnval)) {
@@ -271,15 +326,18 @@ mal.getBackend = (address) => {
         return bnval;
     }
   
-    const from = '0xfCbCE2e4d0E19642d3a2412D84088F24bFB33a48';
+    const from = signer ? await signer.getAddress() : '0xfCbCE2e4d0E19642d3a2412D84088F24bFB33a48';
+    const chainid = provider ? (await provider.getNetwork()).chainId : 3;
+
+    await init();
   
     const interpreter = {
       address,
-      call: (mal_expression, txObj) => {
+      call: async (mal_expression, txObj) => {
         mal_expression = mal_expression.replace(/_/g, '');
         txObj = Object.assign({ from }, DEFAULT_TXOBJ, txObj);
   
-        mal.rep(`(def! cenv {
+        await mal.rep(`(def! cenv {
           "gas" 176000
           "gasLimit" ${txObj.gasLimit}
           "address" (str "${address}")
@@ -291,15 +349,20 @@ mal.getBackend = (address) => {
           "blockhash" (str "0x37b89115ab3653201f2f995d2d0c50cb99b65251f530ed496470b9102e035d5f")
           "origin" (str "${txObj.from}")
           "difficulty" (js-eval "utils.BN(300)")
-          "chainid" 3
+          "chainid" ${chainid}
         })`);
-  
-        return dec(mal.re(mal_expression));
+
+        const answ = await mal.re(mal_expression);
+        return dec(answ);
       },
-      signer: { getAddress: () => from },
+      provider,
+      signer: signer || { getAddress: () => from },
     }
     interpreter.send = interpreter.call;
     interpreter.sendAndWait = interpreter.send;
+
+    mal.provider = provider;
+    mal.signer = signer;
     return interpreter;
 }
 

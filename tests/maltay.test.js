@@ -1,13 +1,11 @@
 const BN = require('bn.js');
-const ethers = require('ethers');
 require('../src/extensions.js');
-const { deployTaylor, getMalBackend } = require('./setup/fixtures.js');
-const { decode, encode, expr2h, b2h, u2b, expr2s } = require('../src/taylor.js');
-const { bootstrap } = require('../src/deploy.js');
+const { deployTaylor, getMalBackend, getTestCallContract, signer, provider } = require('./setup/fixtures.js');
+const { decode, encode, expr2h, expr2s } = require('../src/taylor.js');
 const tests = require('./json_tests/index.js');
 
 let MalTay;
-let MalB = getMalBackend();
+let MalB;
 
 beforeAll(() => {
   return deployTaylor().then(t => {
@@ -15,7 +13,9 @@ beforeAll(() => {
     console.log('****MalTay', MalTay.address);
     return MalTay.bootstrap();
   }).then(() => MalTay.init())
-    .then(() => MalTay.watch());
+    .then(() => MalTay.watch())
+    .then(() => getMalBackend(MalTay.address, MalTay.provider, MalTay.signer))
+    .then(inst => MalB = inst);
 }, 50000);
 
 afterAll(() => {
@@ -517,16 +517,60 @@ describe('web3 only', function () {
     }
 });
 
+describe('javascript call & send', function () {
+    let call_send_contract, addr, resp, expected;
+    
+    it('call & send - prereq', async function () {
+        call_send_contract = await getTestCallContract();
+        addr = call_send_contract.address;
+    }, 10000);
+
+    test('eth-call view', async function () {
+        resp = await MalB.call(`(eth-call "${addr}" "somevar()->(uint)" (list) )`);
+        expected = await call_send_contract.somevar();
+        expect(resp).toEqual(5);
+        expect(resp).toEqual(expected.toNumber());
+
+        resp = await MalB.call(`(eth-call "${addr}" "name()->(string memory)" (list) )`);
+        expected = await call_send_contract.name();
+        expect(resp).toEqual("SomeName");
+        expect(resp).toEqual(expected);
+    });
+    
+    test('eth-call pure', async function () {
+        resp = await MalB.call(`(eth-call "${addr}" "add(uint,uint)->(uint)" (list 5 6) )`);
+        expected = await call_send_contract.add(5, 6);
+        expect(resp).toEqual(11);
+        expect(resp).toEqual(expected.toNumber());
+    });
+
+    test('eth-call!', async function () {
+        await MalB.sendAndWait(`(eth-call! "${addr}" "increase(uint)" (list 7) )`);
+        resp = await call_send_contract.somevar();
+        expect(resp.toNumber()).toEqual(12);
+
+        await MalB.sendAndWait(`(eth-call! "${addr}" "setname(string memory)" (list "New Name") )`);
+        resp = await call_send_contract.name();
+        expect(resp).toEqual('New Name');
+    });
+});
+
 describe.each([
-    ['chain', MalTay],
-    ['mal', MalB],
-])(' (%s)', (backendname, instance) => {
-    if (backendname === 'chain') {
+    ['web3'],
+    ['javascript'],
+])(' (%s)', (backendname) => {
+    let instance;
+    if (backendname === 'web3') {
         beforeAll(() => {
-            return deployTaylor().then(t => {
-                instance = t;
-                console.log('****Taylor', instance.address);
+            return deployTaylor().then(contract => {
+                console.log('****Taylor2', contract.address);
+                instance = contract;
             });
+        });
+    } else {
+        beforeAll(() => {
+            return getMalBackend(null, provider, signer)
+                .then(inst => instance = inst);
         });
     }
 
@@ -557,7 +601,7 @@ describe.each([
 
         await instance.sendAndWait('(def! func1 (fn* (a b) (add a b)))');
 
-        if (backendname === 'chain') {
+        if (backendname === 'web3') {
             resp = await instance.call_raw('0x44444442' + name.hexEncode().padStart(64, '0'));
             expect(resp).toBe('0x8c00005011000002010000000000000001000000000000019000000201000000000000000100000000000001');
         }
@@ -568,7 +612,7 @@ describe.each([
         resp = await instance.call('(func1 (add (add (sub 7 2) 1) 41) (add 2 3)))');
         expect(resp).toBe(52);
 
-        if (backendname === 'chain') {
+        if (backendname === 'web3') {
             resp = await instance.getFns();
             expect(resp.length).toBe(6);
             expect(resp[5].name).toBe('func1');
@@ -576,20 +620,18 @@ describe.each([
     }, 10000);
 
     it('test used stored fn 2', async function () {
-        let expr, resp;
+        let resp;
         let name = 'func2'
     
         await instance.sendAndWait('(def! func2 (fn* (a b) (add (add (sub a b) a) b)))');
-        
-        if (backendname === 'chain') {
+        if (backendname === 'web3') {
             resp = await instance.call_raw('0x44444442' + name.hexEncode().padStart(64, '0'));
             expect(resp).toBe(expr2h('(fn* (a b) (add (add (sub a b) a) b))'));
         }
-
         resp = await instance.call('(func2 5 3)');
         expect(resp).toBe(10);
-        
-        if (backendname === 'chain') {
+
+        if (backendname === 'web3') {
             resp = await instance.getFns();
             expect(resp.length).toBe(7);
             expect(resp[5].name).toBe('func1');
@@ -753,7 +795,7 @@ describe.each([
         resp = await instance.call('(sload 12 "0x0a910004")');
         expect(resp).toBe(66);
 
-        if (backendname === 'chain') {
+        if (backendname === 'web3') {
             await instance.send('(store! 12 66)');
             resp = await instance.call('(sload 12 "0x04000004")');
             expect(resp).toBe('0x00000042');
@@ -765,7 +807,7 @@ describe.each([
     });
 
     it('test revert', async function() {
-        if (backendname === 'chain') {
+        if (backendname === 'web3') {
             await expect(instance.send('(revert "Error1")')).rejects.toThrow('revert');
         } else {
             // TODO properly catch this with jest
@@ -783,7 +825,7 @@ describe.each([
     // msize
 
     it('test logs', async function() {
-        if (backendname === 'chain') {
+        if (backendname === 'web3') {
             const resp = await instance.getFns();
             expect(resp.length).toBe(7);
         }

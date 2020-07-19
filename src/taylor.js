@@ -4,6 +4,7 @@ const { hexZeroPad } = ethers.utils;
 require('./extensions.js');
 const malReader = require('./mal/reader.js');
 const malTypes = require('./mal/types.js');
+const { sendTransaction, call, getLogs } = require('./web3.js');
 const _nativeEnv = require('./native.js');
 const malBackend = require('./mal_backend.js');
 const bootstrap_functions = require('./bootstrap.js');
@@ -722,45 +723,6 @@ const expr2string = (inidata, pos=0, accum='') => {
 }
 
 const expr2s = inidata => expr2string(strip0x(inidata)).accum;
-
-
-const DEFAULT_TXOBJ = {
-    gasLimit: 1000000,
-    value: 0,
-    gasPrice: 10
-}
-  
-const sendTransaction = signer => address => async (data, txObj = {}) => {
-    const transaction = Object.assign({}, DEFAULT_TXOBJ, txObj, {
-        data,
-        to: address,
-    });
-    const response = await signer.sendTransaction(transaction);
-    response.wait().then(receipt => {
-        if (receipt.status === 0) {
-            throw new Error('Transaction failed');
-        }
-    })
-    return response;
-}
-  
-const call = provider => address => async (data, txObj = {}) => {
-    const transaction = Object.assign({
-        to: address,
-        data,
-    }, txObj);
-    return await provider.call(transaction);
-}
-  
-const getLogs = provider => address => async (topic, filter = {} ) => {
-    filter = Object.assign({
-        address: address,
-        topics: [ topic ],
-        fromBlock: 0,
-        toBlock: 'pending',
-    }, filter);
-    return provider.getLogs(filter);
-}
   
 const getStoredFunctions = getLogs => async (filter) => {
     const topic = '0x00000000000000000000000000000000000000000000000000000000ffffffff';
