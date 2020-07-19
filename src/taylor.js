@@ -781,7 +781,7 @@ const getTaylor = (provider, signer) => (address, deploymentBlock = 0) => {
     interpreter.call = async (mal_expression, txObj) => decode(await interpreter.call_raw(expr2h(mal_expression, interpreter.alltypes()), txObj));
     interpreter.send = async (expression, txObj={}, newsigner=null) => {
         if(!txObj.value && !newsigner) {
-            txObj.value = await interpreter.calculateCost(expression);
+            txObj.value = await interpreter.calculateCost(expression, txObj);
         }
         if(!txObj.gasLimit && !newsigner) {
             txObj.gasLimit = await interpreter.estimateGas(expression, txObj).catch(console.log);

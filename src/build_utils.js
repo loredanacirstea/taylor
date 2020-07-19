@@ -1,8 +1,5 @@
 const fs = require('fs')
 const solc = require('solc')
-require('./extensions.js');
-const { getTaylor } = require('./taylor.js');
-const { deployContract } = require('./deploy.js');
 
 let cpath = __dirname.split('/');
 cpath.pop();
@@ -43,23 +40,18 @@ const compileContract = filePath => {
   return Object.values(output.contracts['contract_source'])[0];
 }
 
-const deployContractFromPath = signer => async filePath => {
-  const compiled = compileContract(filePath);
-  if (!compiled) throw new Error('not compiled');
-  return deployContract(signer)(compiled);
-}
-
 const compileTaylor = () => compileContract(TAYLOR_PATH);
+const compileTaylorAndWrite = () => {
+  const BUILD_ROOT = __dirname + '/../build/taylor';
+  const compiled = compileTaylor();
+  return fs.promises.writeFile(BUILD_ROOT + '.js', `const Taylor = ${JSON.stringify(compiled.evm)}
 
-const deployTaylorFromPath = (provider, signer) => async () => {
-  const receipt = await deployContractFromPath(signer)(TAYLOR_PATH);
-  return getTaylor(provider, signer)(receipt.contractAddress);
+module.exports = Taylor;
+  `);
 }
 
 module.exports = {
   compileContract,
-  deployContract,
-  deployContractFromPath,
   compileTaylor,
-  deployTaylorFromPath,
+  compileTaylorAndWrite,
 }

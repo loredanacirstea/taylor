@@ -1,14 +1,15 @@
 const BN = require('bn.js');
 require('../src/extensions.js');
-const { deployTaylor, getMalBackend, getTestCallContract, signer, provider } = require('./setup/fixtures.js');
-const { decode, encode, expr2h, expr2s } = require('../src/taylor.js');
+const { taylor, getTestCallContract, signer, provider } = require('./setup/fixtures.js');
+const { decode, encode, expr2h, expr2s } = taylor;
 const tests = require('./json_tests/index.js');
 
 let MalTay;
 let MalB;
+const getMalBackend = taylor.malBackend.getBackend;
 
 beforeAll(() => {
-  return deployTaylor().then(t => {
+  return taylor.deployRebuild().then(t => {
     MalTay = t;
     console.log('****MalTay', MalTay.address);
     return MalTay.bootstrap();
@@ -89,8 +90,8 @@ it('test bytes contig', async function () {
 it('test registration & executing from root contract', async function () {
     let expr, resp;
 
-    const maltay2 = await deployTaylor();
-    const maltay3 = await deployTaylor();
+    const maltay2 = await taylor.deployRebuild();
+    const maltay3 = await taylor.deployRebuild();
 
     // Register
     // TODO: type integer
@@ -562,7 +563,7 @@ describe.each([
     let instance;
     if (backendname === 'web3') {
         beforeAll(() => {
-            return deployTaylor().then(contract => {
+            return taylor.deployRebuild().then(contract => {
                 console.log('****Taylor2', contract.address);
                 instance = contract;
             });
