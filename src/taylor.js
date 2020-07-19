@@ -611,6 +611,7 @@ const ast2h = (ast, parent=null, unkownMap={}, defenv={}, arrItemType=null) => {
     }).join('');
 }
 
+// interop.js_to_mal
 const jsval2tay = value => {
     switch (typeof value) {
         case 'object':
@@ -796,12 +797,16 @@ const getTaylor = (provider, signer) => (address, deploymentBlock = 0) => {
         )
     }
 
-    interpreter.estimateGas = async (expression, txObj={}) => provider.estimateGas(Object.assign({
-        to: interpreter.address,
-        data: expr2h(expression, interpreter.alltypes()),
-    }, txObj));
+    interpreter.estimateGas = async (expression, txObj={}) => {
+        txObj = Object.assign({
+            from: await signer.getAddress(), 
+            to: interpreter.address,
+            data: expr2h(expression, interpreter.alltypes()),
+        }, txObj);
+        return provider.estimateGas(txObj);
+    }
 
-    interpreter.calculateCost = async expression => (await interpreter.estimateGas(expression)).toNumber() * 2;
+    interpreter.calculateCost = async (expression, txObj) => (await interpreter.estimateGas(expression, txObj)).toNumber() * 2;
 
     interpreter.getregistered = getRegisteredContracts(interpreter.call_raw);
 
@@ -858,11 +863,10 @@ const getTaylor = (provider, signer) => (address, deploymentBlock = 0) => {
         return receipt;
     }
 
-    interpreter.bootstrap = async (functions) => {
+    interpreter.bootstrap = async (functions, step=10) => {
         functions = functions || Object.values(bootstrap_functions);
         let receipts = [];
 
-        const step = 10;
         for (let i = 0 ; i <= functions.length ; i += step) {
             const funcs = functions.slice(i, i + step);
             const expr = `(list ${funcs.join(' ')} )`;
