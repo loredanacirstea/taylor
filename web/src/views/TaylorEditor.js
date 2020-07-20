@@ -178,6 +178,7 @@ class TaylorEditor extends Component {
   }
 
   async execute({backend, tayinterpreter, malbackend, encdata, code, force=false}={}) {
+    encdata = encdata || this.encodeCode(code || this.state.code);
     backend = backend || this.state.backend;
     let interpreters = {
       javascript: malbackend || this.state.malbackend,
@@ -269,12 +270,21 @@ class TaylorEditor extends Component {
       this.debouncedTextChange(code);
   }
 
+  encodeCode(code) {
+    const { tayinterpreter } = this.state;
+    let encoded;
+    try {
+      encoded = tayinterpreter ? tayinterpreter.expr2h(code) : taylor.expr2h(code);
+    } catch(e) {}
+    return encoded;
+  }
+
   executeCode(code) {
     code = code || this.state.code;
-    try {
-      const encoded = taylor.expr2h(code);
+    const encoded = this.encodeCode(code);
+    if (encoded) {
       this.execute({encdata: encoded, code});
-    } catch(e) {}
+    }
   }
 
   onEditorScreen() {
@@ -455,15 +465,16 @@ class TaylorEditor extends Component {
             >
               {errors
                   ? <Text style={{color: 'firebrick', fontSize: editorOpts.fontSize }}>{errors}</Text>
-                  : <ReactJson
-                  src={result || {}}
-                  name={null}
-                  theme="twilight"
-                  collapsed={6}
-                  shouldCollapse={field => field.name === 'cost' }
-                  style={{ fontSize: editorOpts.fontSize }}
-                  />
+                  : <div></div>
               }
+              <ReactJson
+                src={result || {}}
+                name={null}
+                theme="twilight"
+                collapsed={6}
+                shouldCollapse={field => field.name === 'cost' }
+                style={{ fontSize: editorOpts.fontSize }}
+              />
             </ScrollView>
             <ScrollView
               horizontal={false}
@@ -471,22 +482,22 @@ class TaylorEditor extends Component {
               scrollEventThrottle={100}
               nestedScrollEnabled={true}
             >
+              {backend === 'both' && errors2
+                ? <Text style={{color: 'firebrick', fontSize: editorOpts.fontSize }}>{errors2}</Text>
+                : <div></div>
+              }
               {backend === 'both'
-                ? (errors2
-                    ? <Text style={{color: 'firebrick', fontSize: editorOpts.fontSize }}>{errors2}</Text>
-                    : <ReactJson
-                    src={result2 || {}}
-                    name={null}
-                    theme="twilight"
-                    collapsed={6}
-                    shouldCollapse={field => field.name === 'd' }
-                    style={{  fontSize: editorOpts.fontSize }}
-                    />
-                  )
+                ? <ReactJson
+                  src={result2 || {}}
+                  name={null}
+                  theme="twilight"
+                  collapsed={6}
+                  shouldCollapse={field => field.name === 'd' }
+                  style={{  fontSize: editorOpts.fontSize }}
+                />
                 : <div></div>
               }
             </ScrollView>
-        
           </View>
 
           <Button

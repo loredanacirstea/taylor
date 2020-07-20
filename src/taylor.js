@@ -761,7 +761,8 @@ const getRegisteredContracts = call_raw => async () => {
     return [...registered];
 }
 
-const getTaylor = (provider, signer) => (address, deploymentBlock = 0) => {
+const getTaylor = (provider, signer) => (address, deploymentBlock) => {
+    deploymentBlock = deploymentBlock || 0;
     const interpreter = {
         address: address.toLowerCase(),
         send_raw: sendTransaction(signer)(address),
@@ -829,7 +830,7 @@ const getTaylor = (provider, signer) => (address, deploymentBlock = 0) => {
     interpreter.setRegistered = async () => {
         const raddrs = await interpreter.getregistered();
         for (let raddr of raddrs) {
-            const rinstance = getTaylor(provider, signer)(raddr);
+            const rinstance = getTaylor(provider, signer)(raddr, interpreter.fromBlock);
             await rinstance.init();
             interpreter.registered[raddr] = rinstance;
             Object.keys(rinstance.functions).forEach(key => {
@@ -895,8 +896,7 @@ const getTaylor = (provider, signer) => (address, deploymentBlock = 0) => {
     }
     const regcb = callb => log => {
         log.address =  '0x' + log.topics[1].substring(26);
-
-        const inst = getTaylor(provider, signer)(log.address);
+        const inst = getTaylor(provider, signer)(log.address, interpreter.fromBlock);
         interpreter.registered[log.address] = inst;
         inst.init();
         if (callb) callb({logtype: 'registered', log});

@@ -59,27 +59,32 @@ class MalTayContract extends Component {
       this.props.onRootChange('javascript', this.web3util, await taylor.malBackend.getBackend());
       return;
     }
-    
-    const chainid = (await provider.getNetwork()).chainId;
+
+    const chainid = parseInt((await provider.getNetwork()).chainId);
     const addresses = getAddresses(chainid);
-    const rootAddress = {name: addresses.root, address: addresses[addresses.root]};
+    const rootAddress = {name: addresses.root, address: addresses[addresses.root], fromBlock: addresses.block};
+
     this.setState({ addresses, rootAddress, provider, signer });
     this._web3util = taylor.getTaylor(provider, signer);
-    await this.setContract(rootAddress.address);
+    await this.setContract(rootAddress.address, rootAddress.block);
   }
 
-  async setContract(address) {
-    const { backend, provider, signer } = this.state;
-    address = address || this.state.rootAddress;
+  async setContract(address, block) {
+    const { backend, provider, signer, rootAddress } = this.state;
+    if (!address && rootAddress) {
+      address = rootAddress.address;
+    }
+    if (!address && rootAddress) {
+      block = rootAddress.block;
+    }
     if (this.web3util) {
       this.web3util.unwatch();
     }
     if(!address && backend !== 'javascript') {
         this.web3util = null;
     } else {
-      this.web3util = this._web3util(address);
+      this.web3util = this._web3util(address, block);
       await this.web3util.init();
-
       this.setState({ registered: this.web3util.registered });
       this.setState({ rootFunctions: this.web3util.functions });
       
@@ -117,7 +122,7 @@ class MalTayContract extends Component {
     const { provider, signer } = this.state;
     
     this.setState({ backend });
-    this.props.onRootChange(backend, this.web3util, await taylor.malBackend.getBackend(this.web3util.address, provider, signer));
+    this.props.onRootChange(backend, this.web3util, await taylor.malBackend.getBackend(this.web3util ? this.web3util.address : null, provider, signer));
     setConfig({ backend });
   }
 
@@ -151,7 +156,7 @@ class MalTayContract extends Component {
     const { addresses } = this.state;
     const name = Object.keys(addresses).find(name => addresses[name] === newaddress) || newaddress;
 
-    const rootAddress = { name, address: newaddress};
+    const rootAddress = { name, address: newaddress, block: addresses.block};
     if (!addresses[name]) {
       addresses[name] = newaddress;
       this.setState({ addresses });

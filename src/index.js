@@ -5,7 +5,7 @@ const tests = require('../tests/json_tests/index.js');
 
 const deploy = async (provider, signer) => {
     const receipt = await deployTaylorFromBuild(signer);
-    return taylor.getTaylor(provider, signer)(receipt.contractAddress);
+    return taylor.getTaylor(provider, signer)(receipt.contractAddress, receipt.blockNumber);
 }
 
 taylor.bootstrap_functions = bootstrap_functions;

@@ -5,37 +5,35 @@ const STORAGE_KEY_CONFIG = 'TaylorConfig';
 
 const DEFAULT_DEPLOYMENT = {
   5777: {
-    contract1: '0x430A1619EcF4090DBD1353B262cEcbe136ADf01F',
-    root: 'contract1'
+    contract1: '0x905db5b60258f424afa378f188dbd72d5b4814d9',
+    root: 'contract1',
+    block: 0,
   },
   1337: {
-    contract1: '0x430A1619EcF4090DBD1353B262cEcbe136ADf01F',
-    root: 'contract1'
+    contract1: '0x905db5b60258f424afa378f188dbd72d5b4814d9',
+    root: 'contract1',
+    block: 0,
   },
   3: {
     contract1: '0x52af68cf5253ccda88b0677f651bcfb208e4b09d',
     root: 'contract1',
+    block: 8036099,
   },
   42: {
     contract1: '0xee0c10d568c9772892aab27c3fc14d7033658833',
     root: 'contract1',
+    block: 18899976,
   },
   4: {
     contract1: '0x19c08c750420af47059e68888b0f6a32698d0928',
     root: 'contract1',
+    block: 6616106,
   },
   5: {
     contract1: '0x2edd01f1a389cb1ee6cdd4e321adb1d4855e0aea',
     root: 'contract1',
+    block: 2823431,
   },
-}
-
-const DEPL_BLOCKS = {
-  5777: 0,
-  3: 8036099,
-  42: 18899976,
-  4: 6616106,
-  5: 2823431,
 }
 
 const storeCode = source => {
@@ -106,6 +104,5 @@ export {
   clearAddresses,
   setConfig,
   getConfig,
-  DEPL_BLOCKS,
   DEFAULT_DEPLOYMENT,
 }
