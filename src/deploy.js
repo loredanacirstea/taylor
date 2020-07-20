@@ -5,7 +5,7 @@ const deployContract = signer => async compiled => {
     data: '0x' + compiled.evm.bytecode.object,
     gasLimit: 7500000,
     value: 0,
-    gasPrice: 15,
+    gasPrice: 50 * (10**9),
   };
   const response = await signer.sendTransaction(transaction);
   const receipt = await response.wait();

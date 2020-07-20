@@ -5,24 +5,24 @@ const STORAGE_KEY_CONFIG = 'TaylorConfig';
 
 const DEFAULT_DEPLOYMENT = {
   5777: {
-    contract1: '0x905db5b60258f424afa378f188dbd72d5b4814d9',
+    contract1: '0x47f523ce1c4b428045af98e1de2fc41ce642b00c',
     root: 'contract1',
     block: 0,
   },
   1337: {
-    contract1: '0x905db5b60258f424afa378f188dbd72d5b4814d9',
+    contract1: '0x47f523ce1c4b428045af98e1de2fc41ce642b00c',
     root: 'contract1',
     block: 0,
   },
   3: {
-    contract1: '0x52af68cf5253ccda88b0677f651bcfb208e4b09d',
+    contract1: '0x2ff70a3c3c39d89b7bc5417b1ca2425a771efc9f',
     root: 'contract1',
-    block: 8036099,
+    block: 8331339,
   },
   42: {
-    contract1: '0xee0c10d568c9772892aab27c3fc14d7033658833',
+    contract1: '0xd6866368fcbe89bf10acf948bc5eb19b01e4df82',
     root: 'contract1',
-    block: 18899976,
+    block: 19705047,
   },
   4: {
     contract1: '0x19c08c750420af47059e68888b0f6a32698d0928',
@@ -30,9 +30,9 @@ const DEFAULT_DEPLOYMENT = {
     block: 6616106,
   },
   5: {
-    contract1: '0x2edd01f1a389cb1ee6cdd4e321adb1d4855e0aea',
+    contract1: '0xb24404e0d1be660f37ebf577d6a56581703d594b',
     root: 'contract1',
-    block: 2823431,
+    block: 3078473,
   },
 }
 

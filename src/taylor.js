@@ -811,16 +811,16 @@ const getTaylor = (provider, signer) => (address, deploymentBlock) => {
 
     interpreter.getregistered = getRegisteredContracts(interpreter.call_raw);
 
-    interpreter.setOwnFunctions = async () => {
-        let functions = await interpreter.getFns({fromBlock: interpreter.fromBlock});
+    interpreter.setOwnFunctions = async (toBlock) => {
+        let functions = await interpreter.getFns({fromBlock: interpreter.fromBlock, toBlock});
         functions.forEach(f => {
             interpreter.functions[f.name] = { signature: f.signature, own: true };
 
         });
     }
 
-    interpreter.setOwnTypes = async () => {
-        let types = await interpreter.getTypes({fromBlock: interpreter.fromBlock});
+    interpreter.setOwnTypes = async (toBlock) => {
+        let types = await interpreter.getTypes({fromBlock: interpreter.fromBlock, toBlock});
         types.forEach(f => {
             interpreter.types[f.name] = { signature: f.signature, own: true, type: true };
 
@@ -851,11 +851,11 @@ const getTaylor = (provider, signer) => (address, deploymentBlock) => {
         // TODO: make this more efficient - wait for the last log and include it
         // instead of getting all the data from scratch
         if (mal_expression.includes('def!')) {
-            await interpreter.setOwnFunctions();
+            await interpreter.setOwnFunctions(receipt.blockNumber);
         }
 
         if (mal_expression.includes('!')) {
-            await interpreter.setOwnTypes();
+            await interpreter.setOwnTypes(receipt.blockNumber);
         }
 
         if (mal_expression.includes('register!')) {

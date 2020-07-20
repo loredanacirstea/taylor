@@ -1,7 +1,7 @@
 const DEFAULT_TXOBJ = {
     gasLimit: 1000000,
     value: 0,
-    gasPrice: 10
+    gasPrice: 50 * (10**9),
 }
   
 const sendTransaction = signer => address => async (data, txObj = {}) => {
