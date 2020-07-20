@@ -62,7 +62,7 @@ class MalTayContract extends Component {
 
     const chainid = parseInt((await provider.getNetwork()).chainId);
     const addresses = getAddresses(chainid);
-    const rootAddress = {name: addresses.root, address: addresses[addresses.root], fromBlock: addresses.block};
+    const rootAddress = {name: addresses.root, address: addresses[addresses.root], block: addresses.block};
 
     this.setState({ addresses, rootAddress, provider, signer });
     this._web3util = taylor.getTaylor(provider, signer);

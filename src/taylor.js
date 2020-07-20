@@ -812,7 +812,7 @@ const getTaylor = (provider, signer) => (address, deploymentBlock) => {
     interpreter.getregistered = getRegisteredContracts(interpreter.call_raw);
 
     interpreter.setOwnFunctions = async () => {
-        let functions = await interpreter.getFns({fromBlock: interpreter.fromBlock, toBlock: 'pending'});
+        let functions = await interpreter.getFns({fromBlock: interpreter.fromBlock});
         functions.forEach(f => {
             interpreter.functions[f.name] = { signature: f.signature, own: true };
 
@@ -820,7 +820,7 @@ const getTaylor = (provider, signer) => (address, deploymentBlock) => {
     }
 
     interpreter.setOwnTypes = async () => {
-        let types = await interpreter.getTypes({fromBlock: interpreter.fromBlock, toBlock: 'pending'});
+        let types = await interpreter.getTypes({fromBlock: interpreter.fromBlock});
         types.forEach(f => {
             interpreter.types[f.name] = { signature: f.signature, own: true, type: true };
 

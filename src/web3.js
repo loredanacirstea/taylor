@@ -27,11 +27,12 @@ const call = provider => address => async (data, txObj = {}) => {
 }
   
 const getLogs = provider => address => async (topic, filter = {} ) => {
+    const lastBlock = await provider.getBlockNumber();
     filter = Object.assign({
         address: address,
         topics: [ topic ],
         fromBlock: 0,
-        toBlock: 'pending',
+        toBlock: lastBlock,
     }, filter);
     return provider.getLogs(filter);
 }
