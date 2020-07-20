@@ -616,6 +616,9 @@ const jsval2tay = value => {
     switch (typeof value) {
         case 'object':
             // TODO: array vs.list
+            if (value instanceof BN || BN.isBN(value)) {
+                return `"0x${value.toString(16)}"`;
+            }
             if (value instanceof Array) {
                 return `(list ${ value.map(jsval2tay).join(' ') })`;
             }

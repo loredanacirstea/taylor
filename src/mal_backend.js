@@ -177,49 +177,49 @@ await mal.reps(`
 /* EVM */
 
 await mal.reps(`
-(def! add (fn* (a b) (js-eval (str "utils.BN(" a ").add(utils.BN(" b "))"))))
+(def! add (fn* (a b) (js-eval (str "utils.BN(" (pr-str a) ").add(utils.BN(" (pr-str b) "))"))))
 
-(def! sub (fn* (a b) (js-eval (str "utils.BN(" a ").sub(utils.BN(" b "))"))))
+(def! sub (fn* (a b) (js-eval (str "utils.BN(" (pr-str a) ").sub(utils.BN(" (pr-str b) "))"))))
 
-(def! mul (fn* (a b) (js-eval (str "utils.BN(" a ").mul(utils.BN(" b "))"))))
+(def! mul (fn* (a b) (js-eval (str "utils.BN(" (pr-str a) ").mul(utils.BN(" (pr-str b) "))"))))
 
-(def! div (fn* (a b) (js-eval (str "utils.BN(" a ").div(utils.BN(" b "))"))))
+(def! div (fn* (a b) (js-eval (str "utils.BN(" (pr-str a) ").div(utils.BN(" (pr-str b) "))"))))
 
 ;sdiv
 
-(def! mod (fn* (a b) (js-eval (str "utils.BN(" a ").mod(utils.BN(" b "))"))))
+(def! mod (fn* (a b) (js-eval (str "utils.BN(" (pr-str a) ").mod(utils.BN(" (pr-str b) "))"))))
 
 ;smod
 
-;(def! exp (fn* (a b) (js-eval (str "utils.BN(" a ").pow(utils.BN(" b "))"))))
+;(def! exp (fn* (a b) (js-eval (str "utils.BN(" (pr-str a) ").pow(utils.BN(" (pr-str b) "))"))))
 
-(def! exp (fn* (a b) (js-eval (str "utils.limited_pow(" a "," b ")"))))
+(def! exp (fn* (a b) (js-eval (str "utils.limited_pow(" (pr-str a) "," (pr-str b) ")"))))
 
-(def! lt (fn* (a b) (js-eval (str "utils.BN(" a ").lt(utils.BN(" b "))"))))
+(def! lt (fn* (a b) (js-eval (str "utils.BN(" (pr-str a) ").lt(utils.BN(" (pr-str b) "))"))))
 
-(def! gt (fn* (a b) (js-eval (str "utils.BN(" a ").gt(utils.BN(" b "))"))))
+(def! gt (fn* (a b) (js-eval (str "utils.BN(" (pr-str a) ").gt(utils.BN(" (pr-str b) "))"))))
 
 ;sgt
 
 ;slt
 
-(def! eq (fn* (a b) (js-eval (str "utils.BN(" a ").eq(utils.BN(" b "))"))))
+(def! eq (fn* (a b) (js-eval (str "utils.BN(" (pr-str a) ").eq(utils.BN(" (pr-str b) "))"))))
 
-(def! iszero (fn* (a) (js-eval (str "utils.BN(" a ").isZero()"))))
+(def! iszero (fn* (a) (js-eval (str "utils.BN(" (pr-str a) ").isZero()"))))
 
-(def! not (fn* (a) (js-eval (str "utils.BN(" a ").notn(256)")) ) )
+(def! not (fn* (a) (js-eval (str "utils.BN(" (pr-str a) ").notn(256)")) ) )
 
-(def! and (fn* (a b) (js-eval (str "utils.BN(" a ").and(utils.BN(" b "))")) ) )
+(def! and (fn* (a b) (js-eval (str "utils.BN(" (pr-str a) ").and(utils.BN(" (pr-str b) "))")) ) )
 
-(def! or (fn* (a b) (js-eval (str "utils.BN(" a ").or(utils.BN(" b "))")) ) )
+(def! or (fn* (a b) (js-eval (str "utils.BN(" (pr-str a) ").or(utils.BN(" (pr-str b) "))")) ) )
 
-(def! xor (fn* (a b) (js-eval (str "utils.BN(" a ").xor(utils.BN(" b "))")) ) )
+(def! xor (fn* (a b) (js-eval (str "utils.BN(" (pr-str a) ").xor(utils.BN(" (pr-str b) "))")) ) )
 
-(def! byte (fn* (nth b) (js-eval (str "utils.BN(" b ").substring(2).substring(" nth "*2, " nth "*2 + 2)" )) ) )
+(def! byte (fn* (nth b) (js-eval (str "utils.BN(" (pr-str b) ").substring(2).substring(" nth "*2, " nth "*2 + 2)" )) ) )
 
-(def! shl (fn* (a b) (js-eval (str "utils.BN(" b ").shln(" a ")")) ) )
+(def! shl (fn* (a b) (js-eval (str "utils.BN(" (pr-str b) ").shln(" a ")")) ) )
 
-(def! shr (fn* (a b) (js-eval (str "utils.BN(" b ").shrn(" a ")")) ) )
+(def! shr (fn* (a b) (js-eval (str "utils.BN(" (pr-str b) ").shrn(" a ")")) ) )
 
 `)
 
