@@ -100,7 +100,7 @@ class Luxor extends React.Component {
     formatter(e) {
         const value = e.cell.value;
         const key = this.getKeyFromCell(e.cell);
-        let response = typeof this.formattedData[key] !== 'undefined' ? this.formattedData[key] : value;
+        let response = typeof this.formattedData[key] !== 'undefined' ? this.formattedData[key].value : value;
         if (response instanceof Object && !(response instanceof Array)) {
             if (response.toString) return response.toString(10);
             return JSON.stringify(response);
@@ -124,8 +124,7 @@ class Luxor extends React.Component {
         if (!api) return value;
         
         try {
-            let newvalue = value.slice(1);
-            newvalue = this.replaceCellValues(newvalue);
+            let newvalue = this.replaceCellValues(key, value);
             response = await api.call(newvalue)
         } catch(e) {
             console.log(e);
@@ -135,10 +134,13 @@ class Luxor extends React.Component {
         return response;
     }
 
-    replaceCellValues(code) {
+    replaceCellValues(key, inicode) {
+        let code = inicode.slice(1);
+        
         const keys = code.match(SHEET_KEY_REGEX);
         (keys || []).forEach(cell_key => {
-            const tayvalue = taylor.jsval2tay(this.formattedData[cell_key]);
+            this.addDepToDataMap(key, cell_key, inicode);
+            const tayvalue = taylor.jsval2tay(this.getFromDataMap(cell_key));
             code = code.replace(cell_key, tayvalue);
         });
         
@@ -156,8 +158,23 @@ class Luxor extends React.Component {
 
     async onCellChange(cell, newvalue, grid) {
         const key = this.getKeyFromCell(cell);
-        this.formattedData[key] = await this.executeCell(key, newvalue);
+        await this._onCellChange(key, newvalue);
         grid.draw();
+    }
+
+    async _onCellChange(key, newvalue) {
+        this.addToDataMap(key, await this.executeCell(key, newvalue));
+        const deps = this.getDepsFromDataMap(key);
+        const deplength = deps.length;
+        
+        for (let i = 0;  i < deplength; i++) {
+            const depkey = deps[i];
+            const depsource = this.formattedData[depkey] ? this.formattedData[depkey].source : null;
+            if (depsource) {
+                const depvalue = await this.executeCell(depkey, depsource);
+                this._onCellChange(depkey, depvalue);
+            }
+        }
     }
 
     async recalcFormattedData() {
@@ -172,8 +189,8 @@ class Luxor extends React.Component {
                     let value = data[i][j];
                     let key = this.getKeyFromCoords(i, j);
                     // Only calculate what has not been executed
-                    if (typeof this.formattedData[key] === 'undefined' || this.formattedData[key] === value) {
-                        this.formattedData[key] = await this.executeCell(key, value);
+                    if (typeof this.getFromDataMap(key) === 'undefined' || this.formattedData[key].value === value) {
+                        this.addToDataMap(key, await this.executeCell(key, value));
                     }
                 }
             }
@@ -182,6 +199,29 @@ class Luxor extends React.Component {
 
     setData(data) {
         this.setState({data});
+    }
+
+    addToDataMap(key, value) {
+        if (!this.formattedData[key]) this.formattedData[key] = {};
+        this.formattedData[key].value = value;
+    }
+
+    addDepToDataMap(dependent_key, dependency_key, source) {
+        if (!this.formattedData[dependency_key]) this.formattedData[dependency_key] = {};
+        if (!this.formattedData[dependency_key].deps) this.formattedData[dependency_key].deps = new Set();
+        this.formattedData[dependency_key].deps.add(dependent_key);
+        
+        if (!this.formattedData[dependent_key]) this.formattedData[dependent_key] = {};
+        this.formattedData[dependent_key].source = source;
+    }
+
+    getDepsFromDataMap(key) {
+        if (!this.formattedData[key] || !this.formattedData[key].deps) return [];
+        return [...this.formattedData[key].deps];
+    }
+
+    getFromDataMap(key) {
+        return (this.formattedData[key] && (typeof this.formattedData[key].value !== 'undefined')) ? this.formattedData[key].value : undefined;
     }
 
     render() {
