@@ -4,6 +4,7 @@ import { Button, Icon} from 'native-base';
 import taylor from '@pipeos/taylor';
 import 'canvas-datagrid';
 import { sheet_settings, sheet_style_dark } from './configs.js';
+import { WETH_EXAMPLE } from './fixtures.js';
 
 const MARKER_JS = '=', MARKER_WEB3 = '$';
 const SHEET_KEY_REGEX = /(\b[A-Z]{1}[0-9]{1,})/g;
@@ -58,8 +59,9 @@ class CanvasDatagrid extends React.Component {
 class Luxor extends React.Component {
     constructor(props) {
         super(props);
+
         this.state = {
-            data: luxorTestsData(taylor.tests.both.tests),
+            data: rightPadArray([], 50, rightPadArray([], 8, '')),
         };
 
         this.formattedData = {};
@@ -68,7 +70,18 @@ class Luxor extends React.Component {
         this.onCellChange = this.onCellChange.bind(this);
     }
 
-    componentDidMount() {
+    async setFixturesData() {
+        let chainid;
+        if (this.props.taylor_js && this.props.taylor_js.provider) {
+            chainid = (await this.props.taylor_js.provider.getNetwork()).chainId;
+            chainid = parseInt(chainid);
+        }
+        const data = luxorTestsData(taylor.tests.both.tests, chainid);
+        this.setState({ data });
+    }
+
+    async componentDidMount() {
+        await this.setFixturesData();
         this.recalcFormattedData();
     }
 
@@ -88,7 +101,10 @@ class Luxor extends React.Component {
         const value = e.cell.value;
         const key = this.getKeyFromCell(e.cell);
         let response = typeof this.formattedData[key] !== 'undefined' ? this.formattedData[key] : value;
-        if (response instanceof Object && !(response instanceof Array)) return JSON.stringify(response);
+        if (response instanceof Object && !(response instanceof Array)) {
+            if (response.toString) return response.toString(10);
+            return JSON.stringify(response);
+        }
         return response;
     }
 
@@ -235,15 +251,26 @@ function stripNL(source) {
     return source.replace(/\s{1,}/g, ' ');
 }
 
-function luxorTestsData(tests, rows=10, cols=8) {
+function luxorTestsData(tests, chainid, rows=50, cols=8) {
+    let data = rightPadArray([], 5, rightPadArray([], cols, ''));
+    
+    const wethex = WETH_EXAMPLE.addresses[chainid];
+    if (chainid && wethex) {
+        data = data.concat(luxorTestsDataEthCall(wethex, WETH_EXAMPLE.fsigs, 5));
+    }
+    
+    data = data.concat(rightPadArray([], 2, rightPadArray([], cols, '')));
+
     const header = rightPadArray(
         ['Expression', 'JS Result', 'EVM Result', 'Expected'],
         cols,
         ''
     );
-    const data = [header];
+    data.push(header);
 
-    Object.values(tests).forEach(category => category.forEach(test => {
+    let shown_tests = Object.values(tests);
+    shown_tests = shown_tests.slice(0, 5).concat(shown_tests.slice(shown_tests.length - 6));
+    shown_tests.forEach(category => category.slice(0, 1).forEach(test => {
         if (!test.skip && !test.prereq) {
             const expression = stripNL(test.test);
             const rowData = [expression, MARKER_JS + expression, MARKER_WEB3 + expression, test.result];
@@ -251,6 +278,30 @@ function luxorTestsData(tests, rows=10, cols=8) {
         }
     }));
     return rightPadArray(data, rows, []);
+}
+
+function luxorTestsDataEthCall(addresses, fsigs, inirow=0, rows=50, cols=8) {
+    inirow += 2;
+    const header = rightPadArray(
+        ['Address', 'Function Sig', 'Arguments', 'JS Result', 'Total Balance'],
+        cols,
+        ''
+    );
+    const data = [header];
+    
+    const { address, users } = addresses;
+    users.forEach((useraddr, i) => {
+        const row = i + inirow;
+        const expression = `=(eth-call A${inirow} B${row} (list C${row} ))`
+        const rowData = ['', fsigs.balance, useraddr, expression];
+        data.push(rightPadArray(rowData, cols, ''));
+    });
+    data[1][0] = address;
+    data[1][4] = `=(reduce add (list ${
+        [...Array(users.length)].map((_, i) => `D${inirow + i}`).join(' ')
+    }) 0)`;
+    
+    return data;
 }
 
 export default Luxor;
