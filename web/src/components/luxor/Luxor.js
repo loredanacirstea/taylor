@@ -124,7 +124,8 @@ class Luxor extends React.Component {
         if (!api) return value;
         
         try {
-            let newvalue = this.replaceCellValues(key, value);
+            let newvalue = this.runExtensions(value);
+            newvalue = this.replaceCellValues(key, newvalue);
             response = await api.call(newvalue)
         } catch(e) {
             console.log(e);
@@ -147,14 +148,12 @@ class Luxor extends React.Component {
         return code;
     }
 
-    // runExtensions(code) {
-    //     Object.keys(tayextension).forEach(name => {
-    //         if (code.contains(name)) {
-    //             let match = code.match(tayextension[name].regex);
-    //             console.log('match', match);
-    //         }
-    //     })
-    // }
+    runExtensions(code) {
+        Object.keys(tayextension).forEach(name => {
+            code = tayextension[name](code);
+        });
+        return code;
+    }
 
     async onCellChange(cell, newvalue, grid) {
         const key = this.getKeyFromCell(cell);
@@ -340,20 +339,50 @@ function luxorTestsDataEthCall(addresses, fsigs, inirow=0, rows=50, cols=8) {
     data[1][4] = `=(reduce add (list ${
         [...Array(users.length)].map((_, i) => `D${inirow + i}`).join(' ')
     }) 0)`;
+    data[2][4] = `=(reduce add (srange D${inirow} D${inirow+users.length-1}) 0)`;
     
     return data;
 }
 
 export default Luxor;
 
-// const tayextension = {
-//     srange: {
-//         regex: /\(\s*srange [A-Z]{1}[1-9]{1,} [A-Z]{1}[1-9]{1,}\s*\)/,
-//         replacement: (source) => {
-//             // const args = 
-//         }
-//     }
-// }
+const tayextension = {
+    srange: code => {
+        const matches = code.match(/\(\s*srange\s/g) || [];
+        let currentcode = code;
+        let result = '';
+
+        matches.forEach(match => {
+            const matchIndex = currentcode.indexOf(match);
+            result += currentcode.substring(0, matchIndex);
+            
+            const tail = currentcode.substring(matchIndex);
+            const end = tail.indexOf(')');            
+            currentcode = tail.substring(end + 1);
+
+            const srange = tail.substring(tail.indexOf('srange') + 6, end);
+            let args = srange.split(' ').map(val => val.trim()).filter(val => val);
+
+            if (args.length !== 2) throw new Error('srange needs two arguments');
+            args = args.map(val => [val.substring(0, 1), val.substring(1)]);
+            
+            const startCode = args[0][0].charCodeAt(0);
+            const startDigit = parseInt(args[0][1]);
+            const endCode = args[1][0].charCodeAt(0);
+            const endDigit = parseInt(args[1][1]);
+
+            let newcode = ``
+            for (let row = startDigit; row <= endDigit; row++) {
+                for (let col = startCode; col <= endCode; col++) {
+                    newcode += String.fromCharCode(col) + row + ' ';
+                }
+            }
+            result += `(list ${newcode})`;
+        });
+        result += currentcode;
+        return result;
+    }
+}
 
 const iconStyle = {
     color: 'rgb(30, 30, 30)',
