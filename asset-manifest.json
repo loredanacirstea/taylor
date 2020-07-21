@@ -2,7 +2,7 @@
   "files": {
     "static/js/0.ee10c024.chunk.js": "/taylor/static/js/0.ee10c024.chunk.js",
     "main.css": "/taylor/static/css/main.11a6195b.chunk.css",
-    "main.js": "/taylor/static/js/main.73c5b2a6.chunk.js",
+    "main.js": "/taylor/static/js/main.c85dd716.chunk.js",
     "runtime-main.js": "/taylor/static/js/runtime-main.8ada341e.js",
     "static/css/3.6d0b43f4.chunk.css": "/taylor/static/css/3.6d0b43f4.chunk.css",
     "static/js/3.e2de1b2c.chunk.js": "/taylor/static/js/3.e2de1b2c.chunk.js",
@@ -74,7 +74,7 @@
     "html.worker.js": "/taylor/html.worker.js",
     "index.html": "/taylor/index.html",
     "json.worker.js": "/taylor/json.worker.js",
-    "precache-manifest.791bc5c1ed2506ec2b1c4b7a7889d1a2.js": "/taylor/precache-manifest.791bc5c1ed2506ec2b1c4b7a7889d1a2.js",
+    "precache-manifest.e68ec976f9c34322037fa3c1d4f99991.js": "/taylor/precache-manifest.e68ec976f9c34322037fa3c1d4f99991.js",
     "service-worker.js": "/taylor/service-worker.js",
     "static/js/3.e2de1b2c.chunk.js.LICENSE.txt": "/taylor/static/js/3.e2de1b2c.chunk.js.LICENSE.txt",
     "static/js/59.6500f5c8.chunk.js.LICENSE.txt": "/taylor/static/js/59.6500f5c8.chunk.js.LICENSE.txt",
@@ -88,6 +88,6 @@
     "static/css/3.6d0b43f4.chunk.css",
     "static/js/3.e2de1b2c.chunk.js",
     "static/css/main.11a6195b.chunk.css",
-    "static/js/main.73c5b2a6.chunk.js"
+    "static/js/main.c85dd716.chunk.js"
   ]
 }
