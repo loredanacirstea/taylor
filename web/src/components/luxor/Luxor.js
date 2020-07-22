@@ -7,7 +7,18 @@ import SpreadSheet, { DefaultCell } from '@rowsncolumns/spreadsheet';
 import { WETH_EXAMPLE } from './fixtures.js';
 
 const MARKER_JS = '=', MARKER_WEB3 = '$';
-const SHEET_KEY_REGEX = /(\b[A-Z]{1}[0-9]{1,})/g;
+// TODO: fix for "something G5 something"
+const SHEET_KEY_REGEX = /(?<!\")(\b[A-Z]{1}[0-9]{1,})/g;
+const cellkey = (row, col) => `${row};${col}`;
+const numberToLetter = ci => String.fromCharCode(64 + ci);
+const letterToNumber = letter => letter.charCodeAt(0) - 64;
+
+const _lkeyToKey = lkey => {
+    if (!lkey) return lkey;
+    if (parseInt(lkey)) return `;${lkey}`;
+    return letterToNumber(lkey) + _lkeyToKey(lkey.substring(1));
+}
+const lkeyToKey = lkey => _lkeyToKey(lkey).split(';').reverse().join(';');
 
 class CanvasDatagrid extends React.Component {
     tayprops = ['formatter', 'onCellChange']
@@ -58,17 +69,6 @@ const DEFAULT_SHEETS = [
     }
 ];
 
-const cellkey = (row, col) => `${row};${col}`;
-const numberToLetter = ci => String.fromCharCode(64 + ci);
-const letterToNumber = letter => letter.charCodeAt(0) - 64;
-
-const _lkeyToKey = lkey => {
-    if (!lkey) return lkey;
-    if (parseInt(lkey)) return `;${lkey}`;
-    return letterToNumber(lkey) + _lkeyToKey(lkey.substring(1));
-}
-const lkeyToKey = lkey => _lkeyToKey(lkey).split(';').reverse().join(';');
-
 const Cell = (props) => {
     const newprops = {...props};
     const key = cellkey(props.rowIndex, props.columnIndex);
@@ -111,6 +111,7 @@ class Luxor extends React.Component {
 
     async componentDidMount() {
         await this.setFixturesData();
+        this.extendFormulas();
         this.recalcFormattedData();
     }
 
@@ -118,8 +119,48 @@ class Luxor extends React.Component {
         this.recalcFormattedData();
     }
 
+    mergeData(newdata) {
+        const activeData = JSON.parse(JSON.stringify(this.state.data));
+        const activeSheet = 0;
+
+        const rowkeys = Object.keys(newdata);
+        for (let ri of rowkeys) {
+            const colkeys = Object.keys(newdata[ri]);
+            for (let ci of colkeys) {
+                activeData[activeSheet].cells[ri][ci] = Object.assign(
+                    {},
+                    activeData[activeSheet].cells[ri][ci],
+                    newdata[ri][ci]
+                )
+                const key = cellkey(ri, ci);
+                this.addToDataMap(key, newdata[ri][ci].text);
+            }
+        }
+
+        this.setState({ data: activeData });
+    }
+
+    extendFormulas() {
+        if (!this.props.taylor_js) return;
+        const self = this;
+        this.props.taylor_js.jsextend('table-rowf', (args) => {
+            const newdata = luxor_extensions.tableRowf(args, self.state.data[0].cells);
+            self.mergeData(newdata);
+            return;
+        });
+        this.props.taylor_js.jsextend('table-colf', (args) => {
+            const newdata = luxor_extensions.tableColf(args, self.state.data[0].cells);
+            self.mergeData(newdata);
+            return;
+        });
+    }
+
     formatter(value, key) {
-        let response = typeof this.formattedData[key] !== 'undefined' ? this.formattedData[key].value.toString() : value;
+        let response = (
+            typeof this.formattedData[key] !== 'undefined'
+            && typeof this.formattedData[key].value !== 'undefined'
+            && this.formattedData[key].value !== null
+        ) ? this.formattedData[key].value.toString() : value;
         
         if (response instanceof Object && !(response instanceof Array)) {
             if (response.toString) return response.toString(10);
@@ -185,13 +226,18 @@ class Luxor extends React.Component {
             for(let j of colkeys) {
                 const key = cellkey(i, j);
                 const newvalue = cells[i][j].text;
+                const saveddata = {};
+                saveddata[i] = {};
+                saveddata[i][j] = cells[i][j];
+                this.mergeData(saveddata);
                 await this._onCellChange(key, newvalue);
             }
         }
     }
 
     async _onCellChange(key, newvalue) {
-        this.addToDataMap(key, await this.executeCell(key, newvalue));
+        const execvalue = await this.executeCell(key, newvalue)
+        this.addToDataMap(key, execvalue);
         
         const deps = this.getDepsFromDataMap(key);
         const deplength = deps.length;
@@ -362,6 +408,8 @@ function luxorTestsDataEthCall(addresses, fsigs, inirow=0, rows=50, cols=8) {
         [...Array(users.length)].map((_, i) => `D${inirow + i}`).join(' ')
     }) 0)`;
     data[2][4] = `=(reduce add (srange D${inirow} D${inirow+users.length-1}) 0)`;
+    data[3][4] = `=(table-rowf "G6" (list (list 1 2 3) (list 5 6 7)))`
+    data[4][4] = `=(table-colf "G9" (list (list 1 (list 2 2 3 3) 3) (list 5 6 7)))`
     
     return data;
 }
@@ -404,6 +452,51 @@ const tayextension = {
         result += currentcode;
         return result;
     }
+}
+
+
+
+const luxor_extensions = {
+    tableRowf: (args, data) => {
+        let [letterkey, iter] = args;
+        let corner = lkeyToKey(letterkey);
+        let [ri, ci] = corner.split(';').map(val => parseInt(val));
+
+        if (!(iter[0] instanceof Array)) iter = [iter];
+
+        const newdata = {};
+        
+        for (let row of iter) {
+            let cci = ci;
+            newdata[ri] = {};
+            for (let value of row) {
+                newdata[ri][cci] = { text: value };
+                cci += 1;
+            }
+            ri += 1;
+        }
+        return newdata;
+    },
+    tableColf: (args, data) => {
+        let [letterkey, iter] = args;
+        let corner = lkeyToKey(letterkey);
+        let [ri, ci] = corner.split(';').map(val => parseInt(val));
+
+        if (!(iter[0] instanceof Array)) iter = [iter];
+
+        const newdata = {};
+        
+        for (let row of iter) {
+            let rri = ri;
+            for (let value of row) {
+                newdata[rri] = newdata[rri] || {};
+                newdata[rri][ci] = { text: value };
+                rri += 1;
+            }
+            ci += 1;
+        }
+        return newdata;
+    },
 }
 
 const iconStyle = {

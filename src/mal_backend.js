@@ -85,8 +85,10 @@ modifyEnv('nil?', (orig_func, value) => {
 //     return orig_func(value);
 // });
 
+const extensions = {};
+
 modifyEnv('js-eval', async (orig_func, str) => {
-    const utils = {
+    const native_extensions = {
         BN: n => {
             if (typeof n === 'string' && n.substring(0, 2) === '0x') {
                 return new BN(n.substring(2), 16)
@@ -143,10 +145,24 @@ modifyEnv('js-eval', async (orig_func, str) => {
         ethsend: async (address, fsig, data) => {
             if (!mal.signer) return;
             return callContract(address, fsig, data, mal.signer, true).catch(console.log);
+        },
+        listToJsArray: async liststr => {
+            // ! always expects a resolved list
+            liststr = liststr.replace(/\(/g, '(list ');
+            const jsequiv = await mal.re(liststr);
+            return JSON.stringify(jsequiv);
         }
     }
+    const utils = Object.assign({}, native_extensions, extensions);
+    let answ;
+
     
-    let answ = await eval(str.toString());
+    try {
+        answ = await eval(str.toString());
+    } catch(e) {
+        console.log(e);
+        answ = undefined;
+    }
 
     if (BN.isBN(answ)) answ = { _hex: '0x' + answ.toString(16) }
     if (typeof answ === 'boolean') answ = { _hex: toHex(answ ? 1 : 0)}
@@ -360,7 +376,23 @@ mal.getBackend = async (address, provider, signer) => {
     }
     interpreter.send = interpreter.call;
     interpreter.sendAndWait = interpreter.send;
-
+    interpreter.extend = expression => mal.rep(expression);
+    interpreter.jsextend = (name, callb) => {
+        const utilname = name.replace(/-/g, '_');
+        extensions[utilname] = callb;
+        mal.rep(`(def! ${name} (fn* (& xs) 
+            (js-eval (str 
+                "utils.${utilname}(" 
+                    (js-eval (str
+                        "utils.listToJsArray('"
+                            (pr-str xs)
+                        "')"
+                    ))
+                ")"
+            )) 
+        ))`)
+    }
+    // needed for ethcall
     mal.provider = provider;
     mal.signer = signer;
     return interpreter;
