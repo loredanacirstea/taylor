@@ -1,9 +1,9 @@
 import React from 'react';
 import ReactDOM from 'react-dom';
-import { Button, Icon} from 'native-base';
+import { Rect, Text } from 'react-konva';
+import { Button, Icon } from 'native-base';
 import taylor from '@pipeos/taylor';
-import 'canvas-datagrid';
-import { sheet_settings, sheet_style_dark } from './configs.js';
+import SpreadSheet, { DefaultCell } from '@rowsncolumns/spreadsheet';
 import { WETH_EXAMPLE } from './fixtures.js';
 
 const MARKER_JS = '=', MARKER_WEB3 = '$';
@@ -17,57 +17,79 @@ class CanvasDatagrid extends React.Component {
     }
     
     updateAttributes(nextProps) {
-        const gridprops = Object.keys(this.props).filter(key => !this.tayprops.includes(key))
         
-        gridprops.forEach(key => {
-            if (!nextProps || this.props[key] !== nextProps[key]) {
-                if (this.grid.attributes[key] !== undefined) {
-                    this.grid.attributes[key] = nextProps ? nextProps[key] : this.props[key];
-                } else {
-                    this.grid[key] = nextProps ? nextProps[key] : this.props[key];
-                }
-            }
-        });
-        this.grid.draw();
     }
     componentWillReceiveProps(nextProps) {
-        this.updateAttributes(nextProps);
-    }
-    shouldComponentUpdate() {
-        return false;
     }
     componentWillUnmount() {
-        this.grid.dispose();
     }
     componentDidMount() {
-        const self = this;
-        this.grid = ReactDOM.findDOMNode(this);
-        this.updateAttributes();
-        this.grid.style.height = '100%';
-        this.grid.style.width = '100%';
-
-        this.grid.formatters.string = this.props.formatter;
-        this.grid.addEventListener('endedit', function(e) {
-            self.props.onCellChange(e.cell, e.value, self.grid);
-        });
+        document.getElementsByClassName('rowsncolumns-spreadsheet')[0].style.height='100%'
+        document.getElementsByClassName('rowsncolumns-spreadsheet')[0].style.width = '100%';
     }
 
     render() {
-        return React.createElement('canvas-datagrid', {});
+        return (
+            <SpreadSheet
+                sheets={this.props.data}
+                showFormulabar={true}
+                formatter={this.props.formatter}
+                CellRenderer={this.props.Cell}
+                style={{ height: '100%' }}
+                onChange={this.props.onChange}
+                onChangeSelectedSheet={this.props.onChangeSelectedSheet}
+                onChangeCells={this.props.onChangeCells}
+            />
+        )
     }
 }
+
+const DEFAULT_SHEETS = [
+    {
+      name: 'Sheet 1',
+      id: 0,
+      cells: {
+        1: {
+          1: {
+            text: ''
+          }
+        }
+      }
+    }
+];
+
+const cellkey = (row, col) => `${row};${col}`;
+const numberToLetter = ci => String.fromCharCode(64 + ci);
+const letterToNumber = letter => letter.charCodeAt(0) - 64;
+
+const _lkeyToKey = lkey => {
+    if (!lkey) return lkey;
+    if (parseInt(lkey)) return `;${lkey}`;
+    return letterToNumber(lkey) + _lkeyToKey(lkey.substring(1));
+}
+const lkeyToKey = lkey => _lkeyToKey(lkey).split(';').reverse().join(';');
+
+const Cell = (props) => {
+    const newprops = {...props};
+    const key = cellkey(props.rowIndex, props.columnIndex);
+    let value = props.formatter(newprops.text, key);
+    newprops.text = value || newprops.text;
+    return <DefaultCell {...newprops} />
+}
+
 class Luxor extends React.Component {
     constructor(props) {
         super(props);
 
         this.state = {
-            data: rightPadArray([], 50, rightPadArray([], 8, '')),
+            data: JSON.parse(JSON.stringify(DEFAULT_SHEETS)),
         };
 
         this.formattedData = {};
-
         this.formatter = this.formatter.bind(this);
-        this.onCellChange = this.onCellChange.bind(this);
+        this.onChangeCells = this.onChangeCells.bind(this);
+        this.onChangeSelectedSheet = this.onChangeSelectedSheet.bind(this);
+        this.onChange = this.onChange.bind(this);
     }
 
     async setFixturesData() {
@@ -76,8 +98,15 @@ class Luxor extends React.Component {
             chainid = (await this.props.taylor_js.provider.getNetwork()).chainId;
             chainid = parseInt(chainid);
         }
-        const data = luxorTestsData(taylor.tests.both.tests, chainid);
-        this.setState({ data });
+        const data = JSON.parse(JSON.stringify(DEFAULT_SHEETS))[0];
+        const testdata = luxorTestsData(taylor.tests.both.tests, chainid);
+        testdata.forEach((row, ri) => {
+            data.cells[ri+1] = {};
+            row.forEach((val, ci) => {
+                data.cells[ri+1][ci+1] = { text: val };
+            });
+        });
+        this.setState({ data: [data] });
     }
 
     async componentDidMount() {
@@ -89,18 +118,9 @@ class Luxor extends React.Component {
         this.recalcFormattedData();
     }
 
-    getKeyFromCell(cell) {
-        return cell.header.title + (cell.rowIndex + 1);
-    }
-
-    getKeyFromCoords(i, j) {
-        return String.fromCharCode(65+parseInt(j)) +(1+parseInt(i));
-    }
-
-    formatter(e) {
-        const value = e.cell.value;
-        const key = this.getKeyFromCell(e.cell);
-        let response = typeof this.formattedData[key] !== 'undefined' ? this.formattedData[key].value : value;
+    formatter(value, key) {
+        let response = typeof this.formattedData[key] !== 'undefined' ? this.formattedData[key].value.toString() : value;
+        
         if (response instanceof Object && !(response instanceof Array)) {
             if (response.toString) return response.toString(10);
             return JSON.stringify(response);
@@ -126,22 +146,22 @@ class Luxor extends React.Component {
         try {
             let newvalue = this.runExtensions(value);
             newvalue = this.replaceCellValues(key, newvalue);
-            response = await api.call(newvalue)
+            response = await api.call(newvalue);
         } catch(e) {
             console.log(e);
             response = value;
         }
-
         return response;
     }
 
     replaceCellValues(key, inicode) {
         let code = inicode.slice(1);
-        
         const keys = code.match(SHEET_KEY_REGEX);
+
         (keys || []).forEach(cell_key => {
-            this.addDepToDataMap(key, cell_key, inicode);
-            const tayvalue = taylor.jsval2tay(this.getFromDataMap(cell_key));
+            const numberkey = lkeyToKey(cell_key);
+            this.addDepToDataMap(key, numberkey, inicode);
+            const tayvalue = taylor.jsval2tay(this.getFromDataMap(numberkey));
             code = code.replace(cell_key, tayvalue);
         });
         
@@ -155,14 +175,24 @@ class Luxor extends React.Component {
         return code;
     }
 
-    async onCellChange(cell, newvalue, grid) {
-        const key = this.getKeyFromCell(cell);
-        await this._onCellChange(key, newvalue);
-        grid.draw();
+    async onChangeCells(sheetId, cells) {
+        const rowkeys = Object.keys(cells)
+
+        for(let i of rowkeys) {
+            const row = cells[i];
+            const colkeys = Object.keys(row);
+
+            for(let j of colkeys) {
+                const key = cellkey(i, j);
+                const newvalue = cells[i][j].text;
+                await this._onCellChange(key, newvalue);
+            }
+        }
     }
 
     async _onCellChange(key, newvalue) {
         this.addToDataMap(key, await this.executeCell(key, newvalue));
+        
         const deps = this.getDepsFromDataMap(key);
         const deplength = deps.length;
         
@@ -176,21 +206,37 @@ class Luxor extends React.Component {
         }
     }
 
+    onChangeSelectedSheet(sheetId) {
+
+    }
+
+    onChange(sheets) {
+
+    }
+
     async recalcFormattedData() {
         const { data } = this.state;
 
-        if (!data || !data.length) return;
+        if (!data) return;
         if (!this.props.taylor) return;
 
-        for (let i = 0 ; i <= data.length; i++) {
-            if (data[i] && data[i].length) {
-                for (let j = 0 ; j <= data[i].length; j++) {
-                    let value = data[i][j];
-                    let key = this.getKeyFromCoords(i, j);
-                    // Only calculate what has not been executed
-                    if (typeof this.getFromDataMap(key) === 'undefined' || this.formattedData[key].value === value) {
-                        this.addToDataMap(key, await this.executeCell(key, value));
-                    }
+        // TODO - multiple sheets?
+        const rows = data[0].cells;
+        if (rows.length == 0) return;
+
+        for (let i of Object.keys(rows)) {
+            if (!rows[i]) continue;
+            
+            const row = rows[i];
+            for (let j of Object.keys(row)) {
+                if (!row[j]) continue;
+
+                let value = row[j].text;
+                let key = cellkey(i, j);
+
+                // Only calculate what has not been executed
+                if (typeof this.getFromDataMap(key) === 'undefined' || this.formattedData[key].value === value) {
+                    this.addToDataMap(key, await this.executeCell(key, value));
                 }
             }
         }
@@ -224,57 +270,33 @@ class Luxor extends React.Component {
     }
 
     render() {
-        return React.createElement('div', {
-                style: {
-                    height: '100%'
-                }
-            },
-            React.createElement(CanvasDatagrid, {
-                data: this.state.data,
-                ...sheet_settings,
-                style: sheet_style_dark,
-                formatter: this.formatter,
-                onCellChange: this.onCellChange,
-            }),
-            React.createElement(Button, {
-                small: true,
-                icon: true,
-                style: {
-                    backgroundColor: 'rgb(155, 112, 63)',
-                    position: 'absolute',
-                    top: '0px',
-                    right: '40px',
-                    height: '25px',
-                    padding: '0px',
-                },
-                onClick: this.props.onEditorScreen,
-            },
-                React.createElement(Icon, {
-                    name: 'chevron-right',
-                    type: 'FontAwesome',
-                    style: iconStyle,
-                }),
-            ),
-            React.createElement(Button, {
-                small: true,
-                icon: true,
-                style: {
-                    backgroundColor: 'rgb(155, 112, 63)',
-                    position: 'absolute',
-                    top: '0px',
-                    right: '0px',
-                    height: '25px',
-                    padding: '0px',
-                },
-                onClick: this.props.onCloseLuxor,
-            },
-                React.createElement(Icon, {
-                    name: 'close',
-                    type: 'FontAwesome',
-                    style: iconStyle,
-                }),
-            ),
-        );
+        return (
+            <div style={{ height: '100%' }}>
+                <CanvasDatagrid
+                    data={this.state.data}
+                    formatter={this.formatter}
+                    Cell={Cell}
+                    onChangeCells={this.onChangeCells}
+                    onChangeSelectedSheet={this.onChangeSelectedSheet}
+                    onChange={this.onChange}
+                    style={{ height: '100%', width: '100%' }}
+                />
+                <Button
+                    small
+                    icon
+                    style={{ ...btnStyle, right: '40px' }}
+                >
+                    <Icon name='chevron-right' type='FontAwesome' style={iconStyle}></Icon>
+                </Button>
+                <Button
+                    small
+                    icon
+                    style={{ ...btnStyle, right: '0px' }}
+                >
+                    <Icon name='close' type='FontAwesome' style={iconStyle}></Icon>
+                </Button>
+            </div>
+        )
     }
 }
 
@@ -388,4 +410,12 @@ const iconStyle = {
     color: 'rgb(30, 30, 30)',
     marginLeft: '10px',
     marginRight: '10px', 
+}
+
+const btnStyle = {
+    backgroundColor: 'rgb(155, 112, 63)',
+    position: 'absolute',
+    top: '0px',
+    height: '25px',
+    padding: '0px',
 }
