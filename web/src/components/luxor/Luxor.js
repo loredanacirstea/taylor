@@ -1,6 +1,5 @@
 import React from 'react';
-import ReactDOM from 'react-dom';
-import { Rect, Text } from 'react-konva';
+import { RegularPolygon } from 'react-konva';
 import { Button, Icon } from 'native-base';
 import taylor from '@pipeos/taylor';
 import SpreadSheet, { DefaultCell } from '@rowsncolumns/spreadsheet';
@@ -74,6 +73,43 @@ const Cell = (props) => {
     const key = cellkey(props.rowIndex, props.columnIndex);
     let value = props.formatter(newprops.text, key);
     newprops.text = value || newprops.text;
+    const marker_width = props.height/3;
+    const x = props.x + marker_width/2;
+    const y = props.y + marker_width/2;
+    
+    if (props.text[0] === MARKER_JS) {
+        return (
+            <>
+            <DefaultCell {...newprops} />
+            <RegularPolygon
+                sides={3}
+                fill='rgb(205, 168, 105)'
+                x={x}
+                y={y}
+                width={marker_width}
+                height={marker_width}
+                rotation={315}
+                visible={true}
+            ></RegularPolygon>
+            </>
+        )
+    } else if (props.text[0] === MARKER_WEB3) {
+        return (
+            <>
+            <DefaultCell {...newprops} />
+            <RegularPolygon
+                sides={3}
+                fill='rgb(155, 112, 63)'
+                x={x}
+                y={y}
+                width={marker_width}
+                height={marker_width}
+                rotation={315}
+                visible={true}
+            ></RegularPolygon>
+            </>
+        )
+    }
     return <DefaultCell {...newprops} />
 }
 
