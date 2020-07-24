@@ -60,6 +60,18 @@ const tests = {
             test: '(empty? (list 0))',
             result: false,
         },
+        {
+            test: '(empty? (array))',
+            result: true,
+        },
+        {
+            test: '(empty? (array 1))',
+            result: false,
+        },
+        {
+            test: '(empty? (array 0))',
+            result: false,
+        },
     ],
     'true?': [
         {
@@ -306,6 +318,12 @@ const tests = {
             test: '(range 5 1 -1)',
             result: [5, 4, 3, 2, 1],
             skip: true,
+        },
+        {
+            test: `( (fn* (somearr start stop)
+                (map (fn* (pos) (nth somearr pos)) (range start stop 1))
+            ) (array 1 2 6 7 8 6) 2 4)`,
+            result: [6, 7, 8],
         },
     ],
     add: [
@@ -916,6 +934,201 @@ const tests = {
         {
             test: '(apply (fn* (a b) (add a b)) 4 5)',
             result: 9,
+        },
+    ],
+    'array?': [
+        {
+            test: '(array? (array 2 4))',
+            result: true,
+        },
+        {
+            test: '(array? (list 2 4))',
+            result: false,
+        },
+    ],
+    length: [
+        {
+            test: '(length "0x11223344556677")',
+            result: 7,
+        },
+        {
+            test: '(length (array 2 4))',
+            result: 2,
+        },
+        {
+            test: '(length (list 2 4))',
+            result: 2,
+        },
+    ],
+    'same?': [
+        {
+            test: '(same? (list 1 1 1))',
+            result: 1,
+        },
+        {
+            test: '(same? (list 1 0 1))',
+            result: 0,
+        },
+    ],
+    push: [
+        {
+            test: '(push (array 4 5 6) 20)',
+            result: [4, 5, 6, 20],
+        },
+        {
+            test: '(push (push (array 4 5 6) 20) 15)',
+            result: [4, 5, 6, 20, 15],
+        },
+        {
+            test: '(push (array (array 4 5 6) (array 7 8 9) ) (array 10 11 12))',
+            result: [[4, 5, 6], [7, 8, 9], [10, 11, 12]],
+        },
+        {
+            test: '(push (array "0x1122" "0x3344" "0x5566") "0x7788")',
+            result: ['0x1122', '0x3344', '0x5566', '0x7788'],
+        },
+        {
+            test: '(push (array) "0x7788")',
+            result: ['0x7788'],
+        },
+        {
+            test: '(push (array) 20)',
+            result: [20],
+        },
+        {
+            test: '(push (push (array) 20) 15)',
+            result: [20, 15],
+        },
+    ],
+    shift: [
+        {
+            test: '(shift (array 4 5 6) 20)',
+            result: [20, 4, 5, 6],
+        },
+        {
+            test: '(shift (shift (array 4 5 6) 20) 15)',
+            result: [15, 20, 4, 5, 6],
+        },
+        {
+            test: '(shift (array (array 4 5 6) (array 7 8 9) ) (array 10 11 12))',
+            result: [[10, 11, 12], [4, 5, 6], [7, 8, 9]],
+        },
+        {
+            test: '(shift (array "0x1122" "0x3344" "0x5566") "0x7788")',
+            result: ['0x7788', '0x1122', '0x3344', '0x5566'],
+        },
+        {
+            test: '(shift (array) "0x7788")',
+            result: ['0x7788'],
+        },
+        {
+            test: '(shift (array) 20)',
+            result: [20],
+        },
+        {
+            test: '(shift (shift (array) 20) 15)',
+            result: [15, 20],
+        },
+    ],
+    lengths: [
+        {
+            test: '(lengths (array 1 2 3))',
+            result: [3],
+        },
+        {
+            test: '(lengths (array (array 1 2 3) (array 1 2 3)))',
+            result: [2, 3],
+        },
+    ],
+    inverse: [
+        {
+            test: '(inverse (array 11 12 13) )',
+            result: [13, 12, 11],
+        },
+    ],
+    pick: [
+        {
+            test: '(pick (array (array 11 12 13) (array 14 15 16)) (list 1 1))',
+            result: 15,
+        },
+    ],
+    'pow-m': [
+        {
+            test: '(pow-m 0)',
+            result: 1,
+        },
+        {
+            test: '(pow-m 4)',
+            result: 1,
+        },
+        {
+            test: '(pow-m 3)',
+            result: -1,
+        },
+    ],
+    slicea: [
+        {
+            test: '(slicea (array 1 2 6 7 8 6) 2 4)',
+            result: [6, 7, 8],
+        },
+        {
+            test: '(slicea (list 1 2 6 7 8 6) 2 4)',
+            result: [6, 7, 8],
+        },
+    ],
+    nslice: [
+        {
+            test: `(nslice
+                (list 1 2 6 7 8 6) (list 2 4)
+            )`,
+            result: [6, 7, 8],
+        },
+        {
+            test: `(nslice
+                (array 
+                    (array 7 8 9 10 11 12)
+                    (array 1 2 6 7 8 6)
+                    (array 13 14 15 16 17 18)
+                    (array 11 12 16 17 18 16)
+                )
+                (list (list 0 1) (list 2 4) )
+            )`,
+            result: [[9, 10, 11], [6, 7, 8]],
+        },
+        {
+            test: `(nslice
+                (array 
+                    (array 
+                        (array 7 8 9 10 11 12)
+                        (array 1 2 6 7 8 6)
+                        (array 13 14 15 16 17 18)
+                        (array 11 12 16 17 18 16)
+                    )
+                    (array 
+                        (array 27 28 29 210 211 212)
+                        (array 21 22 26 27 28 26)
+                        (array 213 214 215 216 217 218)
+                        (array 221 222 226 227 228 226)
+                    )
+                    (array 
+                        (array 47 48 49 410 411 412)
+                        (array 41 42 46 47 48 46)
+                        (array 413 414 415 416 417 418)
+                        (array 441 442 446 447 448 446)
+                    )
+                )
+                (list (list 1 2) (list 2 3) (list 2 4))
+            )`,
+            result: [
+                [
+                    [215, 216, 217],
+                    [226, 227, 228],
+                ],
+                [
+                    [415, 416, 417],
+                    [446, 447, 448],
+                ]
+            ],
         },
     ],
 }
