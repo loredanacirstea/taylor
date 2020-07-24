@@ -196,10 +196,10 @@ class Luxor extends React.Component {
             typeof this.formattedData[key] !== 'undefined'
             && typeof this.formattedData[key].value !== 'undefined'
             && this.formattedData[key].value !== null
-        ) ? this.formattedData[key].value.toString() : value;
+        ) ? this.formattedData[key].value : value;
         
         if (response instanceof Object && !(response instanceof Array)) {
-            if (response.toString) return response.toString(10);
+            if (taylor.BN.isBN(response)) return response.toString(10);
             return JSON.stringify(response);
         }
         return response;
@@ -444,9 +444,11 @@ function luxorTestsDataEthCall(addresses, fsigs, inirow=0, rows=50, cols=8) {
         [...Array(users.length)].map((_, i) => `D${inirow + i}`).join(' ')
     }) 0)`;
     data[2][4] = `=(reduce add (srange D${inirow} D${inirow+users.length-1}) 0)`;
-    data[3][4] = `=(table-rowf "G6" (list (list 1 2 3) (list 5 6 7)))`
-    data[4][4] = `=(table-colf "G9" (list (list 1 (list 2 2 3 3) 3) (list 5 6 7)))`
-    
+    // data[3][4] = `=(table-rowf "G6" (list (list 1 2 3) (list 5 6 7)))`;
+    data[4][4] = `=(table-colf "G9" (list (list 1 (list 2 2 3 3) 3) (list 5 6 7)))`;
+    data[3][4] = `=(table-rowf "G6" F9)`;
+    // data[4][4] = `=(table-colf "G9" F9)`;
+    data[3][5] = {a:1, b:2, c:3, d:4};
     return data;
 }
 
@@ -490,16 +492,21 @@ const tayextension = {
     }
 }
 
+const table_f_ext = (args) => {
+    let [letterkey, iter] = args;
+    let corner = lkeyToKey(letterkey);
+    let [ri, ci] = corner.split(';').map(val => parseInt(val));
 
+    if (iter instanceof Object && !(iter instanceof Array)) {
+        iter = [Object.keys(iter), Object.values(iter)];
+    }
+    if (!(iter[0] instanceof Array)) iter = [iter];
+    return { iter, ri, ci };
+}
 
 const luxor_extensions = {
-    tableRowf: (args, data) => {
-        let [letterkey, iter] = args;
-        let corner = lkeyToKey(letterkey);
-        let [ri, ci] = corner.split(';').map(val => parseInt(val));
-
-        if (!(iter[0] instanceof Array)) iter = [iter];
-
+    tableRowf: (args) => {
+        let { iter, ri, ci } = table_f_ext(args);
         const newdata = {};
         
         for (let row of iter) {
@@ -513,13 +520,8 @@ const luxor_extensions = {
         }
         return newdata;
     },
-    tableColf: (args, data) => {
-        let [letterkey, iter] = args;
-        let corner = lkeyToKey(letterkey);
-        let [ri, ci] = corner.split(';').map(val => parseInt(val));
-
-        if (!(iter[0] instanceof Array)) iter = [iter];
-
+    tableColf: (args) => {
+        let { iter, ri, ci } = table_f_ext(args);
         const newdata = {};
         
         for (let row of iter) {

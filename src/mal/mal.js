@@ -52,15 +52,15 @@ async function eval_ast(ast, env) {
     if (types._symbol_Q(ast)) {
         return env.get(ast);
     } else if (types._list_Q(ast)) {
-        let aaa = []
+        let l = []
         for (let a of ast) {
-            aaa.push(await EVAL(a, env));
+            l.push(await EVAL(a, env));
         }
-        return aaa;
+        return l;
     } else if (types._vector_Q(ast)) {
         let v = []
         for (let a of ast) {
-            aaa.push(await EVAL(a, env));
+            v.push(await EVAL(a, env));
         }
         v.__isvector__ = true;
         return v;
