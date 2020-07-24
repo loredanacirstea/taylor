@@ -1,5 +1,5 @@
 import React from 'react';
-import { RegularPolygon } from 'react-konva';
+import { RegularPolygon, Arrow } from 'react-konva';
 import { Button, Icon } from 'native-base';
 import taylor from '@pipeos/taylor';
 import SpreadSheet, { DefaultCell } from '@rowsncolumns/spreadsheet';
@@ -68,49 +68,85 @@ const DEFAULT_SHEETS = [
     }
 ];
 
-const Cell = (props) => {
-    const newprops = {...props};
-    const key = cellkey(props.rowIndex, props.columnIndex);
-    let value = props.formatter(newprops.text, key);
-    newprops.text = value || newprops.text;
-    const marker_width = props.height/3;
-    const x = props.x + marker_width/2;
-    const y = props.y + marker_width/2;
-    
-    if (props.text[0] === MARKER_JS) {
-        return (
-            <>
-            <DefaultCell {...newprops} />
-            <RegularPolygon
-                sides={3}
-                fill='rgb(205, 168, 105)'
-                x={x}
-                y={y}
-                width={marker_width}
-                height={marker_width}
-                rotation={315}
-                visible={true}
-            ></RegularPolygon>
-            </>
-        )
-    } else if (props.text[0] === MARKER_WEB3) {
-        return (
-            <>
-            <DefaultCell {...newprops} />
-            <RegularPolygon
-                sides={3}
-                fill='rgb(155, 112, 63)'
-                x={x}
-                y={y}
-                width={marker_width}
-                height={marker_width}
-                rotation={315}
-                visible={true}
-            ></RegularPolygon>
-            </>
-        )
+const MARKER_WIDTH = 6;
+
+const CellFormula = (props) => {
+    const x = props.x + MARKER_WIDTH/2;
+    const y = props.y + MARKER_WIDTH/2;
+    return (
+        <>
+        <DefaultCell {...props} />
+        <RegularPolygon
+            sides={3}
+            fill={props.marker_color}
+            x={x}
+            y={y}
+            width={MARKER_WIDTH}
+            height={MARKER_WIDTH}
+            rotation={315}
+            visible={true}
+        ></RegularPolygon>
+        </>
+    )
+}
+
+const CellEthCallBang = (props) => {
+    const x = props.x + MARKER_WIDTH/2;
+    const y = props.y + MARKER_WIDTH/2;
+
+    const arroww = 20
+    const x2 = props.x + arroww/2 + props.width/2;
+    const y2 = props.y + props.height/2;
+    const onSend = () => {
+        props.onSend(cellkey(props.rowIndex, props.columnIndex), props.text);
     }
-    return <DefaultCell {...newprops} />
+    return (
+        <>
+        <DefaultCell {...props} />
+        <Arrow 
+            x={x2}
+            y={y2}
+            points={[0, 0, 5, 0]}
+            tension={1}
+            pointerLength={arroww}
+            pointerWidth={arroww}
+            fill='red'
+            onClick={onSend}
+        />
+        <RegularPolygon
+            sides={3}
+            fill='red'
+            x={x}
+            y={y}
+            width={MARKER_WIDTH}
+            height={MARKER_WIDTH}
+            rotation={315}
+            visible={true}
+        ></RegularPolygon>
+        </>
+    )
+}
+
+const getCell = (extraprops) => {
+    return (props) => {
+        const newprops = {...props};
+        const key = cellkey(props.rowIndex, props.columnIndex);
+        let value = props.formatter(newprops.text, key);
+        newprops.text = value || newprops.text;
+        const marker_width = props.height/3;
+        const x = props.x + marker_width/2;
+        const y = props.y + marker_width/2;
+        
+        if (props.text[0] === MARKER_JS) {
+            if (props.text.includes('eth-call!')) {
+                return <CellEthCallBang { ...newprops } { ...extraprops } />
+            }
+            return <CellFormula { ...newprops } { ...{ marker_color: 'rgb(205, 168, 105)' }} />
+        } else if (props.text[0] === MARKER_WEB3) {
+            return <CellFormula { ...newprops } { ...{ marker_color: 'rgb(155, 112, 63)' }} />
+        }
+        return <DefaultCell {...newprops} />
+    }
 }
 
 class Luxor extends React.Component {
@@ -126,6 +162,7 @@ class Luxor extends React.Component {
         this.onChangeCells = this.onChangeCells.bind(this);
         this.onChangeSelectedSheet = this.onChangeSelectedSheet.bind(this);
         this.onChange = this.onChange.bind(this);
+        this.onSend = this.onSend.bind(this);
     }
 
     async setFixturesData() {
@@ -205,7 +242,12 @@ class Luxor extends React.Component {
         return response;
     }
 
-    async executeCell(key, value) {
+    async onSend(key, value) {
+        const receipt = await this.executeCell(key, value, true);
+        return receipt;
+    }
+
+    async executeCell(key, value, executeSend=false) {
         if (!value || typeof value !== 'string') return value;
         let response;
 
@@ -219,6 +261,7 @@ class Luxor extends React.Component {
             api = this.props.taylor_web3;
         }
         if (!api) return value;
+        if (!executeSend && value.includes('!')) return value;
         
         try {
             let newvalue = this.runExtensions(value);
@@ -357,7 +400,7 @@ class Luxor extends React.Component {
                 <CanvasDatagrid
                     data={this.state.data}
                     formatter={this.formatter}
-                    Cell={Cell}
+                    Cell={ getCell({onSend: this.onSend}) }
                     onChangeCells={this.onChangeCells}
                     onChangeSelectedSheet={this.onChangeSelectedSheet}
                     onChange={this.onChange}
@@ -449,6 +492,7 @@ function luxorTestsDataEthCall(addresses, fsigs, inirow=0, rows=50, cols=8) {
     data[3][4] = `=(table-rowf "G6" F9)`;
     // data[4][4] = `=(table-colf "G9" F9)`;
     data[3][5] = {a:1, b:2, c:3, d:4};
+    data[5][4] = `=(eth-call! A7 "increase(uint)" (list 4))`
     return data;
 }
 
