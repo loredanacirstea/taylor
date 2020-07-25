@@ -143,8 +143,12 @@ function apply(f) {
     return f.apply(f, args);
 }
 
-function map(f, lst) {
-    return lst.map(function(el){ return f(el); });
+async function map(f, lst) {
+    const elems = [];
+    for (let el of lst) {
+        elems.push(await f(el));
+    }
+    return elems;
 }
 
 

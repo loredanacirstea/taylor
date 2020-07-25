@@ -153,7 +153,7 @@ const native_extensions = {
         const receipt = await response.wait();
         return receipt;
     },
-    listToJsArray: async liststr => {
+    listToJsArray: liststr => {
         // ! always expects a resolved list
         liststr = liststr.replace(/(?<!(BN))\(/g, '(list ');
         liststr = liststr.replace(/nil/g, 'Nil');
@@ -435,7 +435,7 @@ mal.getBackend = async (address, provider, signer) => {
     interpreter.jsextend = (name, callb) => {
         const utilname = name.replace(/-/g, '_');
         extensions[utilname] = callb;
-        mal.rep(`(def! ${name} (fn* (& xs) 
+        mal.rep(`(def! ${name} (fn* (& xs)
             (js-eval (str 
                 "utils.${utilname}(" 
                     (js-eval (str

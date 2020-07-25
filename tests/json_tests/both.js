@@ -1168,6 +1168,50 @@ const tests = {
             test: '(excludeMatrix (array (array 6 1) (array 3 4) )  1 1 )',
             result: [[6]],
         },
+        {
+            test: '(excludeMatrix (array (array 6 1 2) (array 3 4 5) (array 7 6 9))  1 1 )',
+            result: [[6, 2], [7, 9]],
+            skip: true,
+        },
+        {
+            test: '(excludeMatrix (array (array 6 1 2) (array 3 4 5) (array 7 6 9))  2 1 )',
+            result: [[6, 2], [3, 5]],
+            skip: true,
+        },
+    ],
+    prod: [
+        {
+            test: `(prod 
+                (array (array 3 5) (array 3 4))
+                (array (array 2 3) (array 3 4))
+            )`,
+            result: [[21, 29], [18, 25]],
+            skip: true,
+        },
+        {
+            test: `(prod 
+                (array (array -3 -5) (array -3 4))
+                (array (array -2 3) (array 3 4))
+            )`,
+            result: [[-9, -29], [18, 7]],
+            skip: true,
+        },
+        {
+            test: `(prod
+                (array (array 3 5 3 5) (array 4 6 3 5) (array 3 4 3 5))
+                (array (array 2 3) (array 3 4) (array 2 3) (array 3 4))
+            )`,
+            result: [[42, 58], [47, 65], [39, 54]],
+            skip: true,
+        },
+        {
+            test: `(prod 
+                (array (array 3 5 9 2) (array 1 15 19 12) (array 2 3 4 2) ) 
+                (array (array 1 1 1) (array 3 3 3) (array 2 2 2) (array 1 1 1) )
+            )`,
+            result: [[38, 38, 38], [96, 96, 96], [21, 21, 21]],
+            skip: true,
+        },
     ],
     smap: [
         {
