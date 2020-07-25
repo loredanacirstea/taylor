@@ -613,12 +613,6 @@ describe.each([
 
         resp = await instance.call('(func1 (add (add (sub 7 2) 1) 41) (add 2 3)))');
         expect(resp).toBe(52);
-
-        if (backendname === 'web3') {
-            resp = await instance.getFns();
-            expect(resp.length).toBe(25);
-            expect(resp[25].name).toBe('func1');
-        }
     }, 10000);
 
     it('test used stored fn 2', async function () {
@@ -632,13 +626,6 @@ describe.each([
         }
         resp = await instance.call('(func2 5 3)');
         expect(resp).toBe(10);
-
-        if (backendname === 'web3') {
-            resp = await instance.getFns();
-            expect(resp.length).toBe(26);
-            expect(resp[25].name).toBe('func1');
-            expect(resp[26].name).toBe('func2');
-        }
     }, 10000);
 
     test(`gas`, async () => {
