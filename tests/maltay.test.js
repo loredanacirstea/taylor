@@ -1001,10 +1001,17 @@ describe('ballot contract', function() {
     let vote = `(def! vote! (fn* (proposalIndex)
         (let* (
                 sender_raw (mapget voters (caller))
+                ; values for: weight, voted, delegate, vote
                 sender (list-struct sender_raw)
+                
+                ; types for: weight, voted, delegate, vote
                 sender_types (defstruct Voter)
+                
+                ; DB index for each struct component
                 sender_indexes (refs-struct sender_raw)
+                
                 proposal_raw (getfrom Proposal proposalIndex)
+                ; values: name, voteCount
                 proposal (list-struct proposal_raw)
                 proposal_types (defstruct Proposal)
                 proposal_indexes (refs-struct proposal_raw)
