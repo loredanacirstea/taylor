@@ -151,6 +151,7 @@ const native_extensions = {
         if (!mal.signer) return;
         const response = await callContract(address, fsig, data, mal.signer, true).catch(console.log);
         const receipt = await response.wait();
+        console.log('receipt', receipt);
         return receipt;
     },
     listToJsArray: liststr => {
@@ -171,6 +172,24 @@ const native_extensions = {
 
 mal.repl_env.set(malTypes._symbol('utils'), native_extensions);
 
+const jsEvalParseBN = answ => {
+    if (BN.isBN(answ)) answ = { _hex: '0x' + answ.toString(16) }
+    if (typeof answ === 'boolean') answ = { _hex: toHex(answ ? 1 : 0)}
+
+    if (answ && typeof answ === 'object') {
+        if (answ instanceof Array) {
+            return answ.map(val => jsEvalParseBN(val));
+        }
+        const newobj = {};
+        Object.keys(answ).forEach(key => {
+            newobj[key] = jsEvalParseBN(answ[key]);
+        });
+        return newobj;
+    }
+
+    return answ;
+}
+
 modifyEnv('js-eval', async (orig_func, str) => {
     const utils = Object.assign({}, native_extensions, extensions);
     let answ;
@@ -182,9 +201,7 @@ modifyEnv('js-eval', async (orig_func, str) => {
         answ = undefined;
     }
 
-    if (BN.isBN(answ)) answ = { _hex: '0x' + answ.toString(16) }
-    if (typeof answ === 'boolean') answ = { _hex: toHex(answ ? 1 : 0)}
-
+    answ = jsEvalParseBN(answ);
     return interop.js_to_mal(answ);
 })
 
@@ -192,7 +209,10 @@ async function init() {
 
 /* Taylor */
 
+// Nil can be null for now, but it should follow the on-chain version when js backend will be typed
 await mal.reps(`
+(def! Nil (js-eval (str "null")) )
+
 (def! reduce (fn* (f xs init) (if (empty? xs) init (reduce f (rest xs) (f init (first xs)) ))))
 
 (def! encode (fn* (a) (js-eval (str "utils.encode('" a "')") )))

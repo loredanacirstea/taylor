@@ -45,6 +45,7 @@ class CanvasDatagrid extends React.Component {
                 showFormulabar={true}
                 formatter={this.props.formatter}
                 CellRenderer={this.props.Cell}
+                snap={true}
                 style={{ height: '100%' }}
                 onChange={this.props.onChange}
                 onChangeSelectedSheet={this.props.onChangeSelectedSheet}
@@ -79,6 +80,7 @@ const CellFormula = (props) => {
         <RegularPolygon
             sides={3}
             fill={props.marker_color}
+            opacity={0.6}
             x={x}
             y={y}
             width={MARKER_WIDTH}
@@ -97,9 +99,7 @@ const CellEthCallBang = (props) => {
     const arroww = 20
     const x2 = props.x + arroww/2 + props.width/2;
     const y2 = props.y + props.height/2;
-    const onSend = () => {
-        props.onSend(cellkey(props.rowIndex, props.columnIndex), props.text);
-    }
+    const onSend = () => props.onSend(cellkey(props.rowIndex, props.columnIndex), props.text);
     return (
         <>
         <DefaultCell {...props} />
@@ -544,6 +544,8 @@ const table_f_ext = (args) => {
     if (iter instanceof Object && !(iter instanceof Array)) {
         iter = [Object.keys(iter), Object.values(iter)];
     }
+    if (typeof iter === 'undefined') iter = ['undefined'];
+    if (iter === null) iter = ['null'];
     if (!(iter[0] instanceof Array)) iter = [iter];
     return { iter, ri, ci };
 }
