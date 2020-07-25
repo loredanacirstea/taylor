@@ -92,6 +92,7 @@ const native_extensions = {
         if (typeof n === 'string' && n.substring(0, 2) === '0x') {
             return new BN(n.substring(2), 16)
         }
+        if (BN.isBN(n)) return n;
         return new BN(n)
     },
     keccak256: n => {
@@ -130,12 +131,17 @@ const native_extensions = {
 
         return value;
     },
-    range: (start, stop, step) => [...Array(stop + 1).keys()].slice(start, stop+1).filter((no, i) => i % step === 0),
+    range: (start, stop, step) => {
+        start = BN.isBN(start) ? start.toNumber() : start;
+        stop = BN.isBN(stop) ? stop.toNumber() : stop;
+        step = BN.isBN(step) ? step.toNumber() : step;
+        return [...Array(stop + 1).keys()].slice(start, stop+1).filter((no, i) => i % step === 0);
+    },
     isArray,
     limited_pow: (a, b) => {
         // no floats yet
         if (b < 0) return 0;
-        return utils.BN(a).pow(utils.BN(b));
+        return native_extensions.BN(a).pow(native_extensions.BN(b));
     },
     ethcall: async (address, fsig, data) => {
         if (!mal.provider) return;
@@ -202,7 +208,7 @@ await mal.reps(`
 (def! range (fn* (start stop step) (js-eval (str "utils.range(" start "," stop "," step ")" )) ))
 
 (def! push (fn* (arr value)
-    (concat arr (list value))
+    (conj arr value)
 ))
 
 (def! shift (fn* (arr value)

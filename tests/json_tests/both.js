@@ -174,6 +174,10 @@ const tests = {
             test: '(first (array 5 3 7))',
             result: 5,
         },
+        {
+            test: '(first (array (array 0 1)) )',
+            result: [0, 1],
+        },
     ],
     nth: [
         {
@@ -313,6 +317,10 @@ const tests = {
         {
             test: '(range 0 0 1)',
             result: [0],
+        },
+        {
+            test: '(range 0 1 1)',
+            result: [0, 1],
         },
         {
             test: '(range 5 1 -1)',
@@ -935,6 +943,14 @@ const tests = {
             test: '(apply (fn* (a b) (add a b)) 4 5)',
             result: 9,
         },
+        {
+            test: '(apply same? (array 1 1 1))',
+            result: 1,
+        },
+        {
+            test: '(apply same? (list 3 1 1))',
+            result: 0,
+        },
     ],
     'array?': [
         {
@@ -1129,6 +1145,34 @@ const tests = {
                     [446, 447, 448],
                 ]
             ],
+        },
+    ],
+    'new-array': [
+        {
+            test: '(new-array same? (list 2 2) )',
+            result: [[1, 0], [0, 1]],
+        },
+        {
+            test: '(new-array same? (list 3 3) )',
+            result: [[1, 0, 0], [0, 1, 0], [0, 0, 1]],
+        },
+    ],
+    transpose: [
+        {
+            test: '(transpose (array (array 6 1 2) (array 3 4 5)) )',
+            result: [[6, 3], [1, 4], [2, 5]],
+        },
+    ],
+    excludeMatrix: [
+        {
+            test: '(excludeMatrix (array (array 6 1) (array 3 4) )  1 1 )',
+            result: [[6]],
+        },
+    ],
+    smap: [
+        {
+            test: '(smap add 10 (array 1 2 3 4))',
+            result: [11, 12, 13, 14],
         },
     ],
 }

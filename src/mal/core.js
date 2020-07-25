@@ -140,7 +140,7 @@ function seq(obj) {
 
 function apply(f) {
     var args = Array.prototype.slice.call(arguments, 1);
-    return f.apply(f, args.slice(0, args.length-1).concat(args[args.length-1]));
+    return f.apply(f, args);
 }
 
 function map(f, lst) {

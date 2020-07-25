@@ -121,10 +121,8 @@ const functions = {
                     (pick origMatrix (inverse indexList))
                 )
             )
-            fillfunc2 (fillfunc matrix)
         )
-        (new-array fillfunc2 matrixLengths)
-        ; (new-array (fillfunc matrix) matrixLengths)
+        (new-array (fillfunc matrix) matrixLengths)
     )
 ))`,
 

@@ -566,6 +566,7 @@ describe.each([
             return taylor.deployRebuild().then(contract => {
                 console.log('****Taylor2', contract.address);
                 instance = contract;
+                return instance.bootstrap();
             });
         });
     } else {
@@ -592,7 +593,7 @@ describe.each([
                 resp = await instance.call(tt.test);
                 if (tt.process) resp = tt.process(resp);
                 expect(resp).toEqual(tt.result);
-            });
+            }, tt.wait || 10000);
         });
     }
 
@@ -615,8 +616,8 @@ describe.each([
 
         if (backendname === 'web3') {
             resp = await instance.getFns();
-            expect(resp.length).toBe(6);
-            expect(resp[5].name).toBe('func1');
+            expect(resp.length).toBe(25);
+            expect(resp[25].name).toBe('func1');
         }
     }, 10000);
 
@@ -634,9 +635,9 @@ describe.each([
 
         if (backendname === 'web3') {
             resp = await instance.getFns();
-            expect(resp.length).toBe(7);
-            expect(resp[5].name).toBe('func1');
-            expect(resp[6].name).toBe('func2');
+            expect(resp.length).toBe(26);
+            expect(resp[25].name).toBe('func1');
+            expect(resp[26].name).toBe('func2');
         }
     }, 10000);
 
@@ -828,7 +829,7 @@ describe.each([
     it('test logs', async function() {
         if (backendname === 'web3') {
             const resp = await instance.getFns();
-            expect(resp.length).toBe(7);
+            expect(resp.length).toBe(26);
         }
     });
 });
@@ -923,24 +924,8 @@ describe('test mapping', function () {
 
 describe('matrix/n-dim array functions', function () {
     let resp;
-
-    test('new-array', async function() {
-        resp = await MalTay.call(`(new-array same? (list 2 2) )`);
-        expect(resp).toEqual([[1, 0], [0, 1]])
-        
-        resp = await MalTay.call(`(new-array same? (list 3 3) )`);
-        expect(resp).toEqual([[1, 0, 0], [0, 1, 0], [0, 0, 1]]);
-    }, 20000);
-
-    test('matrix transpose', async function() {
-        resp = await MalTay.call(`(transpose (array (array 6 1 2) (array 3 4 5)) )`);
-        expect(resp).toEqual([[6, 3], [1, 4], [2, 5]]);
-    }, 20000);
     
     test('matrix excludeMatrix', async function() {
-        resp = await MalTay.call('(excludeMatrix (array (array 6 1) (array 3 4) )  1 1 )');
-        expect(resp).toEqual([[6]]);
-
         resp = await MalTay.call('(excludeMatrix (array (array 6 1 2) (array 3 4 5) (array 7 6 9))  1 1 )');
         expect(resp).toEqual([[6, 2], [7, 9]]);
 
@@ -984,11 +969,6 @@ describe('matrix/n-dim array functions', function () {
         // TODO fixme
         // resp = await MalTay.call(`(det (array (array 11 12 11) (array 14 13 11) (array 11 12 18) ))`);
         // expect(resp).toBe(-175);
-    });
-
-    test(`smap`, async () => {
-        resp = await MalTay.call(`(smap add 10 (array 1 2 3 4))`);
-        expect(resp).toEqual([11, 12, 13, 14]);
     });
 });
 
