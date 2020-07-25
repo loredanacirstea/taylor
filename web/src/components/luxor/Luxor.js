@@ -410,6 +410,7 @@ class Luxor extends React.Component {
                     small
                     icon
                     style={{ ...btnStyle, right: '40px' }}
+                    onClick={this.props.onEditorScreen}
                 >
                     <Icon name='chevron-right' type='FontAwesome' style={iconStyle}></Icon>
                 </Button>
@@ -417,6 +418,7 @@ class Luxor extends React.Component {
                     small
                     icon
                     style={{ ...btnStyle, right: '0px' }}
+                    onClick={this.props.onCloseLuxor}
                 >
                     <Icon name='close' type='FontAwesome' style={iconStyle}></Icon>
                 </Button>
