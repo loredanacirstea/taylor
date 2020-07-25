@@ -60,6 +60,18 @@ const tests = {
             test: '(empty? (list 0))',
             result: false,
         },
+        {
+            test: '(empty? (array))',
+            result: true,
+        },
+        {
+            test: '(empty? (array 1))',
+            result: false,
+        },
+        {
+            test: '(empty? (array 0))',
+            result: false,
+        },
     ],
     'true?': [
         {
@@ -161,6 +173,10 @@ const tests = {
         {
             test: '(first (array 5 3 7))',
             result: 5,
+        },
+        {
+            test: '(first (array (array 0 1)) )',
+            result: [0, 1],
         },
     ],
     nth: [
@@ -303,9 +319,19 @@ const tests = {
             result: [0],
         },
         {
+            test: '(range 0 1 1)',
+            result: [0, 1],
+        },
+        {
             test: '(range 5 1 -1)',
             result: [5, 4, 3, 2, 1],
             skip: true,
+        },
+        {
+            test: `( (fn* (somearr start stop)
+                (map (fn* (pos) (nth somearr pos)) (range start stop 1))
+            ) (array 1 2 6 7 8 6) 2 4)`,
+            result: [6, 7, 8],
         },
     ],
     add: [
@@ -916,6 +942,281 @@ const tests = {
         {
             test: '(apply (fn* (a b) (add a b)) 4 5)',
             result: 9,
+        },
+        {
+            test: '(apply same? (array 1 1 1))',
+            result: 1,
+        },
+        {
+            test: '(apply same? (list 3 1 1))',
+            result: 0,
+        },
+    ],
+    'array?': [
+        {
+            test: '(array? (array 2 4))',
+            result: true,
+        },
+        {
+            test: '(array? (list 2 4))',
+            result: false,
+        },
+    ],
+    length: [
+        {
+            test: '(length "0x11223344556677")',
+            result: 7,
+        },
+        {
+            test: '(length (array 2 4))',
+            result: 2,
+        },
+        {
+            test: '(length (list 2 4))',
+            result: 2,
+        },
+    ],
+    'same?': [
+        {
+            test: '(same? (list 1 1 1))',
+            result: 1,
+        },
+        {
+            test: '(same? (list 1 0 1))',
+            result: 0,
+        },
+    ],
+    push: [
+        {
+            test: '(push (array 4 5 6) 20)',
+            result: [4, 5, 6, 20],
+        },
+        {
+            test: '(push (push (array 4 5 6) 20) 15)',
+            result: [4, 5, 6, 20, 15],
+        },
+        {
+            test: '(push (array (array 4 5 6) (array 7 8 9) ) (array 10 11 12))',
+            result: [[4, 5, 6], [7, 8, 9], [10, 11, 12]],
+        },
+        {
+            test: '(push (array "0x1122" "0x3344" "0x5566") "0x7788")',
+            result: ['0x1122', '0x3344', '0x5566', '0x7788'],
+        },
+        {
+            test: '(push (array) "0x7788")',
+            result: ['0x7788'],
+        },
+        {
+            test: '(push (array) 20)',
+            result: [20],
+        },
+        {
+            test: '(push (push (array) 20) 15)',
+            result: [20, 15],
+        },
+    ],
+    shift: [
+        {
+            test: '(shift (array 4 5 6) 20)',
+            result: [20, 4, 5, 6],
+        },
+        {
+            test: '(shift (shift (array 4 5 6) 20) 15)',
+            result: [15, 20, 4, 5, 6],
+        },
+        {
+            test: '(shift (array (array 4 5 6) (array 7 8 9) ) (array 10 11 12))',
+            result: [[10, 11, 12], [4, 5, 6], [7, 8, 9]],
+        },
+        {
+            test: '(shift (array "0x1122" "0x3344" "0x5566") "0x7788")',
+            result: ['0x7788', '0x1122', '0x3344', '0x5566'],
+        },
+        {
+            test: '(shift (array) "0x7788")',
+            result: ['0x7788'],
+        },
+        {
+            test: '(shift (array) 20)',
+            result: [20],
+        },
+        {
+            test: '(shift (shift (array) 20) 15)',
+            result: [15, 20],
+        },
+    ],
+    lengths: [
+        {
+            test: '(lengths (array 1 2 3))',
+            result: [3],
+        },
+        {
+            test: '(lengths (array (array 1 2 3) (array 1 2 3)))',
+            result: [2, 3],
+        },
+    ],
+    inverse: [
+        {
+            test: '(inverse (array 11 12 13) )',
+            result: [13, 12, 11],
+        },
+    ],
+    pick: [
+        {
+            test: '(pick (array (array 11 12 13) (array 14 15 16)) (list 1 1))',
+            result: 15,
+        },
+    ],
+    'pow-m': [
+        {
+            test: '(pow-m 0)',
+            result: 1,
+        },
+        {
+            test: '(pow-m 4)',
+            result: 1,
+        },
+        {
+            test: '(pow-m 3)',
+            result: -1,
+        },
+    ],
+    slicea: [
+        {
+            test: '(slicea (array 1 2 6 7 8 6) 2 4)',
+            result: [6, 7, 8],
+        },
+        {
+            test: '(slicea (list 1 2 6 7 8 6) 2 4)',
+            result: [6, 7, 8],
+        },
+    ],
+    nslice: [
+        {
+            test: `(nslice
+                (list 1 2 6 7 8 6) (list 2 4)
+            )`,
+            result: [6, 7, 8],
+        },
+        {
+            test: `(nslice
+                (array 
+                    (array 7 8 9 10 11 12)
+                    (array 1 2 6 7 8 6)
+                    (array 13 14 15 16 17 18)
+                    (array 11 12 16 17 18 16)
+                )
+                (list (list 0 1) (list 2 4) )
+            )`,
+            result: [[9, 10, 11], [6, 7, 8]],
+        },
+        {
+            test: `(nslice
+                (array 
+                    (array 
+                        (array 7 8 9 10 11 12)
+                        (array 1 2 6 7 8 6)
+                        (array 13 14 15 16 17 18)
+                        (array 11 12 16 17 18 16)
+                    )
+                    (array 
+                        (array 27 28 29 210 211 212)
+                        (array 21 22 26 27 28 26)
+                        (array 213 214 215 216 217 218)
+                        (array 221 222 226 227 228 226)
+                    )
+                    (array 
+                        (array 47 48 49 410 411 412)
+                        (array 41 42 46 47 48 46)
+                        (array 413 414 415 416 417 418)
+                        (array 441 442 446 447 448 446)
+                    )
+                )
+                (list (list 1 2) (list 2 3) (list 2 4))
+            )`,
+            result: [
+                [
+                    [215, 216, 217],
+                    [226, 227, 228],
+                ],
+                [
+                    [415, 416, 417],
+                    [446, 447, 448],
+                ]
+            ],
+        },
+    ],
+    'new-array': [
+        {
+            test: '(new-array same? (list 2 2) )',
+            result: [[1, 0], [0, 1]],
+        },
+        {
+            test: '(new-array same? (list 3 3) )',
+            result: [[1, 0, 0], [0, 1, 0], [0, 0, 1]],
+        },
+    ],
+    transpose: [
+        {
+            test: '(transpose (array (array 6 1 2) (array 3 4 5)) )',
+            result: [[6, 3], [1, 4], [2, 5]],
+        },
+    ],
+    excludeMatrix: [
+        {
+            test: '(excludeMatrix (array (array 6 1) (array 3 4) )  1 1 )',
+            result: [[6]],
+        },
+        {
+            test: '(excludeMatrix (array (array 6 1 2) (array 3 4 5) (array 7 6 9))  1 1 )',
+            result: [[6, 2], [7, 9]],
+            skip: true,
+        },
+        {
+            test: '(excludeMatrix (array (array 6 1 2) (array 3 4 5) (array 7 6 9))  2 1 )',
+            result: [[6, 2], [3, 5]],
+            skip: true,
+        },
+    ],
+    prod: [
+        {
+            test: `(prod 
+                (array (array 3 5) (array 3 4))
+                (array (array 2 3) (array 3 4))
+            )`,
+            result: [[21, 29], [18, 25]],
+            skip: true,
+        },
+        {
+            test: `(prod 
+                (array (array -3 -5) (array -3 4))
+                (array (array -2 3) (array 3 4))
+            )`,
+            result: [[-9, -29], [18, 7]],
+            skip: true,
+        },
+        {
+            test: `(prod
+                (array (array 3 5 3 5) (array 4 6 3 5) (array 3 4 3 5))
+                (array (array 2 3) (array 3 4) (array 2 3) (array 3 4))
+            )`,
+            result: [[42, 58], [47, 65], [39, 54]],
+            skip: true,
+        },
+        {
+            test: `(prod 
+                (array (array 3 5 9 2) (array 1 15 19 12) (array 2 3 4 2) ) 
+                (array (array 1 1 1) (array 3 3 3) (array 2 2 2) (array 1 1 1) )
+            )`,
+            result: [[38, 38, 38], [96, 96, 96], [21, 21, 21]],
+            skip: true,
+        },
+    ],
+    smap: [
+        {
+            test: '(smap add 10 (array 1 2 3 4))',
+            result: [11, 12, 13, 14],
         },
     ],
 }

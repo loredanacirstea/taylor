@@ -622,7 +622,10 @@ const jsval2tay = value => {
             if (value instanceof Array) {
                 return `(list ${ value.map(jsval2tay).join(' ') })`;
             }
-            return JSON.stringify(value);
+            const pairs = Object.keys(value).map(key => {
+                return [`"${key}"`, value[key]].join(' ');
+            }).join(' ');
+            return `{ ${pairs} }`;
         case 'undefined':
             return 'Nil';
         case 'string':
@@ -935,5 +938,6 @@ module.exports = {
     jsval2tay,
     malBackend,
     getTaylor,
+    BN,
 }
 

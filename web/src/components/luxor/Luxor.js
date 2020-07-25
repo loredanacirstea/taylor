@@ -1,13 +1,23 @@
 import React from 'react';
-import ReactDOM from 'react-dom';
-import { Button, Icon} from 'native-base';
+import { RegularPolygon, Arrow } from 'react-konva';
+import { Button, Icon } from 'native-base';
 import taylor from '@pipeos/taylor';
-import 'canvas-datagrid';
-import { sheet_settings, sheet_style_dark } from './configs.js';
+import SpreadSheet, { DefaultCell } from '@rowsncolumns/spreadsheet';
 import { WETH_EXAMPLE } from './fixtures.js';
 
 const MARKER_JS = '=', MARKER_WEB3 = '$';
-const SHEET_KEY_REGEX = /(\b[A-Z]{1}[0-9]{1,})/g;
+// TODO: fix for "something G5 something"
+const SHEET_KEY_REGEX = /(?<!\")(\b[A-Z]{1}[0-9]{1,})/g;
+const cellkey = (row, col) => `${row};${col}`;
+const numberToLetter = ci => String.fromCharCode(64 + ci);
+const letterToNumber = letter => letter.charCodeAt(0) - 64;
+
+const _lkeyToKey = lkey => {
+    if (!lkey) return lkey;
+    if (parseInt(lkey)) return `;${lkey}`;
+    return letterToNumber(lkey) + _lkeyToKey(lkey.substring(1));
+}
+const lkeyToKey = lkey => _lkeyToKey(lkey).split(';').reverse().join(';');
 
 class CanvasDatagrid extends React.Component {
     tayprops = ['formatter', 'onCellChange']
@@ -17,57 +27,142 @@ class CanvasDatagrid extends React.Component {
     }
     
     updateAttributes(nextProps) {
-        const gridprops = Object.keys(this.props).filter(key => !this.tayprops.includes(key))
         
-        gridprops.forEach(key => {
-            if (!nextProps || this.props[key] !== nextProps[key]) {
-                if (this.grid.attributes[key] !== undefined) {
-                    this.grid.attributes[key] = nextProps ? nextProps[key] : this.props[key];
-                } else {
-                    this.grid[key] = nextProps ? nextProps[key] : this.props[key];
-                }
-            }
-        });
-        this.grid.draw();
     }
     componentWillReceiveProps(nextProps) {
-        this.updateAttributes(nextProps);
-    }
-    shouldComponentUpdate() {
-        return false;
     }
     componentWillUnmount() {
-        this.grid.dispose();
     }
     componentDidMount() {
-        const self = this;
-        this.grid = ReactDOM.findDOMNode(this);
-        this.updateAttributes();
-        this.grid.style.height = '100%';
-        this.grid.style.width = '100%';
-
-        this.grid.formatters.string = this.props.formatter;
-        this.grid.addEventListener('endedit', function(e) {
-            self.props.onCellChange(e.cell, e.value, self.grid);
-        });
+        document.getElementsByClassName('rowsncolumns-spreadsheet')[0].style.height='100%'
+        document.getElementsByClassName('rowsncolumns-spreadsheet')[0].style.width = '100%';
     }
 
     render() {
-        return React.createElement('canvas-datagrid', {});
+        return (
+            <SpreadSheet
+                sheets={this.props.data}
+                showFormulabar={true}
+                formatter={this.props.formatter}
+                CellRenderer={this.props.Cell}
+                snap={true}
+                style={{ height: '100%' }}
+                onChange={this.props.onChange}
+                onChangeSelectedSheet={this.props.onChangeSelectedSheet}
+                onChangeCells={this.props.onChangeCells}
+            />
+        )
     }
 }
+
+const DEFAULT_SHEETS = [
+    {
+      name: 'Sheet 1',
+      id: 0,
+      cells: {
+        1: {
+          1: {
+            text: ''
+          }
+        }
+      }
+    }
+];
+
+const MARKER_WIDTH = 6;
+
+const CellFormula = (props) => {
+    const x = props.x + MARKER_WIDTH/2;
+    const y = props.y + MARKER_WIDTH/2;
+    return (
+        <>
+        <DefaultCell {...props} />
+        <RegularPolygon
+            sides={3}
+            fill={props.marker_color}
+            opacity={0.6}
+            x={x}
+            y={y}
+            width={MARKER_WIDTH}
+            height={MARKER_WIDTH}
+            rotation={315}
+            visible={true}
+        ></RegularPolygon>
+        </>
+    )
+}
+
+const CellEthCallBang = (props) => {
+    const x = props.x + MARKER_WIDTH/2;
+    const y = props.y + MARKER_WIDTH/2;
+
+    const arroww = 20
+    const x2 = props.x + arroww/2 + props.width/2;
+    const y2 = props.y + props.height/2;
+    const onSend = () => props.onSend(cellkey(props.rowIndex, props.columnIndex), props.text);
+    return (
+        <>
+        <DefaultCell {...props} />
+        <Arrow 
+            x={x2}
+            y={y2}
+            points={[0, 0, 5, 0]}
+            tension={1}
+            pointerLength={arroww}
+            pointerWidth={arroww}
+            fill='red'
+            onClick={onSend}
+        />
+        <RegularPolygon
+            sides={3}
+            fill='red'
+            x={x}
+            y={y}
+            width={MARKER_WIDTH}
+            height={MARKER_WIDTH}
+            rotation={315}
+            visible={true}
+        ></RegularPolygon>
+        </>
+    )
+}
+
+const getCell = (extraprops) => {
+    return (props) => {
+        const newprops = {...props};
+        const key = cellkey(props.rowIndex, props.columnIndex);
+        let value = props.formatter(newprops.text, key);
+        newprops.text = value || newprops.text;
+        const marker_width = props.height/3;
+        const x = props.x + marker_width/2;
+        const y = props.y + marker_width/2;
+        
+        if (props.text[0] === MARKER_JS) {
+            if (props.text.includes('eth-call!')) {
+                return <CellEthCallBang { ...newprops } { ...extraprops } />
+            }
+            return <CellFormula { ...newprops } { ...{ marker_color: 'rgb(205, 168, 105)' }} />
+        } else if (props.text[0] === MARKER_WEB3) {
+            return <CellFormula { ...newprops } { ...{ marker_color: 'rgb(155, 112, 63)' }} />
+        }
+        return <DefaultCell {...newprops} />
+    }
+}
+
 class Luxor extends React.Component {
     constructor(props) {
         super(props);
 
         this.state = {
-            data: rightPadArray([], 50, rightPadArray([], 8, '')),
+            data: JSON.parse(JSON.stringify(DEFAULT_SHEETS)),
         };
 
         this.formattedData = {};
-
         this.formatter = this.formatter.bind(this);
-        this.onCellChange = this.onCellChange.bind(this);
+        this.onChangeCells = this.onChangeCells.bind(this);
+        this.onChangeSelectedSheet = this.onChangeSelectedSheet.bind(this);
+        this.onChange = this.onChange.bind(this);
+        this.onSend = this.onSend.bind(this);
     }
 
     async setFixturesData() {
@@ -76,12 +171,20 @@ class Luxor extends React.Component {
             chainid = (await this.props.taylor_js.provider.getNetwork()).chainId;
             chainid = parseInt(chainid);
         }
-        const data = luxorTestsData(taylor.tests.both.tests, chainid);
-        this.setState({ data });
+        const data = JSON.parse(JSON.stringify(DEFAULT_SHEETS))[0];
+        const testdata = luxorTestsData(taylor.tests.both.tests, chainid);
+        testdata.forEach((row, ri) => {
+            data.cells[ri+1] = {};
+            row.forEach((val, ci) => {
+                data.cells[ri+1][ci+1] = { text: val };
+            });
+        });
+        this.setState({ data: [data] });
     }
 
     async componentDidMount() {
         await this.setFixturesData();
+        this.extendFormulas();
         this.recalcFormattedData();
     }
 
@@ -89,26 +192,62 @@ class Luxor extends React.Component {
         this.recalcFormattedData();
     }
 
-    getKeyFromCell(cell) {
-        return cell.header.title + (cell.rowIndex + 1);
+    mergeData(newdata) {
+        const activeData = JSON.parse(JSON.stringify(this.state.data));
+        const activeSheet = 0;
+
+        const rowkeys = Object.keys(newdata);
+        for (let ri of rowkeys) {
+            const colkeys = Object.keys(newdata[ri]);
+            for (let ci of colkeys) {
+                activeData[activeSheet].cells[ri][ci] = Object.assign(
+                    {},
+                    activeData[activeSheet].cells[ri][ci],
+                    newdata[ri][ci]
+                )
+                const key = cellkey(ri, ci);
+                this.addToDataMap(key, newdata[ri][ci].text);
+            }
+        }
+
+        this.setState({ data: activeData });
     }
 
-    getKeyFromCoords(i, j) {
-        return String.fromCharCode(65+parseInt(j)) +(1+parseInt(i));
+    extendFormulas() {
+        if (!this.props.taylor_js) return;
+        const self = this;
+        this.props.taylor_js.jsextend('table-rowf', (args) => {
+            const newdata = luxor_extensions.tableRowf(args, self.state.data[0].cells);
+            self.mergeData(newdata);
+            return;
+        });
+        this.props.taylor_js.jsextend('table-colf', (args) => {
+            const newdata = luxor_extensions.tableColf(args, self.state.data[0].cells);
+            self.mergeData(newdata);
+            return;
+        });
     }
 
-    formatter(e) {
-        const value = e.cell.value;
-        const key = this.getKeyFromCell(e.cell);
-        let response = typeof this.formattedData[key] !== 'undefined' ? this.formattedData[key].value : value;
+    formatter(value, key) {
+        let response = (
+            typeof this.formattedData[key] !== 'undefined'
+            && typeof this.formattedData[key].value !== 'undefined'
+            && this.formattedData[key].value !== null
+        ) ? this.formattedData[key].value : value;
+        
         if (response instanceof Object && !(response instanceof Array)) {
-            if (response.toString) return response.toString(10);
+            if (taylor.BN.isBN(response)) return response.toString(10);
             return JSON.stringify(response);
         }
         return response;
     }
 
-    async executeCell(key, value) {
+    async onSend(key, value) {
+        const receipt = await this.executeCell(key, value, true);
+        return receipt;
+    }
+
+    async executeCell(key, value, executeSend=false) {
         if (!value || typeof value !== 'string') return value;
         let response;
 
@@ -122,26 +261,27 @@ class Luxor extends React.Component {
             api = this.props.taylor_web3;
         }
         if (!api) return value;
+        if (!executeSend && value.includes('!')) return value;
         
         try {
             let newvalue = this.runExtensions(value);
             newvalue = this.replaceCellValues(key, newvalue);
-            response = await api.call(newvalue)
+            response = await api.call(newvalue);
         } catch(e) {
             console.log(e);
             response = value;
         }
-
         return response;
     }
 
     replaceCellValues(key, inicode) {
         let code = inicode.slice(1);
-        
         const keys = code.match(SHEET_KEY_REGEX);
+
         (keys || []).forEach(cell_key => {
-            this.addDepToDataMap(key, cell_key, inicode);
-            const tayvalue = taylor.jsval2tay(this.getFromDataMap(cell_key));
+            const numberkey = lkeyToKey(cell_key);
+            this.addDepToDataMap(key, numberkey, inicode);
+            const tayvalue = taylor.jsval2tay(this.getFromDataMap(numberkey));
             code = code.replace(cell_key, tayvalue);
         });
         
@@ -155,14 +295,29 @@ class Luxor extends React.Component {
         return code;
     }
 
-    async onCellChange(cell, newvalue, grid) {
-        const key = this.getKeyFromCell(cell);
-        await this._onCellChange(key, newvalue);
-        grid.draw();
+    async onChangeCells(sheetId, cells) {
+        const rowkeys = Object.keys(cells)
+
+        for(let i of rowkeys) {
+            const row = cells[i];
+            const colkeys = Object.keys(row);
+
+            for(let j of colkeys) {
+                const key = cellkey(i, j);
+                const newvalue = cells[i][j].text;
+                const saveddata = {};
+                saveddata[i] = {};
+                saveddata[i][j] = cells[i][j];
+                this.mergeData(saveddata);
+                await this._onCellChange(key, newvalue);
+            }
+        }
     }
 
     async _onCellChange(key, newvalue) {
-        this.addToDataMap(key, await this.executeCell(key, newvalue));
+        const execvalue = await this.executeCell(key, newvalue)
+        this.addToDataMap(key, execvalue);
+        
         const deps = this.getDepsFromDataMap(key);
         const deplength = deps.length;
         
@@ -176,21 +331,37 @@ class Luxor extends React.Component {
         }
     }
 
+    onChangeSelectedSheet(sheetId) {
+
+    }
+
+    onChange(sheets) {
+
+    }
+
     async recalcFormattedData() {
         const { data } = this.state;
 
-        if (!data || !data.length) return;
+        if (!data) return;
         if (!this.props.taylor) return;
 
-        for (let i = 0 ; i <= data.length; i++) {
-            if (data[i] && data[i].length) {
-                for (let j = 0 ; j <= data[i].length; j++) {
-                    let value = data[i][j];
-                    let key = this.getKeyFromCoords(i, j);
-                    // Only calculate what has not been executed
-                    if (typeof this.getFromDataMap(key) === 'undefined' || this.formattedData[key].value === value) {
-                        this.addToDataMap(key, await this.executeCell(key, value));
-                    }
+        // TODO - multiple sheets?
+        const rows = data[0].cells;
+        if (rows.length == 0) return;
+
+        for (let i of Object.keys(rows)) {
+            if (!rows[i]) continue;
+            
+            const row = rows[i];
+            for (let j of Object.keys(row)) {
+                if (!row[j]) continue;
+
+                let value = row[j].text;
+                let key = cellkey(i, j);
+
+                // Only calculate what has not been executed
+                if (typeof this.getFromDataMap(key) === 'undefined' || this.formattedData[key].value === value) {
+                    this.addToDataMap(key, await this.executeCell(key, value));
                 }
             }
         }
@@ -224,57 +395,35 @@ class Luxor extends React.Component {
     }
 
     render() {
-        return React.createElement('div', {
-                style: {
-                    height: '100%'
-                }
-            },
-            React.createElement(CanvasDatagrid, {
-                data: this.state.data,
-                ...sheet_settings,
-                style: sheet_style_dark,
-                formatter: this.formatter,
-                onCellChange: this.onCellChange,
-            }),
-            React.createElement(Button, {
-                small: true,
-                icon: true,
-                style: {
-                    backgroundColor: 'rgb(155, 112, 63)',
-                    position: 'absolute',
-                    top: '0px',
-                    right: '40px',
-                    height: '25px',
-                    padding: '0px',
-                },
-                onClick: this.props.onEditorScreen,
-            },
-                React.createElement(Icon, {
-                    name: 'chevron-right',
-                    type: 'FontAwesome',
-                    style: iconStyle,
-                }),
-            ),
-            React.createElement(Button, {
-                small: true,
-                icon: true,
-                style: {
-                    backgroundColor: 'rgb(155, 112, 63)',
-                    position: 'absolute',
-                    top: '0px',
-                    right: '0px',
-                    height: '25px',
-                    padding: '0px',
-                },
-                onClick: this.props.onCloseLuxor,
-            },
-                React.createElement(Icon, {
-                    name: 'close',
-                    type: 'FontAwesome',
-                    style: iconStyle,
-                }),
-            ),
-        );
+        return (
+            <div style={{ height: '100%' }}>
+                <CanvasDatagrid
+                    data={this.state.data}
+                    formatter={this.formatter}
+                    Cell={ getCell({onSend: this.onSend}) }
+                    onChangeCells={this.onChangeCells}
+                    onChangeSelectedSheet={this.onChangeSelectedSheet}
+                    onChange={this.onChange}
+                    style={{ height: '100%', width: '100%' }}
+                />
+                <Button
+                    small
+                    icon
+                    style={{ ...btnStyle, right: '40px' }}
+                    onClick={this.props.onEditorScreen}
+                >
+                    <Icon name='chevron-right' type='FontAwesome' style={iconStyle}></Icon>
+                </Button>
+                <Button
+                    small
+                    icon
+                    style={{ ...btnStyle, right: '0px' }}
+                    onClick={this.props.onCloseLuxor}
+                >
+                    <Icon name='close' type='FontAwesome' style={iconStyle}></Icon>
+                </Button>
+            </div>
+        )
     }
 }
 
@@ -340,7 +489,12 @@ function luxorTestsDataEthCall(addresses, fsigs, inirow=0, rows=50, cols=8) {
         [...Array(users.length)].map((_, i) => `D${inirow + i}`).join(' ')
     }) 0)`;
     data[2][4] = `=(reduce add (srange D${inirow} D${inirow+users.length-1}) 0)`;
-    
+    // data[3][4] = `=(table-rowf "G6" (list (list 1 2 3) (list 5 6 7)))`;
+    data[4][4] = `=(table-colf "G9" (list (list 1 (list 2 2 3 3) 3) (list 5 6 7)))`;
+    data[3][4] = `=(table-rowf "G6" F9)`;
+    // data[4][4] = `=(table-colf "G9" F9)`;
+    data[3][5] = {a:1, b:2, c:3, d:4};
+    data[5][4] = `=(eth-call! A7 "increase(uint)" (list 4))`
     return data;
 }
 
@@ -384,8 +538,63 @@ const tayextension = {
     }
 }
 
+const table_f_ext = (args) => {
+    let [letterkey, iter] = args;
+    let corner = lkeyToKey(letterkey);
+    let [ri, ci] = corner.split(';').map(val => parseInt(val));
+
+    if (iter instanceof Object && !(iter instanceof Array)) {
+        iter = [Object.keys(iter), Object.values(iter)];
+    }
+    if (typeof iter === 'undefined') iter = ['undefined'];
+    if (iter === null) iter = ['null'];
+    if (!(iter[0] instanceof Array)) iter = [iter];
+    return { iter, ri, ci };
+}
+
+const luxor_extensions = {
+    tableRowf: (args) => {
+        let { iter, ri, ci } = table_f_ext(args);
+        const newdata = {};
+        
+        for (let row of iter) {
+            let cci = ci;
+            newdata[ri] = {};
+            for (let value of row) {
+                newdata[ri][cci] = { text: value };
+                cci += 1;
+            }
+            ri += 1;
+        }
+        return newdata;
+    },
+    tableColf: (args) => {
+        let { iter, ri, ci } = table_f_ext(args);
+        const newdata = {};
+        
+        for (let row of iter) {
+            let rri = ri;
+            for (let value of row) {
+                newdata[rri] = newdata[rri] || {};
+                newdata[rri][ci] = { text: value };
+                rri += 1;
+            }
+            ci += 1;
+        }
+        return newdata;
+    },
+}
+
 const iconStyle = {
     color: 'rgb(30, 30, 30)',
     marginLeft: '10px',
     marginRight: '10px', 
+}
+
+const btnStyle = {
+    backgroundColor: 'rgb(155, 112, 63)',
+    position: 'absolute',
+    top: '0px',
+    height: '25px',
+    padding: '0px',
 }

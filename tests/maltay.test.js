@@ -566,6 +566,7 @@ describe.each([
             return taylor.deployRebuild().then(contract => {
                 console.log('****Taylor2', contract.address);
                 instance = contract;
+                return instance.bootstrap();
             });
         });
     } else {
@@ -592,7 +593,7 @@ describe.each([
                 resp = await instance.call(tt.test);
                 if (tt.process) resp = tt.process(resp);
                 expect(resp).toEqual(tt.result);
-            });
+            }, tt.wait || 10000);
         });
     }
 
@@ -612,12 +613,6 @@ describe.each([
 
         resp = await instance.call('(func1 (add (add (sub 7 2) 1) 41) (add 2 3)))');
         expect(resp).toBe(52);
-
-        if (backendname === 'web3') {
-            resp = await instance.getFns();
-            expect(resp.length).toBe(6);
-            expect(resp[5].name).toBe('func1');
-        }
     }, 10000);
 
     it('test used stored fn 2', async function () {
@@ -631,13 +626,6 @@ describe.each([
         }
         resp = await instance.call('(func2 5 3)');
         expect(resp).toBe(10);
-
-        if (backendname === 'web3') {
-            resp = await instance.getFns();
-            expect(resp.length).toBe(7);
-            expect(resp[5].name).toBe('func1');
-            expect(resp[6].name).toBe('func2');
-        }
     }, 10000);
 
     test(`gas`, async () => {
@@ -828,58 +816,9 @@ describe.each([
     it('test logs', async function() {
         if (backendname === 'web3') {
             const resp = await instance.getFns();
-            expect(resp.length).toBe(7);
+            expect(resp.length).toBe(26);
         }
     });
-});
-
-it('test push arrays', async function() {
-    let resp;
-    resp = await MalTay.call(`(push (array 4 5 6) 20)`);
-    expect(resp).toEqual([4, 5, 6, 20]);
-
-    resp = await MalTay.call(`(push (push (array 4 5 6) 20) 15)`);
-    expect(resp).toEqual([4, 5, 6, 20, 15]);
-
-    resp = await MalTay.call(`(push (array (array 4 5 6) (array 7 8 9) ) (array 10 11 12))`);
-    expect(resp).toEqual([[4, 5, 6], [7, 8, 9], [10, 11, 12]]);
-
-    resp = await MalTay.call(`(push (array "0x1122" "0x3344" "0x5566") "0x7788")`);
-    expect(resp).toEqual(['0x1122', '0x3344', '0x5566', '0x7788']);
-
-    resp = await MalTay.call(`(push (array) "0x7788")`);
-    expect(resp).toEqual(['0x7788']);
-
-    resp = await MalTay.call(`(push (array) 20)`);
-    expect(resp).toEqual([20]);
-
-    resp = await MalTay.call(`(push (push (array) 20) 15)`);
-    expect(resp).toEqual([20, 15]);
-
-});
-
-it('test shift arrays', async function() {
-    let resp;
-    resp = await MalTay.call(`(shift (array 4 5 6) 20)`);
-    expect(resp).toEqual([20, 4, 5, 6]);
-
-    resp = await MalTay.call(`(shift (shift (array 4 5 6) 20) 15)`);
-    expect(resp).toEqual([15, 20, 4, 5, 6]);
-
-    resp = await MalTay.call(`(shift (array (array 4 5 6) (array 7 8 9) ) (array 10 11 12))`);
-    expect(resp).toEqual([[10, 11, 12], [4, 5, 6], [7, 8, 9]]);
-
-    resp = await MalTay.call(`(shift (array "0x1122" "0x3344" "0x5566") "0x7788")`);
-    expect(resp).toEqual(['0x7788', '0x1122', '0x3344', '0x5566']);
-
-    resp = await MalTay.call(`(shift (array) "0x7788")`);
-    expect(resp).toEqual(['0x7788']);
-
-    resp = await MalTay.call(`(shift (array) 20)`);
-    expect(resp).toEqual([20]);
-
-    resp = await MalTay.call(`(shift (shift (array) 20) 15)`);
-    expect(resp).toEqual([15, 20]);
 });
 
 it('test slice', async function() {
@@ -893,15 +832,6 @@ it('test slice', async function() {
 
     resp = await MalTay.call(`(slice "0x" 5)`);
     expect(resp).toEqual(['0x', '0x']);
-});
-
-it('test length', async function() {
-    let resp;
-
-    resp = await MalTay.call(`(length "0x11223344556677")`);
-    expect(resp).toBe(7);
-
-    // TODO same function for array length (diff behaviour per type);
 });
 
 it('test bytesToArray', async function() {
@@ -979,121 +909,10 @@ describe('test mapping', function () {
     });
 });
 
-it('test range', async function () {
-    let resp;
-    resp = await MalTay.call(`( (fn* (somearr start stop)
-        (map (fn* (pos) (nth somearr pos)) (range start stop 1))
-    ) (array 1 2 6 7 8 6) 2 4)`);
-    expect(resp).toEqual([6, 7, 8]);
-});
-
-it('array slicea', async function () {
-    let resp;
-    resp = await MalTay.call(`(slicea (array 1 2 6 7 8 6) 2 4)`);
-    expect(resp).toEqual([6, 7, 8]);
-
-    resp = await MalTay.call(`(slicea (list 1 2 6 7 8 6) 2 4)`);
-    expect(resp).toEqual([6, 7, 8]);
-});
-
-it('array nslice', async function () {
-    let resp;
-    resp = await MalTay.call(`(nslice
-        (list 1 2 6 7 8 6) (list 2 4)
-    )`);
-    expect(resp).toEqual([6, 7, 8]);
-
-    resp = await MalTay.call(`(nslice
-        (array 
-            (array 7 8 9 10 11 12)
-            (array 1 2 6 7 8 6)
-            (array 13 14 15 16 17 18)
-            (array 11 12 16 17 18 16)
-        )
-        (list (list 0 1) (list 2 4) )
-    )`);
-    expect(resp).toEqual([[9, 10, 11], [6, 7, 8]]);
-
-    resp = await MalTay.call(`(nslice
-        (array 
-            (array 
-                (array 7 8 9 10 11 12)
-                (array 1 2 6 7 8 6)
-                (array 13 14 15 16 17 18)
-                (array 11 12 16 17 18 16)
-            )
-            (array 
-                (array 27 28 29 210 211 212)
-                (array 21 22 26 27 28 26)
-                (array 213 214 215 216 217 218)
-                (array 221 222 226 227 228 226)
-            )
-            (array 
-                (array 47 48 49 410 411 412)
-                (array 41 42 46 47 48 46)
-                (array 413 414 415 416 417 418)
-                (array 441 442 446 447 448 446)
-            )
-        )
-        (list (list 1 2) (list 2 3) (list 2 4))
-    )`);
-    expect(resp).toEqual([
-        [
-            [215, 216, 217],
-            [226, 227, 228],
-        ],
-        [
-            [415, 416, 417],
-            [446, 447, 448],
-        ]
-    ]);
-}, 30000);
-
 describe('matrix/n-dim array functions', function () {
     let resp;
-    test('same?', async function() {
-        resp = await MalTay.call('(same? (list 1 1 1))');
-        expect(resp).toEqual(1);
-
-        resp = await MalTay.call('(same? (list 1 0 1))');
-        expect(resp).toEqual(0);
-    });
-
-    test('new-array', async function() {
-        resp = await MalTay.call(`(new-array same? (list 2 2) )`);
-        expect(resp).toEqual([[1, 0], [0, 1]])
-        
-        resp = await MalTay.call(`(new-array same? (list 3 3) )`);
-        expect(resp).toEqual([[1, 0, 0], [0, 1, 0], [0, 0, 1]]);
-    }, 20000);
-
-    test('lengths', async function() {
-        resp = await MalTay.call('(lengths (array 1 2 3))');
-        expect(resp).toEqual([3]);
-
-        resp = await MalTay.call('(lengths (array (array 1 2 3) (array 1 2 3)))');
-        expect(resp).toEqual([2, 3]);
-    });
-
-    test('matrix pick', async function() {
-        resp = await MalTay.call('(pick (array (array 11 12 13) (array 14 15 16)) (list 1 1))');
-        expect(resp).toEqual(15);
-    });
-
-    test('matrix inverse', async function() {
-        resp = await MalTay.call('(inverse (array 11 12 13) )');
-        expect(resp).toEqual([13, 12, 11]);
-    });
-
-    test('matrix transpose', async function() {
-        resp = await MalTay.call(`(transpose (array (array 6 1 2) (array 3 4 5)) )`);
-        expect(resp).toEqual([[6, 3], [1, 4], [2, 5]]);
-    }, 20000);
     
     test('matrix excludeMatrix', async function() {
-        resp = await MalTay.call('(excludeMatrix (array (array 6 1) (array 3 4) )  1 1 )');
-        expect(resp).toEqual([[6]]);
-
         resp = await MalTay.call('(excludeMatrix (array (array 6 1 2) (array 3 4 5) (array 7 6 9))  1 1 )');
         expect(resp).toEqual([[6, 2], [7, 9]]);
 
@@ -1127,17 +946,6 @@ describe('matrix/n-dim array functions', function () {
         // expect(resp).toEqual([[38, 38, 38], [96, 96, 96], [21, 21, 21]]);
     }, 50000);
 
-    test('matrix pow-m', async function() {
-        resp = await MalTay.call(`(pow-m 0)`);
-        expect(resp).toBe(1);
-
-        resp = await MalTay.call(`(pow-m 4)`);
-        expect(resp).toBe(1);
-
-        resp = await MalTay.call(`(pow-m 3)`);
-        expect(resp).toBe(-1);
-    });
-
     test.skip(`matrix determinant`, async () => {
         resp = await MalTay.call(`(det (array 11))`);
         expect(resp).toBe(11);
@@ -1148,11 +956,6 @@ describe('matrix/n-dim array functions', function () {
         // TODO fixme
         // resp = await MalTay.call(`(det (array (array 11 12 11) (array 14 13 11) (array 11 12 18) ))`);
         // expect(resp).toBe(-175);
-    });
-
-    test(`smap`, async () => {
-        resp = await MalTay.call(`(smap add 10 (array 1 2 3 4))`);
-        expect(resp).toEqual([11, 12, 13, 14]);
     });
 });
 

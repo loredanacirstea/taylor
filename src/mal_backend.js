@@ -3,6 +3,7 @@ const malTypes = require('./mal/types.js');
 const interop = require('./mal/interop');
 const BN = require('bn.js');
 const ethers = require('ethers');
+const bootstrap_functions = require('./bootstrap.js');
 
 mal.re = str => mal.EVAL(mal.READ(str), mal.repl_env)
 mal.reps = async lines => {
@@ -85,72 +86,122 @@ modifyEnv('nil?', (orig_func, value) => {
 //     return orig_func(value);
 // });
 
-modifyEnv('js-eval', async (orig_func, str) => {
-    const utils = {
-        BN: n => {
-            if (typeof n === 'string' && n.substring(0, 2) === '0x') {
-                return new BN(n.substring(2), 16)
-            }
-            return new BN(n)
-        },
-        keccak256: n => {
-            if (typeof n !== 'string') throw new Error('keccak256 expects string');
-
-            // TODO: better encoding
-            // in case we have keccak256 "0x.." "0x .."
-            n = n.replace(/0x/g, '');
-
-            if (n.substring(0, 2) !== '0x') n = '0x' + n;
-            return ethers.utils.keccak256(ethers.utils.arrayify(n));
-        },
-        encode: n => {
-            // TODO: proper encoding
-            try {
-                n = JSON.parse(n)
-            } catch(e) {}
-
-            switch (typeof n) {
-                case 'number':
-                    return n.toString(16).padStart(8, '0');
-                case 'string':
-                    return n;
-            }
-        },
-        store: (key, value) => {
-            mal.globalStorage[key] = value;
-        },
-        sload: (key, typename) => {
-            let value = mal.globalStorage[key];
-            // TODO: proper typecheck
-            
-            try {
-                value = JSON.parse(value)
-            } catch(e) {}
-
-            return value;
-        },
-        range: (start, stop, step) => [...Array(stop + 1).keys()].slice(start, stop+1).filter((no, i) => i % step === 0),
-        isArray,
-        limited_pow: (a, b) => {
-            // no floats yet
-            if (b < 0) return 0;
-            return utils.BN(a).pow(utils.BN(b));
-        },
-        ethcall: async (address, fsig, data) => {
-            if (!mal.provider) return;
-            return callContract(address, fsig, data, mal.provider)
-        },
-        ethsend: async (address, fsig, data) => {
-            if (!mal.signer) return;
-            return callContract(address, fsig, data, mal.signer, true).catch(console.log);
+const extensions = {};
+const native_extensions = {
+    BN: n => {
+        if (typeof n === 'string' && n.substring(0, 2) === '0x') {
+            return new BN(n.substring(2), 16)
         }
-    }
-    
-    let answ = await eval(str.toString());
+        if (BN.isBN(n)) return n;
+        return new BN(n)
+    },
+    keccak256: n => {
+        if (typeof n !== 'string') throw new Error('keccak256 expects string');
 
+        // TODO: better encoding
+        // in case we have keccak256 "0x.." "0x .."
+        n = n.replace(/0x/g, '');
+
+        if (n.substring(0, 2) !== '0x') n = '0x' + n;
+        return ethers.utils.keccak256(ethers.utils.arrayify(n));
+    },
+    encode: n => {
+        // TODO: proper encoding
+        try {
+            n = JSON.parse(n)
+        } catch(e) {}
+
+        switch (typeof n) {
+            case 'number':
+                return n.toString(16).padStart(8, '0');
+            case 'string':
+                return n;
+        }
+    },
+    store: (key, value) => {
+        mal.globalStorage[key] = value;
+    },
+    sload: (key, typename) => {
+        let value = mal.globalStorage[key];
+        // TODO: proper typecheck
+        
+        try {
+            value = JSON.parse(value)
+        } catch(e) {}
+
+        return value;
+    },
+    range: (start, stop, step) => {
+        start = BN.isBN(start) ? start.toNumber() : start;
+        stop = BN.isBN(stop) ? stop.toNumber() : stop;
+        step = BN.isBN(step) ? step.toNumber() : step;
+        return [...Array(stop + 1).keys()].slice(start, stop+1).filter((no, i) => i % step === 0);
+    },
+    isArray,
+    limited_pow: (a, b) => {
+        // no floats yet
+        if (b < 0) return 0;
+        return native_extensions.BN(a).pow(native_extensions.BN(b));
+    },
+    ethcall: async (address, fsig, data) => {
+        if (!mal.provider) return;
+        return callContract(address, fsig, data, mal.provider)
+    },
+    ethsend: async (address, fsig, data) => {
+        if (!mal.signer) return;
+        const response = await callContract(address, fsig, data, mal.signer, true).catch(console.log);
+        const receipt = await response.wait();
+        console.log('receipt', receipt);
+        return receipt;
+    },
+    listToJsArray: liststr => {
+        // ! always expects a resolved list
+        liststr = liststr.replace(/(?<!(BN))\(/g, '(list ');
+        liststr = liststr.replace(/nil/g, 'Nil');
+        return mal.re(liststr);
+    },
+    listToJsArrayStr: async liststr => {
+        const jsequiv = await native_extensions.listToJsArray(liststr);
+        return JSON.stringify(jsequiv);
+    },
+    listToJsArrayLength: async liststr => {
+        const jsequiv = await native_extensions.listToJsArray(liststr);
+        return jsequiv.length;
+    }
+}
+
+mal.repl_env.set(malTypes._symbol('utils'), native_extensions);
+
+const jsEvalParseBN = answ => {
     if (BN.isBN(answ)) answ = { _hex: '0x' + answ.toString(16) }
     if (typeof answ === 'boolean') answ = { _hex: toHex(answ ? 1 : 0)}
 
+    if (answ && typeof answ === 'object') {
+        if (answ instanceof Array) {
+            return answ.map(val => jsEvalParseBN(val));
+        }
+        const newobj = {};
+        Object.keys(answ).forEach(key => {
+            newobj[key] = jsEvalParseBN(answ[key]);
+        });
+        return newobj;
+    }
+
+    return answ;
+}
+
+modifyEnv('js-eval', async (orig_func, str) => {
+    const utils = Object.assign({}, native_extensions, extensions);
+    let answ;
+
+    try {
+        answ = await eval(str.toString());
+    } catch(e) {
+        console.log(e);
+        answ = undefined;
+    }
+
+    answ = jsEvalParseBN(answ);
     return interop.js_to_mal(answ);
 })
 
@@ -158,7 +209,10 @@ async function init() {
 
 /* Taylor */
 
+// Nil can be null for now, but it should follow the on-chain version when js backend will be typed
 await mal.reps(`
+(def! Nil (js-eval (str "null")) )
+
 (def! reduce (fn* (f xs init) (if (empty? xs) init (reduce f (rest xs) (f init (first xs)) ))))
 
 (def! encode (fn* (a) (js-eval (str "utils.encode('" a "')") )))
@@ -167,11 +221,41 @@ await mal.reps(`
 
 (def! sload (fn* (key type) (js-eval (str "utils.sload(" key ",'" type "')") )))
 
-(def! array (fn* (& xs) xs ))
+(def! array vector)
 
-(def! array? (fn* (arr) (js-eval (str "utils.isArray" arr ) ) ))
+(def! array? (fn* (a) (vector? a) ))
 
 (def! range (fn* (start stop step) (js-eval (str "utils.range(" start "," stop "," step ")" )) ))
+
+(def! push (fn* (arr value)
+    (conj arr value)
+))
+
+(def! shift (fn* (arr value)
+    (cons value arr)
+))
+
+(def! length (fn* (val)
+    (if (sequential? val)
+        (js-eval (str
+            "utils.listToJsArrayLength('"
+                (pr-str val)
+            "')"
+        ))
+        (let* (
+                strval (pr-str val)
+            )
+            (js-eval (str
+                strval
+                ".slice(0, 2) === '0x' ? "
+                strval
+                ".substring(2).length / 2 : "
+                strval
+                ".length / 2"
+            ))
+        )
+    )
+))
 `)
 
 /* EVM */
@@ -278,6 +362,13 @@ await mal.reps(`
 
 `)
 
+/*  */
+
+await mal.reps(Object.values(bootstrap_functions).join('\n\n'));
+
+
+/* EVM */
+
 // addmod
 // mulmod
 // signextend
@@ -360,7 +451,23 @@ mal.getBackend = async (address, provider, signer) => {
     }
     interpreter.send = interpreter.call;
     interpreter.sendAndWait = interpreter.send;
-
+    interpreter.extend = expression => mal.rep(expression);
+    interpreter.jsextend = (name, callb) => {
+        const utilname = name.replace(/-/g, '_');
+        extensions[utilname] = callb;
+        mal.rep(`(def! ${name} (fn* (& xs)
+            (js-eval (str 
+                "utils.${utilname}(" 
+                    (js-eval (str
+                        "utils.listToJsArrayStr('"
+                            (pr-str xs)
+                        "')"
+                    ))
+                ")"
+            )) 
+        ))`)
+    }
+    // needed for ethcall
     mal.provider = provider;
     mal.signer = signer;
     return interpreter;

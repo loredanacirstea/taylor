@@ -4,10 +4,10 @@
   "private": true,
   "dependencies": {
     "@pipeos/taylor": "^0.0.4",
+    "@rowsncolumns/spreadsheet": "^1.7.13",
     "@testing-library/jest-dom": "^4.2.4",
     "@testing-library/react": "^9.3.2",
     "@testing-library/user-event": "^7.1.2",
-    "canvas-datagrid": "^0.22.13",
     "custom-react-json-view": "^1.20.1",
     "ethers": "^5.0.5",
     "native-base": "^2.13.12",
