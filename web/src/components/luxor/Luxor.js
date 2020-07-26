@@ -282,15 +282,14 @@ class Luxor extends React.Component {
 
     replaceCellValues(key, inicode) {
         let code = inicode.slice(1);
-        const keys = code.match(SHEET_KEY_REGEX);
-
-        (keys || []).forEach(cell_key => {
+        const matches = [...code.matchAll(SHEET_KEY_REGEX)].reverse();
+        for (const match of matches) {
+            const cell_key = match[0];
             const numberkey = lkeyToKey(cell_key);
             this.addDepToDataMap(key, numberkey, inicode);
             const tayvalue = taylor.jsval2tay(this.getFromDataMap(numberkey));
-            code = code.replace(cell_key, tayvalue);
-        });
-        
+            code = code.substring(0, match.index) + tayvalue + code.substring(match.index + match[0].length);
+        }
         return code;
     }
 
@@ -602,10 +601,14 @@ const luxor_extensions = {
     },
     tableAbi: (args) => {
         const cell_table = lkeyToKey(args[0]).split(';').map(val => parseInt(val));
-        const cell_btn = lkeyToKey(args[1]).split(';').map(val => parseInt(val));
-        const address = args[2];
-        let abi = JSON.parse(args[3].replace(/\'/g, '"'));
-        const iter = [['Inputs', '']];
+        const address = args[1];
+        let abi = JSON.parse(args[2].replace(/\'/g, '"'));
+
+        const iter = [['Inputs', abi.name]];
+        const isTx = ['view', 'pure'].includes(abi.stateMutability) ? '' : '!';
+        if (isTx) {
+            abi.outputs = [{name: 'receipt', type: 'object'}];
+        }
         
         abi.inputs.forEach(v => {
             iter.push([`${v.name} <${v.type}>`, 0]);
@@ -615,17 +618,14 @@ const luxor_extensions = {
             iter.push([`${v.name} <${v.type}>`, 0]);
         });
 
-        const isTx = ['view', 'pure'].includes(abi.stateMutability) ? '' : '!';
-        if (isTx) {
-            abi.outputs = [{name: 'receipt', type: 'object'}];
-        }
         const newdata = _tableRowf(iter, cell_table[0], cell_table[1]);
         const outs = abi.outputs.map(v => v.type);
         const fsig = `${abi.name}(${abi.inputs.map(v => v.type)})${outs.length > 0 ? '->('+outs.join()+')' : '' }`;
         const arg_cells = [...new Array(abi.inputs.length)].map((_, i) => keyToL(cell_table[0]+i+1, cell_table[1]+1));
-        let out_key = keyToL(cell_table[0] + abi.inputs.length + 2,  cell_table[1]+ 1);
+        const out_indx = [cell_table[0] + abi.inputs.length + 2,  cell_table[1]+ 1];
+        const out_key = keyToL(...out_indx);
+        const cell_btn = [cell_table[0] + abi.inputs.length + 1, cell_table[1]+1];
 
-        newdata[cell_btn[0]] = {};
         let text;
         if (!isTx) {
             text = `=(table-colf "${out_key}" (eth-call "${address}" "${fsig}" (list ${arg_cells.join(' ')})) )`
