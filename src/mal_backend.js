@@ -23,6 +23,7 @@ const modifyEnv = (name, func) => {
         return func(orig_func, ...args);
     })
 }
+
 const toHex = bnval => {
     let hex = bnval.toString(16);
     if (hex.length % 2 === 1) hex = '0' + hex;
@@ -42,7 +43,6 @@ const isArray = val => {
 }
 
 const callContract = (address, fsig, data, providerOrSigner, isTx=false) => {
-    data = callDataPrep(data);
     const signature = fsig.split('->').map(val => val.trim());
     const fname = signature[0].split('(')[0].trim();
     const abi = [
@@ -50,23 +50,6 @@ const callContract = (address, fsig, data, providerOrSigner, isTx=false) => {
     ]
     const contract = new ethers.Contract(address, abi, providerOrSigner);
     return contract[fname](...data);
-}
-
-// TODO: better mal -> js parsing
-const callDataPrep = data => {
-    // data is a list: (4 6)
-    data = data.substring(1, data.length-1).trim();
-    if (!data) return [];
-
-    // fixme: bad for strings with commas in them. do better
-    try {
-        data = JSON.parse(`[${ data.replace(/ /g, ',') }]`);
-        data = data.map(val => typeof val !== 'string' ? val : val.replace(',', ' '));
-    } catch (e) {
-        console.log('callDataPrep', e);
-    }
-
-    return data;
 }
 
 mal.globalStorage = {};
@@ -81,19 +64,15 @@ modifyEnv('nil?', (orig_func, value) => {
     return interop.js_to_mal(nil ? true : false);
 });
 
-// modifyEnv('list?', (orig_func, value) => {
-//     if (isArray(value)) return interop.js_to_mal(false);
-//     return orig_func(value);
-// });
-
 const extensions = {};
 const native_extensions = {
     BN: n => {
         if (typeof n === 'string' && n.substring(0, 2) === '0x') {
-            return new BN(n.substring(2), 16)
+            return new BN(n.substring(2), 16);
         }
         if (BN.isBN(n)) return n;
-        return new BN(n)
+        if (typeof n === 'object' && n._hex) return new BN(n._hex.substring(2), 16);
+        return new BN(n);
     },
     keccak256: n => {
         if (typeof n !== 'string') throw new Error('keccak256 expects string');
@@ -132,9 +111,9 @@ const native_extensions = {
         return value;
     },
     range: (start, stop, step) => {
-        start = BN.isBN(start) ? start.toNumber() : start;
-        stop = BN.isBN(stop) ? stop.toNumber() : stop;
-        step = BN.isBN(step) ? step.toNumber() : step;
+        start = native_extensions.BN(start).toNumber();
+        stop = native_extensions.BN(stop).toNumber();
+        step = native_extensions.BN(step).toNumber();
         return [...Array(stop + 1).keys()].slice(start, stop+1).filter((no, i) => i % step === 0);
     },
     isArray,
@@ -167,14 +146,22 @@ const native_extensions = {
     listToJsArrayLength: async liststr => {
         const jsequiv = await native_extensions.listToJsArray(liststr);
         return jsequiv.length;
+    },
+    jsStr: async val => {
+        if (typeof val !== 'string') {
+            val = JSON.stringify(val);
+        }
+        return await native_extensions.listToJsArrayStr(val);
     }
 }
 
 mal.repl_env.set(malTypes._symbol('utils'), native_extensions);
 
+const toTayBN = hexval => { return {_hex: hexval, _isBigNumber: {_hex: '0x01'}} };
+
 const jsEvalParseBN = answ => {
-    if (BN.isBN(answ)) answ = { _hex: '0x' + answ.toString(16) }
-    if (typeof answ === 'boolean') answ = { _hex: toHex(answ ? 1 : 0)}
+    if (BN.isBN(answ)) answ = toTayBN('0x' + answ.toString(16));
+    if (typeof answ === 'boolean') answ = toTayBN(toHex(answ ? 1 : 0))
 
     if (answ && typeof answ === 'object') {
         if (answ instanceof Array) {
@@ -192,12 +179,13 @@ const jsEvalParseBN = answ => {
 
 modifyEnv('js-eval', async (orig_func, str) => {
     const utils = Object.assign({}, native_extensions, extensions);
+    const nil = null;
     let answ;
 
     try {
         answ = await eval(str.toString());
     } catch(e) {
-        console.log(e);
+        console.log(`Expression [ ${str} ] . `, e);
         answ = undefined;
     }
 
@@ -213,11 +201,13 @@ async function init() {
 await mal.reps(`
 (def! Nil (js-eval (str "null")) )
 
+(def! js-str (fn* (val) (js-eval (str "utils.jsStr('" (pr-str val) "')" )) ))
+
 (def! reduce (fn* (f xs init) (if (empty? xs) init (reduce f (rest xs) (f init (first xs)) ))))
 
-(def! encode (fn* (a) (js-eval (str "utils.encode('" a "')") )))
+(def! encode (fn* (a) (js-eval (str "utils.encode(" (js-str a) ")") )))
 
-(def! store! (fn* (key value) (js-eval (str "utils.store(" key ",'" value "')") )))
+(def! store! (fn* (key value) (js-eval (str "utils.store(" key "," (js-str value) ")") )))
 
 (def! sload (fn* (key type) (js-eval (str "utils.sload(" key ",'" type "')") )))
 
@@ -225,7 +215,7 @@ await mal.reps(`
 
 (def! array? (fn* (a) (vector? a) ))
 
-(def! range (fn* (start stop step) (js-eval (str "utils.range(" start "," stop "," step ")" )) ))
+(def! range (fn* (start stop step) (js-eval (str "utils.range(" (js-str start) "," (js-str stop) "," (js-str step) ")" )) ))
 
 (def! push (fn* (arr value)
     (conj arr value)
@@ -261,49 +251,49 @@ await mal.reps(`
 /* EVM */
 
 await mal.reps(`
-(def! add (fn* (a b) (js-eval (str "utils.BN(" (pr-str a) ").add(utils.BN(" (pr-str b) "))"))))
+(def! add (fn* (a b) (js-eval (str "utils.BN(" (js-str a) ").add(utils.BN(" (js-str b) "))"))))
 
-(def! sub (fn* (a b) (js-eval (str "utils.BN(" (pr-str a) ").sub(utils.BN(" (pr-str b) "))"))))
+(def! sub (fn* (a b) (js-eval (str "utils.BN(" (js-str a) ").sub(utils.BN(" (js-str b) "))"))))
 
-(def! mul (fn* (a b) (js-eval (str "utils.BN(" (pr-str a) ").mul(utils.BN(" (pr-str b) "))"))))
+(def! mul (fn* (a b) (js-eval (str "utils.BN(" (js-str a) ").mul(utils.BN(" (js-str b) "))"))))
 
-(def! div (fn* (a b) (js-eval (str "utils.BN(" (pr-str a) ").div(utils.BN(" (pr-str b) "))"))))
+(def! div (fn* (a b) (js-eval (str "utils.BN(" (js-str a) ").div(utils.BN(" (js-str b) "))"))))
 
 ;sdiv
 
-(def! mod (fn* (a b) (js-eval (str "utils.BN(" (pr-str a) ").mod(utils.BN(" (pr-str b) "))"))))
+(def! mod (fn* (a b) (js-eval (str "utils.BN(" (js-str a) ").mod(utils.BN(" (js-str b) "))"))))
 
 ;smod
 
-;(def! exp (fn* (a b) (js-eval (str "utils.BN(" (pr-str a) ").pow(utils.BN(" (pr-str b) "))"))))
+;(def! exp (fn* (a b) (js-eval (str "utils.BN(" (js-str a) ").pow(utils.BN(" (js-str b) "))"))))
 
-(def! exp (fn* (a b) (js-eval (str "utils.limited_pow(" (pr-str a) "," (pr-str b) ")"))))
+(def! exp (fn* (a b) (js-eval (str "utils.limited_pow(" (js-str a) "," (js-str b) ")"))))
 
-(def! lt (fn* (a b) (js-eval (str "utils.BN(" (pr-str a) ").lt(utils.BN(" (pr-str b) "))"))))
+(def! lt (fn* (a b) (js-eval (str "utils.BN(" (js-str a) ").lt(utils.BN(" (js-str b) "))"))))
 
-(def! gt (fn* (a b) (js-eval (str "utils.BN(" (pr-str a) ").gt(utils.BN(" (pr-str b) "))"))))
+(def! gt (fn* (a b) (js-eval (str "utils.BN(" (js-str a) ").gt(utils.BN(" (js-str b) "))"))))
 
 ;sgt
 
 ;slt
 
-(def! eq (fn* (a b) (js-eval (str "utils.BN(" (pr-str a) ").eq(utils.BN(" (pr-str b) "))"))))
+(def! eq (fn* (a b) (js-eval (str "utils.BN(" (js-str a) ").eq(utils.BN(" (js-str b) "))"))))
 
-(def! iszero (fn* (a) (js-eval (str "utils.BN(" (pr-str a) ").isZero()"))))
+(def! iszero (fn* (a) (js-eval (str "utils.BN(" (js-str a) ").isZero()"))))
 
-(def! not (fn* (a) (js-eval (str "utils.BN(" (pr-str a) ").notn(256)")) ) )
+(def! not (fn* (a) (js-eval (str "utils.BN(" (js-str a) ").notn(256)")) ) )
 
-(def! and (fn* (a b) (js-eval (str "utils.BN(" (pr-str a) ").and(utils.BN(" (pr-str b) "))")) ) )
+(def! and (fn* (a b) (js-eval (str "utils.BN(" (js-str a) ").and(utils.BN(" (js-str b) "))")) ) )
 
-(def! or (fn* (a b) (js-eval (str "utils.BN(" (pr-str a) ").or(utils.BN(" (pr-str b) "))")) ) )
+(def! or (fn* (a b) (js-eval (str "utils.BN(" (js-str a) ").or(utils.BN(" (js-str b) "))")) ) )
 
-(def! xor (fn* (a b) (js-eval (str "utils.BN(" (pr-str a) ").xor(utils.BN(" (pr-str b) "))")) ) )
+(def! xor (fn* (a b) (js-eval (str "utils.BN(" (js-str a) ").xor(utils.BN(" (js-str b) "))")) ) )
 
-(def! byte (fn* (nth b) (js-eval (str "utils.BN(" (pr-str b) ").substring(2).substring(" nth "*2, " nth "*2 + 2)" )) ) )
+(def! byte (fn* (nth b) (js-eval (str "utils.BN(" (js-str b) ").substring(2).substring(" nth "*2, " nth "*2 + 2)" )) ) )
 
-(def! shl (fn* (a b) (js-eval (str "utils.BN(" (pr-str b) ").shln(" a ")")) ) )
+(def! shl (fn* (a b) (js-eval (str "utils.BN(" (js-str b) ").shln(" a ")")) ) )
 
-(def! shr (fn* (a b) (js-eval (str "utils.BN(" (pr-str b) ").shrn(" a ")")) ) )
+(def! shr (fn* (a b) (js-eval (str "utils.BN(" (js-str b) ").shrn(" a ")")) ) )
 
 `)
 
@@ -356,9 +346,9 @@ await mal.reps(`
 
 (def! return (fn* (a) a ))
 
-(def! eth-call (fn* (address fsig argList) (js-eval (str "utils.ethcall('" address "','" fsig "','" (pr-str argList) "')" )) ))
+(def! eth-call (fn* (address fsig argList) (js-eval (str "utils.ethcall('" address "','" fsig "'," (js-str argList) ")" )) ))
 
-(def! eth-call! (fn* (address fsig argList) (js-eval (str "utils.ethsend('" address "','" fsig "','" (pr-str argList) "')" )) ))
+(def! eth-call! (fn* (address fsig argList) (js-eval (str "utils.ethsend('" address "','" fsig "'," (js-str argList) ")" )) ))
 
 `)
 
@@ -458,11 +448,7 @@ mal.getBackend = async (address, provider, signer) => {
         mal.rep(`(def! ${name} (fn* (& xs)
             (js-eval (str 
                 "utils.${utilname}(" 
-                    (js-eval (str
-                        "utils.listToJsArrayStr('"
-                            (pr-str xs)
-                        "')"
-                    ))
+                    (js-str xs)
                 ")"
             )) 
         ))`)

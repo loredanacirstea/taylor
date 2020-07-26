@@ -568,7 +568,7 @@ describe.each([
                 instance = contract;
                 return instance.bootstrap();
             });
-        });
+        }, 30000);
     } else {
         beforeAll(() => {
             return getMalBackend(null, provider, signer)

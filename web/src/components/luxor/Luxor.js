@@ -110,12 +110,12 @@ const CellEthCallBang = (props) => {
             tension={1}
             pointerLength={arroww}
             pointerWidth={arroww}
-            fill='red'
+            fill='rgb(155, 112, 63)'
             onClick={onSend}
         />
         <RegularPolygon
             sides={3}
-            fill='red'
+            fill='rgb(155, 112, 63)'
             x={x}
             y={y}
             width={MARKER_WIDTH}
@@ -136,13 +136,12 @@ const getCell = (extraprops) => {
         const marker_width = props.height/3;
         const x = props.x + marker_width/2;
         const y = props.y + marker_width/2;
-        
-        if (props.text[0] === MARKER_JS) {
+        if (props.text && props.text[0] === MARKER_JS) {
             if (props.text.includes('eth-call!')) {
                 return <CellEthCallBang { ...newprops } { ...extraprops } />
             }
             return <CellFormula { ...newprops } { ...{ marker_color: 'rgb(205, 168, 105)' }} />
-        } else if (props.text[0] === MARKER_WEB3) {
+        } else if (props.text && props.text[0] === MARKER_WEB3) {
             return <CellFormula { ...newprops } { ...{ marker_color: 'rgb(155, 112, 63)' }} />
         }
         return <DefaultCell {...newprops} />
