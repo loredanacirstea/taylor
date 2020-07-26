@@ -9,8 +9,10 @@ const MARKER_JS = '=', MARKER_WEB3 = '$';
 // TODO: fix for "something G5 something"
 const SHEET_KEY_REGEX = /(?<!\")(\b[A-Z]{1}[0-9]{1,})/g;
 const cellkey = (row, col) => `${row};${col}`;
+// A <-> 1, not from 0
 const numberToLetter = ci => String.fromCharCode(64 + ci);
 const letterToNumber = letter => letter.charCodeAt(0) - 64;
+const keyToL = (row, col) => `${numberToLetter(col)}${row}`;
 
 const _lkeyToKey = lkey => {
     if (!lkey) return lkey;
@@ -222,6 +224,11 @@ class Luxor extends React.Component {
         });
         this.props.taylor_js.jsextend('table-colf', (args) => {
             const newdata = luxor_extensions.tableColf(args, self.state.data[0].cells);
+            self.mergeData(newdata);
+            return;
+        });
+        this.props.taylor_js.jsextend('table-abi', (args) => {
+            const newdata = luxor_extensions.tableAbi(args);
             self.mergeData(newdata);
             return;
         });
@@ -541,20 +548,21 @@ const table_f_ext = (args) => {
     let [letterkey, iter] = args;
     let corner = lkeyToKey(letterkey);
     let [ri, ci] = corner.split(';').map(val => parseInt(val));
-
+    
     if (iter instanceof Object && !(iter instanceof Array)) {
-        iter = [Object.keys(iter), Object.values(iter)];
+        if (iter._hex) iter = new taylor.BN(iter._hex.substring(2), 16);
+        if (taylor.BN.isBN(iter)) iter = [iter.toString(10)];
+        else iter = [Object.keys(iter), Object.values(iter)];
     }
     if (typeof iter === 'undefined') iter = ['undefined'];
     if (iter === null) iter = ['null'];
     if (!(iter[0] instanceof Array)) iter = [iter];
+
     return { iter, ri, ci };
 }
 
-const luxor_extensions = {
-    tableRowf: (args) => {
-        let { iter, ri, ci } = table_f_ext(args);
-        const newdata = {};
+const _tableRowf = (iter, ri, ci) => {
+    const newdata = {};
         
         for (let row of iter) {
             let cci = ci;
@@ -566,22 +574,67 @@ const luxor_extensions = {
             ri += 1;
         }
         return newdata;
+}
+
+const _tableColf = (iter, ri, ci) => {
+    const newdata = {};
+        
+    for (let row of iter) {
+        let rri = ri;
+        for (let value of row) {
+            newdata[rri] = newdata[rri] || {};
+            newdata[rri][ci] = { text: value };
+            rri += 1;
+        }
+        ci += 1;
+    }
+    return newdata;
+}
+
+const luxor_extensions = {
+    tableRowf: (args) => {
+        let { iter, ri, ci } = table_f_ext(args);
+        return _tableRowf(iter, ri, ci);
     },
     tableColf: (args) => {
         let { iter, ri, ci } = table_f_ext(args);
-        const newdata = {};
-        
-        for (let row of iter) {
-            let rri = ri;
-            for (let value of row) {
-                newdata[rri] = newdata[rri] || {};
-                newdata[rri][ci] = { text: value };
-                rri += 1;
-            }
-            ci += 1;
-        }
-        return newdata;
+        return _tableColf(iter, ri, ci);
     },
+    tableAbi: (args) => {
+        const cell_table = lkeyToKey(args[0]).split(';').map(val => parseInt(val));
+        const cell_btn = lkeyToKey(args[1]).split(';').map(val => parseInt(val));
+        const address = args[2];
+        let abi = JSON.parse(args[3].replace(/\'/g, '"'));
+        const iter = [['Inputs', '']];
+        
+        abi.inputs.forEach(v => {
+            iter.push([`${v.name} <${v.type}>`, 0]);
+        });
+        iter.push(['Outputs', '']);
+        abi.outputs.forEach(v => {
+            iter.push([`${v.name} <${v.type}>`, 0]);
+        });
+
+        const isTx = ['view', 'pure'].includes(abi.stateMutability) ? '' : '!';
+        if (isTx) {
+            abi.outputs = [{name: 'receipt', type: 'object'}];
+        }
+        const newdata = _tableRowf(iter, cell_table[0], cell_table[1]);
+        const outs = abi.outputs.map(v => v.type);
+        const fsig = `${abi.name}(${abi.inputs.map(v => v.type)})${outs.length > 0 ? '->('+outs.join()+')' : '' }`;
+        const arg_cells = [...new Array(abi.inputs.length)].map((_, i) => keyToL(cell_table[0]+i+1, cell_table[1]+1));
+        let out_key = keyToL(cell_table[0] + abi.inputs.length + 2,  cell_table[1]+ 1);
+
+        newdata[cell_btn[0]] = {};
+        let text;
+        if (!isTx) {
+            text = `=(table-colf "${out_key}" (eth-call "${address}" "${fsig}" (list ${arg_cells.join(' ')})) )`
+        } else {
+            text = `=(table-rowf "${out_key}" (eth-call! "${address}" "${fsig}" (list ${arg_cells.join(' ')})) )`
+        }
+        newdata[cell_btn[0]][cell_btn[1]] = { text };
+        return newdata;
+    }
 }
 
 const iconStyle = {

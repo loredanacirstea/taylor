@@ -611,7 +611,7 @@ const ast2h = (ast, parent=null, unkownMap={}, defenv={}, arrItemType=null) => {
     }).join('');
 }
 
-// interop.js_to_mal
+// interop.js_to_mal - doesnt work for json stringified strings
 const jsval2tay = value => {
     switch (typeof value) {
         case 'object':
@@ -629,6 +629,8 @@ const jsval2tay = value => {
         case 'undefined':
             return 'Nil';
         case 'string':
+            // if string is a stringified json
+            value = value.replace(/\"/g, '\\\'');
             return `"${value}"`;
         default:
             return value.toString();

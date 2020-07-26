@@ -185,7 +185,7 @@ modifyEnv('js-eval', async (orig_func, str) => {
     try {
         answ = await eval(str.toString());
     } catch(e) {
-        console.log(`Expression [ ${str} ] . `, e);
+        console.log(`Expression: ${str}  ;;`, e);
         answ = undefined;
     }
 
@@ -197,11 +197,11 @@ async function init() {
 
 /* Taylor */
 
+await mal.rep('(def! js-str (fn* (val) (js-eval (str "utils.jsStr(`" (pr-str val) "`)" )) ))');
+
 // Nil can be null for now, but it should follow the on-chain version when js backend will be typed
 await mal.reps(`
 (def! Nil (js-eval (str "null")) )
-
-(def! js-str (fn* (val) (js-eval (str "utils.jsStr('" (pr-str val) "')" )) ))
 
 (def! reduce (fn* (f xs init) (if (empty? xs) init (reduce f (rest xs) (f init (first xs)) ))))
 
