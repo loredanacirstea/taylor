@@ -502,6 +502,12 @@ describe('test dynamic storage', function () {
 });
 
 describe('web3 only', function () {
+    it('insert web3 prereq', async function () {
+        for (let tt of tests.web3.prereq) {
+            await MalTay.sendAndWait(tt.expr);
+        }
+    }, 20000);
+
     for (name of Object.keys(tests.web3.tests)) {
         const tts = tests.web3.tests[name]
         tts.map((tt, i) => {
@@ -855,19 +861,6 @@ describe.each([
     });
 });
 
-it('test slice', async function() {
-    let resp;
-
-    resp = await MalTay.call(`(slice "0x11223344556677" 3)`);
-    expect(resp).toEqual(['0x112233', '0x44556677']);
-
-    resp = await MalTay.call(`(slice "0x1122334455" 5)`);
-    expect(resp).toEqual(['0x1122334455', '0x']);
-
-    resp = await MalTay.call(`(slice "0x" 5)`);
-    expect(resp).toEqual(['0x', '0x']);
-});
-
 it('test bytesToArray', async function() {
     let resp;
     resp = await MalTay.call(`(bytesToArray "0x1122334455667788" 4 0 (array))`);
@@ -878,24 +871,6 @@ it('test bytesToArray', async function() {
 
     resp = await MalTay.call(`(bytesToArray "0x1122334455667788" 2 0 (array))`);
     expect(resp).toEqual(['0x1122', '0x3344', '0x5566', '0x7788']);
-});
-
-it('test join', async function() {
-    let resp;
-    resp = await MalTay.call(`(join "0x112233" "0x445566"))`);
-    expect(resp).toBe('0x112233445566');
-
-    resp = await MalTay.call(`(join "0x112233" 8))`);
-    expect(resp).toBe('0x11223300000008');
-
-    resp = await MalTay.call(`(join "hello" "yello"))`);
-    expect(resp).toBe('helloyello');
-
-    resp = await MalTay.call(`(join "0x112233" "hello"))`);
-    expect(resp).toBe('0x1122330000000000000000000000000000000000000000000000680065006c006c006f');
-
-    resp = await MalTay.call(`(join "0x" "0x445566"))`);
-    expect(resp).toBe('0x445566');
 });
 
 it('test arrayToBytes', async function() {
