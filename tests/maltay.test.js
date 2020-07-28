@@ -16,7 +16,7 @@ beforeAll(() => {
   }).then(() => MalTay.init())
     .then(() => MalTay.watch())
     .then(() => getMalBackend(MalTay.address, MalTay.provider, MalTay.signer))
-    .then(inst => MalB = inst);
+    .then(inst => MalB = inst)
 }, 50000);
 
 afterAll(() => {

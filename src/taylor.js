@@ -207,15 +207,16 @@ Object.keys(fulltypeidHex).forEach(key => nativeTypes[typekey(key)] = fulltypeid
 });
 
 const getItemType = value => {
-    if (typeof value === 'number') {
+    const jstype = typeof value;
+    if (jstype === 'number') {
         if (value === parseInt(value)) {
             if (value >= 0) return 'uint';
             return 'int';
         }
         return 'float';
     }
-    if (value.substring(0, 2) === '0x') return 'hex';
-    return 'string';
+    if (jstype === 'string' && value.substring(0, 2) === '0x') return 'hex';
+    return jstype;
 }
 
 // console.log('nativeTypes', nativeTypes)

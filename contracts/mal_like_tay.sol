@@ -619,6 +619,10 @@ object "Taylor" {
                 let value_ptr := mload(add(arg_ptrs_ptr, 64))
                 result_ptr := _shift(iter_ptr, value_ptr)
             }
+            case 0x88000136 {
+                let value_ptr := mload(add(arg_ptrs_ptr, 32))
+                result_ptr := _to_uint(value_ptr)
+            }
 
             default {
                 let isthis := 0
@@ -2894,6 +2898,18 @@ object "Taylor" {
                 current_ptr := add(current_ptr, item_len)
                 mmultistore(current_ptr, add(iter_ptr, sig_len), mul(item_len, arity))
             }
+        }
+
+        // TODO better casting
+        function _to_uint(value_ptr) -> result_ptr {
+            let vallen := getValueLength(value_ptr)
+            let len := vallen
+            if gt(mod(len, 4), 0) {
+                len := mul(add(div(len, 4), 1), 4)
+            }
+            result_ptr := allocate(add(len, 4))
+            mslicestore(result_ptr, buildUintSig(len), 4)
+            mmultistore(add(result_ptr, 4), add(value_ptr, 4), len)
         }
 
         function _push(array_ptr, value_ptr) -> result_ptr {

@@ -165,6 +165,7 @@ const _nativeEnv = {
     join:      { mutable: false, arity: 2 },
     range:     { mutable: false, arity: 3 },
     shift:     { mutable: false, arity: 2 },
+    'to-uint': { mutable: false, arity: 1 },
 
     // TODO: curry
     // TODO: pay
