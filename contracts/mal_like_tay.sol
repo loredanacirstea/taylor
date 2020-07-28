@@ -265,17 +265,32 @@ object "Taylor" {
                 let ptr2 := mload(add(arg_ptrs_ptr, 64))
                 result_ptr := _signextend(ptr1, ptr2)
             }
-            case 0x90000036 {
-                result_ptr := _call(add(arg_ptrs_ptr, 32))
+            case 0xa0000037 {
+                let address_ptr := mload(add(arg_ptrs_ptr, 32))
+                let fsig_ptr := mload(add(arg_ptrs_ptr, 64))
+                let value_ptr := mload(add(arg_ptrs_ptr, 96))
+                let data_ptr := mload(add(arg_ptrs_ptr, 128))
+                result_ptr := _call_bang(address_ptr, fsig_ptr, value_ptr, data_ptr)
             }
-            case 0x90000038 {
-                result_ptr := _callcode(add(arg_ptrs_ptr, 32))
+            case 0xa0000039 {
+                let address_ptr := mload(add(arg_ptrs_ptr, 32))
+                let fsig_ptr := mload(add(arg_ptrs_ptr, 64))
+                let value_ptr := mload(add(arg_ptrs_ptr, 96))
+                let data_ptr := mload(add(arg_ptrs_ptr, 128))
+                result_ptr := _callcode(address_ptr, fsig_ptr, value_ptr, data_ptr)
             }
-            case 0x9000003a {
-                result_ptr := _delegatecall(add(arg_ptrs_ptr, 32))
+            case 0x9800003b {
+                let address_ptr := mload(add(arg_ptrs_ptr, 32))
+                let fsig_ptr := mload(add(arg_ptrs_ptr, 64))
+                let data_ptr := mload(add(arg_ptrs_ptr, 96))
+                result_ptr := _delegatecall(address_ptr, fsig_ptr, data_ptr)
             }
-            case 0x9000003c {
-                result_ptr := _staticcall(add(arg_ptrs_ptr, 32))
+            case 0x9800003c {
+                // in Taylor: call
+                let address_ptr := mload(add(arg_ptrs_ptr, 32))
+                let fsig_ptr := mload(add(arg_ptrs_ptr, 64))
+                let data_ptr := mload(add(arg_ptrs_ptr, 96))
+                result_ptr := _staticcall(address_ptr, fsig_ptr, data_ptr)
             }
             case 0x800000c6 {
                 result_ptr := allocate(36)
@@ -1857,25 +1872,74 @@ object "Taylor" {
             mslicestore(result_ptr, buildBytesSig(32), 4)
             mstore(add(result_ptr, 4), _hash)
         }
-        
-        function _call(ptrs) -> result_ptr {
-            // TODO
-            // c := call(gas(), a, v, inptr, insize, outptr, outsize)
+
+        function _call_data(fsig_ptr, data_ptr, inputsize) -> eth_data_ptr {
+            let fsig := extractValue(fsig_ptr)
+            eth_data_ptr := allocate(add(4, inputsize))
+            
+            mslicestore(eth_data_ptr, fsig, 4)
+            mmultistore(add(eth_data_ptr, 4), add(data_ptr, 4), inputsize)
         }
         
-        function _callcode(ptrs) -> result_ptr {
-            // TODO
-            // c := callcode(gas(), a, v, inptr, insize, outptr, outsize)
+        function _call_bang(address_ptr, fsig_ptr, value_ptr, data_ptr) -> result_ptr {
+            let addr := extractValue(address_ptr)
+            let value := extractValue(value_ptr)
+            let inputsize := add(getValueLength(data_ptr), 4)
+            let eth_data_ptr := _call_data(fsig_ptr, data_ptr, inputsize)
+            result_ptr := freeMemPtr()
+            let success := call(gas(), addr, value, eth_data_ptr, inputsize, result_ptr, 0)
+            dtrequire(success, 0xeecd)
+
+            let outsize := returndatasize()
+            result_ptr := allocate(add(outsize, 4))
+            mslicestore(result_ptr, buildBytesSig(outsize), 4)
+            returndatacopy(add(result_ptr, 4), 0, outsize)
         }
         
-        function _delegatecall(ptrs) -> result_ptr {
-            // TODO
-            // c := delegatecall(gas(), a, inptr, insize, outptr, outsize)
+        function _callcode(address_ptr, fsig_ptr, value_ptr, data_ptr) -> result_ptr {
+            let addr := extractValue(address_ptr)
+            let value := extractValue(value_ptr)
+            let inputsize := add(getValueLength(data_ptr), 4)
+            let eth_data_ptr := _call_data(fsig_ptr, data_ptr, inputsize)
+            
+            result_ptr := freeMemPtr()
+            let success := callcode(gas(), addr, value, eth_data_ptr, inputsize, result_ptr, 0)
+            dtrequire(success, 0xeecd)
+
+            let outsize := returndatasize()
+            result_ptr := allocate(add(outsize, 4))
+            mslicestore(result_ptr, buildBytesSig(outsize), 4)
+            returndatacopy(add(result_ptr, 4), 0, outsize)
         }
         
-        function _staticcall(ptrs) -> result_ptr {
-            // TODO
-            // c := staticcall(gas(), a, inptr, insize, outptr, outsize)
+        function _delegatecall(address_ptr, fsig_ptr, data_ptr) -> result_ptr {
+            let addr := extractValue(address_ptr)
+            let inputsize := add(getValueLength(data_ptr), 4)
+            let eth_data_ptr := _call_data(fsig_ptr, data_ptr, inputsize)
+            
+            result_ptr := freeMemPtr()
+            let success := delegatecall(gas(), addr, eth_data_ptr, inputsize, result_ptr, 0)
+            dtrequire(success, 0xeecd)
+
+            let outsize := returndatasize()
+            result_ptr := allocate(add(outsize, 4))
+            mslicestore(result_ptr, buildBytesSig(outsize), 4)
+            returndatacopy(add(result_ptr, 4), 0, outsize)
+        }
+        
+        function _staticcall(address_ptr, fsig_ptr, data_ptr) -> result_ptr {
+            let addr := extractValue(address_ptr)
+            let inputsize := add(getValueLength(data_ptr), 4)
+            let eth_data_ptr := _call_data(fsig_ptr, data_ptr, inputsize)
+
+            result_ptr := freeMemPtr()
+            let success := staticcall(gas(), addr, eth_data_ptr, inputsize, result_ptr, 0)
+            dtrequire(success, 0xeecd)
+
+            let outsize := returndatasize()
+            result_ptr := allocate(add(outsize, 4))
+            mslicestore(result_ptr, buildBytesSig(outsize), 4)
+            returndatacopy(add(result_ptr, 4), 0, outsize)
         }
 
         function _contig(ptr1, ptr2) -> result_ptr {

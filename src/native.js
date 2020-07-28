@@ -26,10 +26,10 @@ const _nativeEnv = {
     mulmod:       { mutable: false, arity: 3, inputs: [{type: 'uint', name: 'a'}, {type: 'uint', name: 'b'}, {type: 'uint', name: 'c'}], outputs: [{type: 'uint', name: 'd'}] },
     signextend:   { mutable: false, arity: 2, inputs: [{type: 'uint', name: 'a'}, {type: 'uint', name: 'b'}], outputs: [{type: 'uint', name: 'c'}] },
     keccak256:    { mutable: false, arity: null, inputs: [{type: 'uint', name: 'a'}, {type: 'uint', name: 'b'}], outputs: [{type: 'uint', name: 'c'}] },
-    call:         { mutable: true, arity: 7, notimp: true },
-    callcode:     { mutable: true, arity: 7, notimp: true },
-    delegatecall: { mutable: true, arity: 6, notimp: true },
-    staticcall:   { mutable: false, arity: 6, notimp: true },
+    'call!':         { mutable: true, arity: 4 },
+    callcode:     { mutable: true, arity: 4 },
+    delegatecall: { mutable: true, arity: 3 },
+    call:   { mutable: false, arity: 3 },
     
     // Mal specific
     list:         { mutable: false, arity: null },
@@ -199,10 +199,10 @@ const _nativeEnv_docs = {
     mulmod:       { docs: '' },
     signextend:   { docs: '' },
     keccak256:    { docs: '' },
-    call:         { docs: '' },
+    'call!':         { docs: '' },
     callcode:     { docs: '' },
     delegatecall: { docs: '' },
-    staticcall:   { docs: '' },
+    call:   { docs: '' },
     
     // Mal specific
     list:         { docs: '' },

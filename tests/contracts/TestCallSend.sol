@@ -15,4 +15,8 @@ contract TestCallSend {
     function setname(string memory newname) public {
         name = newname;
     }
+
+    function pay(uint a) public payable {
+        somevar = somevar + a;
+    }
 }
