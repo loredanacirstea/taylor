@@ -491,6 +491,54 @@ describe('test dynamic storage', function () {
     }, 10000);
 });
 
+describe('evm: call & call!', function () {
+    let addr, call_send_contract, sigs, resp;
+    it('call & call! - prereq', async function () {
+        call_send_contract = await getTestCallContract();
+        addr = call_send_contract.address;
+        sigs = {
+            add: call_send_contract.interface.getSighash('add'),
+            somevar: call_send_contract.interface.getSighash('somevar'),
+            increase: call_send_contract.interface.getSighash('increase'),
+            setname: call_send_contract.interface.getSighash('setname'),
+            name: call_send_contract.interface.getSighash('name'),
+            pay: call_send_contract.interface.getSighash('pay'),
+        }
+    }, 10000);
+
+    test('call', async function () {
+        // add(uint256,uint256)
+        resp = await MalTay.call(`(call "${addr}" "${sigs.add}" "0x00000000000000000000000000000000000000000000000000000000000000030000000000000000000000000000000000000000000000000000000000000004")`);
+        expect(resp).toEqual('0x0000000000000000000000000000000000000000000000000000000000000007');
+
+        // somevar()
+        resp = await MalTay.call(`(call "${addr}" "${sigs.somevar}" "0x")`);
+        expect(resp).toEqual('0x0000000000000000000000000000000000000000000000000000000000000005');
+    });
+
+    test('call!', async function () {
+        // increase(uint256)
+        await MalTay.send(`(call! "${addr}" "${sigs.increase}" 0 "0x0000000000000000000000000000000000000000000000000000000000000007")`);
+        resp = await MalTay.call(`(call "${addr}" "0x828e5fe8" "0x")`);
+        expect(resp).toEqual('0x000000000000000000000000000000000000000000000000000000000000000c');
+
+        // setname(string)
+        await MalTay.send(`(call! "${addr}" "${sigs.setname}" 0 "0x0000000000000000000000000000000000000000000000000000000000000020000000000000000000000000000000000000000000000000000000000000000568656c6c6f000000000000000000000000000000000000000000000000000000")`);
+        resp = await MalTay.call(`(call "${addr}" "${sigs.name}" "0x")`);
+        expect(resp).toBe('0x0000000000000000000000000000000000000000000000000000000000000020000000000000000000000000000000000000000000000000000000000000000568656c6c6f000000000000000000000000000000000000000000000000000000');
+    });
+
+    test('call! payable', async function () {
+        // pay(uint256)
+        expect((await MalTay.provider.getBalance(addr)).toNumber()).toBe(0);
+        
+        await MalTay.send(`(call! "${addr}" "${sigs.pay}" 20 "0x0000000000000000000000000000000000000000000000000000000000000007")`);
+        expect((await MalTay.provider.getBalance(addr)).toNumber()).toBe(20);
+    });
+});
+
+describe('javascript call & send', function () {
+
 describe('web3 only', function () {
     it('insert web3 prereq', async function () {
         for (let tt of tests.web3.prereq) {
@@ -512,43 +560,8 @@ describe('web3 only', function () {
             });
         });
     }
-
-    let addr, call_send_contract, resp;
-    it('call & call! - prereq', async function () {
-        call_send_contract = await getTestCallContract();
-        addr = call_send_contract.address;
-    }, 10000);
-
-    test('call', async function () {
-        // add(uint256,uint256)
-        resp = await MalTay.call(`(call "${addr}" "0x771602f7" "0x00000000000000000000000000000000000000000000000000000000000000030000000000000000000000000000000000000000000000000000000000000004")`);
-        expect(resp).toEqual('0x0000000000000000000000000000000000000000000000000000000000000007');
-
-        // somevar()
-        resp = await MalTay.call(`(call "${addr}" "0x828e5fe8" "0x")`);
-        expect(resp).toEqual('0x0000000000000000000000000000000000000000000000000000000000000005');
-    });
-
-    test('call!', async function () {
-        // increase(uint256)
-        await MalTay.send(`(call! "${addr}" "0x30f3f0db" 0 "0x0000000000000000000000000000000000000000000000000000000000000007")`);
-        resp = await MalTay.call(`(call "${addr}" "0x828e5fe8" "0x")`);
-        expect(resp).toEqual('0x000000000000000000000000000000000000000000000000000000000000000c');
-
-        // setname(string)
-        await MalTay.send(`(call! "${addr}" "0x2cefeb07" 0 "0x0000000000000000000000000000000000000000000000000000000000000020000000000000000000000000000000000000000000000000000000000000000568656c6c6f000000000000000000000000000000000000000000000000000000")`);
-        resp = await MalTay.call(`(call "${addr}" "0x06fdde03" "0x")`);
-        expect(resp).toBe('0x0000000000000000000000000000000000000000000000000000000000000020000000000000000000000000000000000000000000000000000000000000000568656c6c6f000000000000000000000000000000000000000000000000000000');
-    });
-
-    test.skip('call! payable', async function () {
-        // pay(uint256)
-        await MalTay.send(`(call! "${addr}" "c290d691" 20 "0x0000000000000000000000000000000000000000000000000000000000000007")`);
-        expect(await MalTay.provider.getBalance(addr)).toBe(20);
-    });
 });
 
-describe('javascript call & send', function () {
     let addr, call_send_contract, resp, expected;
     
     it('call & send - prereq', async function () {
