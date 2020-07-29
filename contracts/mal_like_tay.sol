@@ -2168,24 +2168,29 @@ object "Taylor" {
             let list_arity := listTypeSize(mslice(list_ptr, 4))
             let newarity := sub(list_arity, 1)
             let newlistid := buildListTypeSig(newarity)
+            // The length of the first element
             let elem_length := getTypedLength(add(list_ptr, 4))
-            let newlist := allocate(add(4, mul(newarity, elem_length)))
+            // The final list length
+            let newlist_length := 0
+
+            // ! allocate mem after we know the data length
+            let newlist := freeMemPtr()
             result_ptr := newlist
 
             mslicestore(newlist, newlistid, 4)
-            newlist := add(newlist, 4)
+            newlist_length := add(newlist_length, 4)
 
             // skip signature &  first item
             list_ptr := add(list_ptr, 4)
-            
             list_ptr := add(list_ptr, elem_length)
 
             for { let i := 0 } lt(i, newarity) { i := add(i, 1) } {
                 elem_length := getTypedLength(list_ptr)
-                mmultistore(newlist, list_ptr, elem_length)
+                mmultistore(add(newlist, newlist_length), list_ptr, elem_length)
                 list_ptr := add(list_ptr, elem_length)
-                newlist := add(newlist, elem_length)
+                newlist_length := add(newlist_length, elem_length)
             }
+            newlist := allocate(newlist_length)
         }
 
         function _rest_array(array_ptr) -> result_ptr {

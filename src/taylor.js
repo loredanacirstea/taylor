@@ -375,6 +375,7 @@ const decodeInner = (inidata) => {
         return { result, data };
     }  else if (isArrayType(sig)) {
         const arity = arrayTypeSize(sig);
+        if (arity === 0) return { result: [], data };
         const siglen = getSignatureLengthH(inidata);
         const signature = inidata.substring(8, siglen);
         data = inidata.substring(siglen);
