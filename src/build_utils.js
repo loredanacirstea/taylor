@@ -34,7 +34,8 @@ const compileContract = filePath => {
 
   if (output.errors.length > 1 || !output.contracts) {
     const message = output.errors.map(err => err.formattedMessage).join('\n');
-    throw new Error(message)
+    const iserror = output.errors.find(err => err.formattedMessage.match(/error/i));
+    if (iserror) throw new Error(message);
   }
 
   return Object.values(output.contracts['contract_source'])[0];

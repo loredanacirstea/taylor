@@ -521,6 +521,9 @@ const ast2h = (ast, parent=null, unkownMap={}, defenv={}, arrItemType=null) => {
             if (!nativeEnv[elem.value]) {
                 // check if native type
                 if (nativeTypes[elem.value]) {
+                    // TODO: should the type be of type bytes or without type?
+                    // maybe have a type for types
+                    if (elem.value === 'Nil') return nativeTypes[elem.value];
                     return getbytesid(4) + nativeTypes[elem.value];
                 }
                 // check if stored function first
@@ -814,7 +817,7 @@ const getTaylor = (provider, signer) => (address, deploymentBlock) => {
             to: interpreter.address,
             data: expr2h(expression, interpreter.alltypes()),
         }, txObj);
-        return provider.estimateGas(txObj);
+        return provider.estimateGas(txObj).catch(console.log);
     }
 
     interpreter.calculateCost = async (expression, txObj) => (await interpreter.estimateGas(expression, txObj)).toNumber() * 2;
@@ -874,8 +877,7 @@ const getTaylor = (provider, signer) => (address, deploymentBlock) => {
         return receipt;
     }
 
-    interpreter.bootstrap = async (functions, step=10) => {
-        functions = functions || Object.values(bootstrap_functions);
+    const _bootstrap = async (functions, step) => {
         let receipts = [];
 
         for (let i = 0 ; i <= functions.length ; i += step) {
@@ -886,6 +888,16 @@ const getTaylor = (provider, signer) => (address, deploymentBlock) => {
             receipts.push(receipt);
         }
         return receipts;
+    }
+
+    interpreter.bootstrap = async (functions, step=10) => {
+        functions = functions || Object.values(bootstrap_functions);
+        const receipt = await _bootstrap(functions, step);
+
+        await interpreter.sendAndWait(bootstrap_functions['nth-eth-arg']);
+        await interpreter.sendAndWait(bootstrap_functions['eth-pipe-evm']);
+        await interpreter.sendAndWait(bootstrap_functions['eth-pipe-evm!']);
+        return receipt;
     }
 
     // populates with all functions, including those stored in registered contracts

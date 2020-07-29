@@ -1,6 +1,6 @@
 const BN = require('bn.js');
 require('../src/extensions.js');
-const { taylor, getTestCallContract, signer, provider } = require('./setup/fixtures.js');
+const { taylor, getTestCallContract, getTestPipeContracts, signer, provider } = require('./setup/fixtures.js');
 const { decode, encode, expr2h, expr2s } = taylor;
 const tests = require('./json_tests/index.js');
 
@@ -537,7 +537,49 @@ describe('evm: call & call!', function () {
     });
 });
 
-describe('javascript call & send', function () {
+describe('eth-pipe-evm & eth-pipe-evm!', function () {
+    let vr, vp, mp;
+    let sigs = {};
+    it('pipe prereq', async function () {
+        ({ vr, vp, mp } = await getTestPipeContracts());
+        sigs.getVendor = vr.interface.getSighash('getVendor');
+        sigs.calculateQuantity = vp.interface.getSighash('calculateQuantity');
+        sigs.buy = mp.interface.getSighash('buy');
+    }, 10000);
+
+    test('eth-pipe-evm', async function () {
+        // inputs: product_id, wei_value ; runtime: vendor, quantity
+        // inputList steps outputIndexes
+        // steps: address, fsig, value, inputIndexes, outputHasSlotSize
+        const input = `
+            (list "0x0000000000000000000000000000000000000000000000000000000000000001" "0x00000000000000000000000000000000000000000000000000000000000003e8")
+            (list
+                (list "${vr.address}" "${sigs.getVendor}" (array 0) (array true))
+                (list "${vp.address}" "${sigs.calculateQuantity}" (array 0 2 1) (array true))
+            )
+            (array 3)
+        `;
+        resp = await MalTay.call(`(eth-pipe-evm ${input})`);
+        expect(resp).toEqual(["0x0000000000000000000000000000000000000000000000000000000000000064"]);
+    });
+
+    test('eth-pipe-evm!', async function () {
+        // inputs: product_id, buyer, wei_value1, wei_value2
+        // runtime: vendor, quantity
+        const input = `
+            (list "0x0000000000000000000000000000000000000000000000000000000000000001" "0x000000000000000000000000a80FA22b7d72A2889d12fad52608130C2531C68c" "0x00000000000000000000000000000000000000000000000000000000000003e8" "0x00000000000000000000000000000000000000000000000000000000000005dc")
+            (list
+                (list "${vr.address}" "${sigs.getVendor}" Nil (array 0) (array true))
+                (list "${vp.address}" "${sigs.calculateQuantity}" Nil (array 0 4 2) (array true))
+                (list "${mp.address}" "${sigs.buy}" 2 (array 4 1 0 5) (array))
+                (list "${mp.address}" "${sigs.buy}" 3 (array 4 1 0 5) (array))
+            )
+            (array)
+        `;
+        resp = await MalTay.sendAndWait(`(eth-pipe-evm! ${input})`, {value: 2500});
+        expect((await MalTay.provider.getBalance(mp.address)).toNumber()).toBe(2500);
+    }, 20000);
+});
 
 describe('web3 only', function () {
     it('insert web3 prereq', async function () {
@@ -562,6 +604,7 @@ describe('web3 only', function () {
     }
 });
 
+describe('javascript eth-call & eth-call!', function () {
     let addr, call_send_contract, resp, expected;
     
     it('call & send - prereq', async function () {
@@ -859,7 +902,7 @@ describe.each([
     it('test logs', async function() {
         if (backendname === 'web3') {
             const resp = await instance.getFns();
-            expect(resp.length).toBe(26);
+            expect(resp.length).toBe(29);
         }
     });
 });

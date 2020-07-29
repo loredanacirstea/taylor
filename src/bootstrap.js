@@ -254,7 +254,136 @@ smap2: `(def! smap (fn* (func value iterValue)
             (lengths iterValue)
         )
     )
-))`
+))`,
+
+'nth-eth-arg': `
+(def! nth-eth-arg (fn* (bvalue index argHasSlotSizeArray)
+(let* (
+        nextDynamicOffset (fn* (encodedb _hasSlotSizeArray _index)
+            (if (lt _index (length _hasSlotSizeArray) )
+                (let* (
+                        _hasSlotS (nth _hasSlotSizeArray _index)
+                        fragment (nth (slice encodedb (mul _index 32)) 1)
+                    )
+                    (if _hasSlotS
+                        (nextDynamicOffset encodedb _hasSlotSizeArray (add _index 1))
+                        (first (slice fragment 32) )
+                    )
+                )
+                (length encodedb)
+            )
+        )
+        hasSlotSize (nth argHasSlotSizeArray index)
+        fragments (slice bvalue (mul index 32))
+        offsetOrArg (nth (slice (nth fragments 1) 32) 0)
+    )
+    (if hasSlotSize
+        offsetOrArg
+        (let* (
+                offset (to-uint offsetOrArg)
+                values (nth (slice bvalue offset) 1)
+            )
+            (first (slice 
+                values 
+                (sub 
+                    (to-uint (nextDynamicOffset bvalue argHasSlotSizeArray (add index 1)))
+                    offset
+                )
+            ))
+        )
+    )
+)
+))`,
+
+'eth-pipe-evm': `
+(def! eth-pipe-evm (fn* (input steps outputIndexes)
+(let* (
+        selectIO (fn* (ioList) (fn* (index) (nth ioList index) ))
+    )
+    (if (empty? steps)
+        (map (selectIO input) outputIndexes)
+        (let* (
+                toList (fn* (encoded hasSlotArr)
+                    (if (empty? hasSlotArr) 
+                        (list)
+                        (let* (
+                                wrappedNthArg (fn* (_encoded _hasSlotArr)
+                                    (fn* (_index)
+                                        (nth-eth-arg _encoded _index _hasSlotArr)
+                                    )
+                                )
+                            )
+                            (map (wrappedNthArg encoded hasSlotArr) (range 0 (sub (length hasSlotArr) 1) 1))
+                        )
+                    )
+                )
+                currentStep (first steps)
+            )
+            (eth-pipe-evm 
+                (concat
+                    input
+                    (toList
+                        (call
+                            (nth currentStep 0)
+                            (nth currentStep 1)
+                            (arrayToBytes (map (selectIO input) (nth currentStep 2) ))
+                        )
+                        (nth currentStep 3)
+                    )
+                )
+                (rest steps)
+                outputIndexes
+            )
+        )
+    )
+)
+))`,
+
+'eth-pipe-evm!': `
+(def! eth-pipe-evm! (fn* (input steps outputIndexes)
+(let* (
+        selectIO (fn* (ioList) (fn* (index) (nth ioList index) ))
+    )
+    (if (empty? steps)
+        (map (selectIO input) outputIndexes)
+        (let* (
+                toList (fn* (encoded hasSlotArr)
+                    (if (empty? hasSlotArr) 
+                        (list)
+                        (let* (
+                                wrappedNthArg (fn* (_encoded _hasSlotArr)
+                                    (fn* (_index)
+                                        (nth-eth-arg _encoded _index _hasSlotArr)
+                                    )
+                                )
+                            )
+                            (map (wrappedNthArg encoded hasSlotArr) (range 0 (sub (length hasSlotArr) 1) 1))
+                        )
+                    )
+                )
+                currentStep (first steps)
+                valueIndex (nth currentStep 2)
+            )
+            (eth-pipe-evm!
+                (concat
+                    input
+                    (toList
+                        (call!
+                            (nth currentStep 0)
+                            (nth currentStep 1)
+                            (if (nil? valueIndex) 0 (nth input valueIndex))
+                            (arrayToBytes (map (selectIO input) (nth currentStep 3) ))
+                        )
+                        (nth currentStep 4)
+                    )
+                )
+                (rest steps)
+                outputIndexes
+            )
+        )
+    )
+)
+))`,
 
 }
 

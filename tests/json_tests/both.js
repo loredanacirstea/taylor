@@ -95,6 +95,10 @@ const tests = {
     ],
     'nil?': [
         {
+            test: '(nil? Nil)',
+            result: true,
+        },
+        {
             test: '(nil? (list))',
             result: true,
         },
