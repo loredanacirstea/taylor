@@ -1967,15 +1967,44 @@ object "Taylor" {
             }
         }
 
-        function _concat(ptr1, ptr2) -> result_ptr {
-            let len1 := bytesSize(mslice(ptr1, 4))
-            let len2 := bytesSize(mslice(ptr2, 4))
-            let newsig := buildBytesSig(add(len1, len2))
+        // transforms in list
+        function _concat(iter_ptr1, iter_ptr2) -> result_ptr {
+            if isArrayType(iter_ptr1) {
+                iter_ptr1 := _array_to_list(iter_ptr1)
+            }
+            if isArrayType(iter_ptr2) {
+                iter_ptr2 := _array_to_list(iter_ptr2)
+            }
+
+            let len1 := getValueLength(iter_ptr1)
+            let arity1 := listTypeSize(get4b(iter_ptr1))
+            let len2 := getValueLength(iter_ptr2)
+            let arity2 := listTypeSize(get4b(iter_ptr2))
+            let newsig := buildListTypeSig(add(arity1, arity2))
             
             result_ptr := allocate(add(4, add(len1, len2)))
             mslicestore(result_ptr, newsig, 4)
-            mmultistore(add(result_ptr, 4), add(ptr1, 4), len1)
-            mmultistore(add(add(result_ptr, 4), len1), add(ptr2, 4), len2)
+            mmultistore(add(result_ptr, 4), add(iter_ptr1, 4), len1)
+            mmultistore(add(add(result_ptr, 4), len1), add(iter_ptr2, 4), len2)
+        }
+
+        function _array_to_list(array_ptr) -> _newlist {
+            let arity := arrayTypeSize(get4b(array_ptr))
+            let array_siglen := getSignatureLength(add(array_ptr, 4))
+            let array_itemsig := mslice(add(array_ptr, 4), array_siglen)
+            let array_itemlen := getValueLength(add(array_ptr, 4))
+            _newlist := allocate(add( 4, add(getValueLength(array_ptr), mul(arity, array_siglen))))
+            mslicestore(_newlist, buildListTypeSig(arity), 4)
+
+            let current_ptr := add(_newlist, 4)
+            let current_arrptr := add(array_ptr, add(array_siglen, 4))
+            for { let i := 0 } lt(i, arity) { i := add(i, 1) } {
+                mslicestore(current_ptr, array_itemsig, array_siglen)
+                current_ptr := add(current_ptr, array_siglen)
+                mmultistore(current_ptr, current_arrptr, array_itemlen)
+                current_ptr := add(current_ptr, array_itemlen)
+                current_arrptr := add(current_arrptr, array_itemlen)
+            }
         }
 
         function _empty(list_ptr) -> result_ptr {

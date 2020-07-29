@@ -23,6 +23,16 @@ const tests = {
             result: false,
         },
     ],
+    concat: [
+        {
+            test: '(concat (list 3 5) (array 9))',
+            result: [3, 5, 9],
+        },
+        {
+            test: '(concat (array "0x11aaaabb" "0x221111cc") (list "0xbb" "0x44"))',
+            result: ['0x11aaaabb', '0x221111cc', '0xbb', '0x44'],
+        },
+    ],
     map_multi_iter: [
         {
             test: '(map add (list 5 0 2) (list 15 10 12))',

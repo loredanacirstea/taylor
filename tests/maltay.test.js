@@ -67,16 +67,6 @@ it.skip('test encoding & decoding bool', function () {
     expect(decode(encode(false, {type: 'bool'}))).toEqual(false);
 });
 
-it('test bytes concat', async function () {
-    let resp;
-
-    resp = await MalTay.call('(concat "0x11" "0x22")');
-    expect(resp).toBe('0x1122');
-
-    resp = await MalTay.call('(concat "0x11aaaabb" "0x221111ccdd")');
-    expect(resp).toBe('0x11aaaabb221111ccdd');
-});
-
 it('test bytes contig', async function () {
     let resp;
 

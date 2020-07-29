@@ -1046,6 +1046,16 @@ const tests = {
             result: [15, 20],
         },
     ],
+    concat: [
+        {
+            test: '(concat (list 3 5) (list 9))',
+            result: [3, 5, 9],
+        },
+        {
+            test: '(concat (list "0x11aaaabb" "0x221111ccdd") (list "0xbb" "0x44"))',
+            result: ['0x11aaaabb', '0x221111ccdd', '0xbb', '0x44'],
+        },
+    ],
     lengths: [
         {
             test: '(lengths (array 1 2 3))',
