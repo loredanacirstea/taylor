@@ -902,7 +902,7 @@ describe.each([
     it('test logs', async function() {
         if (backendname === 'web3') {
             const resp = await instance.getFns();
-            expect(resp.length).toBe(29);
+            expect(resp.length).toBe(32);
         }
     });
 });

@@ -26,6 +26,8 @@ class CanvasDatagrid extends React.Component {
     
     constructor(props) {
         super(props);
+
+        this.onChangeSelectedSheet = this.onChangeSelectedSheet.bind(this);
     }
     
     updateAttributes(nextProps) {
@@ -38,6 +40,27 @@ class CanvasDatagrid extends React.Component {
     componentDidMount() {
         document.getElementsByClassName('rowsncolumns-spreadsheet')[0].style.height='100%'
         document.getElementsByClassName('rowsncolumns-spreadsheet')[0].style.width = '100%';
+        this.colorFixes();
+    }
+
+    onChangeSelectedSheet(sheetId) {
+        this.colorFixes();
+        this.props.onChangeSelectedSheet(sheetId);
+    }
+
+    colorFixes() {
+        const colorActive = 'rgb(155, 112, 63)';
+        const colorInactive = '#1A202C';
+        const activeSheetBtn = document.getElementsByClassName("css-1e5clkk");
+        const kids = document.getElementsByClassName("css-197w9ay")[0].children;
+
+        for (const kid of kids) {
+            kid.children[0].style.backgroundColor = colorInactive;
+        }
+
+        for (const elem of activeSheetBtn) {
+            elem.style.backgroundColor = colorActive;
+        }
     }
 
     render() {
@@ -50,7 +73,7 @@ class CanvasDatagrid extends React.Component {
                 snap={true}
                 style={{ height: '100%' }}
                 onChange={this.props.onChange}
-                onChangeSelectedSheet={this.props.onChangeSelectedSheet}
+                onChangeSelectedSheet={this.onChangeSelectedSheet}
                 onChangeCells={this.props.onChangeCells}
             />
         )
@@ -61,6 +84,7 @@ const DEFAULT_SHEETS = [
     {
       name: 'Sheet 1',
       id: 0,
+      tabColor: 'rgb(155, 112, 63)',
       cells: {
         1: {
           1: {
