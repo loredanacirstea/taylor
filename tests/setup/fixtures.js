@@ -15,7 +15,9 @@ const getTestCallContract = () => deployContractFromPath(signer)(test_contracts_
 const getTestPipeContracts = async () => {
   const vr = await deployContractFromPath(signer)(test_contracts_path + 'VendorRegistration.sol');
   const vp = await deployContractFromPath(signer)(test_contracts_path + 'VendorPrices.sol');
-  const mp = await deployContractFromPath(signer)(test_contracts_path + 'MarketPlace.sol');
+  const args = ethers.utils.defaultAbiCoder.encode(['address', 'address'], [vr.address, vp.address]);
+  const mp = await deployContractFromPath(signer)(test_contracts_path + 'MarketPlace.sol', args.substring(2));
+  console.log('***** PIPE example', vr.address, vp.address, mp.address);
   return { vr, vp, mp };
 }
 

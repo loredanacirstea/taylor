@@ -18,10 +18,9 @@ contract VendorPrices {
     /// @param wei_value The total amount of WEI that the buyer wants to pay for the product.
     /// @return quantity The quantity of product that `wei_value` can buy from a vendor.
     function calculateQuantity(uint256 product_id, address vendor, uint256 wei_value) view public returns (uint256 quantity) {
-        return 100;
         require(wei_value > 0);
         bytes32 key = keccak256(abi.encodePacked(vendor, product_id));
-        return 100;
+        
         require(prices[key] > 0);
         quantity = wei_value / prices[key];
     }

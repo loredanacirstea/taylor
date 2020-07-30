@@ -12,10 +12,9 @@ contract MarketPlace {
     event MarketBuy(address vendor, uint256 product_id, uint256 quantity, address buyer);
     event QuantitySet(address vendor, uint256 product_id, uint256 quantity);
 
-    constructor() public {
-    // constructor(address registration_address, address prices_address) public {
-    //     registration_contract_address = registration_address;
-    //     prices_contract_address = prices_address;
+    constructor(address registration_address, address prices_address) public {
+        registration_contract_address = registration_address;
+        prices_contract_address = prices_address;
 
         setQuantity(msg.sender, 1, 1000);
     }
@@ -30,16 +29,15 @@ contract MarketPlace {
 
         require(available_quantities[key] >= quantity, '0xee');
 
-        // (bool success, bytes memory answer) = address(prices_contract_address).call(
-        //     abi.encodeWithSignature("calculateQuantity(uint256,address,uint256)", product_id, vendor, msg.value)
-        // );
-        // require(success, 'not success');
+        (bool success, bytes memory answer) = address(prices_contract_address).staticcall(
+            abi.encodeWithSignature("calculateQuantity(uint256,address,uint256)", product_id, vendor, msg.value)
+        );
+        require(success, 'not success');
 
-        // uint256 computed_quantity;
-        // assembly {
-        //     computed_quantity := mload(add(answer, 32))
-        // }
-        uint256 computed_quantity = 100;
+        uint256 computed_quantity;
+        assembly {
+            computed_quantity := mload(add(answer, 32))
+        }
 
         require(computed_quantity >= quantity, '0xef');
         available_quantities[key] -= quantity;

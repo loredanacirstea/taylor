@@ -559,6 +559,7 @@ describe('eth-pipe-evm & eth-pipe-evm!', function () {
             )
             (array 3)
         `;
+        console.log('***input', input)
         resp = await MalTay.call(`(eth-pipe-evm ${input})`);
         expect(resp).toEqual(["0x0000000000000000000000000000000000000000000000000000000000000064"]);
     });
@@ -576,7 +577,9 @@ describe('eth-pipe-evm & eth-pipe-evm!', function () {
             )
             (array)
         `;
-        resp = await MalTay.sendAndWait(`(eth-pipe-evm! ${input})`, {value: 2500});
+        console.log('***input', input)
+        resp = await MalTay.sendAndWait(`(eth-pipe-evm! ${input})`, {value: 2500, gasLimit: 2000000});
+        console.log('eth-pipe-evm! 4 steps, gasUsed:', resp.gasUsed.toNumber());
         expect((await MalTay.provider.getBalance(mp.address)).toNumber()).toBe(2500);
     }, 20000);
 });
