@@ -42,14 +42,30 @@ const isArray = val => {
     return !val.some(it => (typeof it) !== itemtype);
 }
 
-const callContract = (address, fsig, data, providerOrSigner, isTx=false) => {
+const ethShortAbiToHuman = (fsig, isTx) => {
+    if (typeof isTx === 'undefined') isTx = !(fsig.includes('->'));
     const signature = fsig.split('->').map(val => val.trim());
     const fname = signature[0].split('(')[0].trim();
-    const abi = [
-        `function ${signature[0]} ${isTx ? '' : 'view'} ${signature[1] ? 'returns ' + signature[1] : ''}`,
-    ]
-    const contract = new ethers.Contract(address, abi, providerOrSigner);
-    return contract[fname](...data);
+    return {
+        abi: `function ${signature[0]} ${isTx ? '' : 'view'} ${signature[1] ? 'returns ' + signature[1] : ''}`,
+        name: fname,
+    }
+}
+
+const ethHumanAbiToJson = fsig => {
+    const interf = new ethers.utils.Interface([fsig]);
+    return JSON.parse(interf.format('json'))[0];
+}
+
+const ethSig = (fabi) => {
+    const interf = new ethers.utils.Interface([fabi]);
+    return interf.getSighash(fabi.name);
+}
+
+const callContract = (address, fsig, data, providerOrSigner, isTx=false) => {
+    const {abi, name} = ethShortAbiToHuman(fsig, isTx);
+    const contract = new ethers.Contract(address, [abi], providerOrSigner);
+    return contract[name](...data);
 }
 
 mal.globalStorage = {};
@@ -443,7 +459,7 @@ mal.getBackend = async (address, provider, signer) => {
     interpreter.sendAndWait = interpreter.send;
     interpreter.extend = expression => mal.rep(expression);
     interpreter.jsextend = (name, callb) => {
-        const utilname = name.replace(/-/g, '_');
+        const utilname = name.replace(/-/g, '_').replaceAll('!', '_bang');
         extensions[utilname] = callb;
         mal.rep(`(def! ${name} (fn* (& xs)
             (js-eval (str 
@@ -456,6 +472,11 @@ mal.getBackend = async (address, provider, signer) => {
     // needed for ethcall
     mal.provider = provider;
     mal.signer = signer;
+    mal.utils = {
+        ethShortAbiToHuman,
+        ethHumanAbiToJson,
+        ethSig,
+    }
     return interpreter;
 }
 
