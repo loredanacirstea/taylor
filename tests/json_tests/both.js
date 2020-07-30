@@ -95,7 +95,7 @@ const tests = {
     ],
     'nil?': [
         {
-            test: '(nil? Nil)',
+            test: '(nil? nil)',
             result: true,
         },
         {

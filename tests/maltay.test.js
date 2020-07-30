@@ -570,8 +570,8 @@ describe('eth-pipe-evm & eth-pipe-evm!', function () {
         const input = `
             (list "0x0000000000000000000000000000000000000000000000000000000000000001" "0x000000000000000000000000a80FA22b7d72A2889d12fad52608130C2531C68c" "0x00000000000000000000000000000000000000000000000000000000000003e8" "0x00000000000000000000000000000000000000000000000000000000000005dc")
             (list
-                (list "${vr.address}" "${sigs.getVendor}" Nil (array 0) (array true))
-                (list "${vp.address}" "${sigs.calculateQuantity}" Nil (array 0 4 2) (array true))
+                (list "${vr.address}" "${sigs.getVendor}" nil (array 0) (array true))
+                (list "${vp.address}" "${sigs.calculateQuantity}" nil (array 0 4 2) (array true))
                 (list "${mp.address}" "${sigs.buy}" 2 (array 4 1 0 5) (array))
                 (list "${mp.address}" "${sigs.buy}" 3 (array 4 1 0 5) (array))
             )

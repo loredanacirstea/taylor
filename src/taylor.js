@@ -110,13 +110,13 @@ const unknown = index => {
 
 const fulltypeidHex = {
     // nil shorthand for empty list
-    Nil: listTypeId(0),
+    nil: listTypeId(0),
     // None: '',
     // // unit - equivalent to void, for functions without return type
     // Unit: '',
     // trait
-    Nothing: b2h('00000000000000000000000000000000'),
-    Any: b2h('00000000000000000000000000000001'),
+    nothing: b2h('00000000000000000000000000000000'),
+    any: b2h('00000000000000000000000000000001'),
 }
 
 const isFunction = sig => ((sig >> 31) & 0x01) === 1;
@@ -198,7 +198,7 @@ nativeTypes.Address = getbytesid(20)
 nativeTypes.Bytes = getbytesid(0)
 nativeTypes.String = getbytesid(0, 1)
 nativeTypes.Map = (parseInt(nativeTypes.Map, 16) - 1).toString(16).padStart(8, '0');
-Object.keys(fulltypeidHex).forEach(key => nativeTypes[typekey(key)] = fulltypeidHex[key]);
+Object.keys(fulltypeidHex).forEach(key => nativeTypes[key] = fulltypeidHex[key]);
 [...new Array(32)].forEach((_, i) => {
     nativeTypes['Bytes' + (i+1)] = getbytesid(i+1);
     nativeTypes['String' + (i+1)] = getbytesid(i+1, 1);
@@ -274,7 +274,7 @@ const encodeInner = (jsvalue, t) => {
             // return getboolid(jsvalue);
             return encodeInner(jsvalue ? 1 : 0, {type: 'uint', size: 1});
         case 'nil':
-            return fulltypeidHex.Nil;
+            return fulltypeidHex.nil;
         case 'array':
             return encodeInner(jsvalue, 'list');
             // TODO
@@ -516,6 +516,8 @@ const ast2h = (ast, parent=null, unkownMap={}, defenv={}, arrItemType=null) => {
     }
 
     return ast.map((elem, i) => {
+        if (elem === null) return fulltypeidHex.nil
+
         // if Symbol
         if (malTypes._symbol_Q(elem)) {
             if (!nativeEnv[elem.value]) {
@@ -523,7 +525,7 @@ const ast2h = (ast, parent=null, unkownMap={}, defenv={}, arrItemType=null) => {
                 if (nativeTypes[elem.value]) {
                     // TODO: should the type be of type bytes or without type?
                     // maybe have a type for types
-                    if (elem.value === 'Nil') return nativeTypes[elem.value];
+                    if (elem.value === 'nil') return fulltypeidHex.nil;
                     return getbytesid(4) + nativeTypes[elem.value];
                 }
                 // check if stored function first
@@ -627,12 +629,13 @@ const jsval2tay = value => {
             if (value instanceof Array) {
                 return `(list ${ value.map(jsval2tay).join(' ') })`;
             }
+            if (!value) return 'nil'; // null
             const pairs = Object.keys(value).map(key => {
                 return [`"${key}"`, value[key]].join(' ');
             }).join(' ');
             return `{ ${pairs} }`;
         case 'undefined':
-            return 'Nil';
+            return 'nil';
         case 'string':
             // if string is a stringified json
             value = value.replace(/\"/g, '\\\'');

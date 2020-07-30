@@ -152,7 +152,6 @@ const native_extensions = {
     listToJsArray: liststr => {
         // ! always expects a resolved list
         liststr = liststr.replace(/(?<!(BN))\(/g, '(list ');
-        liststr = liststr.replace(/nil/g, 'Nil');
         return mal.re(liststr);
     },
     listToJsArrayStr: async liststr => {
@@ -215,9 +214,7 @@ async function init() {
 
 await mal.rep('(def! js-str (fn* (val) (js-eval (str "utils.jsStr(`" (pr-str val) "`)" )) ))');
 
-// Nil can be null for now, but it should follow the on-chain version when js backend will be typed
 await mal.reps(`
-(def! Nil (js-eval (str "null")) )
 
 (def! reduce (fn* (f xs init) (if (empty? xs) init (reduce f (rest xs) (f init (first xs)) ))))
 
