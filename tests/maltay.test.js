@@ -1,6 +1,6 @@
 const BN = require('bn.js');
 require('../src/extensions.js');
-const { taylor, getTestCallContract, signer, provider } = require('./setup/fixtures.js');
+const { taylor, getTestCallContract, getTestPipeContracts, signer, provider } = require('./setup/fixtures.js');
 const { decode, encode, expr2h, expr2s } = taylor;
 const tests = require('./json_tests/index.js');
 
@@ -16,7 +16,7 @@ beforeAll(() => {
   }).then(() => MalTay.init())
     .then(() => MalTay.watch())
     .then(() => getMalBackend(MalTay.address, MalTay.provider, MalTay.signer))
-    .then(inst => MalB = inst);
+    .then(inst => MalB = inst)
 }, 50000);
 
 afterAll(() => {
@@ -67,16 +67,6 @@ it.skip('test encoding & decoding bool', function () {
     expect(decode(encode(false, {type: 'bool'}))).toEqual(false);
 });
 
-it('test bytes concat', async function () {
-    let resp;
-
-    resp = await MalTay.call('(concat "0x11" "0x22")');
-    expect(resp).toBe('0x1122');
-
-    resp = await MalTay.call('(concat "0x11aaaabb" "0x221111ccdd")');
-    expect(resp).toBe('0x11aaaabb221111ccdd');
-});
-
 it('test bytes contig', async function () {
     let resp;
 
@@ -85,6 +75,26 @@ it('test bytes contig', async function () {
 
     resp = await MalTay.call('(contig 2 "0x221111ccdd")');
     expect(resp).toBe('0x221111ccdd221111ccdd');
+});
+
+it('eth-abi-encode', async function () {
+    let resp;
+
+    resp = await MalB.call('(eth-abi-encode (list "uint" "address") (list 5 "0xa80FA22b7d72A2889d12fad52608130C2531C68c"))');
+    expect(resp.toLowerCase()).toBe('0x0000000000000000000000000000000000000000000000000000000000000005000000000000000000000000a80FA22b7d72A2889d12fad52608130C2531C68c'.toLowerCase());
+
+    resp = await MalB.call('(eth-abi-encode "uint" 5)');
+    expect(resp).toBe('0x0000000000000000000000000000000000000000000000000000000000000005');
+});
+
+it('eth-abi-decode', async function () {
+    let resp;
+
+    resp = await MalB.call('(eth-abi-decode (list "uint" "address") "0x0000000000000000000000000000000000000000000000000000000000000005000000000000000000000000a80FA22b7d72A2889d12fad52608130C2531C68c")');
+    expect(resp).toEqual([5, '0xa80FA22b7d72A2889d12fad52608130C2531C68c']);
+
+    resp = await MalB.call('(eth-abi-decode "address" "0x000000000000000000000000a80FA22b7d72A2889d12fad52608130C2531C68c")');
+    expect(resp).toBe('0xa80FA22b7d72A2889d12fad52608130C2531C68c');
 });
 
 it('test registration & executing from root contract', async function () {
@@ -501,7 +511,106 @@ describe('test dynamic storage', function () {
     }, 10000);
 });
 
+describe('evm: call & call!', function () {
+    let addr, call_send_contract, sigs, resp;
+    it('call & call! - prereq', async function () {
+        call_send_contract = await getTestCallContract();
+        addr = call_send_contract.address;
+        sigs = {
+            add: call_send_contract.interface.getSighash('add'),
+            somevar: call_send_contract.interface.getSighash('somevar'),
+            increase: call_send_contract.interface.getSighash('increase'),
+            setname: call_send_contract.interface.getSighash('setname'),
+            name: call_send_contract.interface.getSighash('name'),
+            pay: call_send_contract.interface.getSighash('pay'),
+        }
+    }, 10000);
+
+    test('call', async function () {
+        // add(uint256,uint256)
+        resp = await MalTay.call(`(call "${addr}" "${sigs.add}" "0x00000000000000000000000000000000000000000000000000000000000000030000000000000000000000000000000000000000000000000000000000000004")`);
+        expect(resp).toEqual('0x0000000000000000000000000000000000000000000000000000000000000007');
+
+        // somevar()
+        resp = await MalTay.call(`(call "${addr}" "${sigs.somevar}" "0x")`);
+        expect(resp).toEqual('0x0000000000000000000000000000000000000000000000000000000000000005');
+    });
+
+    test('call!', async function () {
+        // increase(uint256)
+        await MalTay.send(`(call! "${addr}" "${sigs.increase}" 0 "0x0000000000000000000000000000000000000000000000000000000000000007")`);
+        resp = await MalTay.call(`(call "${addr}" "0x828e5fe8" "0x")`);
+        expect(resp).toEqual('0x000000000000000000000000000000000000000000000000000000000000000c');
+
+        // setname(string)
+        await MalTay.send(`(call! "${addr}" "${sigs.setname}" 0 "0x0000000000000000000000000000000000000000000000000000000000000020000000000000000000000000000000000000000000000000000000000000000568656c6c6f000000000000000000000000000000000000000000000000000000")`);
+        resp = await MalTay.call(`(call "${addr}" "${sigs.name}" "0x")`);
+        expect(resp).toBe('0x0000000000000000000000000000000000000000000000000000000000000020000000000000000000000000000000000000000000000000000000000000000568656c6c6f000000000000000000000000000000000000000000000000000000');
+    });
+
+    test('call! payable', async function () {
+        // pay(uint256)
+        expect((await MalTay.provider.getBalance(addr)).toNumber()).toBe(0);
+        
+        await MalTay.send(`(call! "${addr}" "${sigs.pay}" 20 "0x0000000000000000000000000000000000000000000000000000000000000007")`);
+        expect((await MalTay.provider.getBalance(addr)).toNumber()).toBe(20);
+    });
+});
+
+describe('eth-pipe-evm & eth-pipe-evm!', function () {
+    let vr, vp, mp;
+    let sigs = {};
+    it('pipe prereq', async function () {
+        ({ vr, vp, mp } = await getTestPipeContracts());
+        sigs.getVendor = vr.interface.getSighash('getVendor');
+        sigs.calculateQuantity = vp.interface.getSighash('calculateQuantity');
+        sigs.buy = mp.interface.getSighash('buy');
+    }, 10000);
+
+    test('eth-pipe-evm', async function () {
+        // inputs: product_id, wei_value ; runtime: vendor, quantity
+        // inputList steps outputIndexes
+        // steps: address, fsig, value, inputIndexes, outputHasSlotSize
+        const input = `
+            (list "0x0000000000000000000000000000000000000000000000000000000000000001" "0x00000000000000000000000000000000000000000000000000000000000003e8")
+            (list
+                (list "${vr.address}" "${sigs.getVendor}" (array 0) (array true))
+                (list "${vp.address}" "${sigs.calculateQuantity}" (array 0 2 1) (array true))
+            )
+            (array 3)
+        `;
+        console.log('***input', input)
+        resp = await MalTay.call(`(eth-pipe-evm ${input})`);
+        expect(resp).toEqual(["0x0000000000000000000000000000000000000000000000000000000000000064"]);
+    });
+
+    test('eth-pipe-evm!', async function () {
+        // inputs: product_id, buyer, wei_value1, wei_value2
+        // runtime: vendor, quantity
+        const input = `
+            (list "0x0000000000000000000000000000000000000000000000000000000000000001" "0x000000000000000000000000a80FA22b7d72A2889d12fad52608130C2531C68c" "0x00000000000000000000000000000000000000000000000000000000000003e8" "0x00000000000000000000000000000000000000000000000000000000000005dc")
+            (list
+                (list "${vr.address}" "${sigs.getVendor}" nil (array 0) (array true))
+                (list "${vp.address}" "${sigs.calculateQuantity}" nil (array 0 4 2) (array true))
+                (list "${mp.address}" "${sigs.buy}" 2 (array 4 1 0 5) (array))
+                (list "${mp.address}" "${sigs.buy}" 3 (array 4 1 0 5) (array))
+            )
+            (array)
+        `;
+        console.log('***input', input)
+        resp = await MalTay.sendAndWait(`(eth-pipe-evm! ${input})`, {value: 2500, gasLimit: 2000000});
+        console.log('eth-pipe-evm! 4 steps, gasUsed:', resp.gasUsed.toNumber());
+        expect((await MalTay.provider.getBalance(mp.address)).toNumber()).toBe(2500);
+    }, 20000);
+});
+
 describe('web3 only', function () {
+    it('insert web3 prereq', async function () {
+        for (let tt of tests.web3.prereq) {
+            await MalTay.sendAndWait(tt.expr);
+        }
+    }, 20000);
+
     for (name of Object.keys(tests.web3.tests)) {
         const tts = tests.web3.tests[name]
         tts.map((tt, i) => {
@@ -518,8 +627,8 @@ describe('web3 only', function () {
     }
 });
 
-describe('javascript call & send', function () {
-    let call_send_contract, addr, resp, expected;
+describe('javascript eth-call & eth-call!', function () {
+    let addr, call_send_contract, resp, expected;
     
     it('call & send - prereq', async function () {
         call_send_contract = await getTestCallContract();
@@ -816,22 +925,9 @@ describe.each([
     it('test logs', async function() {
         if (backendname === 'web3') {
             const resp = await instance.getFns();
-            expect(resp.length).toBe(26);
+            expect(resp.length).toBe(32);
         }
     });
-});
-
-it('test slice', async function() {
-    let resp;
-
-    resp = await MalTay.call(`(slice "0x11223344556677" 3)`);
-    expect(resp).toEqual(['0x112233', '0x44556677']);
-
-    resp = await MalTay.call(`(slice "0x1122334455" 5)`);
-    expect(resp).toEqual(['0x1122334455', '0x']);
-
-    resp = await MalTay.call(`(slice "0x" 5)`);
-    expect(resp).toEqual(['0x', '0x']);
 });
 
 it('test bytesToArray', async function() {
@@ -844,24 +940,6 @@ it('test bytesToArray', async function() {
 
     resp = await MalTay.call(`(bytesToArray "0x1122334455667788" 2 0 (array))`);
     expect(resp).toEqual(['0x1122', '0x3344', '0x5566', '0x7788']);
-});
-
-it('test join', async function() {
-    let resp;
-    resp = await MalTay.call(`(join "0x112233" "0x445566"))`);
-    expect(resp).toBe('0x112233445566');
-
-    resp = await MalTay.call(`(join "0x112233" 8))`);
-    expect(resp).toBe('0x11223300000008');
-
-    resp = await MalTay.call(`(join "hello" "yello"))`);
-    expect(resp).toBe('helloyello');
-
-    resp = await MalTay.call(`(join "0x112233" "hello"))`);
-    expect(resp).toBe('0x1122330000000000000000000000000000000000000000000000680065006c006c006f');
-
-    resp = await MalTay.call(`(join "0x" "0x445566"))`);
-    expect(resp).toBe('0x445566');
 });
 
 it('test arrayToBytes', async function() {

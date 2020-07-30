@@ -42,14 +42,52 @@ const isArray = val => {
     return !val.some(it => (typeof it) !== itemtype);
 }
 
-const callContract = (address, fsig, data, providerOrSigner, isTx=false) => {
-    const signature = fsig.split('->').map(val => val.trim());
-    const fname = signature[0].split('(')[0].trim();
-    const abi = [
-        `function ${signature[0]} ${isTx ? '' : 'view'} ${signature[1] ? 'returns ' + signature[1] : ''}`,
-    ]
-    const contract = new ethers.Contract(address, abi, providerOrSigner);
-    return contract[fname](...data);
+const ethShortAbiToHuman = (fsig, isTx) => {
+    if (typeof isTx === 'undefined') isTx = !(fsig.includes('->'));
+    const fname = fsig.split('(')[0].trim();
+    let abi = fsig;
+    
+    if (fsig.includes('->')) {
+        let replacement = !fsig.includes('public') && !fsig.includes('external') ? ' public' : '';
+        replacement += !fsig.includes('pure') && !fsig.includes('view') ? ' view' : '';
+        abi = fsig.replace('->', replacement + ' returns');
+    }
+    if (!abi.includes('public') && !abi.includes('external')) {
+        abi += ' public';
+    }
+    abi = 'function ' + abi;
+    return {
+        abi,
+        name: fname,
+    }
+}
+
+const ethHumanAbiToJson = fsig => {
+    const interf = new ethers.utils.Interface([fsig]);
+    return JSON.parse(interf.format('json'))[0];
+}
+
+const ethSig = (fabi) => {
+    const interf = new ethers.utils.Interface([fabi]);
+    return interf.getSighash(fabi.name);
+}
+
+const SLOT_SIZE_MULTI = {
+    tuple: true,
+    string: true,
+    bytes: true,
+}
+
+const ethSlotSize = (ttype) => {
+    if (SLOT_SIZE_MULTI[ttype]) return false;
+    if (ttype.slice(-1) === ']') return false;
+    return true;
+}
+
+const callContract = (address, fsig, data, providerOrSigner, isTx=false, ethvalue=0) => {
+    const {abi, name} = ethShortAbiToHuman(fsig, isTx);
+    const contract = new ethers.Contract(address, [abi], providerOrSigner);
+    return contract[name](...data, {value: ethvalue});
 }
 
 mal.globalStorage = {};
@@ -126,9 +164,12 @@ const native_extensions = {
         if (!mal.provider) return;
         return callContract(address, fsig, data, mal.provider)
     },
-    ethsend: async (address, fsig, data) => {
+    ethsend: async (address, fsig, data, ethvalue) => {
         if (!mal.signer) return;
-        const response = await callContract(address, fsig, data, mal.signer, true).catch(console.log);
+        if (!ethvalue) ethvalue = 0;
+        ethvalue = new BN(ethvalue, 10);
+
+        const response = await callContract(address, fsig, data, mal.signer, true, ethvalue).catch(console.log);
         const receipt = await response.wait();
         console.log('receipt', receipt);
         return receipt;
@@ -136,7 +177,6 @@ const native_extensions = {
     listToJsArray: liststr => {
         // ! always expects a resolved list
         liststr = liststr.replace(/(?<!(BN))\(/g, '(list ');
-        liststr = liststr.replace(/nil/g, 'Nil');
         return mal.re(liststr);
     },
     listToJsArrayStr: async liststr => {
@@ -152,7 +192,20 @@ const native_extensions = {
             val = JSON.stringify(val);
         }
         return await native_extensions.listToJsArrayStr(val);
-    }
+    },
+    ethabi_encode: (types, values) => {
+        if (!(types instanceof Array)) types = [types];
+        if (!(values instanceof Array)) values = [values];
+        return ethers.utils.defaultAbiCoder.encode(types, values);
+    },
+    ethabi_decode: (types, data) => {
+        const isarr = types instanceof Array;
+        if (!isarr) types = [types];
+        if (data instanceof Array) data = data[0];
+        const values = ethers.utils.defaultAbiCoder.decode(types, data);
+        if (isarr) return values;
+        return values[0];
+    },
 }
 
 mal.repl_env.set(malTypes._symbol('utils'), native_extensions);
@@ -199,9 +252,7 @@ async function init() {
 
 await mal.rep('(def! js-str (fn* (val) (js-eval (str "utils.jsStr(`" (pr-str val) "`)" )) ))');
 
-// Nil can be null for now, but it should follow the on-chain version when js backend will be typed
 await mal.reps(`
-(def! Nil (js-eval (str "null")) )
 
 (def! reduce (fn* (f xs init) (if (empty? xs) init (reduce f (rest xs) (f init (first xs)) ))))
 
@@ -348,7 +399,11 @@ await mal.reps(`
 
 (def! eth-call (fn* (address fsig argList) (js-eval (str "utils.ethcall('" address "','" fsig "'," (js-str argList) ")" )) ))
 
-(def! eth-call! (fn* (address fsig argList) (js-eval (str "utils.ethsend('" address "','" fsig "'," (js-str argList) ")" )) ))
+(def! eth-call! (fn* (address fsig argList ethvalue) (js-eval (str "utils.ethsend('" address "','" fsig "'," (js-str argList) "," (js-str ethvalue)  ")" )) ))
+
+(def! eth-abi-encode (fn* (types values) (js-eval (str "utils.ethabi_encode(" (js-str types) "," (js-str values) ")" )) ))
+
+(def! eth-abi-decode (fn* (types values) (js-eval (str "utils.ethabi_decode(" (js-str types) "," (js-str values) ")" )) ))
 
 `)
 
@@ -443,7 +498,7 @@ mal.getBackend = async (address, provider, signer) => {
     interpreter.sendAndWait = interpreter.send;
     interpreter.extend = expression => mal.rep(expression);
     interpreter.jsextend = (name, callb) => {
-        const utilname = name.replace(/-/g, '_');
+        const utilname = name.replace(/-/g, '_').replaceAll('!', '_bang');
         extensions[utilname] = callb;
         mal.rep(`(def! ${name} (fn* (& xs)
             (js-eval (str 
@@ -456,6 +511,12 @@ mal.getBackend = async (address, provider, signer) => {
     // needed for ethcall
     mal.provider = provider;
     mal.signer = signer;
+    mal.utils = {
+        ethShortAbiToHuman,
+        ethHumanAbiToJson,
+        ethSig,
+        ethSlotSize,
+    }
     return interpreter;
 }
 

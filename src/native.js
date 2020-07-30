@@ -26,10 +26,10 @@ const _nativeEnv = {
     mulmod:       { mutable: false, arity: 3, inputs: [{type: 'uint', name: 'a'}, {type: 'uint', name: 'b'}, {type: 'uint', name: 'c'}], outputs: [{type: 'uint', name: 'd'}] },
     signextend:   { mutable: false, arity: 2, inputs: [{type: 'uint', name: 'a'}, {type: 'uint', name: 'b'}], outputs: [{type: 'uint', name: 'c'}] },
     keccak256:    { mutable: false, arity: null, inputs: [{type: 'uint', name: 'a'}, {type: 'uint', name: 'b'}], outputs: [{type: 'uint', name: 'c'}] },
-    call:         { mutable: true, arity: 7, notimp: true },
-    callcode:     { mutable: true, arity: 7, notimp: true },
-    delegatecall: { mutable: true, arity: 6, notimp: true },
-    staticcall:   { mutable: false, arity: 6, notimp: true },
+    'call!':         { mutable: true, arity: 4 },
+    callcode:     { mutable: true, arity: 4 },
+    delegatecall: { mutable: true, arity: 3 },
+    call:   { mutable: false, arity: 3 },
     
     // Mal specific
     list:         { mutable: false, arity: null },
@@ -40,7 +40,7 @@ const _nativeEnv = {
     getf:         { mutable: false, arity: null },
     if:           { mutable: false, arity: 3 },
     contig:       { mutable: false, arity: 2, inputs: [{type: 'uint', name: 'times'}, {type: 'bytes', name: 'bytes'}], outputs: [{type: 'bytes', name: 'bytes'}] },
-    concat:       { mutable: false, arity: 2, inputs: [{type: 'bytes', name: 'arg1'}, {type: 'bytes', name: 'arg2'}], outputs: [{type: 'bytes', name: 'bytes'}] },
+    concat:       { mutable: false, arity: 2 },
     map:          { mutable: false, arity: null, inputs: [{type: 'function', name: 'function'}, {type: 'list', name: 'list'}], outputs: [{type: 'list', name: 'list'}] },
     reduce:       { mutable: false, arity: 3, inputs: [{type: 'function', name: 'function'}, {type: 'list', name: 'list'}, {type: 'uint', name: 'accumulator'}], outputs: [{type: 'uint', name: 'result'}] },
     nth:          { mutable: false, arity: 2, inputs: [{type: 'list', name: 'list'}, {type: 'uint', name: 'index'}], outputs: [{type: 'any', name: 'item'}] },
@@ -165,6 +165,7 @@ const _nativeEnv = {
     join:      { mutable: false, arity: 2 },
     range:     { mutable: false, arity: 3 },
     shift:     { mutable: false, arity: 2 },
+    'to-uint': { mutable: false, arity: 1 },
 
     // TODO: curry
     // TODO: pay
@@ -199,10 +200,10 @@ const _nativeEnv_docs = {
     mulmod:       { docs: '' },
     signextend:   { docs: '' },
     keccak256:    { docs: '' },
-    call:         { docs: '' },
+    'call!':         { docs: '' },
     callcode:     { docs: '' },
     delegatecall: { docs: '' },
-    staticcall:   { docs: '' },
+    call:   { docs: '' },
     
     // Mal specific
     list:         { docs: '' },

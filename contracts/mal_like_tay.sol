@@ -265,17 +265,32 @@ object "Taylor" {
                 let ptr2 := mload(add(arg_ptrs_ptr, 64))
                 result_ptr := _signextend(ptr1, ptr2)
             }
-            case 0x90000036 {
-                result_ptr := _call(add(arg_ptrs_ptr, 32))
+            case 0xa0000037 {
+                let address_ptr := mload(add(arg_ptrs_ptr, 32))
+                let fsig_ptr := mload(add(arg_ptrs_ptr, 64))
+                let value_ptr := mload(add(arg_ptrs_ptr, 96))
+                let data_ptr := mload(add(arg_ptrs_ptr, 128))
+                result_ptr := _call_bang(address_ptr, fsig_ptr, value_ptr, data_ptr)
             }
-            case 0x90000038 {
-                result_ptr := _callcode(add(arg_ptrs_ptr, 32))
+            case 0xa0000039 {
+                let address_ptr := mload(add(arg_ptrs_ptr, 32))
+                let fsig_ptr := mload(add(arg_ptrs_ptr, 64))
+                let value_ptr := mload(add(arg_ptrs_ptr, 96))
+                let data_ptr := mload(add(arg_ptrs_ptr, 128))
+                result_ptr := _callcode(address_ptr, fsig_ptr, value_ptr, data_ptr)
             }
-            case 0x9000003a {
-                result_ptr := _delegatecall(add(arg_ptrs_ptr, 32))
+            case 0x9800003b {
+                let address_ptr := mload(add(arg_ptrs_ptr, 32))
+                let fsig_ptr := mload(add(arg_ptrs_ptr, 64))
+                let data_ptr := mload(add(arg_ptrs_ptr, 96))
+                result_ptr := _delegatecall(address_ptr, fsig_ptr, data_ptr)
             }
-            case 0x9000003c {
-                result_ptr := _staticcall(add(arg_ptrs_ptr, 32))
+            case 0x9800003c {
+                // in Taylor: call
+                let address_ptr := mload(add(arg_ptrs_ptr, 32))
+                let fsig_ptr := mload(add(arg_ptrs_ptr, 64))
+                let data_ptr := mload(add(arg_ptrs_ptr, 96))
+                result_ptr := _staticcall(address_ptr, fsig_ptr, data_ptr)
             }
             case 0x800000c6 {
                 result_ptr := allocate(36)
@@ -603,6 +618,10 @@ object "Taylor" {
                 let iter_ptr := mload(add(arg_ptrs_ptr, 32))
                 let value_ptr := mload(add(arg_ptrs_ptr, 64))
                 result_ptr := _shift(iter_ptr, value_ptr)
+            }
+            case 0x88000136 {
+                let value_ptr := mload(add(arg_ptrs_ptr, 32))
+                result_ptr := _to_uint(value_ptr)
             }
 
             default {
@@ -1857,25 +1876,74 @@ object "Taylor" {
             mslicestore(result_ptr, buildBytesSig(32), 4)
             mstore(add(result_ptr, 4), _hash)
         }
-        
-        function _call(ptrs) -> result_ptr {
-            // TODO
-            // c := call(gas(), a, v, inptr, insize, outptr, outsize)
+
+        function _call_data(fsig_ptr, data_ptr, inputsize) -> eth_data_ptr {
+            let fsig := extractValue(fsig_ptr)
+            eth_data_ptr := allocate(add(4, inputsize))
+            
+            mslicestore(eth_data_ptr, fsig, 4)
+            mmultistore(add(eth_data_ptr, 4), add(data_ptr, 4), inputsize)
         }
         
-        function _callcode(ptrs) -> result_ptr {
-            // TODO
-            // c := callcode(gas(), a, v, inptr, insize, outptr, outsize)
+        function _call_bang(address_ptr, fsig_ptr, value_ptr, data_ptr) -> result_ptr {
+            let addr := extractValue(address_ptr)
+            let value := extractValue(value_ptr)
+            let inputsize := add(getValueLength(data_ptr), 4)
+            let eth_data_ptr := _call_data(fsig_ptr, data_ptr, inputsize)
+            result_ptr := freeMemPtr()
+            let success := call(gas(), addr, value, eth_data_ptr, inputsize, result_ptr, 0)
+            dtrequire(success, 0xeecd)
+
+            let outsize := returndatasize()
+            result_ptr := allocate(add(outsize, 4))
+            mslicestore(result_ptr, buildBytesSig(outsize), 4)
+            returndatacopy(add(result_ptr, 4), 0, outsize)
         }
         
-        function _delegatecall(ptrs) -> result_ptr {
-            // TODO
-            // c := delegatecall(gas(), a, inptr, insize, outptr, outsize)
+        function _callcode(address_ptr, fsig_ptr, value_ptr, data_ptr) -> result_ptr {
+            let addr := extractValue(address_ptr)
+            let value := extractValue(value_ptr)
+            let inputsize := add(getValueLength(data_ptr), 4)
+            let eth_data_ptr := _call_data(fsig_ptr, data_ptr, inputsize)
+            
+            result_ptr := freeMemPtr()
+            let success := callcode(gas(), addr, value, eth_data_ptr, inputsize, result_ptr, 0)
+            dtrequire(success, 0xeecd)
+
+            let outsize := returndatasize()
+            result_ptr := allocate(add(outsize, 4))
+            mslicestore(result_ptr, buildBytesSig(outsize), 4)
+            returndatacopy(add(result_ptr, 4), 0, outsize)
         }
         
-        function _staticcall(ptrs) -> result_ptr {
-            // TODO
-            // c := staticcall(gas(), a, inptr, insize, outptr, outsize)
+        function _delegatecall(address_ptr, fsig_ptr, data_ptr) -> result_ptr {
+            let addr := extractValue(address_ptr)
+            let inputsize := add(getValueLength(data_ptr), 4)
+            let eth_data_ptr := _call_data(fsig_ptr, data_ptr, inputsize)
+            
+            result_ptr := freeMemPtr()
+            let success := delegatecall(gas(), addr, eth_data_ptr, inputsize, result_ptr, 0)
+            dtrequire(success, 0xeecd)
+
+            let outsize := returndatasize()
+            result_ptr := allocate(add(outsize, 4))
+            mslicestore(result_ptr, buildBytesSig(outsize), 4)
+            returndatacopy(add(result_ptr, 4), 0, outsize)
+        }
+        
+        function _staticcall(address_ptr, fsig_ptr, data_ptr) -> result_ptr {
+            let addr := extractValue(address_ptr)
+            let inputsize := add(getValueLength(data_ptr), 4)
+            let eth_data_ptr := _call_data(fsig_ptr, data_ptr, inputsize)
+
+            result_ptr := freeMemPtr()
+            let success := staticcall(gas(), addr, eth_data_ptr, inputsize, result_ptr, 0)
+            dtrequire(success, 0xeecd)
+
+            let outsize := returndatasize()
+            result_ptr := allocate(add(outsize, 4))
+            mslicestore(result_ptr, buildBytesSig(outsize), 4)
+            returndatacopy(add(result_ptr, 4), 0, outsize)
         }
 
         function _contig(ptr1, ptr2) -> result_ptr {
@@ -1899,15 +1967,44 @@ object "Taylor" {
             }
         }
 
-        function _concat(ptr1, ptr2) -> result_ptr {
-            let len1 := bytesSize(mslice(ptr1, 4))
-            let len2 := bytesSize(mslice(ptr2, 4))
-            let newsig := buildBytesSig(add(len1, len2))
+        // transforms in list
+        function _concat(iter_ptr1, iter_ptr2) -> result_ptr {
+            if isArrayType(iter_ptr1) {
+                iter_ptr1 := _array_to_list(iter_ptr1)
+            }
+            if isArrayType(iter_ptr2) {
+                iter_ptr2 := _array_to_list(iter_ptr2)
+            }
+
+            let len1 := getValueLength(iter_ptr1)
+            let arity1 := listTypeSize(get4b(iter_ptr1))
+            let len2 := getValueLength(iter_ptr2)
+            let arity2 := listTypeSize(get4b(iter_ptr2))
+            let newsig := buildListTypeSig(add(arity1, arity2))
             
             result_ptr := allocate(add(4, add(len1, len2)))
             mslicestore(result_ptr, newsig, 4)
-            mmultistore(add(result_ptr, 4), add(ptr1, 4), len1)
-            mmultistore(add(add(result_ptr, 4), len1), add(ptr2, 4), len2)
+            mmultistore(add(result_ptr, 4), add(iter_ptr1, 4), len1)
+            mmultistore(add(add(result_ptr, 4), len1), add(iter_ptr2, 4), len2)
+        }
+
+        function _array_to_list(array_ptr) -> _newlist {
+            let arity := arrayTypeSize(get4b(array_ptr))
+            let array_siglen := getSignatureLength(add(array_ptr, 4))
+            let array_itemsig := mslice(add(array_ptr, 4), array_siglen)
+            let array_itemlen := getValueLength(add(array_ptr, 4))
+            _newlist := allocate(add( 4, add(getValueLength(array_ptr), mul(arity, array_siglen))))
+            mslicestore(_newlist, buildListTypeSig(arity), 4)
+
+            let current_ptr := add(_newlist, 4)
+            let current_arrptr := add(array_ptr, add(array_siglen, 4))
+            for { let i := 0 } lt(i, arity) { i := add(i, 1) } {
+                mslicestore(current_ptr, array_itemsig, array_siglen)
+                current_ptr := add(current_ptr, array_siglen)
+                mmultistore(current_ptr, current_arrptr, array_itemlen)
+                current_ptr := add(current_ptr, array_itemlen)
+                current_arrptr := add(current_arrptr, array_itemlen)
+            }
         }
 
         function _empty(list_ptr) -> result_ptr {
@@ -2071,24 +2168,29 @@ object "Taylor" {
             let list_arity := listTypeSize(mslice(list_ptr, 4))
             let newarity := sub(list_arity, 1)
             let newlistid := buildListTypeSig(newarity)
+            // The length of the first element
             let elem_length := getTypedLength(add(list_ptr, 4))
-            let newlist := allocate(add(4, mul(newarity, elem_length)))
+            // The final list length
+            let newlist_length := 0
+
+            // ! allocate mem after we know the data length
+            let newlist := freeMemPtr()
             result_ptr := newlist
 
             mslicestore(newlist, newlistid, 4)
-            newlist := add(newlist, 4)
+            newlist_length := add(newlist_length, 4)
 
             // skip signature &  first item
             list_ptr := add(list_ptr, 4)
-            
             list_ptr := add(list_ptr, elem_length)
 
             for { let i := 0 } lt(i, newarity) { i := add(i, 1) } {
                 elem_length := getTypedLength(list_ptr)
-                mmultistore(newlist, list_ptr, elem_length)
+                mmultistore(add(newlist, newlist_length), list_ptr, elem_length)
                 list_ptr := add(list_ptr, elem_length)
-                newlist := add(newlist, elem_length)
+                newlist_length := add(newlist_length, elem_length)
             }
+            newlist := allocate(newlist_length)
         }
 
         function _rest_array(array_ptr) -> result_ptr {
@@ -2830,6 +2932,18 @@ object "Taylor" {
                 current_ptr := add(current_ptr, item_len)
                 mmultistore(current_ptr, add(iter_ptr, sig_len), mul(item_len, arity))
             }
+        }
+
+        // TODO better casting
+        function _to_uint(value_ptr) -> result_ptr {
+            let vallen := getValueLength(value_ptr)
+            let len := vallen
+            if gt(mod(len, 4), 0) {
+                len := mul(add(div(len, 4), 1), 4)
+            }
+            result_ptr := allocate(add(len, 4))
+            mslicestore(result_ptr, buildUintSig(len), 4)
+            mmultistore(add(result_ptr, 4), add(value_ptr, 4), len)
         }
 
         function _push(array_ptr, value_ptr) -> result_ptr {

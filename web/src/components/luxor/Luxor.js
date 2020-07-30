@@ -4,6 +4,7 @@ import { Button, Icon } from 'native-base';
 import taylor from '@pipeos/taylor';
 import SpreadSheet, { DefaultCell } from '@rowsncolumns/spreadsheet';
 import { WETH_EXAMPLE } from './fixtures.js';
+import ethers from 'ethers';
 
 const MARKER_JS = '=', MARKER_WEB3 = '$';
 // TODO: fix for "something G5 something"
@@ -26,6 +27,8 @@ class CanvasDatagrid extends React.Component {
     
     constructor(props) {
         super(props);
+
+        this.onChangeSelectedSheet = this.onChangeSelectedSheet.bind(this);
     }
     
     updateAttributes(nextProps) {
@@ -38,6 +41,27 @@ class CanvasDatagrid extends React.Component {
     componentDidMount() {
         document.getElementsByClassName('rowsncolumns-spreadsheet')[0].style.height='100%'
         document.getElementsByClassName('rowsncolumns-spreadsheet')[0].style.width = '100%';
+        this.colorFixes();
+    }
+
+    onChangeSelectedSheet(sheetId) {
+        this.colorFixes();
+        this.props.onChangeSelectedSheet(sheetId);
+    }
+
+    colorFixes() {
+        const colorActive = 'rgb(155, 112, 63)';
+        const colorInactive = '#1A202C';
+        const activeSheetBtn = document.getElementsByClassName("css-1e5clkk");
+        const kids = document.getElementsByClassName("css-197w9ay")[0].children;
+
+        for (const kid of kids) {
+            kid.children[0].style.backgroundColor = colorInactive;
+        }
+
+        for (const elem of activeSheetBtn) {
+            elem.style.backgroundColor = colorActive;
+        }
     }
 
     render() {
@@ -50,7 +74,7 @@ class CanvasDatagrid extends React.Component {
                 snap={true}
                 style={{ height: '100%' }}
                 onChange={this.props.onChange}
-                onChangeSelectedSheet={this.props.onChangeSelectedSheet}
+                onChangeSelectedSheet={this.onChangeSelectedSheet}
                 onChangeCells={this.props.onChangeCells}
             />
         )
@@ -61,6 +85,7 @@ const DEFAULT_SHEETS = [
     {
       name: 'Sheet 1',
       id: 0,
+      tabColor: 'rgb(155, 112, 63)',
       cells: {
         1: {
           1: {
@@ -138,12 +163,16 @@ const getCell = (extraprops) => {
         const marker_width = props.height/3;
         const x = props.x + marker_width/2;
         const y = props.y + marker_width/2;
+        delete newprops.formatter;
         if (props.text && props.text[0] === MARKER_JS) {
-            if (props.text.includes('eth-call!')) {
+            if (props.text.includes('!')) {
                 return <CellEthCallBang { ...newprops } { ...extraprops } />
             }
             return <CellFormula { ...newprops } { ...{ marker_color: 'rgb(205, 168, 105)' }} />
         } else if (props.text && props.text[0] === MARKER_WEB3) {
+            if (props.text.includes('!')) {
+                return <CellEthCallBang { ...newprops } { ...extraprops } />
+            }
             return <CellFormula { ...newprops } { ...{ marker_color: 'rgb(155, 112, 63)' }} />
         }
         return <DefaultCell {...newprops} />
@@ -232,6 +261,19 @@ class Luxor extends React.Component {
             self.mergeData(newdata);
             return;
         });
+        this.props.taylor_js.jsextend('eth-pipe', (args) => {
+            const newdata = luxor_extensions.ethPipe(args);
+            self.mergeData(newdata);
+            return;
+        });
+        this.props.taylor_js.jsextend('eth-pipe-evm', async (args) => {
+            const newdata = await luxor_extensions.ethPipeEvm(args, this.props.taylor_web3);
+            return newdata;
+        });
+        this.props.taylor_js.jsextend('eth-pipe-evm!', async (args) => {
+            const newdata = await luxor_extensions.ethPipeEvmBang(args, this.props.taylor_web3);
+            return newdata;
+        });
     }
 
     formatter(value, key) {
@@ -242,6 +284,7 @@ class Luxor extends React.Component {
         ) ? this.formattedData[key].value : value;
         
         if (response instanceof Object && !(response instanceof Array)) {
+            if (response._hex) response = new taylor.BN(response._hex.substring(2), 16);
             if (taylor.BN.isBN(response)) return response.toString(10);
             return JSON.stringify(response);
         }
@@ -499,7 +542,7 @@ function luxorTestsDataEthCall(addresses, fsigs, inirow=0, rows=50, cols=8) {
     data[3][4] = `=(table-rowf "G6" F9)`;
     // data[4][4] = `=(table-colf "G9" F9)`;
     data[3][5] = {a:1, b:2, c:3, d:4};
-    data[5][4] = `=(eth-call! A7 "increase(uint)" (list 4))`
+    data[5][4] = `=(eth-call! A7 "increase(uint)" (list 4) 0)`
     return data;
 }
 
@@ -532,9 +575,11 @@ const tayextension = {
 
             let newcode = ``
             for (let row = startDigit; row <= endDigit; row++) {
+                newcode += '(list ';
                 for (let col = startCode; col <= endCode; col++) {
                     newcode += String.fromCharCode(col) + row + ' ';
                 }
+                newcode += ') ';
             }
             result += `(list ${newcode})`;
         });
@@ -559,6 +604,7 @@ const table_f_ext = (args) => {
 
     return { iter, ri, ci };
 }
+
 
 const _tableRowf = (iter, ri, ci) => {
     const newdata = {};
@@ -590,6 +636,45 @@ const _tableColf = (iter, ri, ci) => {
     return newdata;
 }
 
+const _tableAbi = (cell_table, abi, callback) => {
+    const iter = [['Inputs', abi.name]];
+    const isTx = ['view', 'pure'].includes(abi.stateMutability) ? '' : '!';
+    const isPayable = abi.stateMutability === 'payable';
+    if (isTx) {
+        abi.outputs = [{name: 'receipt', type: 'object'}];
+    }
+    
+    abi.inputs.forEach(v => {
+        iter.push([`${v.name} <${v.type}>`, 0]);
+    });
+    if (isPayable) iter.push(['ETH value <WEI>', 0]);
+    iter.push(['Outputs', '']);
+    abi.outputs.forEach(v => {
+        iter.push([`${v.name} <${v.type}>`, 0]);
+    });
+
+    const newdata = _tableRowf(iter, cell_table[0], cell_table[1]);
+    const outs = abi.outputs.map(v => v.type);
+    const fsig = `${abi.name}(${abi.inputs.map(v => v.type)})${outs.length > 0 ? '->('+outs.join()+')' : '' }`;
+    const arg_cells = [...new Array(abi.inputs.length)].map((_, i) => keyToL(cell_table[0]+i+1, cell_table[1]+1));
+    let out_indx = [cell_table[0] + abi.inputs.length + 2,  cell_table[1]+ 1];
+    let cell_btn = [cell_table[0] + abi.inputs.length + 1, cell_table[1]+1];
+    let pay_key;
+    if (isPayable) {
+        out_indx[0] = out_indx[0] + 1;
+        cell_btn[0] = cell_btn[0] + 1;
+        pay_key = keyToL(out_indx[0]-2, out_indx[1]);
+    }
+    const out_key = keyToL(...out_indx);
+    const text = callback(fsig, arg_cells, isTx, out_key, pay_key);
+    newdata[cell_btn[0]][cell_btn[1]] = { text };
+
+    return newdata;
+}
+
+const STATE_MUTAB = { pure: 0, view: 1, nonpayable: 2, payable: 3 }
+const STATE_MUTAB_REV = {0: 'pure', 1: 'view', 2: 'nonpayable', 3: 'payable'};
+
 const luxor_extensions = {
     tableRowf: (args) => {
         let { iter, ri, ci } = table_f_ext(args);
@@ -604,36 +689,149 @@ const luxor_extensions = {
         const address = args[1];
         let abi = JSON.parse(args[2].replace(/\'/g, '"'));
 
-        const iter = [['Inputs', abi.name]];
-        const isTx = ['view', 'pure'].includes(abi.stateMutability) ? '' : '!';
-        if (isTx) {
-            abi.outputs = [{name: 'receipt', type: 'object'}];
-        }
-        
-        abi.inputs.forEach(v => {
-            iter.push([`${v.name} <${v.type}>`, 0]);
+        const newdata = _tableAbi(cell_table, abi, (fsig, arg_cells, isTx, out_key, pay_key) => {
+            if (!isTx) {
+                return `=(table-colf "${out_key}" (eth-call "${address}" "${fsig}" (list ${arg_cells.join(' ')})) )`
+            } else {
+                return `=(table-rowf "${out_key}" (eth-call! "${address}" "${fsig}" (list ${arg_cells.join(' ')}) ${pay_key}) )`
+            }
         });
-        iter.push(['Outputs', '']);
-        abi.outputs.forEach(v => {
-            iter.push([`${v.name} <${v.type}>`, 0]);
-        });
-
-        const newdata = _tableRowf(iter, cell_table[0], cell_table[1]);
-        const outs = abi.outputs.map(v => v.type);
-        const fsig = `${abi.name}(${abi.inputs.map(v => v.type)})${outs.length > 0 ? '->('+outs.join()+')' : '' }`;
-        const arg_cells = [...new Array(abi.inputs.length)].map((_, i) => keyToL(cell_table[0]+i+1, cell_table[1]+1));
-        const out_indx = [cell_table[0] + abi.inputs.length + 2,  cell_table[1]+ 1];
-        const out_key = keyToL(...out_indx);
-        const cell_btn = [cell_table[0] + abi.inputs.length + 1, cell_table[1]+1];
-
-        let text;
-        if (!isTx) {
-            text = `=(table-colf "${out_key}" (eth-call "${address}" "${fsig}" (list ${arg_cells.join(' ')})) )`
-        } else {
-            text = `=(table-rowf "${out_key}" (eth-call! "${address}" "${fsig}" (list ${arg_cells.join(' ')})) )`
-        }
-        newdata[cell_btn[0]][cell_btn[1]] = { text };
         return newdata;
+    },
+    ethPipe: args => {
+        //[ "F6", [ [<addr>,<humansig>] ], [ [0, 0, 1, 1] ] ]
+        const cell_table = lkeyToKey(args[0]).split(';').map(val => parseInt(val));
+        const steps = args[1];
+        const edges = args[2];
+        const payable = args[3] || [];
+        const utils = taylor.malBackend.utils;
+        let inputMap = {}, outputMap = {}, graph_inputs = {}, outmapcpy;
+        let stateMutability = 0;
+
+        const abis = steps.map(step => {
+            // fixme - it's from tay<->js boundary (better regex in taylor)
+            step[1] = step[1].replaceAll('(list ', '(');
+            const jsonabi = utils.ethHumanAbiToJson(utils.ethShortAbiToHuman(step[1], false).abi);
+            step[1] = utils.ethSig(jsonabi);
+            if (jsonabi.stateMutability && STATE_MUTAB[jsonabi.stateMutability] > stateMutability) {
+                stateMutability = STATE_MUTAB[jsonabi.stateMutability];
+            }
+            return jsonabi;
+        });
+
+        abis.map((fabi, i) => {
+            i = i+1; // first node is inputs
+            inputMap[i] = {};
+            outputMap[i] = {};
+            fabi.inputs.forEach((io, j) => inputMap[i][j] = {io});
+            // TODO fixme ethers issue: outputs not ouputs
+            fabi.outputs = fabi.ouputs;
+            fabi.ouputs.forEach((io, j) => outputMap[i][j] = {io});
+        });
+        outmapcpy = JSON.parse(JSON.stringify(outputMap));
+
+        edges.forEach(edge => {
+            console.log('edge', edge)
+            const [node1, out1, node2, in2] = edge;
+
+            if (outmapcpy[node1] && outmapcpy[node1][out1]) delete outmapcpy[node1][out1];
+
+            if (outputMap[node1] && outputMap[node1][out1]) {
+                console.log('node1', node1, out1, Object.values(outputMap).slice(0, node1));
+                outputMap[node1][out1].count = Object.values(outputMap).slice(0, node1).map(val => Object.keys(val).length).reduce((sum, val) => sum+val);
+            }
+            inputMap[node2][in2].source = [node1, out1];
+            if (node1 === 0) graph_inputs[out1] = inputMap[node2][in2].io;
+        });
+
+        let tempcount = 0;
+        const outputs = Object.keys(outmapcpy).map(key => Object.keys(outmapcpy[key]).map(port => {
+            const io = outputMap[key][port].io;
+            io.count = outputMap[key][port].count || (tempcount + 1);
+            tempcount = io.count;
+            return io;
+        })).reduce((accum, val) => accum.concat(val), []);
+
+        let abi = {
+            inputs: Object.values(graph_inputs),
+            outputs,
+            name: 'pipedFunction',
+            stateMutability: STATE_MUTAB_REV[stateMutability],
+        }
+
+        let count = abi.inputs.length - 1;
+        let stepIoInfo = abis.map((fabi, i) => {
+            i = i+1;
+
+            let indexes = fabi.inputs.map((io, j) => {
+                const out = inputMap[i][j].source;
+                // global input
+                if (out[0] === 0) {
+                    return out[1];
+                } else {
+                    return count + outputMap[out[0]][out[1]].count;
+                }
+            });
+            let outputHasSlotSize = fabi.outputs.map((io, k) => utils.ethSlotSize(io.type));
+            indexes = '(array ' + indexes.join(' ') + ')';
+            outputHasSlotSize = '(array ' + outputHasSlotSize.join(' ') + ')';
+            return [indexes, outputHasSlotSize];
+        });
+
+        let payableIndexes = payable.map(val => {
+            if (!val) return 'nil';
+            if (val[0] === 0) return val[1];
+            return count + outputMap[val[0]][val[1]].count;
+        })
+        if (payableIndexes.length === 0) payableIndexes = steps.map(st => '');
+
+        let fsteps = steps.map((step, i) => `(list "${step[0]}" "${step[1]}" ${payableIndexes[i]} ${stepIoInfo[i][0]} ${stepIoInfo[i][1]} )`).join(' ');
+        fsteps = `(list ${fsteps})`;
+        let outputIndexes = '(array ' + abi.outputs.map(val => val.count+count+1).join(' ') + ')';
+
+        let output_types;
+        if (abi.outputs.length === 0) output_types = '';
+        else output_types = '(list ' + abi.outputs.map(out => `"${out.type}"`).join(' ') + ')';
+
+        const newdata = _tableAbi(cell_table, abi, (fsig, arg_cells, isTx, out_key, pay_key) => {
+            const args = arg_cells.map((cellkey, i) => `(eth-abi-encode "${abi.inputs[i].type}" ${cellkey} )`);
+            
+            if (!isTx && payable.length === 0) {
+                return `=(table-colf "${out_key}" (eth-abi-decode ${output_types} (eth-pipe-evm (list ${args.join(' ')}) ${fsteps} ${outputIndexes} )))`
+            } else {
+                return `=(table-rowf "${out_key}" (eth-pipe-evm! (list ${args.join(' ')}) ${fsteps} ${outputIndexes} ${pay_key} ))`
+            }
+        });
+        
+        return newdata;
+    },
+    ethPipeEvm: async (args, interpreter) => {
+        const inputs = args[0];
+        const steps = args[1];
+        const outputndx = args[2];
+
+        let fsteps = steps.map((step, i) => `(list "${step[0]}" "${step[1]}" (array ${step[2].join(' ')}) (array ${step[3].join(' ')}) )`).join(' ');
+        fsteps = `(list ${fsteps})`;
+        let outputIndexes = '(array ' + outputndx.join(' ') + ')';
+        const ins = inputs.map(val => `"${val}"`);
+        const expr = `(eth-pipe-evm (list ${ins.join(' ')}) ${fsteps} ${outputIndexes} )`
+        return interpreter.call(expr);
+    },
+    ethPipeEvmBang: async (args, interpreter) => {
+        const inputs = args[0];
+        const steps = args[1];
+        const outputndx = args[2];
+        let eth_value = args[3] || 0;
+        eth_value = new taylor.BN(eth_value, 10);
+
+        let fsteps = steps.map((step, i) => `(list "${step[0]}" "${step[1]}" ${step[2] || 'nil'} (array ${step[3].join(' ')}) (array ${step[4].join(' ')}) )`).join(' ');
+        fsteps = `(list ${fsteps})`;
+        let outputIndexes = '(array ' + outputndx.join(' ') + ')';
+        const ins = inputs.map(val => `"${val}"`);
+        const expr = `(eth-pipe-evm! (list ${ins.join(' ')}) ${fsteps} ${outputIndexes} )`
+        const receipt = await interpreter.sendAndWait(expr, {value: eth_value});
+        console.log('receipt', receipt);
+        return receipt;
     }
 }
 
