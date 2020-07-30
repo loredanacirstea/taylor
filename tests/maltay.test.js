@@ -77,6 +77,26 @@ it('test bytes contig', async function () {
     expect(resp).toBe('0x221111ccdd221111ccdd');
 });
 
+it('eth-abi-encode', async function () {
+    let resp;
+
+    resp = await MalB.call('(eth-abi-encode (list "uint" "address") (list 5 "0xa80FA22b7d72A2889d12fad52608130C2531C68c"))');
+    expect(resp.toLowerCase()).toBe('0x0000000000000000000000000000000000000000000000000000000000000005000000000000000000000000a80FA22b7d72A2889d12fad52608130C2531C68c'.toLowerCase());
+
+    resp = await MalB.call('(eth-abi-encode "uint" 5)');
+    expect(resp).toBe('0x0000000000000000000000000000000000000000000000000000000000000005');
+});
+
+it('eth-abi-decode', async function () {
+    let resp;
+
+    resp = await MalB.call('(eth-abi-decode (list "uint" "address") "0x0000000000000000000000000000000000000000000000000000000000000005000000000000000000000000a80FA22b7d72A2889d12fad52608130C2531C68c")');
+    expect(resp).toEqual([5, '0xa80FA22b7d72A2889d12fad52608130C2531C68c']);
+
+    resp = await MalB.call('(eth-abi-decode "address" "0x000000000000000000000000a80FA22b7d72A2889d12fad52608130C2531C68c")');
+    expect(resp).toBe('0xa80FA22b7d72A2889d12fad52608130C2531C68c');
+});
+
 it('test registration & executing from root contract', async function () {
     let expr, resp;
 

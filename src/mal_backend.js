@@ -62,6 +62,18 @@ const ethSig = (fabi) => {
     return interf.getSighash(fabi.name);
 }
 
+const SLOT_SIZE_MULTI = {
+    tuple: true,
+    string: true,
+    bytes: true,
+}
+
+const ethSlotSize = (ttype) => {
+    if (SLOT_SIZE_MULTI[ttype]) return false;
+    if (ttype.slice(-1) === ']') return false;
+    return true;
+}
+
 const callContract = (address, fsig, data, providerOrSigner, isTx=false) => {
     const {abi, name} = ethShortAbiToHuman(fsig, isTx);
     const contract = new ethers.Contract(address, [abi], providerOrSigner);
@@ -167,7 +179,20 @@ const native_extensions = {
             val = JSON.stringify(val);
         }
         return await native_extensions.listToJsArrayStr(val);
-    }
+    },
+    ethabi_encode: (types, values) => {
+        if (!(types instanceof Array)) types = [types];
+        if (!(values instanceof Array)) values = [values];
+        return ethers.utils.defaultAbiCoder.encode(types, values);
+    },
+    ethabi_decode: (types, data) => {
+        const isarr = types instanceof Array;
+        if (!isarr) types = [types];
+        if (data instanceof Array) data = data[0];
+        const values = ethers.utils.defaultAbiCoder.decode(types, data);
+        if (isarr) return values;
+        return values[0];
+    },
 }
 
 mal.repl_env.set(malTypes._symbol('utils'), native_extensions);
@@ -363,6 +388,10 @@ await mal.reps(`
 
 (def! eth-call! (fn* (address fsig argList) (js-eval (str "utils.ethsend('" address "','" fsig "'," (js-str argList) ")" )) ))
 
+(def! eth-abi-encode (fn* (types values) (js-eval (str "utils.ethabi_encode(" (js-str types) "," (js-str values) ")" )) ))
+
+(def! eth-abi-decode (fn* (types values) (js-eval (str "utils.ethabi_decode(" (js-str types) "," (js-str values) ")" )) ))
+
 `)
 
 /*  */
@@ -473,6 +502,7 @@ mal.getBackend = async (address, provider, signer) => {
         ethShortAbiToHuman,
         ethHumanAbiToJson,
         ethSig,
+        ethSlotSize,
     }
     return interpreter;
 }
