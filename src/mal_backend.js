@@ -44,10 +44,20 @@ const isArray = val => {
 
 const ethShortAbiToHuman = (fsig, isTx) => {
     if (typeof isTx === 'undefined') isTx = !(fsig.includes('->'));
-    const signature = fsig.split('->').map(val => val.trim());
-    const fname = signature[0].split('(')[0].trim();
+    const fname = fsig.split('(')[0].trim();
+    let abi = fsig;
+    
+    if (fsig.includes('->')) {
+        let replacement = !fsig.includes('public') && !fsig.includes('external') ? ' public' : '';
+        replacement += !fsig.includes('pure') && !fsig.includes('view') ? ' view' : '';
+        abi = fsig.replace('->', replacement + ' returns');
+    }
+    if (!abi.includes('public') && !abi.includes('external')) {
+        abi += ' public';
+    }
+    abi = 'function ' + abi;
     return {
-        abi: `function ${signature[0]} ${isTx ? '' : 'view'} ${signature[1] ? 'returns ' + signature[1] : ''}`,
+        abi,
         name: fname,
     }
 }
@@ -74,10 +84,10 @@ const ethSlotSize = (ttype) => {
     return true;
 }
 
-const callContract = (address, fsig, data, providerOrSigner, isTx=false) => {
+const callContract = (address, fsig, data, providerOrSigner, isTx=false, ethvalue=0) => {
     const {abi, name} = ethShortAbiToHuman(fsig, isTx);
     const contract = new ethers.Contract(address, [abi], providerOrSigner);
-    return contract[name](...data);
+    return contract[name](...data, {value: ethvalue});
 }
 
 mal.globalStorage = {};
@@ -154,9 +164,12 @@ const native_extensions = {
         if (!mal.provider) return;
         return callContract(address, fsig, data, mal.provider)
     },
-    ethsend: async (address, fsig, data) => {
+    ethsend: async (address, fsig, data, ethvalue) => {
         if (!mal.signer) return;
-        const response = await callContract(address, fsig, data, mal.signer, true).catch(console.log);
+        if (!ethvalue) ethvalue = 0;
+        ethvalue = new BN(ethvalue, 10);
+
+        const response = await callContract(address, fsig, data, mal.signer, true, ethvalue).catch(console.log);
         const receipt = await response.wait();
         console.log('receipt', receipt);
         return receipt;
@@ -386,7 +399,7 @@ await mal.reps(`
 
 (def! eth-call (fn* (address fsig argList) (js-eval (str "utils.ethcall('" address "','" fsig "'," (js-str argList) ")" )) ))
 
-(def! eth-call! (fn* (address fsig argList) (js-eval (str "utils.ethsend('" address "','" fsig "'," (js-str argList) ")" )) ))
+(def! eth-call! (fn* (address fsig argList ethvalue) (js-eval (str "utils.ethsend('" address "','" fsig "'," (js-str argList) "," (js-str ethvalue)  ")" )) ))
 
 (def! eth-abi-encode (fn* (types values) (js-eval (str "utils.ethabi_encode(" (js-str types) "," (js-str values) ")" )) ))
 

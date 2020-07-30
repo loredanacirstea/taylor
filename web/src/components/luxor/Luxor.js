@@ -542,7 +542,7 @@ function luxorTestsDataEthCall(addresses, fsigs, inirow=0, rows=50, cols=8) {
     data[3][4] = `=(table-rowf "G6" F9)`;
     // data[4][4] = `=(table-colf "G9" F9)`;
     data[3][5] = {a:1, b:2, c:3, d:4};
-    data[5][4] = `=(eth-call! A7 "increase(uint)" (list 4))`
+    data[5][4] = `=(eth-call! A7 "increase(uint)" (list 4) 0)`
     return data;
 }
 
@@ -639,6 +639,7 @@ const _tableColf = (iter, ri, ci) => {
 const _tableAbi = (cell_table, abi, callback) => {
     const iter = [['Inputs', abi.name]];
     const isTx = ['view', 'pure'].includes(abi.stateMutability) ? '' : '!';
+    const isPayable = abi.stateMutability === 'payable';
     if (isTx) {
         abi.outputs = [{name: 'receipt', type: 'object'}];
     }
@@ -646,6 +647,7 @@ const _tableAbi = (cell_table, abi, callback) => {
     abi.inputs.forEach(v => {
         iter.push([`${v.name} <${v.type}>`, 0]);
     });
+    if (isPayable) iter.push(['ETH value <WEI>', 0]);
     iter.push(['Outputs', '']);
     abi.outputs.forEach(v => {
         iter.push([`${v.name} <${v.type}>`, 0]);
@@ -655,14 +657,23 @@ const _tableAbi = (cell_table, abi, callback) => {
     const outs = abi.outputs.map(v => v.type);
     const fsig = `${abi.name}(${abi.inputs.map(v => v.type)})${outs.length > 0 ? '->('+outs.join()+')' : '' }`;
     const arg_cells = [...new Array(abi.inputs.length)].map((_, i) => keyToL(cell_table[0]+i+1, cell_table[1]+1));
-    const out_indx = [cell_table[0] + abi.inputs.length + 2,  cell_table[1]+ 1];
+    let out_indx = [cell_table[0] + abi.inputs.length + 2,  cell_table[1]+ 1];
+    let cell_btn = [cell_table[0] + abi.inputs.length + 1, cell_table[1]+1];
+    let pay_key;
+    if (isPayable) {
+        out_indx[0] = out_indx[0] + 1;
+        cell_btn[0] = cell_btn[0] + 1;
+        pay_key = keyToL(out_indx[0]-2, out_indx[1]);
+    }
     const out_key = keyToL(...out_indx);
-    const cell_btn = [cell_table[0] + abi.inputs.length + 1, cell_table[1]+1];
-    const text = callback(fsig, arg_cells, isTx, out_key);
+    const text = callback(fsig, arg_cells, isTx, out_key, pay_key);
     newdata[cell_btn[0]][cell_btn[1]] = { text };
 
     return newdata;
 }
+
+const STATE_MUTAB = { pure: 0, view: 1, nonpayable: 2, payable: 3 }
+const STATE_MUTAB_REV = {0: 'pure', 1: 'view', 2: 'nonpayable', 3: 'payable'};
 
 const luxor_extensions = {
     tableRowf: (args) => {
@@ -678,11 +689,11 @@ const luxor_extensions = {
         const address = args[1];
         let abi = JSON.parse(args[2].replace(/\'/g, '"'));
 
-        const newdata = _tableAbi(cell_table, abi, (fsig, arg_cells, isTx, out_key) => {
+        const newdata = _tableAbi(cell_table, abi, (fsig, arg_cells, isTx, out_key, pay_key) => {
             if (!isTx) {
                 return `=(table-colf "${out_key}" (eth-call "${address}" "${fsig}" (list ${arg_cells.join(' ')})) )`
             } else {
-                return `=(table-rowf "${out_key}" (eth-call! "${address}" "${fsig}" (list ${arg_cells.join(' ')})) )`
+                return `=(table-rowf "${out_key}" (eth-call! "${address}" "${fsig}" (list ${arg_cells.join(' ')}) ${pay_key}) )`
             }
         });
         return newdata;
@@ -695,12 +706,16 @@ const luxor_extensions = {
         const payable = args[3] || [];
         const utils = taylor.malBackend.utils;
         let inputMap = {}, outputMap = {}, graph_inputs = {}, outmapcpy;
+        let stateMutability = 0;
 
         const abis = steps.map(step => {
             // fixme - it's from tay<->js boundary (better regex in taylor)
             step[1] = step[1].replaceAll('(list ', '(');
             const jsonabi = utils.ethHumanAbiToJson(utils.ethShortAbiToHuman(step[1], false).abi);
             step[1] = utils.ethSig(jsonabi);
+            if (jsonabi.stateMutability && STATE_MUTAB[jsonabi.stateMutability] > stateMutability) {
+                stateMutability = STATE_MUTAB[jsonabi.stateMutability];
+            }
             return jsonabi;
         });
 
@@ -741,7 +756,7 @@ const luxor_extensions = {
             inputs: Object.values(graph_inputs),
             outputs,
             name: 'pipedFunction',
-            stateMutability: 'view' // TODO in human abi declaration
+            stateMutability: STATE_MUTAB_REV[stateMutability],
         }
 
         let count = abi.inputs.length - 1;
@@ -778,13 +793,13 @@ const luxor_extensions = {
         if (abi.outputs.length === 0) output_types = '';
         else output_types = '(list ' + abi.outputs.map(out => `"${out.type}"`).join(' ') + ')';
 
-        const newdata = _tableAbi(cell_table, abi, (fsig, arg_cells, isTx, out_key) => {
+        const newdata = _tableAbi(cell_table, abi, (fsig, arg_cells, isTx, out_key, pay_key) => {
             const args = arg_cells.map((cellkey, i) => `(eth-abi-encode "${abi.inputs[i].type}" ${cellkey} )`);
             
             if (!isTx && payable.length === 0) {
                 return `=(table-colf "${out_key}" (eth-abi-decode ${output_types} (eth-pipe-evm (list ${args.join(' ')}) ${fsteps} ${outputIndexes} )))`
             } else {
-                return `=(table-rowf "${out_key}" (eth-pipe-evm! (list ${args.join(' ')}) ${fsteps} ${outputIndexes} ))`
+                return `=(table-rowf "${out_key}" (eth-pipe-evm! (list ${args.join(' ')}) ${fsteps} ${outputIndexes} ${pay_key} ))`
             }
         });
         
@@ -806,13 +821,15 @@ const luxor_extensions = {
         const inputs = args[0];
         const steps = args[1];
         const outputndx = args[2];
+        let eth_value = args[3] || 0;
+        eth_value = new taylor.BN(eth_value, 10);
 
         let fsteps = steps.map((step, i) => `(list "${step[0]}" "${step[1]}" ${step[2] || 'nil'} (array ${step[3].join(' ')}) (array ${step[4].join(' ')}) )`).join(' ');
         fsteps = `(list ${fsteps})`;
         let outputIndexes = '(array ' + outputndx.join(' ') + ')';
         const ins = inputs.map(val => `"${val}"`);
         const expr = `(eth-pipe-evm! (list ${ins.join(' ')}) ${fsteps} ${outputIndexes} )`
-        const receipt = await interpreter.sendAndWait(expr);
+        const receipt = await interpreter.sendAndWait(expr, {value: eth_value});
         console.log('receipt', receipt);
         return receipt;
     }
