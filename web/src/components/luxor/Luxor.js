@@ -3,8 +3,7 @@ import { RegularPolygon, Arrow } from 'react-konva';
 import { Button, Icon } from 'native-base';
 import taylor from '@pipeos/taylor';
 import SpreadSheet, { DefaultCell } from '@rowsncolumns/spreadsheet';
-import { WETH_EXAMPLE } from './fixtures.js';
-import ethers from 'ethers';
+import { WETH_EXAMPLE, PIPE_EXAMPLE } from './fixtures.js';
 
 const MARKER_JS = '=', MARKER_WEB3 = '$';
 // TODO: fix for "something G5 something"
@@ -45,55 +44,55 @@ class CanvasDatagrid extends React.Component {
     }
 
     onChangeSelectedSheet(sheetId) {
-        this.colorFixes();
+        console.log('onChangeSelectedSheet', sheetId)
         this.props.onChangeSelectedSheet(sheetId);
+        setTimeout(this.colorFixes, 200);
     }
 
     colorFixes() {
-        const colorActive = 'rgb(155, 112, 63)';
-        const colorInactive = '#1A202C';
-        const activeSheetBtn = document.getElementsByClassName("css-1e5clkk");
-        const kids = document.getElementsByClassName("css-197w9ay")[0].children;
+        // const colorActive = 'rgb(155, 112, 63)';
+        // const colorInactive = '#1A202C';
+        // const activeSheetBtn = document.getElementsByClassName("css-1e5clkk");
+        // const kids = document.getElementsByClassName("css-197w9ay")[0].children;
+        
+        // for (const kid of kids) {
+        //     kid.children[0].style.backgroundColor = colorInactive;
+        //     kid.children[1].style.backgroundColor = colorInactive;
+        // }
 
-        for (const kid of kids) {
-            kid.children[0].style.backgroundColor = colorInactive;
-        }
-
-        for (const elem of activeSheetBtn) {
-            elem.style.backgroundColor = colorActive;
-        }
+        // for (const elem of activeSheetBtn) {
+        //     console.log('elem', elem)
+        //     elem.style.backgroundColor = colorActive;
+        // }
     }
-
     render() {
         return (
             <SpreadSheet
                 sheets={this.props.data}
+                initialColorMode="dark"
                 showFormulabar={true}
+                showToolbar={false}
+                tabColor='rgb(155, 112, 63)'
+                allowNewSheet={true}
                 formatter={this.props.formatter}
                 CellRenderer={this.props.Cell}
                 snap={true}
                 style={{ height: '100%' }}
                 onChange={this.props.onChange}
                 onChangeSelectedSheet={this.onChangeSelectedSheet}
-                onChangeCells={this.props.onChangeCells}
+                onChangeCell={this.props.onChangeCell}
             />
         )
     }
 }
 
 const DEFAULT_SHEETS = [
-    {
-      name: 'Sheet 1',
-      id: 0,
-      tabColor: 'rgb(155, 112, 63)',
-      cells: {
-        1: {
-          1: {
-            text: ''
-          }
-        }
-      }
-    }
+    { name: 'Workspace', id: 0, cells: { 1: { 1: { text: '' } } }, selections: [] },
+    { name: 'JS/EVM parallelism', id: 1, cells: { 1: { 1: { text: '' } } }, selections: [] },
+    { name: 'Examples - pipe', id: 2, cells: { 1: { 1: { text: '' } } }, selections: [] },
+    { name: 'Examples - ABI', id: 3, cells: { 1: { 1: { text: '' } } }, selections: [] },
+    { name: 'Examples - WASM', id: 4, cells: { 1: { 1: { text: '' } } }, selections: [] },
+    { name: 'All Formulas', id: 5, cells: { 1: { 1: { text: '' } } }, selections: [] },
 ];
 
 const MARKER_WIDTH = 6;
@@ -126,7 +125,7 @@ const CellEthCallBang = (props) => {
     const arroww = 20
     const x2 = props.x + arroww/2 + props.width/2;
     const y2 = props.y + props.height/2;
-    const onSend = () => props.onSend(cellkey(props.rowIndex, props.columnIndex), props.text);
+    const onSend = () => props.onSend(props.sheetId, cellkey(props.rowIndex, props.columnIndex), props.text);
     return (
         <>
         <DefaultCell {...props} />
@@ -158,11 +157,9 @@ const getCell = (extraprops) => {
     return (props) => {
         const newprops = {...props};
         const key = cellkey(props.rowIndex, props.columnIndex);
-        let value = props.formatter(newprops.text, key);
+        let value = props.formatter(newprops.text, key, newprops.sheetId);
         newprops.text = value || newprops.text;
-        const marker_width = props.height/3;
-        const x = props.x + marker_width/2;
-        const y = props.y + marker_width/2;
+        
         delete newprops.formatter;
         if (props.text && props.text[0] === MARKER_JS) {
             if (props.text.includes('!')) {
@@ -187,12 +184,14 @@ class Luxor extends React.Component {
             data: JSON.parse(JSON.stringify(DEFAULT_SHEETS)),
         };
 
-        this.formattedData = {};
         this.formatter = this.formatter.bind(this);
-        this.onChangeCells = this.onChangeCells.bind(this);
+        this.onChangeCell = this.onChangeCell.bind(this);
         this.onChangeSelectedSheet = this.onChangeSelectedSheet.bind(this);
         this.onChange = this.onChange.bind(this);
         this.onSend = this.onSend.bind(this);
+        this.formattedData = {};
+        this.activeSheet = 0;
+        DEFAULT_SHEETS.map(d => this.formattedData[d.id] = {});
     }
 
     async setFixturesData() {
@@ -201,15 +200,52 @@ class Luxor extends React.Component {
             chainid = (await this.props.taylor_js.provider.getNetwork()).chainId;
             chainid = parseInt(chainid);
         }
-        const data = JSON.parse(JSON.stringify(DEFAULT_SHEETS))[0];
-        const testdata = luxorTestsData(taylor.tests.both.tests, chainid);
-        testdata.forEach((row, ri) => {
-            data.cells[ri+1] = {};
+        const data = JSON.parse(JSON.stringify(DEFAULT_SHEETS));
+        
+        let sheetid = 1;
+        const partialtestdata = luxorTestsData(taylor.tests.both.tests, chainid, false);
+        partialtestdata.forEach((row, ri) => {
+            data[sheetid].cells[ri+1] = {};
             row.forEach((val, ci) => {
-                data.cells[ri+1][ci+1] = { text: val };
+                data[sheetid].cells[ri+1][ci+1] = { text: val, sheetId: data[sheetid].id };
             });
         });
-        this.setState({ data: [data] });
+
+        sheetid = 2;
+        const pipeex = PIPE_EXAMPLE.addresses[chainid];
+        if (chainid && pipeex) {
+            const ethpipedata = luxorEthPipeExample(pipeex);
+            ethpipedata.forEach((row, ri) => {
+                data[sheetid].cells[ri+1] = {};
+                row.forEach((val, ci) => {
+                    data[sheetid].cells[ri+1][ci+1] = { text: val, sheetId: data[sheetid].id };
+                });
+            });
+        }
+
+        sheetid = 3;
+        const wethex = WETH_EXAMPLE.addresses[chainid];
+        if (chainid && wethex) {
+            const ethabidata = luxorTestsDataEthCall(wethex, WETH_EXAMPLE.fsigs, 0);
+            ethabidata.forEach((row, ri) => {
+                data[sheetid].cells[ri+1] = {};
+                row.forEach((val, ci) => {
+                    data[sheetid].cells[ri+1][ci+1] = { text: val, sheetId: data[sheetid].id };
+                });
+            });
+        }
+
+        sheetid = 5;
+        const allformulas = luxorAllFormulas(taylor.tests.both.tests);
+        allformulas.forEach((row, ri) => {
+            data[sheetid].cells[ri+1] = {};
+            row.forEach((val, ci) => {
+                data[sheetid].cells[ri+1][ci+1] = { text: val, sheetId: data[sheetid].id };
+            });
+        });
+
+
+        this.setState({ data });
     }
 
     async componentDidMount() {
@@ -222,24 +258,25 @@ class Luxor extends React.Component {
         this.recalcFormattedData();
     }
 
-    mergeData(newdata) {
+    mergeData(sheetId, newdata) {
         const activeData = JSON.parse(JSON.stringify(this.state.data));
-        const activeSheet = 0;
+        const sheetIndx = activeData.findIndex(sheet => sheet.id === sheetId);
 
         const rowkeys = Object.keys(newdata);
         for (let ri of rowkeys) {
             const colkeys = Object.keys(newdata[ri]);
             for (let ci of colkeys) {
-                activeData[activeSheet].cells[ri][ci] = Object.assign(
+                if (!activeData[sheetIndx].cells[ri]) activeData[sheetIndx].cells[ri] = {}
+                activeData[sheetIndx].cells[ri][ci] = Object.assign(
                     {},
-                    activeData[activeSheet].cells[ri][ci],
-                    newdata[ri][ci]
+                    activeData[sheetIndx].cells[ri][ci],
+                    newdata[ri][ci],
+                    {sheetId},
                 )
                 const key = cellkey(ri, ci);
-                this.addToDataMap(key, newdata[ri][ci].text);
+                this.addToDataMap(sheetId, key, newdata[ri][ci].text);
             }
         }
-
         this.setState({ data: activeData });
     }
 
@@ -247,41 +284,49 @@ class Luxor extends React.Component {
         if (!this.props.taylor_js) return;
         const self = this;
         this.props.taylor_js.jsextend('table-rowf', (args) => {
-            const newdata = luxor_extensions.tableRowf(args, self.state.data[0].cells);
-            self.mergeData(newdata);
+            const sheetId = self.activeSheet;
+            const newdata = luxor_extensions.tableRowf(args, sheetId);
+            self.mergeData(sheetId, newdata);
             return;
         });
         this.props.taylor_js.jsextend('table-colf', (args) => {
-            const newdata = luxor_extensions.tableColf(args, self.state.data[0].cells);
-            self.mergeData(newdata);
+            const sheetId = self.activeSheet;
+            const newdata = luxor_extensions.tableColf(args, sheetId);
+            self.mergeData(sheetId, newdata);
             return;
         });
         this.props.taylor_js.jsextend('table-abi', (args) => {
-            const newdata = luxor_extensions.tableAbi(args);
-            self.mergeData(newdata);
+            const sheetId = self.activeSheet;
+            const newdata = luxor_extensions.tableAbi(args, sheetId);
+            self.mergeData(sheetId, newdata);
             return;
         });
         this.props.taylor_js.jsextend('eth-pipe', (args) => {
-            const newdata = luxor_extensions.ethPipe(args);
-            self.mergeData(newdata);
+            const sheetId = self.activeSheet;
+            const newdata = luxor_extensions.ethPipe(args, sheetId);
+            self.mergeData(sheetId, newdata);
             return;
         });
         this.props.taylor_js.jsextend('eth-pipe-evm', async (args) => {
+            const sheetId = self.activeSheet;
             const newdata = await luxor_extensions.ethPipeEvm(args, this.props.taylor_web3);
             return newdata;
         });
         this.props.taylor_js.jsextend('eth-pipe-evm!', async (args) => {
+            const sheetId = self.activeSheet;
             const newdata = await luxor_extensions.ethPipeEvmBang(args, this.props.taylor_web3);
             return newdata;
         });
     }
 
-    formatter(value, key) {
+    formatter(value, key, sheetId) {
+        if (!sheetId && sheetId !== 0) return value;
+        if (!this.formattedData[sheetId]) this.formattedData[sheetId] = {};
         let response = (
-            typeof this.formattedData[key] !== 'undefined'
-            && typeof this.formattedData[key].value !== 'undefined'
-            && this.formattedData[key].value !== null
-        ) ? this.formattedData[key].value : value;
+            typeof this.formattedData[sheetId][key] !== 'undefined'
+            && typeof this.formattedData[sheetId][key].value !== 'undefined'
+            && this.formattedData[sheetId][key].value !== null
+        ) ? this.formattedData[sheetId][key].value : value;
         
         if (response instanceof Object && !(response instanceof Array)) {
             if (response._hex) response = new taylor.BN(response._hex.substring(2), 16);
@@ -291,12 +336,12 @@ class Luxor extends React.Component {
         return response;
     }
 
-    async onSend(key, value) {
-        const receipt = await this.executeCell(key, value, true);
+    async onSend(sheetId, key, value) {
+        const receipt = await this.executeCell(sheetId, key, value, true);
         return receipt;
     }
 
-    async executeCell(key, value, executeSend=false) {
+    async executeCell(sheetId, key, value, executeSend=false) {
         if (!value || typeof value !== 'string') return value;
         let response;
 
@@ -314,7 +359,7 @@ class Luxor extends React.Component {
         
         try {
             let newvalue = this.runExtensions(value);
-            newvalue = this.replaceCellValues(key, newvalue);
+            newvalue = this.replaceCellValues(sheetId, key, newvalue);
             response = await api.call(newvalue);
         } catch(e) {
             console.log(e);
@@ -323,14 +368,14 @@ class Luxor extends React.Component {
         return response;
     }
 
-    replaceCellValues(key, inicode) {
+    replaceCellValues(sheetId, key, inicode) {
         let code = inicode.slice(1);
         const matches = [...code.matchAll(SHEET_KEY_REGEX)].reverse();
         for (const match of matches) {
             const cell_key = match[0];
             const numberkey = lkeyToKey(cell_key);
-            this.addDepToDataMap(key, numberkey, inicode);
-            const tayvalue = taylor.jsval2tay(this.getFromDataMap(numberkey));
+            this.addDepToDataMap(sheetId, key, numberkey, inicode);
+            const tayvalue = taylor.jsval2tay(this.getFromDataMap(sheetId, numberkey));
             code = code.substring(0, match.index) + tayvalue + code.substring(match.index + match[0].length);
         }
         return code;
@@ -343,49 +388,41 @@ class Luxor extends React.Component {
         return code;
     }
 
-    async onChangeCells(sheetId, cells) {
-        const rowkeys = Object.keys(cells)
-
-        for(let i of rowkeys) {
-            const row = cells[i];
-            const colkeys = Object.keys(row);
-
-            for(let j of colkeys) {
-                const key = cellkey(i, j);
-                const newvalue = cells[i][j].text;
-                const saveddata = {};
-                saveddata[i] = {};
-                saveddata[i][j] = cells[i][j];
-                this.mergeData(saveddata);
-                await this._onCellChange(key, newvalue);
-            }
-        }
+    async onChangeCell(sheetId, value, cell) {
+        const i = cell.rowIndex, j = cell.columnIndex;
+        const key = cellkey(i, j);
+        const saveddata = {};
+        saveddata[i] = {};
+        saveddata[i][j] = cell;
+        saveddata[i][j].text = value;
+        saveddata[i][j].sheetId = sheetId;
+        this.mergeData(sheetId, saveddata);
+        await this._onCellChange(sheetId, key, value);
     }
 
-    async _onCellChange(key, newvalue) {
-        const execvalue = await this.executeCell(key, newvalue)
-        this.addToDataMap(key, execvalue);
+    async _onCellChange(sheetId, key, newvalue) {
+        const execvalue = await this.executeCell(sheetId, key, newvalue)
+        this.addToDataMap(sheetId, key, execvalue);
         
-        const deps = this.getDepsFromDataMap(key);
+        const deps = this.getDepsFromDataMap(sheetId, key);
         const deplength = deps.length;
         
         for (let i = 0;  i < deplength; i++) {
             const depkey = deps[i];
-            const depsource = this.formattedData[depkey] ? this.formattedData[depkey].source : null;
+            const depsource = this.formattedData[sheetId][depkey] ? this.formattedData[sheetId][depkey].source : null;
             if (depsource) {
-                const depvalue = await this.executeCell(depkey, depsource);
-                this._onCellChange(depkey, depvalue);
+                const depvalue = await this.executeCell(sheetId, depkey, depsource);
+                this._onCellChange(sheetId, depkey, depvalue);
             }
         }
     }
 
     onChangeSelectedSheet(sheetId) {
-
+        console.log('onChangeSelectedSheet', sheetId);
+        this.activeSheet = sheetId;
     }
 
-    onChange(sheets) {
-
-    }
+    onChange(newdata) {}
 
     async recalcFormattedData() {
         const { data } = this.state;
@@ -393,63 +430,67 @@ class Luxor extends React.Component {
         if (!data) return;
         if (!this.props.taylor) return;
 
-        // TODO - multiple sheets?
-        const rows = data[0].cells;
-        if (rows.length == 0) return;
+        for (let sheet_index = 0; sheet_index < data.length; sheet_index++) {
+            // TODO - multiple sheets?
+            const rows = data[sheet_index].cells;
+            const sheetId = data[sheet_index].id;
+            if (rows.length === 0) return;
 
-        for (let i of Object.keys(rows)) {
-            if (!rows[i]) continue;
-            
-            const row = rows[i];
-            for (let j of Object.keys(row)) {
-                if (!row[j]) continue;
+            for (let i of Object.keys(rows)) {
+                if (!rows[i]) continue;
+                
+                const row = rows[i];
+                for (let j of Object.keys(row)) {
+                    if (!row[j]) continue;
 
-                let value = row[j].text;
-                let key = cellkey(i, j);
+                    let value = row[j].text;
+                    let key = cellkey(i, j);
 
-                // Only calculate what has not been executed
-                if (typeof this.getFromDataMap(key) === 'undefined' || this.formattedData[key].value === value) {
-                    this.addToDataMap(key, await this.executeCell(key, value));
+                    // Only calculate what has not been executed
+                    if (typeof this.getFromDataMap(sheetId, key) === 'undefined' || this.formattedData[sheetId][key].value === value) {
+                        this.addToDataMap(sheetId, key, await this.executeCell(sheetId, key, value));
+                    }
                 }
             }
         }
     }
 
-    setData(data) {
-        this.setState({data});
+    addToDataMap(sheetId, key, value) {
+        if (!this.formattedData[sheetId]) this.formattedData[sheetId] = {};
+        if (!this.formattedData[sheetId][key]) this.formattedData[sheetId][key] = {};
+        this.formattedData[sheetId][key].value = value;
     }
 
-    addToDataMap(key, value) {
-        if (!this.formattedData[key]) this.formattedData[key] = {};
-        this.formattedData[key].value = value;
-    }
-
-    addDepToDataMap(dependent_key, dependency_key, source) {
-        if (!this.formattedData[dependency_key]) this.formattedData[dependency_key] = {};
-        if (!this.formattedData[dependency_key].deps) this.formattedData[dependency_key].deps = new Set();
-        this.formattedData[dependency_key].deps.add(dependent_key);
+    addDepToDataMap(sheetId, dependent_key, dependency_key, source) {
+        if (!this.formattedData[sheetId]) this.formattedData[sheetId] = {};
+        if (!this.formattedData[sheetId][dependency_key]) this.formattedData[sheetId][dependency_key] = {};
+        if (!this.formattedData[sheetId][dependency_key].deps) this.formattedData[sheetId][dependency_key].deps = new Set();
+        this.formattedData[sheetId][dependency_key].deps.add(dependent_key);
         
-        if (!this.formattedData[dependent_key]) this.formattedData[dependent_key] = {};
-        this.formattedData[dependent_key].source = source;
+        if (!this.formattedData[sheetId][dependent_key]) this.formattedData[sheetId][dependent_key] = {};
+        this.formattedData[sheetId][dependent_key].source = source;
     }
 
-    getDepsFromDataMap(key) {
-        if (!this.formattedData[key] || !this.formattedData[key].deps) return [];
-        return [...this.formattedData[key].deps];
+    getDepsFromDataMap(sheetId, key) {
+        if (!this.formattedData[sheetId]) this.formattedData[sheetId] = {};
+        if (!this.formattedData[sheetId][key] || !this.formattedData[sheetId][key].deps) return [];
+        return [...this.formattedData[sheetId][key].deps];
     }
 
-    getFromDataMap(key) {
-        return (this.formattedData[key] && (typeof this.formattedData[key].value !== 'undefined')) ? this.formattedData[key].value : undefined;
+    getFromDataMap(sheetId, key) {
+        if (!this.formattedData[sheetId]) this.formattedData[sheetId] = {};
+        return (this.formattedData[sheetId][key] && (typeof this.formattedData[sheetId][key].value !== 'undefined')) ? this.formattedData[sheetId][key].value : undefined;
     }
 
     render() {
         return (
             <div style={{ height: '100%' }}>
                 <CanvasDatagrid
+                    formulas={{}}
                     data={this.state.data}
                     formatter={this.formatter}
                     Cell={ getCell({onSend: this.onSend}) }
-                    onChangeCells={this.onChangeCells}
+                    onChangeCell={this.onChangeCell}
                     onChangeSelectedSheet={this.onChangeSelectedSheet}
                     onChange={this.onChange}
                     style={{ height: '100%', width: '100%' }}
@@ -487,15 +528,11 @@ function stripNL(source) {
     return source.replace(/\s{1,}/g, ' ');
 }
 
-function luxorTestsData(tests, chainid, rows=50, cols=8) {
-    let data = rightPadArray([], 5, rightPadArray([], cols, ''));
-    
-    const wethex = WETH_EXAMPLE.addresses[chainid];
-    if (chainid && wethex) {
-        data = data.concat(luxorTestsDataEthCall(wethex, WETH_EXAMPLE.fsigs, 5));
-    }
-    
-    data = data.concat(rightPadArray([], 2, rightPadArray([], cols, '')));
+function luxorTestsData(tests, chainid, showall=false, rows=50, cols=8) {
+    let data = rightPadArray([], 3, rightPadArray([], cols, ''));
+
+    const descr = 'Same formula is processed once on JSON, once on the EVM. Results should be the same.';
+    data[0][0] = descr;
 
     const header = rightPadArray(
         ['Expression', 'JS Result', 'EVM Result', 'Expected'],
@@ -505,14 +542,41 @@ function luxorTestsData(tests, chainid, rows=50, cols=8) {
     data.push(header);
 
     let shown_tests = Object.values(tests);
-    shown_tests = shown_tests.slice(0, 5).concat(shown_tests.slice(shown_tests.length - 6));
-    shown_tests.forEach(category => category.slice(0, 1).forEach(test => {
+    if (!showall) {
+        shown_tests = shown_tests.slice(0, 5).concat(shown_tests.slice(shown_tests.length - 6));
+        shown_tests = shown_tests.map(category => category.slice(0, 1));
+    }
+    shown_tests.forEach(test => {
+        test = test[0];
         if (!test.skip && !test.prereq) {
             const expression = stripNL(test.test);
             const rowData = [expression, MARKER_JS + expression, MARKER_WEB3 + expression, test.result];
             data.push(rightPadArray(rowData, cols, ''));
         }
-    }));
+    });
+    return rightPadArray(data, rows, []);
+}
+
+function luxorAllFormulas(tests, chainid, rows=50, cols=8) {
+    let data = rightPadArray([], 5, rightPadArray([], cols, ''));
+    
+    const header = rightPadArray(
+        ['Expression'],
+        cols,
+        ''
+    );
+    data.push(header);
+    let shown_tests = Object.values(tests);
+    shown_tests.forEach(category => {
+        const test = category[0]
+        // category.forEach(test => {
+            if (!test.skip && !test.prereq) {
+                const expression = stripNL(test.test);
+                const rowData = [expression];
+                data.push(rightPadArray(rowData, cols, ''));
+            }
+        // });
+    });
     return rightPadArray(data, rows, []);
 }
 
@@ -546,7 +610,48 @@ function luxorTestsDataEthCall(addresses, fsigs, inirow=0, rows=50, cols=8) {
     return data;
 }
 
-export default Luxor;
+function luxorEthPipeExample(addresses) {
+    let data = [];
+    const edges1 = '=(list (list 0 0 1 0) (list 0 0 2 0) (list 1 0 2 1) (list 0 1 2 2))';
+    const expr1 = `=(eth-pipe "G1" (srange A2 B3) C2 D2)`
+    const payable1 = `=(list)`
+
+    const edges2 = `=(list (list 0 0 1 0) (list 0 0 2 0) (list 1 0 2 1) (list 0 2 2 2) (list 1 0 3 0) (list 0 1 3 1) (list 0 0 3 2) (list 2 0 3 3))`;
+    const expr2 = `=(eth-pipe "A7" (srange A2 B4) C3 D3)`;
+    const payable2 = `=(list nil nil (list 0 2))`
+
+    // const edges3 = ``
+    // const expr2 = `=(eth-pipe "J1" (list (list A2 B2) (list A5 B5)) C2 D2)`
+    // const payable = `=(list)`
+    
+    data.push(['Address', 'Function Abi', 'Graph Edges', 'Payable Index', 'Formula'])
+    data.push([
+        addresses.vr.address,
+        'getVendor(uint256 product_id)->(address vendor)',
+        edges1,
+        payable1,
+        expr1,
+    ])
+    data.push([
+        addresses.vp.address,
+        'calculateQuantity(uint256 product_id,address vendor,uint256 wei_value)->(uint256 quantity)',
+        edges2,
+        payable2,
+        expr2,
+    ]);
+    
+    data.push([
+        addresses.mp.address,
+        'buy(address vendor,address buyer,uint256 product_id,uint256 quantity) payable'
+    ]);
+    
+    // data.push([
+    //     '0x470171ae1fD4C5A93A899E58FfF7f8585D5C9972',
+    //     'getQuantity(address vendor,uint256 product_id)'
+    // ]);
+    data = data.concat([],[],[],[],[],[]);
+    return data;
+}
 
 const tayextension = {
     srange: code => {
@@ -606,14 +711,14 @@ const table_f_ext = (args) => {
 }
 
 
-const _tableRowf = (iter, ri, ci) => {
+const _tableRowf = (sheetId, iter, ri, ci) => {
     const newdata = {};
         
         for (let row of iter) {
             let cci = ci;
             newdata[ri] = {};
             for (let value of row) {
-                newdata[ri][cci] = { text: value };
+                newdata[ri][cci] = { text: value, sheetId };
                 cci += 1;
             }
             ri += 1;
@@ -621,14 +726,14 @@ const _tableRowf = (iter, ri, ci) => {
         return newdata;
 }
 
-const _tableColf = (iter, ri, ci) => {
+const _tableColf = (sheetId, iter, ri, ci) => {
     const newdata = {};
         
     for (let row of iter) {
         let rri = ri;
         for (let value of row) {
             newdata[rri] = newdata[rri] || {};
-            newdata[rri][ci] = { text: value };
+            newdata[rri][ci] = { text: value, sheetId };
             rri += 1;
         }
         ci += 1;
@@ -636,7 +741,7 @@ const _tableColf = (iter, ri, ci) => {
     return newdata;
 }
 
-const _tableAbi = (cell_table, abi, callback) => {
+const _tableAbi = (sheetId, cell_table, abi, callback) => {
     const iter = [['Inputs', abi.name]];
     const isTx = ['view', 'pure'].includes(abi.stateMutability) ? '' : '!';
     const isPayable = abi.stateMutability === 'payable';
@@ -653,7 +758,7 @@ const _tableAbi = (cell_table, abi, callback) => {
         iter.push([`${v.name} <${v.type}>`, 0]);
     });
 
-    const newdata = _tableRowf(iter, cell_table[0], cell_table[1]);
+    const newdata = _tableRowf(sheetId, iter, cell_table[0], cell_table[1]);
     const outs = abi.outputs.map(v => v.type);
     const fsig = `${abi.name}(${abi.inputs.map(v => v.type)})${outs.length > 0 ? '->('+outs.join()+')' : '' }`;
     const arg_cells = [...new Array(abi.inputs.length)].map((_, i) => keyToL(cell_table[0]+i+1, cell_table[1]+1));
@@ -676,20 +781,20 @@ const STATE_MUTAB = { pure: 0, view: 1, nonpayable: 2, payable: 3 }
 const STATE_MUTAB_REV = {0: 'pure', 1: 'view', 2: 'nonpayable', 3: 'payable'};
 
 const luxor_extensions = {
-    tableRowf: (args) => {
+    tableRowf: (args, sheetId) => {
         let { iter, ri, ci } = table_f_ext(args);
-        return _tableRowf(iter, ri, ci);
+        return _tableRowf(sheetId, iter, ri, ci);
     },
-    tableColf: (args) => {
+    tableColf: (args, sheetId) => {
         let { iter, ri, ci } = table_f_ext(args);
-        return _tableColf(iter, ri, ci);
+        return _tableColf(sheetId, iter, ri, ci);
     },
-    tableAbi: (args) => {
+    tableAbi: (args, sheetId) => {
         const cell_table = lkeyToKey(args[0]).split(';').map(val => parseInt(val));
         const address = args[1];
         let abi = JSON.parse(args[2].replace(/\'/g, '"'));
 
-        const newdata = _tableAbi(cell_table, abi, (fsig, arg_cells, isTx, out_key, pay_key) => {
+        const newdata = _tableAbi(sheetId, cell_table, abi, (fsig, arg_cells, isTx, out_key, pay_key) => {
             if (!isTx) {
                 return `=(table-colf "${out_key}" (eth-call "${address}" "${fsig}" (list ${arg_cells.join(' ')})) )`
             } else {
@@ -698,7 +803,7 @@ const luxor_extensions = {
         });
         return newdata;
     },
-    ethPipe: args => {
+    ethPipe: (args, sheetId) => {
         //[ "F6", [ [<addr>,<humansig>] ], [ [0, 0, 1, 1] ] ]
         const cell_table = lkeyToKey(args[0]).split(';').map(val => parseInt(val));
         const steps = args[1];
@@ -710,7 +815,7 @@ const luxor_extensions = {
 
         const abis = steps.map(step => {
             // fixme - it's from tay<->js boundary (better regex in taylor)
-            step[1] = step[1].replaceAll('(list ', '(');
+            step[1] = step[1].replace(/\(list /g, '(');
             const jsonabi = utils.ethHumanAbiToJson(utils.ethShortAbiToHuman(step[1], false).abi);
             step[1] = utils.ethSig(jsonabi);
             if (jsonabi.stateMutability && STATE_MUTAB[jsonabi.stateMutability] > stateMutability) {
@@ -719,7 +824,7 @@ const luxor_extensions = {
             return jsonabi;
         });
 
-        abis.map((fabi, i) => {
+        abis.forEach((fabi, i) => {
             i = i+1; // first node is inputs
             inputMap[i] = {};
             outputMap[i] = {};
@@ -731,13 +836,12 @@ const luxor_extensions = {
         outmapcpy = JSON.parse(JSON.stringify(outputMap));
 
         edges.forEach(edge => {
-            console.log('edge', edge)
             const [node1, out1, node2, in2] = edge;
 
             if (outmapcpy[node1] && outmapcpy[node1][out1]) delete outmapcpy[node1][out1];
 
             if (outputMap[node1] && outputMap[node1][out1]) {
-                console.log('node1', node1, out1, Object.values(outputMap).slice(0, node1));
+                // console.log('node1', node1, out1, Object.values(outputMap).slice(0, node1));
                 outputMap[node1][out1].count = Object.values(outputMap).slice(0, node1).map(val => Object.keys(val).length).reduce((sum, val) => sum+val);
             }
             inputMap[node2][in2].source = [node1, out1];
@@ -793,7 +897,7 @@ const luxor_extensions = {
         if (abi.outputs.length === 0) output_types = '';
         else output_types = '(list ' + abi.outputs.map(out => `"${out.type}"`).join(' ') + ')';
 
-        const newdata = _tableAbi(cell_table, abi, (fsig, arg_cells, isTx, out_key, pay_key) => {
+        const newdata = _tableAbi(sheetId, cell_table, abi, (fsig, arg_cells, isTx, out_key, pay_key) => {
             const args = arg_cells.map((cellkey, i) => `(eth-abi-encode "${abi.inputs[i].type}" ${cellkey} )`);
             
             if (!isTx && payable.length === 0) {
@@ -848,3 +952,6 @@ const btnStyle = {
     height: '25px',
     padding: '0px',
 }
+
+
+export default Luxor;

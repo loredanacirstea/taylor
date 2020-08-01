@@ -498,7 +498,7 @@ mal.getBackend = async (address, provider, signer) => {
     interpreter.sendAndWait = interpreter.send;
     interpreter.extend = expression => mal.rep(expression);
     interpreter.jsextend = (name, callb) => {
-        const utilname = name.replace(/-/g, '_').replaceAll('!', '_bang');
+        const utilname = name.replace(/-/g, '_').replace(/!/g, '_bang');
         extensions[utilname] = callb;
         mal.rep(`(def! ${name} (fn* (& xs)
             (js-eval (str 
