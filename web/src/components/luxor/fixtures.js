@@ -45,6 +45,56 @@ const WETH_EXAMPLE = {
     }
 }
 
+const PIPE_EXAMPLE = {
+    addresses: {
+        3: {
+            vr: {
+                address: '0x274782b8155ddcc9d868f9e676e6688d78c22488',
+            },
+            vp: {
+                address: '0x7a93134e763a75df41b625319839024e628ce171',
+            },
+            mp: {
+                address: '0x0b77f47455f3e39c817f1b4d29b81461105438c0',
+            },
+        },
+        4: {
+            vr: {
+                address: '0x5Ba5AF7069E80CCDE94FB447dBbdE0e7389Ef605',
+            },
+            vp: {
+                address: '0x4FefBfE56587f4a2A12781D42dD02208881DeC2F',
+            },
+            mp: {
+                address: '0xf072b131ae4bed7b83217d76ba2c636c20997340',
+            },
+        },
+        5: {
+            vr: {
+                address: '0xF384A3DE0A6FD5610300E7d12355E51fed35477c',
+            },
+            vp: {
+                address: '0xB2329Af26602a2902132259881Ab55cFb3f6aa2E',
+            },
+            mp: {
+                address: '0x54CC32549a5bEF608596b09fC0079A7D5Caf0329',
+            },
+        },
+        42: {
+            vr: {
+                address: '0x87140D2DD09e0f6E7461b5F6a8B2D6084f4b7a5F',
+            },
+            vp: {
+                address: '0x87140D2DD09e0f6E7461b5F6a8B2D6084f4b7a5F',
+            },
+            mp: {
+                address: '0x87140D2DD09e0f6E7461b5F6a8B2D6084f4b7a5F',
+            },
+        }
+    }
+}
+
 module.exports = {
     WETH_EXAMPLE,
+    PIPE_EXAMPLE,
 }
