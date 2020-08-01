@@ -206,6 +206,10 @@ const native_extensions = {
         if (isarr) return values;
         return values[0];
     },
+    wasmcall: async (url, fname, args) => {
+        const wmodule = await WebAssembly.instantiateStreaming(fetch(url), {});
+        return wmodule.instance.exports[fname](...args);
+    }
 }
 
 mal.repl_env.set(malTypes._symbol('utils'), native_extensions);
@@ -404,6 +408,8 @@ await mal.reps(`
 (def! eth-abi-encode (fn* (types values) (js-eval (str "utils.ethabi_encode(" (js-str types) "," (js-str values) ")" )) ))
 
 (def! eth-abi-decode (fn* (types values) (js-eval (str "utils.ethabi_decode(" (js-str types) "," (js-str values) ")" )) ))
+
+(def! wasm-call (fn* (url fname args) (js-eval (str "utils.wasmcall(" (js-str url) "," (js-str fname) "," (js-str args) ")" )) ))
 
 `)
 

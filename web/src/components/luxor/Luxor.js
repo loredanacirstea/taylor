@@ -236,6 +236,15 @@ class Luxor extends React.Component {
             });
         }
 
+        sheetid = 4;
+        const wasmdata = wasmTestData();
+        wasmdata.forEach((row, ri) => {
+            data[sheetid].cells[ri+1] = {};
+            row.forEach((val, ci) => {
+                data[sheetid].cells[ri+1][ci+1] = { text: val, sheetId: data[sheetid].id };
+            });
+        });
+
         sheetid = 5;
         const allformulas = luxorAllFormulas(taylor.tests.both.tests);
         allformulas.forEach((row, ri) => {
@@ -294,6 +303,10 @@ class Luxor extends React.Component {
         });
         this.props.taylor_js.jsextend('table-abi', (args) => {
             const newdata = luxor_extensions.tableAbi(args);
+            return {response: null, newdata};
+        });
+        this.props.taylor_js.jsextend('table-wasm', async (args) => {
+            const newdata = await luxor_extensions.tableWasm(args);
             return {response: null, newdata};
         });
         this.props.taylor_js.jsextend('eth-pipe', (args) => {
@@ -521,6 +534,14 @@ function stripNL(source) {
     return source.replace(/\s{1,}/g, ' ');
 }
 
+function tayJSONReplace(source) {
+    return source.replace(/\'/g, '"');
+}
+
+function tayArtefactsRemove(source) {
+    return source.replace(/\(list /g, '(');
+}
+
 function luxorTestsData(tests, chainid, showall=false, rows=50, cols=8) {
     let data = rightPadArray([], 3, rightPadArray([], cols, ''));
 
@@ -646,6 +667,19 @@ function luxorEthPipeExample(addresses) {
     return data;
 }
 
+function wasmTestData() {
+    let data = [[],[],[]]
+    const drow = 5;
+    data.push(['Url', 'Function Sig', 'table-wasm']);
+    data.push([
+        'https://cdn.rawgit.com/mdn/webassembly-examples/master/understanding-text-format/add.wasm',
+        'add(uint32,uint32)->(uint32)',
+        `=(table-wasm "E${drow}" A${drow} B${drow})`,
+    ]);
+    data = data.concat([],[],[],[],[],[]);
+    return data;
+}
+
 const tayextension = {
     srange: code => {
         const matches = code.match(/\(\s*srange\s/g) || [];
@@ -699,7 +733,7 @@ const table_f_ext = (args) => {
     if (typeof iter === 'undefined') iter = ['undefined'];
     if (iter === null) iter = ['null'];
     if (!(iter[0] instanceof Array)) iter = [iter];
-
+    if (!(iter[0] instanceof Array)) iter = [iter];
     return { iter, ri, ci };
 }
 
@@ -785,7 +819,7 @@ const luxor_extensions = {
     tableAbi: (args) => {
         const cell_table = lkeyToKey(args[0]).split(';').map(val => parseInt(val));
         const address = args[1];
-        let abi = JSON.parse(args[2].replace(/\'/g, '"'));
+        let abi = JSON.parse(tayJSONReplace(args[2]));
 
         const newdata = _tableAbi(cell_table, abi, (fsig, arg_cells, isTx, out_key, pay_key) => {
             if (!isTx) {
@@ -793,6 +827,20 @@ const luxor_extensions = {
             } else {
                 return `=(table-rowf "${out_key}" (eth-call! "${address}" "${fsig}" (list ${arg_cells.join(' ')}) ${pay_key}) )`
             }
+        });
+        return newdata;
+    },
+    tableWasm: (args) => {
+        const utils = taylor.malBackend.utils;
+        const cell_table = lkeyToKey(args[0]).split(';').map(val => parseInt(val));
+        const url = args[1];
+        const abi = tayArtefactsRemove(args[2]);
+        let jsonabi = utils.ethShortAbiToHuman(abi, false);
+        jsonabi = utils.ethHumanAbiToJson(jsonabi.abi);
+        jsonabi.outputs = jsonabi.ouputs;
+
+        const newdata = _tableAbi(cell_table, jsonabi, (fsig, arg_cells, isTx, out_key, pay_key) => {
+            return `=(table-colf "${out_key}" (wasm-call "${url}" "${jsonabi.name}" (list ${arg_cells.join(' ')})) )`
         });
         return newdata;
     },
@@ -808,7 +856,7 @@ const luxor_extensions = {
 
         const abis = steps.map(step => {
             // fixme - it's from tay<->js boundary (better regex in taylor)
-            step[1] = step[1].replace(/\(list /g, '(');
+            step[1] = tayArtefactsRemove(step[1]);
             const jsonabi = utils.ethHumanAbiToJson(utils.ethShortAbiToHuman(step[1], false).abi);
             step[1] = utils.ethSig(jsonabi);
             if (jsonabi.stateMutability && STATE_MUTAB[jsonabi.stateMutability] > stateMutability) {
