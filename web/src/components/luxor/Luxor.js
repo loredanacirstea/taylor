@@ -73,7 +73,8 @@ class CanvasDatagrid extends React.Component {
                 showFormulabar={true}
                 showToolbar={false}
                 tabColor='rgb(155, 112, 63)'
-                allowNewSheet={true}
+                allowNewSheet={false}
+                rowHeaderWidth={56}
                 formatter={this.props.formatter}
                 CellRenderer={this.props.Cell}
                 snap={true}
@@ -284,38 +285,26 @@ class Luxor extends React.Component {
         if (!this.props.taylor_js) return;
         const self = this;
         this.props.taylor_js.jsextend('table-rowf', (args) => {
-            const sheetId = self.activeSheet;
-            const newdata = luxor_extensions.tableRowf(args, sheetId);
-            self.mergeData(sheetId, newdata);
-            return;
+            const newdata = luxor_extensions.tableRowf(args);
+            return {response: null, newdata};
         });
         this.props.taylor_js.jsextend('table-colf', (args) => {
-            const sheetId = self.activeSheet;
-            const newdata = luxor_extensions.tableColf(args, sheetId);
-            self.mergeData(sheetId, newdata);
-            return;
+            const newdata = luxor_extensions.tableColf(args);
+            return {response: null, newdata};
         });
         this.props.taylor_js.jsextend('table-abi', (args) => {
-            const sheetId = self.activeSheet;
-            const newdata = luxor_extensions.tableAbi(args, sheetId);
-            self.mergeData(sheetId, newdata);
-            return;
+            const newdata = luxor_extensions.tableAbi(args);
+            return {response: null, newdata};
         });
         this.props.taylor_js.jsextend('eth-pipe', (args) => {
-            const sheetId = self.activeSheet;
-            const newdata = luxor_extensions.ethPipe(args, sheetId);
-            self.mergeData(sheetId, newdata);
-            return;
+            const newdata = luxor_extensions.ethPipe(args);
+            return {response: null, newdata};
         });
         this.props.taylor_js.jsextend('eth-pipe-evm', async (args) => {
-            const sheetId = self.activeSheet;
-            const newdata = await luxor_extensions.ethPipeEvm(args, this.props.taylor_web3);
-            return newdata;
+            return luxor_extensions.ethPipeEvm(args, this.props.taylor_web3);
         });
         this.props.taylor_js.jsextend('eth-pipe-evm!', async (args) => {
-            const sheetId = self.activeSheet;
-            const newdata = await luxor_extensions.ethPipeEvmBang(args, this.props.taylor_web3);
-            return newdata;
+            return luxor_extensions.ethPipeEvmBang(args, this.props.taylor_web3);
         });
     }
 
@@ -361,6 +350,10 @@ class Luxor extends React.Component {
             let newvalue = this.runExtensions(value);
             newvalue = this.replaceCellValues(sheetId, key, newvalue);
             response = await api.call(newvalue);
+            if (response instanceof Object && response.newdata) {
+                this.mergeData(sheetId, response.newdata);
+                response = '';
+            }
         } catch(e) {
             console.log(e);
             response = value;
@@ -603,10 +596,10 @@ function luxorTestsDataEthCall(addresses, fsigs, inirow=0, rows=50, cols=8) {
     data[2][4] = `=(reduce add (srange D${inirow} D${inirow+users.length-1}) 0)`;
     // data[3][4] = `=(table-rowf "G6" (list (list 1 2 3) (list 5 6 7)))`;
     data[4][4] = `=(table-colf "G9" (list (list 1 (list 2 2 3 3) 3) (list 5 6 7)))`;
-    data[3][4] = `=(table-rowf "G6" F9)`;
-    // data[4][4] = `=(table-colf "G9" F9)`;
+    data[3][4] = `=(table-rowf "G6" F4)`;
+    // data[4][4] = `=(table-colf "G9" F4)`;
     data[3][5] = {a:1, b:2, c:3, d:4};
-    data[5][4] = `=(eth-call! A7 "increase(uint)" (list 4) 0)`
+    data[5][4] = `=(eth-call! A2 "increase(uint)" (list 4) 0)`
     return data;
 }
 
@@ -711,14 +704,14 @@ const table_f_ext = (args) => {
 }
 
 
-const _tableRowf = (sheetId, iter, ri, ci) => {
+const _tableRowf = (iter, ri, ci) => {
     const newdata = {};
         
         for (let row of iter) {
             let cci = ci;
             newdata[ri] = {};
             for (let value of row) {
-                newdata[ri][cci] = { text: value, sheetId };
+                newdata[ri][cci] = { text: value };
                 cci += 1;
             }
             ri += 1;
@@ -726,14 +719,14 @@ const _tableRowf = (sheetId, iter, ri, ci) => {
         return newdata;
 }
 
-const _tableColf = (sheetId, iter, ri, ci) => {
+const _tableColf = (iter, ri, ci) => {
     const newdata = {};
         
     for (let row of iter) {
         let rri = ri;
         for (let value of row) {
             newdata[rri] = newdata[rri] || {};
-            newdata[rri][ci] = { text: value, sheetId };
+            newdata[rri][ci] = { text: value };
             rri += 1;
         }
         ci += 1;
@@ -741,7 +734,7 @@ const _tableColf = (sheetId, iter, ri, ci) => {
     return newdata;
 }
 
-const _tableAbi = (sheetId, cell_table, abi, callback) => {
+const _tableAbi = (cell_table, abi, callback) => {
     const iter = [['Inputs', abi.name]];
     const isTx = ['view', 'pure'].includes(abi.stateMutability) ? '' : '!';
     const isPayable = abi.stateMutability === 'payable';
@@ -758,7 +751,7 @@ const _tableAbi = (sheetId, cell_table, abi, callback) => {
         iter.push([`${v.name} <${v.type}>`, 0]);
     });
 
-    const newdata = _tableRowf(sheetId, iter, cell_table[0], cell_table[1]);
+    const newdata = _tableRowf(iter, cell_table[0], cell_table[1]);
     const outs = abi.outputs.map(v => v.type);
     const fsig = `${abi.name}(${abi.inputs.map(v => v.type)})${outs.length > 0 ? '->('+outs.join()+')' : '' }`;
     const arg_cells = [...new Array(abi.inputs.length)].map((_, i) => keyToL(cell_table[0]+i+1, cell_table[1]+1));
@@ -781,20 +774,20 @@ const STATE_MUTAB = { pure: 0, view: 1, nonpayable: 2, payable: 3 }
 const STATE_MUTAB_REV = {0: 'pure', 1: 'view', 2: 'nonpayable', 3: 'payable'};
 
 const luxor_extensions = {
-    tableRowf: (args, sheetId) => {
+    tableRowf: (args) => {
         let { iter, ri, ci } = table_f_ext(args);
-        return _tableRowf(sheetId, iter, ri, ci);
+        return _tableRowf(iter, ri, ci);
     },
-    tableColf: (args, sheetId) => {
+    tableColf: (args) => {
         let { iter, ri, ci } = table_f_ext(args);
-        return _tableColf(sheetId, iter, ri, ci);
+        return _tableColf(iter, ri, ci);
     },
-    tableAbi: (args, sheetId) => {
+    tableAbi: (args) => {
         const cell_table = lkeyToKey(args[0]).split(';').map(val => parseInt(val));
         const address = args[1];
         let abi = JSON.parse(args[2].replace(/\'/g, '"'));
 
-        const newdata = _tableAbi(sheetId, cell_table, abi, (fsig, arg_cells, isTx, out_key, pay_key) => {
+        const newdata = _tableAbi(cell_table, abi, (fsig, arg_cells, isTx, out_key, pay_key) => {
             if (!isTx) {
                 return `=(table-colf "${out_key}" (eth-call "${address}" "${fsig}" (list ${arg_cells.join(' ')})) )`
             } else {
@@ -803,7 +796,7 @@ const luxor_extensions = {
         });
         return newdata;
     },
-    ethPipe: (args, sheetId) => {
+    ethPipe: (args) => {
         //[ "F6", [ [<addr>,<humansig>] ], [ [0, 0, 1, 1] ] ]
         const cell_table = lkeyToKey(args[0]).split(';').map(val => parseInt(val));
         const steps = args[1];
@@ -897,7 +890,7 @@ const luxor_extensions = {
         if (abi.outputs.length === 0) output_types = '';
         else output_types = '(list ' + abi.outputs.map(out => `"${out.type}"`).join(' ') + ')';
 
-        const newdata = _tableAbi(sheetId, cell_table, abi, (fsig, arg_cells, isTx, out_key, pay_key) => {
+        const newdata = _tableAbi(cell_table, abi, (fsig, arg_cells, isTx, out_key, pay_key) => {
             const args = arg_cells.map((cellkey, i) => `(eth-abi-encode "${abi.inputs[i].type}" ${cellkey} )`);
             
             if (!isTx && payable.length === 0) {
