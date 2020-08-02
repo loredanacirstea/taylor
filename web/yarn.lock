@@ -1911,20 +1911,20 @@
   resolved "https://registry.yarnpkg.com/@reach/visually-hidden/-/visually-hidden-0.1.4.tgz#0dc4ecedf523004337214187db70a46183bd945b"
   integrity sha512-QHbzXjflSlCvDd6vJwdwx16mSB+vUCCQMiU/wK/CgVNPibtpEiIbisyxkpZc55DyDFNUIqP91rSUsNae+ogGDQ==
 
-"@rowsncolumns/calc@^2.3.1":
-  version "2.3.1"
-  resolved "https://registry.yarnpkg.com/@rowsncolumns/calc/-/calc-2.3.1.tgz#00dfa1e3c6536fc5801faa7b5e628aef5ade4645"
-  integrity sha512-vj63PRnLwfV+Z+/nvo001bZ+3zzLiJTIiuab3cZj+c95fnReD1o/8fdKfKTw6pfqnB5fNW9b43sqfoNNJWQpsg==
+"@rowsncolumns/calc@^2.3.5":
+  version "2.3.5"
+  resolved "https://registry.yarnpkg.com/@rowsncolumns/calc/-/calc-2.3.5.tgz#f36640d1d5af52d7fc02a46cf1eaf91bba817a71"
+  integrity sha512-vziuHAMoUOSy02WmpfkTgN2e/YSjZdCW2675/5h2D7Fn8mF7fVBqwjG7hN2vzZUM/iG3+i6HMDD8iam1kPrkJg==
   dependencies:
     "@babel/plugin-proposal-class-properties" "^7.10.4"
     "@types/lodash.merge" "^4.6.6"
     fast-formula-parser "^1.0.10"
     lodash.merge "^4.6.2"
 
-"@rowsncolumns/grid@^5.5.3":
-  version "5.5.3"
-  resolved "https://registry.yarnpkg.com/@rowsncolumns/grid/-/grid-5.5.3.tgz#33d1c5671907833be627c20cadded421c999fb24"
-  integrity sha512-eE6iC0JMLjAEJoFXFFtNcuBs7QGrUevymhBbQOM6sbbnQjo5JsUCLvNuQBa/OkPcEAc2Qa+EePwCVj5pTXyLsw==
+"@rowsncolumns/grid@^5.5.4":
+  version "5.5.4"
+  resolved "https://registry.yarnpkg.com/@rowsncolumns/grid/-/grid-5.5.4.tgz#055ae6379796a3a31be7ebbfaaf5bb52f38a5833"
+  integrity sha512-lRyc0D7k2DCMcdB80gmkyoL0akwJZvMcPmmr/08pXDtJJ++6swTJkWHx7QvvDBHoa5Qf2JIrdQM0HUIKRhqD/w==
   dependencies:
     "@types/scroller" "^0.1.1"
     konva "^7.0.4"
@@ -1932,17 +1932,17 @@
     scroller "^0.0.3"
     tiny-invariant "^1.1.0"
 
-"@rowsncolumns/spreadsheet@^3.10.7":
-  version "3.10.7"
-  resolved "https://registry.yarnpkg.com/@rowsncolumns/spreadsheet/-/spreadsheet-3.10.7.tgz#810149fc3b8c32d4f10c83914b1b7cad4b7c2e09"
-  integrity sha512-5lmTW/MgZ+A3DskpjbT2f4Egdl/XBDnMifNdr1b9iLRYtZoX8f5eLWlIPFCwK3Oodfe3KfCvC+krSjmveLoo8Q==
+"@rowsncolumns/spreadsheet@^3.10.13":
+  version "3.10.13"
+  resolved "https://registry.yarnpkg.com/@rowsncolumns/spreadsheet/-/spreadsheet-3.10.13.tgz#f6333310f02a3d0e8e2a5726b1039e4a38232397"
+  integrity sha512-piQ1ZU/Q+bL0sQvyyDK47y8pvYGqS+VlDrjVrnTdNltr9ez40cm7hguYZQIrwfSpwtF/kpiijcOj1UGvyp1QPg==
   dependencies:
     "@chakra-ui/core" "^0.8.0"
     "@emotion/core" "^10.0.28"
     "@emotion/styled" "^10.0.27"
     "@juggle/resize-observer" "^3.2.0"
-    "@rowsncolumns/calc" "^2.3.1"
-    "@rowsncolumns/grid" "^5.5.3"
+    "@rowsncolumns/calc" "^2.3.5"
+    "@rowsncolumns/grid" "^5.5.4"
     "@types/react-list" "^0.8.5"
     "@types/webfontloader" "^1.6.32"
     babel-plugin-emotion "^10.0.33"

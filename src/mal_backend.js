@@ -502,11 +502,14 @@ mal.getBackend = async (address, provider, signer) => {
     }
     interpreter.send = interpreter.call;
     interpreter.sendAndWait = interpreter.send;
-    interpreter.extend = expression => mal.rep(expression);
+    interpreter.extend = async expression => {
+        await mal.rep(expression);
+        interpreter.functions = interpreter.getFns();
+    }
     interpreter.jsextend = (name, callb) => {
         const utilname = name.replace(/-/g, '_').replace(/!/g, '_bang');
         extensions[utilname] = callb;
-        mal.rep(`(def! ${name} (fn* (& xs)
+        return interpreter.extend(`(def! ${name} (fn* (& xs)
             (js-eval (str 
                 "utils.${utilname}(" 
                     (js-str xs)
@@ -514,6 +517,10 @@ mal.getBackend = async (address, provider, signer) => {
             )) 
         ))`)
     }
+    interpreter.getFns = () => {
+        return mal.repl_env.data;
+    }
+    interpreter.functions = interpreter.getFns();
     // needed for ethcall
     mal.provider = provider;
     mal.signer = signer;

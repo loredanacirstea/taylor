@@ -44,7 +44,6 @@ class CanvasDatagrid extends React.Component {
     }
 
     onChangeSelectedSheet(sheetId) {
-        console.log('onChangeSelectedSheet', sheetId)
         this.props.onChangeSelectedSheet(sheetId);
         setTimeout(this.colorFixes, 200);
     }
@@ -71,6 +70,7 @@ class CanvasDatagrid extends React.Component {
                 sheets={this.props.data}
                 initialColorMode="dark"
                 showFormulabar={true}
+                disableFormula
                 showToolbar={false}
                 tabColor='rgb(155, 112, 63)'
                 allowNewSheet={false}
@@ -89,11 +89,49 @@ class CanvasDatagrid extends React.Component {
 
 const DEFAULT_SHEETS = [
     { name: 'Workspace', id: 0, cells: { 1: { 1: { text: '' } } }, selections: [] },
-    { name: 'JS/EVM parallelism', id: 1, cells: { 1: { 1: { text: '' } } }, selections: [] },
-    { name: 'Examples - pipe', id: 2, cells: { 1: { 1: { text: '' } } }, selections: [] },
-    { name: 'Examples - ABI', id: 3, cells: { 1: { 1: { text: '' } } }, selections: [] },
-    { name: 'Examples - WASM', id: 4, cells: { 1: { 1: { text: '' } } }, selections: [] },
-    { name: 'All Formulas', id: 5, cells: { 1: { 1: { text: '' } } }, selections: [] },
+    {
+        name: 'JS/EVM parallelism',
+        id: 1,
+        cells: { 1: { 1: { text: '' } } },
+        selections: [],
+        columnSizes: { 1: 300 },
+        mergedCells: [
+            {
+              top: 1,
+              left: 1,
+              right: 4,
+              bottom: 1,
+            }
+        ]
+    },
+    {
+        name: 'Pipe',
+        id: 2,
+        cells: { 1: { 1: { text: '' } } },
+        selections: [],
+        columnSizes: { 1: 200, 2: 200, 3: 200, 5: 300 },
+    },
+    {
+        name: 'Eth ABI',
+        id: 3,
+        cells: { 1: { 1: { text: '' } } },
+        selections: [],
+        columnSizes: { 5: 300 },
+    },
+    {
+        name: 'WASM',
+        id: 4,
+        cells: { 1: { 1: { text: '' } } },
+        selections: [],
+        columnSizes: { 3: 200, 5: 200, 6: 200 },
+    },
+    { 
+        name: 'All Formulas',
+        id: 5,
+        cells: { 1: { 1: { text: '' } } },
+        selections: [],
+        columnSizes: { 1: 300, 2: 300, 3: 200 },
+    },
 ];
 
 const MARKER_WIDTH = 6;
@@ -246,7 +284,7 @@ class Luxor extends React.Component {
         });
 
         sheetid = 5;
-        const allformulas = luxorAllFormulas(taylor.tests.both.tests);
+        const allformulas = luxorAllFormulas(this.props.taylor_web3, this.props.taylor_js);
         allformulas.forEach((row, ri) => {
             data[sheetid].cells[ri+1] = {};
             row.forEach((val, ci) => {
@@ -543,16 +581,11 @@ function tayArtefactsRemove(source) {
 }
 
 function luxorTestsData(tests, chainid, showall=false, rows=50, cols=8) {
-    let data = rightPadArray([], 3, rightPadArray([], cols, ''));
+    let data = [[],[],[]];
 
     const descr = 'Same formula is processed once on JSON, once on the EVM. Results should be the same.';
     data[0][0] = descr;
-
-    const header = rightPadArray(
-        ['Expression', 'JS Result', 'EVM Result', 'Expected'],
-        cols,
-        ''
-    );
+    const header = ['Expression', 'JS Result', 'EVM Result', 'Expected'];
     data.push(header);
 
     let shown_tests = Object.values(tests);
@@ -565,42 +598,46 @@ function luxorTestsData(tests, chainid, showall=false, rows=50, cols=8) {
         if (!test.skip && !test.prereq) {
             const expression = stripNL(test.test);
             const rowData = [expression, MARKER_JS + expression, MARKER_WEB3 + expression, test.result];
-            data.push(rightPadArray(rowData, cols, ''));
+            data.push(rowData);
         }
     });
-    return rightPadArray(data, rows, []);
+    return data;
 }
 
-function luxorAllFormulas(tests, chainid, rows=50, cols=8) {
-    let data = rightPadArray([], 5, rightPadArray([], cols, ''));
+function luxorAllFormulas(interpreter_web3, interpreter_js) {
+    const tests = taylor.tests;
+    // const web3_functions = interpreter_web3.functions;
+    const js_functions = interpreter_js.functions;
+    const web3_functions = taylor.nativeEnv;
+
+    let data = [['JS: use "="', 'Web3: use "$"'],[],[]]
+    const header = ['', 'Expression', 'Description'];
     
-    const header = rightPadArray(
-        ['Expression'],
-        cols,
-        ''
-    );
+    data.push(['JS & Web3']);
     data.push(header);
-    let shown_tests = Object.values(tests);
-    shown_tests.forEach(category => {
-        const test = category[0]
-        // category.forEach(test => {
-            if (!test.skip && !test.prereq) {
-                const expression = stripNL(test.test);
-                const rowData = [expression];
-                data.push(rightPadArray(rowData, cols, ''));
-            }
-        // });
+
+    const both = [];
+    const fnames_both = {};
+    Object.keys(tests.both.tests).forEach(fname => {
+        const tt = tests.both.tests[fname];
+        const t = tt.find(test => !test.skip && !test.prereq);
+        if (t) {
+            data.push(['', stripNL(t.test), web3_functions[fname]?.docs || '']);
+        }
+        fnames_both[fname] = true;
     });
-    return rightPadArray(data, rows, []);
+
+    data.push(['Web3 only']);
+    data.push(header);
+
+    data.push(['JS only']);
+    data.push(header);
+    return data;
 }
 
 function luxorTestsDataEthCall(addresses, fsigs, inirow=0, rows=50, cols=8) {
     inirow += 2;
-    const header = rightPadArray(
-        ['Address', 'Function Sig', 'Arguments', 'JS Result', 'Total Balance'],
-        cols,
-        ''
-    );
+    const header = ['Address', 'Function Sig', 'Arguments', 'JS Result', 'Total Balance'];
     const data = [header];
     
     const { address, users } = addresses;
@@ -608,7 +645,7 @@ function luxorTestsDataEthCall(addresses, fsigs, inirow=0, rows=50, cols=8) {
         const row = i + inirow;
         const expression = `=(eth-call A${inirow} B${row} (list C${row} ))`
         const rowData = ['', fsigs.balance, useraddr, expression];
-        data.push(rightPadArray(rowData, cols, ''));
+        data.push(rowData);
     });
     data[1][0] = address;
     data[1][4] = `=(reduce add (list ${
@@ -616,8 +653,8 @@ function luxorTestsDataEthCall(addresses, fsigs, inirow=0, rows=50, cols=8) {
     }) 0)`;
     data[2][4] = `=(reduce add (srange D${inirow} D${inirow+users.length-1}) 0)`;
     // data[3][4] = `=(table-rowf "G6" (list (list 1 2 3) (list 5 6 7)))`;
-    data[4][4] = `=(table-colf "G9" (list (list 1 (list 2 2 3 3) 3) (list 5 6 7)))`;
-    data[3][4] = `=(table-rowf "G6" F4)`;
+    data[4][4] = `=(table-colf "A12" (list (list 1 (list 2 2 3 3) 3) (list 5 6 7)))`;
+    data[3][4] = `=(table-rowf "A9" F4)`;
     // data[4][4] = `=(table-colf "G9" F4)`;
     data[3][5] = {a:1, b:2, c:3, d:4};
     data[5][4] = `=(eth-call! A2 "increase(uint)" (list 4) 0)`
@@ -882,7 +919,6 @@ const luxor_extensions = {
             if (outmapcpy[node1] && outmapcpy[node1][out1]) delete outmapcpy[node1][out1];
 
             if (outputMap[node1] && outputMap[node1][out1]) {
-                // console.log('node1', node1, out1, Object.values(outputMap).slice(0, node1));
                 outputMap[node1][out1].count = Object.values(outputMap).slice(0, node1).map(val => Object.keys(val).length).reduce((sum, val) => sum+val);
             }
             inputMap[node2][in2].source = [node1, out1];
