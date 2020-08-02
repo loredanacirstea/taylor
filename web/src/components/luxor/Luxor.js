@@ -3,8 +3,10 @@ import { RegularPolygon, Arrow } from 'react-konva';
 import { Button, Icon } from 'native-base';
 import taylor from '@pipeos/taylor';
 import SpreadSheet, { DefaultCell } from '@rowsncolumns/spreadsheet';
+import Buttons from './Button.js';
 import { WETH_EXAMPLE, PIPE_EXAMPLE } from './fixtures.js';
 
+const MARKER_WIDTH = 6;
 const MARKER_JS = '=', MARKER_WEB3 = '$';
 // TODO: fix for "something G5 something"
 const SHEET_KEY_REGEX = /(?<!\")(\b[A-Z]{1}[0-9]{1,})/g;
@@ -132,9 +134,13 @@ const DEFAULT_SHEETS = [
         selections: [],
         columnSizes: { 1: 300, 2: 300, 3: 200 },
     },
+    {
+        name: 'UI Elements',
+        id: 6,
+        cells: { 1: { 1: { text: '' } } },
+        selections: [],
+    },
 ];
-
-const MARKER_WIDTH = 6;
 
 const CellFormula = (props) => {
     const x = props.x + MARKER_WIDTH/2;
@@ -178,16 +184,6 @@ const CellEthCallBang = (props) => {
             fill='rgb(155, 112, 63)'
             onClick={onSend}
         />
-        <RegularPolygon
-            sides={3}
-            fill='rgb(155, 112, 63)'
-            x={x}
-            y={y}
-            width={MARKER_WIDTH}
-            height={MARKER_WIDTH}
-            rotation={315}
-            visible={true}
-        ></RegularPolygon>
         </>
     )
 }
@@ -198,8 +194,23 @@ const getCell = (extraprops) => {
         const key = cellkey(props.rowIndex, props.columnIndex);
         let value = props.formatter(newprops.text, key, newprops.sheetId);
         newprops.text = value || newprops.text;
-        
         delete newprops.formatter;
+
+        if (typeof props.text === 'string' && props.text.includes('ui-button')) {
+            const btn_args = newprops.text;
+            if (btn_args instanceof Array) {
+                const btnComponent = Buttons[btn_args[0]];
+                newprops.onSend = () => extraprops.onExecute(props.sheetId, key, '=' + btn_args[1], true);
+                newprops.text = '';
+                return (
+                    <>
+                    <DefaultCell {...newprops} />
+                    { btnComponent(newprops) }
+                    </>
+                )
+            }
+        }
+
         if (props.text && props.text[0] === MARKER_JS) {
             if (props.text.includes('!')) {
                 return <CellEthCallBang { ...newprops } { ...extraprops } />
@@ -228,6 +239,7 @@ class Luxor extends React.Component {
         this.onChangeSelectedSheet = this.onChangeSelectedSheet.bind(this);
         this.onChange = this.onChange.bind(this);
         this.onSend = this.onSend.bind(this);
+        this.executeCell = this.executeCell.bind(this);
         this.formattedData = {};
         this.activeSheet = 0;
         DEFAULT_SHEETS.map(d => this.formattedData[d.id] = {});
@@ -292,6 +304,14 @@ class Luxor extends React.Component {
             });
         });
 
+        sheetid = 6;
+        const uiexamples = luxorUIExamples();
+        uiexamples.forEach((row, ri) => {
+            data[sheetid].cells[ri+1] = {};
+            row.forEach((val, ci) => {
+                data[sheetid].cells[ri+1][ci+1] = { text: val, sheetId: data[sheetid].id };
+            });
+        });
 
         this.setState({ data });
     }
@@ -356,6 +376,13 @@ class Luxor extends React.Component {
         });
         this.props.taylor_js.jsextend('eth-pipe-evm!', async (args) => {
             return luxor_extensions.ethPipeEvmBang(args, this.props.taylor_web3);
+        });
+        this.props.taylor_js.jsextend('ui-button', (args) => {
+            if (args[1]) {
+                args[1] = tayArtefactsRemoveList(args[1]);
+                args[1] = tayQuotesReplace(args[1]);
+            }
+            return args;
         });
     }
 
@@ -533,7 +560,7 @@ class Luxor extends React.Component {
                     formulas={{}}
                     data={this.state.data}
                     formatter={this.formatter}
-                    Cell={ getCell({onSend: this.onSend}) }
+                    Cell={ getCell({onSend: this.onSend, onExecute: this.executeCell}) }
                     onChangeCell={this.onChangeCell}
                     onChangeSelectedSheet={this.onChangeSelectedSheet}
                     onChange={this.onChange}
@@ -572,11 +599,11 @@ function stripNL(source) {
     return source.replace(/\s{1,}/g, ' ');
 }
 
-function tayJSONReplace(source) {
+function tayQuotesReplace(source) {
     return source.replace(/\'/g, '"');
 }
 
-function tayArtefactsRemove(source) {
+function tayArtefactsRemoveList(source) {
     return source.replace(/\(list /g, '(');
 }
 
@@ -714,6 +741,38 @@ function wasmTestData() {
         `=(table-wasm "E${drow}" A${drow} B${drow})`,
     ]);
     data = data.concat([],[],[],[],[],[]);
+    return data;
+}
+
+function luxorUIExamples() {
+    let data = [[],[],[]];
+    const buttons = [
+        {
+            name: 'left',
+            script: '(table-rowf "D5" (list (list 2 2 3 3)))',
+        },
+        {
+            name: 'plus',
+            script: '(table-rowf "D6" (list (list 4 5 6 7)))',
+        },
+        {
+            name: 'close',
+            script: '(table-rowf "D7" (list (list 10 11 12 13)))',
+        },
+        {
+            name: 'right',
+            script: '(table-rowf "D8" (list (list 3 5 2 4)))',
+        },
+        {
+            name: 'execute',
+            script: '(table-rowf "D9" (list (list 11 11 11 11)))',
+        }
+    ]
+    const inir = 5;
+    data.push(['Function', 'Formula']);
+    buttons.forEach((b, i) => {
+        data.push([b.script, `=(ui-button "${b.name}" A${inir+i})`]);
+    });
     return data;
 }
 
@@ -856,7 +915,7 @@ const luxor_extensions = {
     tableAbi: (args) => {
         const cell_table = lkeyToKey(args[0]).split(';').map(val => parseInt(val));
         const address = args[1];
-        let abi = JSON.parse(tayJSONReplace(args[2]));
+        let abi = JSON.parse(tayQuotesReplace(args[2]));
 
         const newdata = _tableAbi(cell_table, abi, (fsig, arg_cells, isTx, out_key, pay_key) => {
             if (!isTx) {
@@ -871,7 +930,7 @@ const luxor_extensions = {
         const utils = taylor.malBackend.utils;
         const cell_table = lkeyToKey(args[0]).split(';').map(val => parseInt(val));
         const url = args[1];
-        const abi = tayArtefactsRemove(args[2]);
+        const abi = tayArtefactsRemoveList(args[2]);
         let jsonabi = utils.ethShortAbiToHuman(abi, false);
         jsonabi = utils.ethHumanAbiToJson(jsonabi.abi);
         jsonabi.outputs = jsonabi.ouputs;
@@ -893,7 +952,7 @@ const luxor_extensions = {
 
         const abis = steps.map(step => {
             // fixme - it's from tay<->js boundary (better regex in taylor)
-            step[1] = tayArtefactsRemove(step[1]);
+            step[1] = tayArtefactsRemoveList(step[1]);
             const jsonabi = utils.ethHumanAbiToJson(utils.ethShortAbiToHuman(step[1], false).abi);
             step[1] = utils.ethSig(jsonabi);
             if (jsonabi.stateMutability && STATE_MUTAB[jsonabi.stateMutability] > stateMutability) {
@@ -1013,7 +1072,7 @@ const luxor_extensions = {
         const receipt = await interpreter.sendAndWait(expr, {value: eth_value});
         console.log('receipt', receipt);
         return receipt;
-    }
+    },
 }
 
 const iconStyle = {
