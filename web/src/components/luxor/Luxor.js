@@ -5,6 +5,7 @@ import taylor from '@pipeos/taylor';
 import SpreadSheet, { DefaultCell } from '@rowsncolumns/spreadsheet';
 import Buttons from './Button.js';
 import { WETH_EXAMPLE, PIPE_EXAMPLE } from './fixtures.js';
+import Storage from './storage.js';
 
 const MARKER_WIDTH = 6;
 const MARKER_JS = '=', MARKER_WEB3 = '$';
@@ -230,8 +231,15 @@ class Luxor extends React.Component {
     constructor(props) {
         super(props);
 
+        this.formattedData = {};
+        this.activeSheet = 0;
+        DEFAULT_SHEETS.map(d => this.formattedData[d.id] = {});
+
+        let data = JSON.parse(JSON.stringify(DEFAULT_SHEETS));
+        data = this.setWorspace(data);
+
         this.state = {
-            data: JSON.parse(JSON.stringify(DEFAULT_SHEETS)),
+            data,
         };
 
         this.formatter = this.formatter.bind(this);
@@ -240,9 +248,16 @@ class Luxor extends React.Component {
         this.onChange = this.onChange.bind(this);
         this.onSend = this.onSend.bind(this);
         this.executeCell = this.executeCell.bind(this);
-        this.formattedData = {};
-        this.activeSheet = 0;
-        DEFAULT_SHEETS.map(d => this.formattedData[d.id] = {});
+    }
+
+    setWorspace(data) {
+        let sheetid = 0;
+        const saved = Storage.get('workspace');
+        if (saved && saved.data && saved.formatted) {
+            data[sheetid] = saved.data;
+            this.formattedData[sheetid] = saved.formatted;
+        }
+        return data;
     }
 
     async setFixturesData() {
@@ -251,9 +266,11 @@ class Luxor extends React.Component {
             chainid = (await this.props.taylor_js.provider.getNetwork()).chainId;
             chainid = parseInt(chainid);
         }
-        const data = JSON.parse(JSON.stringify(DEFAULT_SHEETS));
-        
-        let sheetid = 1;
+        let data = JSON.parse(JSON.stringify(DEFAULT_SHEETS));
+        let sheetid = 0;
+        data = this.setWorspace(data);
+
+        sheetid = 1;
         const partialtestdata = luxorTestsData(taylor.tests.both.tests, chainid, false);
         partialtestdata.forEach((row, ri) => {
             data[sheetid].cells[ri+1] = {};
@@ -493,7 +510,9 @@ class Luxor extends React.Component {
         this.activeSheet = sheetId;
     }
 
-    onChange(newdata) {}
+    onChange(newdata) {
+        Storage.set('workspace', {data: newdata[0], formatted: this.formattedData[0]});
+    }
 
     async recalcFormattedData() {
         const { data } = this.state;
