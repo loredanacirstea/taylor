@@ -546,7 +546,7 @@ object "Taylor" {
             case 0x90000114 {
                 result_ptr := _store(add(arg_ptrs_ptr, 32))
             }
-            case 0x90000116 {
+            case 0x88000116 {
                 result_ptr := _sload(add(arg_ptrs_ptr, 32))
             }
             case 0x88000118 {
@@ -3083,30 +3083,26 @@ object "Taylor" {
             let position_ptr := mload(ptrs)
             let data_ptr := mload(add(ptrs, 32))
 
-            let position := mslice(add(position_ptr, 4), getValueLength(position_ptr))
-            let sig_len := getSignatureLength(data_ptr)
-            let data_len := getValueLength(data_ptr)
+            let storageKey := mslice(add(position_ptr, 4), getValueLength(position_ptr))
+            let data_len := getTypedLength(data_ptr)
 
-            storeDataInner(add(data_ptr, sig_len), position, data_len)
+            let _ptr := allocate(add(data_len, 4))
+            mslicestore(_ptr, data_len, 4)
+            mmultistore(add(_ptr, 4), data_ptr, data_len)
+
+            storeData(_ptr, storageKey)
         }
 
         function _sload(ptrs) -> result_ptr {
-            let position_ptr := mload(ptrs)
-            let type_ptr := mload(add(ptrs, 32))
+            let storagekey_ptr := mload(ptrs)
+            let storageKey := mslice(add(storagekey_ptr, 4), getValueLength(storagekey_ptr))
             
-            let position := mslice(add(position_ptr, 4), getValueLength(position_ptr))
-            let sig_len := getSignatureLength(type_ptr)
-            
-            // bytes4 signature, set ptr to actual data type sig
-            type_ptr := add(type_ptr, 4)
+            let _pointer := freeMemPtr()
+            getStoredData(_pointer, storageKey)
+            let len := mslice(_pointer, 4)
+            _pointer := allocate(add(len, 4))
 
-            let data_len := getValueLength(type_ptr)
-
-            result_ptr := allocate(add(data_len, sig_len))
-
-            mmultistore(result_ptr, type_ptr, sig_len)
-
-            getStoredDataInner(add(result_ptr, sig_len), position, data_len, 0)
+            result_ptr := add(_pointer, 4)
         }
 
         function _revert(ptrs) {

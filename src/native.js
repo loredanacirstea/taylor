@@ -149,7 +149,7 @@ const _nativeEnv = {
     'push!':  { mutable: false, arity: 3 },
     getdyn: { mutable: false, arity: 2 },
     'store!': { mutable: false, arity: 2 },
-    sload:    { mutable: false, arity: 2 },
+    sload:    { mutable: false, arity: 1 },
     revert:   { mutable: false, arity: 1 },
     return:   { mutable: false, arity: 1 },
     'list-struct': { mutable: false, arity: 1 },
