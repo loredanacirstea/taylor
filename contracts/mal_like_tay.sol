@@ -750,10 +750,19 @@ object "Taylor" {
         }
 
         function lambdaStorage(fsig) -> result_ptr {
-            let func_ptr := getFn(fsig)
-            
-            // without length; lambda signature already has length
-            result_ptr := add(func_ptr, 4)
+            // plug in new system
+            let storageKey := keccak256(11, fsig)
+            result_ptr := _sload(storageKey)
+            if isListType(result_ptr) {
+                result_ptr := _nth(result_ptr, 6)
+            }
+
+            // default to old system
+            if not(isFunction(result_ptr)) {
+                let func_ptr := getFn(fsig)
+                // without length; lambda signature already has length
+                result_ptr := add(func_ptr, 4)
+            }
         }
 
         function tryRegistered(fsig, arg_ptrs_ptr) -> result_ptr, success {
