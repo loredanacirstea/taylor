@@ -67,6 +67,302 @@ it.skip('test encoding & decoding bool', function () {
     expect(decode(encode(false, {type: 'bool'}))).toEqual(false);
 });
 
+describe.only('dtype_2', function () {
+    let resp;
+
+    test('alias', async function () {
+        resp = await MalTay.sendAndWait('(alias! "name1" "0x44556677" )');
+        resp = await MalTay.call('(alias "name1")');
+        expect(resp).toBe('0x44556677');
+    });
+
+    test('buildSig super nil', async function () {
+        resp = await MalTay.call('(buildSig nil 1 nil)');
+        expect(resp).toEqual([0, 0]);
+    });
+
+    test('formatSig 0', async function () {
+        resp = await MalTay.call('(formatSig 0)');
+        expect(resp).toEqual('0x0000000000000000');
+    });
+
+    test.skip('insert type: any', async function () {
+        // 0000000000000000000000000000000000000000000000000000000000000000 - id
+        // 1110000000000000000000000000000000000000000000000000000000000000 - kids mask
+        // 0xe000000000000000 - mask
+        resp = await MalTay.call(`(dtype! nil "any" 3 61 (list "any")
+            (fn* (id inputs)
+                id
+            )
+            (fn* (value) 
+                (join "0x0000000000000000" value)
+            )
+        )`);
+        expect(resp).toBe(4)
+    });
+
+    test('insert type: any', async function () {
+        // 0000000000000000000000000000000000000000000000000000000000000000 - id
+        // 1110000000000000000000000000000000000000000000000000000000000000 - kids mask
+        // 0xe000000000000000 - mask
+        resp = await MalTay.sendAndWait(`(dtype! nil "any" 3 61 (list "any")
+            (fn* (id inputs)
+                id
+            )
+            (fn* (value) 
+                (join "0x0000000000000000" value)
+            )
+        )`);
+    });
+
+    test('alias any', async function () {
+        resp = await MalTay.call('(alias "any")');
+        expect(resp).toBe('0x0000000000000000');
+    });
+
+    test('dtype any', async function () {
+        // idshifts
+        resp = await MalTay.call('(nth (dtype (alias "any")) 3)');
+        expect(resp).toBe(61);
+
+        resp = await MalTay.call('(getTypeIndex nil)');
+        expect(resp).toBe(2);
+
+        resp = await MalTay.call('(getTypeIndex (alias "any") )');
+        expect(resp).toBe(1);
+
+        // index
+        resp = await MalTay.call('(nth (dtype (alias "any")) 1)');
+        expect(resp).toBe(1);
+    });
+
+    test('buildSig super any', async function () {
+        resp = await MalTay.call('(buildSig (alias "any") 1 nil)');
+        expect(resp).toEqual(['2000000000000000', 3]);
+    });
+
+    test('insert type: number', async function () {
+        // 0010000000000000000000000000000000000000000000000000000000000000 - id
+        // 0001100000000000000000000000000000000000000000000000000000000000 - kids mask
+        // 0xe000000000000000 - mask
+        resp = await MalTay.sendAndWait(`(dtype! (alias "any") "number" 2 59 (list "number")
+            (fn* (id inputs)
+                id
+            )
+            (fn* (value) 
+                (join "0x" value)
+            )
+        )`);
+        resp = await MalTay.call('(alias "number")');
+        expect(resp).toBe('0x2000000000000000');
+    });
+
+    test('insert type: real', async function () {
+        resp = await MalTay.sendAndWait(`(dtype! (alias "number") "real" 3 56 (list "real")
+            (fn* (id inputs)
+                id
+            )
+            (fn* (value) 
+                (join "0x" value)
+            )
+        )`);
+        resp = await MalTay.call('(alias "real")');
+        expect(resp).toBe('0x2800000000000000');
+    }, 20000);
+
+    // test('insert type: uint', async function () {
+    //     resp = await MalTay.sendAndWait(`(dtype! (alias "real") "uint" 0 0 (list "uint")
+    //         (fn* (id inputs)
+    //             id
+    //         )
+    //         (fn* (value) 
+    //             (join "0x" value)
+    //         )
+    //     )`);
+    //     resp = await MalTay.call('(alias "uint")');
+    //     expect(resp).toBe('0x2900000000000000');
+    // }, 20000);
+
+    test('insert type: uint', async function () {
+        resp = await MalTay.sendAndWait(`(dtype! (alias "real") "uint" 0 0 (list "uint")
+            (fn* (id size)
+                (add id size)
+            )
+            (fn* (size value)
+                (join-untyped 
+                    (formatSig (nth (buildSig (alias "uint") 0 size) 0) )
+                    (padleft value size "0x00")
+                )
+            )
+        )`);
+        resp = await MalTay.call('(alias "uint")');
+        expect(resp).toBe('0x2900000000000000');
+    }, 20000);
+
+    test('execute type: uint', async function () {
+        resp = await MalTay.call_no_decode('(apply (nth (dtype (alias "uint")) 6) 10 14)');
+        // resp = await MalTay.call_raw(expr2h('(apply (nth (dtype (alias "uint")) 6) 10 14)'));
+        expect(resp).toBe('0x290000000000000a0000000000000000000e');
+    });
+
+    test('insert type: function', async function () {
+        resp = await MalTay.sendAndWait(`(dtype! (alias "any") "function" 1 60 nil
+            (fn* (id inputs)
+                id
+                (let* (
+                    arity (length inputs)
+                    ;mutable <from name>
+                )
+                    (add (add (exp 2 31) (shl 27 arity)) (shl 1 id) )
+                    ; (add (add (add (exp 2 31) (shl 27 arity)) (shl 1 id) ) mutable)
+                )
+            )
+            (fn* (value) 
+                (join "0x" value)
+            )
+        )`);
+        resp = await MalTay.call('(alias "function")');
+        expect(resp).toBe('0x4000000000000000');
+    });
+
+    test('insert type: functionT', async function () {
+        resp = await MalTay.sendAndWait(`(dtype! (alias "function") "functionT" 1 60 nil
+            nil
+            (fn* (value) nil)
+        )`);
+        resp = await MalTay.call('(alias "functionT")');
+        expect(resp).toBe('0x5000000000000000');
+    }, 20000);
+
+    test('insert type: afunc', async function () {
+        resp = await MalTay.sendAndWait(`(dtype! (alias "functionT") "afunc" 0 0 (list "0x2900000000000006" "0x2900000000000006")
+            nil
+            (fn* (a b) (add a b))
+        )`);
+        resp = await MalTay.call('(alias "afunc")');
+        expect(resp).toBe('0x6000000000000000');
+    }, 20000);
+
+    test('execute afunc', async function () {
+        resp = await MalTay.call_no_decode('(apply (nth (dtype (alias "afunc")) 6) 10 14)');
+        // resp = await MalTay.call_raw(expr2h('(apply (nth (dtype (alias "uint")) 6) 10 14)'));
+        // expect(resp).toBe('0x290000000000000600000000000000000018');
+        expect(resp).toBe('0x0a91000400000018');
+    });
+});
+
+describe('dtype_1', function () {
+    let resp;
+
+    test('alias', async function () {
+        resp = await MalTay.sendAndWait('(alias! "name1" "0x44556677" )');
+        resp = await MalTay.call('(alias "name1")');
+        expect(resp).toBe('0x44556677');
+    });
+
+    test('insert function', async function () {
+        console.log('---------------function---------')
+        resp = await MalTay.sendAndWait(`(dtype! nil "function" nil (fn* (name inputs)
+            (let* (
+                id (keccak256 name inputs)
+                arity (length inputs)
+                ;mutable <from name>
+            )
+                (join "0x" (add (add (exp 2 31) (shl 27 arity)) (shl 1 id) ))
+                ; (add (add (add (exp 2 31) (shl 27 arity)) (shl 1 id) ) mutable)
+            )
+        ))`);
+        resp = await MalTay.call('(alias "function")');
+        expect(resp).toBe('0x0f69a290');
+    
+    });
+
+    test('test function script', async function () {
+        resp = await MalTay.call('(sload (keccak256 11 "0x0f69a290") )');
+        expect(resp).toBe('0x11111111');
+    });
+
+    test('insert add2', async function () {
+        resp = await MalTay.sendAndWait(`(dtype! "0x0f69a290" "add2" (list Uint Uint) (fn* (a b) (add a b) ) )`);
+
+        // resp = await MalTay.call(`(sload "0xb241e83cf24e33fd91228f5cb91fe9f07bc850b5097c14bc1d9c8eb6d2cf4662" )`);
+        // console.log('-----resp', resp);
+        // expect(resp).toBe(77);
+        
+
+        // console.log('----(alias "add2")', await MalTay.call('(alias "add2")'));
+        // // 0x52e51e30
+
+        // console.log('----(keccak256 11 (alias "add2") )', await MalTay.call('(keccak256 11 (alias "add2") )'));
+        // // 0xb241e83cf24e33fd91228f5cb91fe9f07bc850b5097c14bc1d9c8eb6d2cf4662
+
+        // console.log('----(keccak256 11 "0x52e51e30" )', await MalTay.call('(keccak256 11 "0x52e51e30" )'));
+        // // 0xb241e83cf24e33fd91228f5cb91fe9f07bc850b5097c14bc1d9c8eb6d2cf4662
+
+        // console.log('----------gggggg--------')
+        // resp = await MalTay.call(`(dtype! "0x0f69a290" "add2" (list Uint Uint) (fn* (a b) (add a b)) )`);
+        // console.log('-----resp', resp);
+        // expect(resp).toBe(44);
+    });
+
+    test.skip('add2', async function () {
+        resp = await MalTay.call('(alias "add2")');
+        expect(resp).toBe('0x52e51e30');
+    });
+
+    test.skip('test add2 script', async function () {
+        // resp = await MalTay.call('(sload (keccak256 11 "0x52e51e30"))');
+        // resp = await MalTay.call('(nth (sload (keccak256 11 "0x52e51e30")) 2)');
+        // expect(resp).toBe('0x0f69a290');
+
+        console.log('alalalalalalala', await MalTay.expr2h('(fn* (a b) (add a b) ) )'));
+
+        resp = await MalTay.call('(getF (alias "add2") )');
+
+        console.log('---- add2 script', resp);
+
+        resp = await MalTay.call('(sload (keccak256 11 (alias "add2")))');
+
+        console.log('---- add2 script2222', resp);
+
+        // 0x8c00005011000002010000000000000001000000000000019000000201000000000000000000000000000000
+    });
+
+    test('run add2 script', async function () {
+        resp = await MalTay.call('(apply (getF (alias "add2")) 5 8)');
+        // console.log('----------------------------ffffff---------')
+        // resp = await MalTay.call('(getF (alias "add2"))');
+        expect(resp).toBe(13);
+    });
+
+    test.skip('tt lambda', async function () {
+        console.log('----lambda--');
+        // resp = await MalTay.call_raw('0x8c00005011000002010000000000000001000000000000019000000201000000000000000100000000000001');
+        resp = await MalTay.call('(apply (fn* (a b) (add a b)) 3 4)');
+        expect(resp).toBe(7);
+
+        // 0x980000408c000050110000020100000000000000010000000000000190000002010000000000000001000000000000010a910004000000030a91000400000004
+    });
+
+    test.skip('tt', async function () {
+        console.log('----tt--');
+        resp = await MalTay.call('(fn* (a) a)');
+        console.log('******resp', resp);
+        expect(resp).toBe('0x8c0000281100000101000000000000000100000000000000');
+
+        // 0x8c0000281100000101000000000000000100000000000000
+    });
+
+    test.skip('tt2', async function () {
+        console.log('---tt2---');
+        resp = await MalTay.call('(fn* (a b) (add a b))');
+        console.log('******resp', resp);
+
+        // 0x8c00005011000002010000000000000001000000000000019000000201000000000000000100000000000001
+    });
+
+}, 20000);
+
 it('test bytes contig', async function () {
     let resp;
 
@@ -1112,6 +1408,26 @@ describe('ballot contract', function() {
         )
     ))`
 
+    // vote = `(def! vote! (fn* (proposalIndex)
+    //     (let* (
+    //             senderIndex (mapgetraw voters (caller))
+    //             sender (list-struct (mapget voters (caller)))
+    //             proposal (list-struct (getfrom Proposal proposalIndex))
+    //         )
+    //         (if (or 
+    //                 (or (nil? sender) (true? (nth sender 1)))
+    //                 (lt (nth sender 0) 1)
+    //             )
+    //             (revert "Has no right to vote")
+    //             (list
+    //                 (update! Voter senderIndex (list nil true nil proposalIndex))
+    //                 (update! Proposal proposalIndex (list nil (add (nth sender 0) (nth proposal 1))))
+    //             )
+    //         )
+    //     )
+        
+    // ))`
+
     let recursiveDelegation = `(def! recDelegation (fn* (to_address)
         (let* (
                 delegate_raw (mapget voters to_address)
@@ -1299,30 +1615,19 @@ describe('ballot contract', function() {
 }, 30000);
 
 describe.skip('test update!', function() {
+    let indexes;
     it('update setup struct', async function() {
         await MalTay.send('(defstruct! UpdatableStruct (list Bytes4 Uint) )');
         await MalTay.send('(struct! UpdatableStruct (list "0x11223344" 2))');
 
-        resp = await MalTay.call('(getfrom Bytes4 0)')
-        expect(resp).toEqual('0x11223344');
-
-        resp = await MalTay.call('(getfrom Uint 0)')
-        expect(resp).toEqual(2);
-
-        resp = await MalTay.call('(refs-struct (getfrom UpdatableStruct 0))')
-        expect(resp).toEqual([0, 0]);
-
         resp = await MalTay.call('(list-struct (getfrom UpdatableStruct 0))')
         expect(resp).toEqual(['0x11223344', 2]);
-    });
 
-    it('test static length update', async function() {
-        await MalTay.send(`(list
-            (update! Bytes4 0 "0x11223355")
-            (update! Uint 0 5)
-        )`);
-        resp = await MalTay.call('(list-struct (getfrom UpdatableStruct 0))')
-        expect(resp).toEqual(['0x11223355', 5]);
+        indexes = await MalTay.call('(refs-struct (getfrom UpdatableStruct 0))')
+        resp = await MalTay.call(`(getfrom Bytes4 ${indexes[0]})`)
+        expect(resp).toEqual('0x11223344');
+        resp = await MalTay.call(`(getfrom Uint ${indexes[1]})`);
+        expect(resp).toEqual(2);
     });
 
     it('test struct components update', async function() {
@@ -1335,11 +1640,50 @@ describe.skip('test update!', function() {
                 (update! (nth stypes 1) (nth indexes 1) 7)
             )
         )`);
-    
-        resp = await MalTay.call('(refs-struct (getfrom UpdatableStruct 0))')
-        expect(resp).toEqual([0, 0]);
 
         resp = await MalTay.call('(list-struct (getfrom UpdatableStruct 0))')
         expect(resp).toEqual(['0x55667788', 7]);
+
+        resp = await MalTay.call(`(getfrom Bytes4 ${indexes[0]})`)
+        expect(resp).toEqual('0x55667788');
+        resp = await MalTay.call(`(getfrom Uint ${indexes[1]})`);
+        expect(resp).toEqual(7);
+    });
+});
+
+describe.skip('test update! bytes8', function() {
+    let indexes;
+    it('update setup struct', async function() {
+        await MalTay.send('(defstruct! UpdatableStruct (list Bytes8 Uint) )');
+        await MalTay.send('(struct! UpdatableStruct (list "0x1122334455667788" 2))');
+
+        resp = await MalTay.call('(list-struct (getfrom UpdatableStruct 0))')
+        expect(resp).toEqual(['0x1122334455667788', 2]);
+
+        indexes = await MalTay.call('(refs-struct (getfrom UpdatableStruct 0))')
+        resp = await MalTay.call(`(getfrom Bytes8 ${indexes[0]})`)
+        expect(resp).toEqual('0x1122334455667788');
+        resp = await MalTay.call(`(getfrom Uint ${indexes[1]})`);
+        expect(resp).toEqual(2);
+    });
+
+    it('test struct components update', async function() {
+        await MalTay.send(`(let* (
+                stypes (defstruct UpdatableStruct)
+                indexes (refs-struct (getfrom UpdatableStruct 0))
+            )
+            (list
+                (update! (nth stypes 0) (nth indexes 0) "0x5566778899101112")
+                (update! (nth stypes 1) (nth indexes 1) 7)
+            )
+        )`);
+
+        resp = await MalTay.call('(list-struct (getfrom UpdatableStruct 0))')
+        expect(resp).toEqual(['0x5566778899101112', 7]);
+        
+        resp = await MalTay.call(`(getfrom Bytes8 ${indexes[0]})`)
+        expect(resp).toEqual('0x5566778899101112');
+        resp = await MalTay.call(`(getfrom Uint ${indexes[1]})`);
+        expect(resp).toEqual(7);
     });
 });

@@ -544,10 +544,15 @@ object "Taylor" {
                 result_ptr := _getdyn(add(arg_ptrs_ptr, 32))
             }
             case 0x90000114 {
-                result_ptr := _store(add(arg_ptrs_ptr, 32))
+                let key_ptr := mload(add(ptrs, 32))
+                let data_ptr := mload(add(ptrs, 64))
+                let storageKey := mslice(add(key_ptr, 4), getValueLength(key_ptr))
+                result_ptr := _store(storageKey, data_ptr)
             }
             case 0x88000116 {
-                result_ptr := _sload(add(arg_ptrs_ptr, 32))
+                let key_ptr := mload(add(ptrs, 32))
+                let storageKey := mslice(add(key_ptr, 4), getValueLength(key_ptr))
+                result_ptr := _sload(storageKey)
             }
             case 0x88000118 {
                 _revert(add(arg_ptrs_ptr, 32))
@@ -1681,7 +1686,12 @@ object "Taylor" {
         // TODO: auto cast if overflow
         function _add(ptr1, ptr2) -> result_ptr {
             let c := add(extractValue(ptr1), extractValue(ptr2))
-            result_ptr := allocateTyped(c, min(get4b(ptr1), get4b(ptr2)), 4)
+            let maxsize := max(numberSize(get4b(ptr1)), numberSize(get4b(ptr2)))
+            let sig := buildUintSig(maxsize)
+            if gt(c, exp(2, mul(8, maxsize))) {
+                sig := buildUintSig(add(maxsize, 1))
+            }
+            result_ptr := allocateTyped(c, sig, 4)
         }
 
         function _sub(ptr1, ptr2) -> result_ptr {
@@ -1829,7 +1839,12 @@ object "Taylor" {
         
         function _shl(ptr1, ptr2) -> result_ptr {
             let c := shl(extractValue(ptr1), extractValue(ptr2))
-            result_ptr := allocateTyped(c, get4b(ptr1), 4)
+            let sig := get4b(ptr1)
+            let size := numberSize(sig)
+            if gt(c, exp(2, mul(8, size))) {
+                sig := buildUintSig(8)
+            }
+            result_ptr := allocateTyped(c, sig, 4)
         }
         
         function _shr(ptr1, ptr2) -> result_ptr {
@@ -3095,11 +3110,7 @@ object "Taylor" {
             sstore(mappingArrayDynStorageKey_count(typesig), count)
         }
 
-        function _store(ptrs) -> result_ptr {
-            let position_ptr := mload(ptrs)
-            let data_ptr := mload(add(ptrs, 32))
-
-            let storageKey := mslice(add(position_ptr, 4), getValueLength(position_ptr))
+        function _store(storageKey, data_ptr) -> result_ptr {
             let data_len := getTypedLength(data_ptr)
 
             let _ptr := allocate(add(data_len, 4))
@@ -3109,10 +3120,7 @@ object "Taylor" {
             storeData(_ptr, storageKey)
         }
 
-        function _sload(ptrs) -> result_ptr {
-            let storagekey_ptr := mload(ptrs)
-            let storageKey := mslice(add(storagekey_ptr, 4), getValueLength(storagekey_ptr))
-            
+        function _sload(storageKey) -> result_ptr {
             let _pointer := freeMemPtr()
             getStoredData(_pointer, storageKey)
             let len := mslice(_pointer, 4)

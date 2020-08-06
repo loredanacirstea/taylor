@@ -388,15 +388,25 @@ const decodeInner = (inidata) => {
         });
         return { result, data };
     } else if (isFunction(sig)) {
-        return expr2string(inidata);
+        // console.log('----isFunction sig', sig, inidata)
+        try {
+            const fff = expr2string(inidata);
+            // console.log('++++decodeInner++', fff);
+            return fff;
+        } catch (e) {
+            console.log(e);
+            return {result: '', data: ''};
+        }
     } else {
         throw new Error(`decode type not supported: ${sig} ; ${inidata}`);
+        // console.log(`decode type not supported: ${sig} ; ${inidata}`);
+        // return {result: '', data: ''};
     }
 }
 
 const decode = data => {
     const inidata = data;
-    // console.log('decode', inidata);
+    // console.log('***decode', inidata);
     data = strip0x(data);
     const decoded = [];
 
@@ -665,6 +675,8 @@ const expr2string = (inidata, pos=0, accum='') => {
 
     const isf = isFunction(sigu);
 
+    // console.log('*****expr2string**** inidata, pos, accum:', inidata, pos, accum, sig, sigu, isf, isList(sigu), isListType(sigu));
+
     if (isf) {
         if (reverseNativeEnv[sig]) {
             name =  reverseNativeEnv[sig];
@@ -701,21 +713,37 @@ const expr2string = (inidata, pos=0, accum='') => {
             accum = res.accum;
 
         } else if (isLambda(sigu)) {
-            accum += '( fn* () '
+            accum += '( fn* '
             const bodylen = tableSig.lambda.offsets(sigu);
-            if (!isListType(get4bsig(inidata))) {
-                inidata = inidata.substring(64);
-            }
-            const res = expr2string(inidata, pos, accum)
+            const lambda_data = inidata.substring(pos, pos+bodylen);
+            // console.log('---+expr2string inidata', inidata, pos);
+            // console.log('--bodylen', bodylen);
+            // console.log('--bodylen isListType', isListType(get4bsig(data)));
+            // if (!isListType(get4bsig(data))) {
+            //     data = data.substring(64); // ??
+            // }
+            // pos += 8;
+            // console.log('--- isLambda expr2string', data, pos, accum);
+            // const res = expr2string(inidata, pos, accum);
+            let res = expr2string(lambda_data, 0, accum);
+            // console.log('--- isLambda expr2string res', res);
             accum = res.accum;
+            // pos += res.pos;
+            // list of args is done
+            res = expr2string(lambda_data, res.pos, accum);
+            // console.log('--- isLambda expr2string res2', res);
+            accum = res.accum;
+            pos += res.pos;
+
+            // console.log('--- isLambda expr2string accum', accum);
+
         } else if (isGetByName(sigu)) {
             const fname = data.substring(8, tableSig.isGetByName.offsets[0]+8).hexDecode();
             accum += '( _' + fname + ' '
             pos += tableSig.isGetByName.offsets[0] + 8
             const res = expr2string(inidata, pos, accum)
             accum = res.accum;
-        }
-        else {
+        } else {
             for(let i = 0; i < arity; i++) {
                 let res = expr2string(inidata, pos , accum)
                 pos = res.pos;
@@ -723,19 +751,38 @@ const expr2string = (inidata, pos=0, accum='') => {
             }
         }
         accum += ')'
-    }
-    else if (isLambdaUnknown(sigu)) {
+        // console.log('---expr2string', accum);
+    } else if (isLambdaUnknown(sigu)) {
+        // console.log('----isLambdaUnknown')
         const index = parseInt(data.substring(0, 8), 16)
         const uname = 'u_'+index + ' '
         unknownList.push(uname);
         accum += ' ' + uname
         pos += 8
-    }
-    else {
+    } else if (isListType(sigu)) {
+        accum += '('
+        const arity = listTypeSize(sigu);
+        // console.log('---isListType arity', arity);
+        for (let i = 0; i < arity; i ++) {
+            const d = inidata.substring(pos);
+            // console.log('d', d);
+            const resp = expr2string(d, 0, accum);
+            // console.log('--isListType resp', resp);
+            accum = resp.accum;
+            pos += resp.pos;
+        }
+        // console.log('--isListType accum', pos, accum);
+        accum += ')';
+    } else {
+        if (!inidata) throw new Error('Unknown decoding error. Decoded: ' + accum);
         const res = decodeInner(inidata_)
+        
+        if (!res || !res.data) throw new Error('Unknown decoding error. Decoded: ' + accum);
+
         accum += ' ' + res.result.toString()
         pos = inidata.length - res.data.length;
     }
+    // console.log('---expr2string fin', pos, accum);
     return { pos, accum };
 }
 
@@ -798,6 +845,7 @@ const getTaylor = (provider, signer) => (address, deploymentBlock) => {
     }
     
     interpreter.call = async (mal_expression, txObj) => decode(await interpreter.call_raw(expr2h(mal_expression, interpreter.alltypes()), txObj));
+    interpreter.call_no_decode = async (mal_expression, txObj) => interpreter.call_raw(expr2h(mal_expression, interpreter.alltypes()), txObj);
     interpreter.send = async (expression, txObj={}, newsigner=null) => {
         if(!txObj.value && !newsigner) {
             txObj.value = await interpreter.calculateCost(expression, txObj);
@@ -901,10 +949,11 @@ const getTaylor = (provider, signer) => (address, deploymentBlock) => {
         functions = functions || Object.values(bootstrap_functions);
         const receipt = await _bootstrap(functions, step);
 
-        await interpreter.sendAndWait(bootstrap_functions['nth-eth-arg']);
-        await interpreter.sendAndWait(bootstrap_functions['eth-pipe-evm']);
-        await interpreter.sendAndWait(bootstrap_functions['eth-pipe-evm!']);
-        return receipt;
+        // await interpreter.sendAndWait(bootstrap_functions['nth-eth-arg']);
+        // await interpreter.sendAndWait(bootstrap_functions['eth-pipe-evm']);
+        // await interpreter.sendAndWait(bootstrap_functions['eth-pipe-evm!']);
+        // return receipt;
+        return [];
     }
 
     // populates with all functions, including those stored in registered contracts
