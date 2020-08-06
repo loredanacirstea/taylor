@@ -130,7 +130,8 @@ const isNumber = sig => ((sig >> 27) & 0x1f) === 1;
 const isBool = sig => (sig & 0xffff0000) === 0x0a800000;
 const isBytelike = sig => ((sig >> 26) & 0x3f) === 1;
 const isEnum = sig => (sig & 0x2000000) !== 0;
-const isLambdaUnknown = sig => (sig & 0x1000000) !== 0;
+const isLambdaUnknown = sig => sig === 0x1000000;
+
 const isGetByName = sig => (sig & 0x7fffffe) === 0x48;
 
 const isUint = sig => isNumber(sig) && ((sig & 0x7ff0000) === parseInt(numberid.uint + '0000000000000000', 2));
@@ -823,7 +824,10 @@ const getTaylor = (provider, signer) => (address, deploymentBlock) => {
         return provider.estimateGas(txObj).catch(console.log);
     }
 
-    interpreter.calculateCost = async (expression, txObj) => (await interpreter.estimateGas(expression, txObj)).toNumber() * 2;
+    interpreter.calculateCost = async (expression, txObj) => {
+        const cost = await interpreter.estimateGas(expression, txObj);
+        return cost ? cost.toNumber() * 2 : null;
+    }
 
     interpreter.getregistered = getRegisteredContracts(interpreter.call_raw);
 
