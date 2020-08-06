@@ -623,6 +623,11 @@ object "Taylor" {
                 let value_ptr := mload(add(arg_ptrs_ptr, 32))
                 result_ptr := _to_uint(value_ptr)
             }
+            case 0x90000138 {
+                let ptr1 := mload(add(arg_ptrs_ptr, 32))
+                let ptr2 := mload(add(arg_ptrs_ptr, 64))
+                result_ptr := _join_untyped(ptr1, ptr2)
+            }
 
             default {
                 let isthis := 0
@@ -2255,6 +2260,17 @@ object "Taylor" {
             if _sequential_q(item_ptr) {
                 vallen := iterTypeSize(item_ptr)
             }
+        }
+
+        function _join_untyped(ptr1, ptr2) -> result_ptr {
+            let siglen1 := getSignatureLength(ptr1)
+            let siglen2 := getSignatureLength(ptr2)
+            let vallen1 := getValueLength(ptr1)
+            let vallen2 := getValueLength(ptr2)
+            let alllen := add(vallen1, vallen2)
+            result_ptr := allocate(alllen)
+            mmultistore(result_ptr, add(ptr1, siglen1), vallen1)
+            mmultistore(add(result_ptr, vallen1), add(ptr2, siglen2), vallen2)
         }
 
         function _join(ptr1, ptr2) -> result_ptr {
