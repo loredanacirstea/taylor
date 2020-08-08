@@ -60,7 +60,8 @@ xxxx xxxxxxxxxxxxxxxxxxxxxx xxxxxx     xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx    root_
 0011 0 001 xxxx xxxxxxxxxxxxxx xxxxxx  xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx                pure(1), taylor(3), (4), body_length(14), arity(6), id(32)
 0011 0 010 xxxx xxxxxxxxxxxxxx xxxxxx  xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx                pure(1), taylor_lambda(3), (4), body_length(14), arity(6), id(32)
 0011 0 011 xxxx xxxxxxxxxxxxxx xxxxxx  xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx                pure(1), untyped(3), (4), body_length(14), arity(6), id(32)
-0011 0 100 xxxx xxxxxxxxxxxxxx xxxxxx  xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx                pure(1), solidity(3), (4), body_length(14), arity(6), 4b signature
+0011 0 100 xxxx xxxxxxxxxxxxxx xxxxxx  xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx                pure(1), evm_untyped(3), (4), body_length(14), arity(6), 4b signature
+0011 0 101 xxxx xxxxxxxxxxxxxx xxxxxx  xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx                pure(1), solidity(3), (4), body_length(14), arity(6), 4b signature
 
 0011 1 xxx xxxx xxxxxxxxxxxxxx xxxxxx  xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx                mutable(1) ... etc.
 
