@@ -91,6 +91,7 @@ class TaylorEditor extends Component {
   }
 
   onRootChange(backend, tayinterpreter, malbackend) {
+    console.log('onRootChange', backend, tayinterpreter, malbackend);
     this.setState({ backend, tayinterpreter, malbackend });
     if (!tayinterpreter && backend !== 'javascript') {
       const errors = "No web3 provider found. Please connect to one (e.g. Metamask).";
@@ -118,8 +119,13 @@ class TaylorEditor extends Component {
   }
 
   async getGasCost(interpreter, code, isTransaction) {
-    let gas = (await interpreter.estimateGas(code)).toNumber();
-    const value = await interpreter.calculateCost(code);
+    let gas = await interpreter.estimateGas(code);
+    let value;
+    if (gas) {
+      gas = gas.toNumber();
+      value = await interpreter.calculateCost(code);
+    }
+    else gas = value = 0;
 
     if (isTransaction) {
       const { currency, profile, ethrate } = this.state.gasprofile;
@@ -378,6 +384,10 @@ class TaylorEditor extends Component {
     }
 
     const activeBackend = backend === 'injected' ? tayinterpreter : malbackend;
+    console.log('activeBackend', backend, activeBackend);
+    console.log('malbackend', malbackend);
+    console.log('tayinterpreter', tayinterpreter);
+    console.log('showLuxor', showLuxor);
     
     return (
       <ScrollView

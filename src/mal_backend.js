@@ -4,6 +4,8 @@ const interop = require('./mal/interop');
 const BN = require('bn.js');
 const ethers = require('ethers');
 const bootstrap_functions = require('./bootstrap.js');
+const { strip0x } = require('./utils.js');
+require('./extensions.js');
 
 mal.re = str => mal.EVAL(mal.READ(str), mal.repl_env)
 mal.reps = async lines => {
@@ -91,6 +93,13 @@ const callContract = (address, fsig, data, providerOrSigner, isTx=false, ethvalu
 }
 
 mal.globalStorage = {};
+mal.runtimeMemory = {};
+mal.freeMemPtr = 192;
+mal.allocate = size => {
+    const ptr = mal.freeMemPtr;
+    mal.freeMemPtr += size;
+    return ptr;
+}
 
 modifyEnv('nil?', (orig_func, value) => {
     let nil = (
@@ -113,6 +122,8 @@ const native_extensions = {
         return new BN(n);
     },
     keccak256: n => {
+        // console.log('keccak256', n, typeof n)
+        if (n instanceof Array) n = mal.runtimeMemory[n[0]];
         if (typeof n !== 'string') throw new Error('keccak256 expects string');
 
         // TODO: better encoding
@@ -128,18 +139,39 @@ const native_extensions = {
             n = JSON.parse(n)
         } catch(e) {}
 
+        if (n instanceof Array && n[2] === 'ptr') n = native_extensions.mload(n[0]);
+
         switch (typeof n) {
             case 'number':
-                return n.toString(16).padStart(8, '0');
+                // return n.toString(16).padStart(8, '0');
+                return n.toString(16).padStart(64, '0');
             case 'string':
                 return n;
         }
     },
     store: (key, value) => {
         mal.globalStorage[key] = value;
+        return key;
     },
     sload: (key, typename) => {
         let value = mal.globalStorage[key];
+        // TODO: proper typecheck
+        
+        try {
+            value = JSON.parse(value)
+        } catch(e) {}
+
+        return value;
+    },
+    mstore: (value) => {
+        const length = value.toString().length;
+        const key = mal.allocate(length);
+        mal.runtimeMemory[key] = value;
+        // console.log('--mstore', key, length, mal.runtimeMemory[key], typeof value);
+        return [key, length, 'ptr'];
+    },
+    mload: (key) => {
+        let value = mal.runtimeMemory[key] || 0;
         // TODO: proper typecheck
         
         try {
@@ -192,6 +224,17 @@ const native_extensions = {
             val = JSON.stringify(val);
         }
         return await native_extensions.listToJsArrayStr(val);
+    },
+    join: (a, b) => {
+        if (typeof a !== 'string' || typeof b !== 'string') throw new Error('join argument is not string');
+        const toHex = arg => arg.slice(0, 2) === '0x' ? arg : '0x' + arg.hexEncode();
+        
+        return toHex(a) + strip0x(toHex(b));
+    },
+    return_d: a => {
+        // console.log('return_d', a);
+        if (a instanceof Array) return mal.runtimeMemory[a[0]] || 0;
+        return a;
     },
     ethabi_encode: (types, values) => {
         if (!(types instanceof Array)) types = [types];
@@ -246,7 +289,10 @@ modifyEnv('js-eval', async (orig_func, str) => {
         answ = undefined;
     }
 
+    // console.log('--js-eval', str, answ, typeof answ);
+
     answ = jsEvalParseBN(answ);
+    // console.log('js-eval', answ, typeof answ);
     return interop.js_to_mal(answ);
 })
 
@@ -266,6 +312,10 @@ await mal.reps(`
 
 (def! sload (fn* (key type) (js-eval (str "utils.sload(" key ",'" type "')") )))
 
+(def! mstore (fn* (value) (js-eval (str "utils.mstore(" (js-str value) ")") )))
+
+(def! mload (fn* (t2ptr) (js-eval (str "utils.mload(" t2ptr ")") )))
+
 (def! array vector)
 
 (def! array? (fn* (a) (vector? a) ))
@@ -279,6 +329,8 @@ await mal.reps(`
 (def! shift (fn* (arr value)
     (cons value arr)
 ))
+
+(def! join (fn* (a b) (js-eval (str "utils.join(" (js-str a) "," (js-str b) ")") ) ))
 
 (def! length (fn* (val)
     (if (sequential? val)
@@ -353,6 +405,17 @@ await mal.reps(`
 `)
 
 await mal.reps(`
+(def! t2 (fn* (a b) (list a b "ptr") ))
+
+(def! t12 (fn* (a) (first a) ))
+
+(def! t21 (fn* (a) (nth a 1) ))
+
+(def! msize (fn* () 256 ))
+
+`)
+
+await mal.reps(`
 (def! balances {})
 
 (def! gas (fn* () (get cenv "gas")))
@@ -367,15 +430,15 @@ await mal.reps(`
 
 (def! callvalue (fn* (address) (get cenv "callvalue" )))
 
-(def! calldatasize (fn* () 4))
+(def! calldatasize (fn* () 8))
 
-(def! codesize (fn* () 134 ))
+(def! codesize (fn* () 22200 ))
 
-(def! extcodesize (fn* (address) 134 ))
+(def! extcodesize (fn* (address) 0 ))
 
-(def! returndatasize (fn* () 134 ))
+(def! returndatasize (fn* () 0 ))
 
-(def! extcodehash (fn* () 1343322 ))
+(def! extcodehash (fn* (address) 0 ))
 
 (def! chainid (fn* () (get cenv "chainid" )))
 
@@ -400,6 +463,8 @@ await mal.reps(`
 (def! revert (fn* (a) (throw a) ) )
 
 (def! return (fn* (a) a ))
+
+(def! return# (fn* (a) (js-eval (str "utils.return_d(" (js-str a) ")" )) ))
 
 (def! eth-call (fn* (address fsig argList) (js-eval (str "utils.ethcall('" address "','" fsig "'," (js-str argList) ")" )) ))
 

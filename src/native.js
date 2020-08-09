@@ -1,5 +1,4 @@
-const _nativeEnv = {
-    // EVM specific
+const _nativeEVM = {
     add:          { mutable: false, arity: 2, inputs: [{type: 'uint', name: 'a'}, {type: 'uint', name: 'b'}], outputs: [{type: 'uint', name: 'c'}] },
     sub:          { mutable: false, arity: 2, inputs: [{type: 'uint', name: 'a'}, {type: 'uint', name: 'b'}], outputs: [{type: 'uint', name: 'c'}] },
     mul:          { mutable: false, arity: 2, inputs: [{type: 'uint', name: 'a'}, {type: 'uint', name: 'b'}], outputs: [{type: 'uint', name: 'c'}] },
@@ -30,8 +29,73 @@ const _nativeEnv = {
     callcode:     { mutable: true, arity: 4 },
     delegatecall: { mutable: true, arity: 3 },
     call:   { mutable: false, arity: 3 },
-    
-    // Mal specific
+     // EVM - rest
+    gas:         {mutable: false, arity: 0, inputs: [], outputs: [] },
+    address:     {mutable: false, arity: 0, inputs: [], outputs: [] },
+    balance:     {mutable: false, arity: 1, inputs: [{type: 'address', name: 'address'}], outputs: [] },
+    caller:      {mutable: false, arity: 0, inputs: [], outputs: [] },
+    callvalue:   {mutable: false, arity: 0, inputs: [], outputs: [] },
+    calldataload:{mutable: false, arity: 0, inputs: [], outputs: [] },
+    calldatasize:{mutable: false, arity: 0, inputs: [], outputs: [] },
+    calldatacopy:{mutable: false, arity: 3, inputs: [{type: 'uint', name: 'uint'}, {type: 'uint', name: 'uint'}, {type: 'uint', name: 'uint'}], outputs: [] },
+    codesize:    {mutable: false, arity: 0, inputs: [], outputs: [] },
+    codecopy:    {mutable: false, arity: 3, inputs: [{type: 'uint', name: 'uint'}, {type: 'uint', name: 'uint'}, {type: 'uint', name: 'uint'}], outputs: [] },
+    extcodesize: {mutable: false, arity: 1, inputs: [{type: 'address', name: 'address'}], outputs: [] },
+    extcodecopy: {mutable: false, arity: 4, inputs: [{type: 'uint', name: 'uint'}, {type: 'uint', name: 'uint'}, {type: 'uint', name: 'uint'}, {type: 'uint', name: 'uint'}], outputs: [] },
+    returndatasize:{mutable: false, arity: 0, inputs: [], outputs: [] },
+    returndatacopy:{mutable: false, arity: 3, inputs: [{type: 'uint', name: 'uint'}, {type: 'uint', name: 'uint'}, {type: 'uint', name: 'uint'}], outputs: [] },
+    extcodehash:{mutable: false, arity: 1, inputs: [{type: 'address', name: 'address'}], outputs: [] },
+    create:      {mutable: false, arity: 3, inputs: [{type: 'uint', name: 'uint'}, {type: 'uint', name: 'uint'}, {type: 'uint', name: 'uint'}], outputs: [] },
+    create2:     {mutable: false, arity: 4, inputs: [{type: 'uint', name: 'uint'}, {type: 'uint', name: 'uint'}, {type: 'uint', name: 'uint'}, {type: 'uint', name: 'uint'}], outputs: [] },
+    // replaced with log
+    log:       {mutable: false, arity: null },
+    // log0:       {mutable: false, arity: 2, inputs: [{type: 'uint', name: 'uint'}, {type: 'uint', name: 'uint'}], outputs: [] },
+    log1:       {mutable: false, arity: 3, inputs: [{type: 'uint', name: 'uint'}, {type: 'uint', name: 'uint'}, {type: 'uint', name: 'uint'}], outputs: [] },
+    log2:       {mutable: false, arity: 4, inputs: [{type: 'uint', name: 'uint'}, {type: 'uint', name: 'uint'}, {type: 'uint', name: 'uint'}, {type: 'uint', name: 'uint'}], outputs: [] },
+    log3:       {mutable: false, arity: 5, inputs: [{type: 'uint', name: 'uint'}, {type: 'uint', name: 'uint'}, {type: 'uint', name: 'uint'}, {type: 'uint', name: 'uint'}, {type: 'uint', name: 'uint'}], outputs: [] },
+    log4:       {mutable: false, arity: 6, inputs: [{type: 'uint', name: 'uint'}, {type: 'uint', name: 'uint'}, {type: 'uint', name: 'uint'}, {type: 'uint', name: 'uint'}, {type: 'uint', name: 'uint'}, {type: 'uint', name: 'uint'}], outputs: [] },
+    chainid:    {mutable: false, arity: 0, inputs: [], outputs: [] },
+    origin:     {mutable: false, arity: 0, inputs: [], outputs: [] },
+    blockhash:  {mutable: false, arity: 0, inputs: [], outputs: [] },
+    coinbase:   {mutable: false, arity: 0, inputs: [], outputs: [] },
+    timestamp:  {mutable: false, arity: 0, inputs: [], outputs: [] },
+    number:     {mutable: false, arity: 0, inputs: [], outputs: [] },
+    difficulty: {mutable: false, arity: 0, inputs: [], outputs: [] },
+    gaslimit:   {mutable: false, arity: 0, inputs: [], outputs: [] },
+    gas:         {mutable: false, arity: 0, inputs: [], outputs: [] },
+    address:     {mutable: false, arity: 0, inputs: [], outputs: [] },
+    balance:     {mutable: false, arity: 1, inputs: [{type: 'address', name: 'address'}], outputs: [] },
+    caller:      {mutable: false, arity: 0, inputs: [], outputs: [] },
+    callvalue:   {mutable: false, arity: 0, inputs: [], outputs: [] },
+    calldataload:{mutable: false, arity: 0, inputs: [], outputs: [] },
+    calldatasize:{mutable: false, arity: 0, inputs: [], outputs: [] },
+    calldatacopy:{mutable: false, arity: 3, inputs: [{type: 'uint', name: 'uint'}, {type: 'uint', name: 'uint'}, {type: 'uint', name: 'uint'}], outputs: [] },
+    codesize:    {mutable: false, arity: 0, inputs: [], outputs: [] },
+    codecopy:    {mutable: false, arity: 3, inputs: [{type: 'uint', name: 'uint'}, {type: 'uint', name: 'uint'}, {type: 'uint', name: 'uint'}], outputs: [] },
+    extcodesize: {mutable: false, arity: 1, inputs: [{type: 'address', name: 'address'}], outputs: [] },
+    extcodecopy: {mutable: false, arity: 4, inputs: [{type: 'uint', name: 'uint'}, {type: 'uint', name: 'uint'}, {type: 'uint', name: 'uint'}, {type: 'uint', name: 'uint'}], outputs: [] },
+    returndatasize:{mutable: false, arity: 0, inputs: [], outputs: [] },
+    returndatacopy:{mutable: false, arity: 3, inputs: [{type: 'uint', name: 'uint'}, {type: 'uint', name: 'uint'}, {type: 'uint', name: 'uint'}], outputs: [] },
+    extcodehash:{mutable: false, arity: 1, inputs: [{type: 'address', name: 'address'}], outputs: [] },
+    create:      {mutable: false, arity: 3, inputs: [{type: 'uint', name: 'uint'}, {type: 'uint', name: 'uint'}, {type: 'uint', name: 'uint'}], outputs: [] },
+    create2:     {mutable: false, arity: 4, inputs: [{type: 'uint', name: 'uint'}, {type: 'uint', name: 'uint'}, {type: 'uint', name: 'uint'}, {type: 'uint', name: 'uint'}], outputs: [] },
+    // replaced with log
+    log:       {mutable: false, arity: null },
+    // log0:       {mutable: false, arity: 2, inputs: [{type: 'uint', name: 'uint'}, {type: 'uint', name: 'uint'}], outputs: [] },
+    log1:       {mutable: false, arity: 3, inputs: [{type: 'uint', name: 'uint'}, {type: 'uint', name: 'uint'}, {type: 'uint', name: 'uint'}], outputs: [] },
+    log2:       {mutable: false, arity: 4, inputs: [{type: 'uint', name: 'uint'}, {type: 'uint', name: 'uint'}, {type: 'uint', name: 'uint'}, {type: 'uint', name: 'uint'}], outputs: [] },
+    log3:       {mutable: false, arity: 5, inputs: [{type: 'uint', name: 'uint'}, {type: 'uint', name: 'uint'}, {type: 'uint', name: 'uint'}, {type: 'uint', name: 'uint'}, {type: 'uint', name: 'uint'}], outputs: [] },
+    log4:       {mutable: false, arity: 6, inputs: [{type: 'uint', name: 'uint'}, {type: 'uint', name: 'uint'}, {type: 'uint', name: 'uint'}, {type: 'uint', name: 'uint'}, {type: 'uint', name: 'uint'}, {type: 'uint', name: 'uint'}], outputs: [] },
+    chainid:    {mutable: false, arity: 0, inputs: [], outputs: [] },
+    origin:     {mutable: false, arity: 0, inputs: [], outputs: [] },
+    blockhash:  {mutable: false, arity: 0, inputs: [], outputs: [] },
+    coinbase:   {mutable: false, arity: 0, inputs: [], outputs: [] },
+    timestamp:  {mutable: false, arity: 0, inputs: [], outputs: [] },
+    number:     {mutable: false, arity: 0, inputs: [], outputs: [] },
+    difficulty: {mutable: false, arity: 0, inputs: [], outputs: [] },
+    gaslimit:   {mutable: false, arity: 0, inputs: [], outputs: [] },
+}
+const _taylorCore = {
     list:         { mutable: false, arity: null },
     apply:        { mutable: false, arity: null },
     lambda:       { mutable: false, arity: null },
@@ -51,7 +115,7 @@ const _nativeEnv = {
     'false?':     { mutable: false, arity: 1, inputs: [{type: 'any', name: 'any'}], outputs: [{type: 'bool', name: 'c'}] },
     "let*":       { mutable: false, arity: 2, inputs: [{type: 'list', name: 'list'}, {type: 'uint', name: 'index'}], outputs: [{type: 'any', name: 'item'}] },
 
-    // Mal specific - unimplemented, just placeholders
+    // unimplemented, just placeholders
     cons:         { mutable: false, arity: 2, notimp: true },  // prepend item to list
     concat2:      { mutable: false, arity: null, notimp: true },  // concats lists
     'nil?':       { mutable: false, arity: 1 },
@@ -106,38 +170,6 @@ const _nativeEnv = {
     'getregistered': { mutable: false, arity: 1, inputs: [{type: 'uint', name: 'uint'}], outputs: [] },
     'defstruct!': { mutable: false, arity: 2, inputs: [{type: 'symbol', name: 'name'}, {type: 'any', name: 'def'}], outputs: [] },
 
-    // EVM - rest
-    gas:         {mutable: false, arity: 0, inputs: [], outputs: [] },
-    address:     {mutable: false, arity: 0, inputs: [], outputs: [] },
-    balance:     {mutable: false, arity: 1, inputs: [{type: 'address', name: 'address'}], outputs: [] },
-    caller:      {mutable: false, arity: 0, inputs: [], outputs: [] },
-    callvalue:   {mutable: false, arity: 0, inputs: [], outputs: [] },
-    calldataload:{mutable: false, arity: 0, inputs: [], outputs: [] },
-    calldatasize:{mutable: false, arity: 0, inputs: [], outputs: [] },
-    calldatacopy:{mutable: false, arity: 3, inputs: [{type: 'uint', name: 'uint'}, {type: 'uint', name: 'uint'}, {type: 'uint', name: 'uint'}], outputs: [] },
-    codesize:    {mutable: false, arity: 0, inputs: [], outputs: [] },
-    codecopy:    {mutable: false, arity: 3, inputs: [{type: 'uint', name: 'uint'}, {type: 'uint', name: 'uint'}, {type: 'uint', name: 'uint'}], outputs: [] },
-    extcodesize: {mutable: false, arity: 1, inputs: [{type: 'address', name: 'address'}], outputs: [] },
-    extcodecopy: {mutable: false, arity: 4, inputs: [{type: 'uint', name: 'uint'}, {type: 'uint', name: 'uint'}, {type: 'uint', name: 'uint'}, {type: 'uint', name: 'uint'}], outputs: [] },
-    returndatasize:{mutable: false, arity: 0, inputs: [], outputs: [] },
-    returndatacopy:{mutable: false, arity: 3, inputs: [{type: 'uint', name: 'uint'}, {type: 'uint', name: 'uint'}, {type: 'uint', name: 'uint'}], outputs: [] },
-    extcodehash:{mutable: false, arity: 1, inputs: [{type: 'address', name: 'address'}], outputs: [] },
-    create:      {mutable: false, arity: 3, inputs: [{type: 'uint', name: 'uint'}, {type: 'uint', name: 'uint'}, {type: 'uint', name: 'uint'}], outputs: [] },
-    create2:     {mutable: false, arity: 4, inputs: [{type: 'uint', name: 'uint'}, {type: 'uint', name: 'uint'}, {type: 'uint', name: 'uint'}, {type: 'uint', name: 'uint'}], outputs: [] },
-    log0:       {mutable: false, arity: 2, inputs: [{type: 'uint', name: 'uint'}, {type: 'uint', name: 'uint'}], outputs: [] },
-    log1:       {mutable: false, arity: 3, inputs: [{type: 'uint', name: 'uint'}, {type: 'uint', name: 'uint'}, {type: 'uint', name: 'uint'}], outputs: [] },
-    log2:       {mutable: false, arity: 4, inputs: [{type: 'uint', name: 'uint'}, {type: 'uint', name: 'uint'}, {type: 'uint', name: 'uint'}, {type: 'uint', name: 'uint'}], outputs: [] },
-    log3:       {mutable: false, arity: 5, inputs: [{type: 'uint', name: 'uint'}, {type: 'uint', name: 'uint'}, {type: 'uint', name: 'uint'}, {type: 'uint', name: 'uint'}, {type: 'uint', name: 'uint'}], outputs: [] },
-    log4:       {mutable: false, arity: 6, inputs: [{type: 'uint', name: 'uint'}, {type: 'uint', name: 'uint'}, {type: 'uint', name: 'uint'}, {type: 'uint', name: 'uint'}, {type: 'uint', name: 'uint'}, {type: 'uint', name: 'uint'}], outputs: [] },
-    chainid:    {mutable: false, arity: 0, inputs: [], outputs: [] },
-    origin:     {mutable: false, arity: 0, inputs: [], outputs: [] },
-    blockhash:  {mutable: false, arity: 0, inputs: [], outputs: [] },
-    coinbase:   {mutable: false, arity: 0, inputs: [], outputs: [] },
-    timestamp:  {mutable: false, arity: 0, inputs: [], outputs: [] },
-    number:     {mutable: false, arity: 0, inputs: [], outputs: [] },
-    difficulty: {mutable: false, arity: 0, inputs: [], outputs: [] },
-    gaslimit:   {mutable: false, arity: 0, inputs: [], outputs: [] },
-
     // Taylor
     'save!':  { mutable: false, arity: 2 },
     getfrom:     { mutable: false, arity: 2 },
@@ -149,7 +181,7 @@ const _nativeEnv = {
     'push!':  { mutable: false, arity: 3 },
     getdyn: { mutable: false, arity: 2 },
     'store!': { mutable: false, arity: 2 },
-    sload:    { mutable: false, arity: 2 },
+    sload:    { mutable: false, arity: 1 },
     revert:   { mutable: false, arity: 1 },
     return:   { mutable: false, arity: 1 },
     'list-struct': { mutable: false, arity: 1 },
@@ -166,14 +198,13 @@ const _nativeEnv = {
     range:     { mutable: false, arity: 3 },
     shift:     { mutable: false, arity: 2 },
     'to-uint': { mutable: false, arity: 1 },
+    'join-untyped': { mutable: false, arity: 2},
 
     // TODO: curry
     // TODO: pay
 }
 
-
-const _nativeEnv_docs = {
-    // EVM specific
+const docs = {
     add:          { docs: 'x + y' },
     sub:          { docs: 'x - y' },
     mul:          { docs: 'x * y' },
@@ -231,8 +262,10 @@ const _nativeEnv_docs = {
     'defstruct!': { },
 }
 
-Object.keys(_nativeEnv_docs).forEach(name => {
-    _nativeEnv[name] = Object.assign(_nativeEnv[name], _nativeEnv_docs[name]);
+const all = Object.assign({}, _nativeEVM, _taylorCore);
+
+Object.keys(docs).forEach(name => {
+    all[name] = Object.assign(all[name], docs[name]);
 })
 
-module.exports = _nativeEnv;
+module.exports = { all, evm: _nativeEVM, taylor: _taylorCore };

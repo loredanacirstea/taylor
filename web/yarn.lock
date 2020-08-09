@@ -1911,10 +1911,10 @@
   resolved "https://registry.yarnpkg.com/@reach/visually-hidden/-/visually-hidden-0.1.4.tgz#0dc4ecedf523004337214187db70a46183bd945b"
   integrity sha512-QHbzXjflSlCvDd6vJwdwx16mSB+vUCCQMiU/wK/CgVNPibtpEiIbisyxkpZc55DyDFNUIqP91rSUsNae+ogGDQ==
 
-"@rowsncolumns/calc@^2.3.5":
-  version "2.3.5"
-  resolved "https://registry.yarnpkg.com/@rowsncolumns/calc/-/calc-2.3.5.tgz#f36640d1d5af52d7fc02a46cf1eaf91bba817a71"
-  integrity sha512-vziuHAMoUOSy02WmpfkTgN2e/YSjZdCW2675/5h2D7Fn8mF7fVBqwjG7hN2vzZUM/iG3+i6HMDD8iam1kPrkJg==
+"@rowsncolumns/calc@^2.3.6":
+  version "2.3.6"
+  resolved "https://registry.yarnpkg.com/@rowsncolumns/calc/-/calc-2.3.6.tgz#d336c16eeee74eca5c49b6623d189fe841fc9112"
+  integrity sha512-hlhE7FqI+7vU2/iptUtf/uKIqWnMfjUo0yBlwvJ0aMexPXjJp1H8BItZodh8pFSasFsrC8xV38US+viLQkSjFA==
   dependencies:
     "@babel/plugin-proposal-class-properties" "^7.10.4"
     "@types/lodash.merge" "^4.6.6"
@@ -1932,16 +1932,16 @@
     scroller "^0.0.3"
     tiny-invariant "^1.1.0"
 
-"@rowsncolumns/spreadsheet@^3.10.13":
-  version "3.10.13"
-  resolved "https://registry.yarnpkg.com/@rowsncolumns/spreadsheet/-/spreadsheet-3.10.13.tgz#f6333310f02a3d0e8e2a5726b1039e4a38232397"
-  integrity sha512-piQ1ZU/Q+bL0sQvyyDK47y8pvYGqS+VlDrjVrnTdNltr9ez40cm7hguYZQIrwfSpwtF/kpiijcOj1UGvyp1QPg==
+"@rowsncolumns/spreadsheet@^3.10.15":
+  version "3.10.15"
+  resolved "https://registry.yarnpkg.com/@rowsncolumns/spreadsheet/-/spreadsheet-3.10.15.tgz#4322f0a5a865facb6f123799ded1038d06b16d6e"
+  integrity sha512-aoAz8nPopFUheUkDNw/D6xf4I+Tf8pdvWoyI3lhRbgztoUlfSXNuCXm4TcpQqIPpOdbdeIfdetJBOZ+uBBUQTQ==
   dependencies:
     "@chakra-ui/core" "^0.8.0"
     "@emotion/core" "^10.0.28"
     "@emotion/styled" "^10.0.27"
     "@juggle/resize-observer" "^3.2.0"
-    "@rowsncolumns/calc" "^2.3.5"
+    "@rowsncolumns/calc" "^2.3.6"
     "@rowsncolumns/grid" "^5.5.4"
     "@types/react-list" "^0.8.5"
     "@types/webfontloader" "^1.6.32"
@@ -6417,7 +6417,7 @@ inflight@^1.0.4:
     once "^1.3.0"
     wrappy "1"
 
-inherits@2, inherits@2.0.4, inherits@~2.0.1, inherits@~2.0.3:
+inherits@2, inherits@2.0.4, inherits@^2.0.1, inherits@^2.0.3, inherits@~2.0.1, inherits@~2.0.3:
   version "2.0.4"
   resolved "https://registry.yarnpkg.com/inherits/-/inherits-2.0.4.tgz#0fa2c64f932917c3433a0ded55363aae37416b7c"
   integrity sha512-k/vGaX4/Yla3WzyMCvTQOXYeIHvqOKtnqBduzTHpzpQZzAskKMhZ2K+EnBiSM9zGSoIFeMpXKxa4dYeZIQqewQ==
@@ -6431,11 +6431,6 @@ inherits@2.0.3:
   version "2.0.3"
   resolved "https://registry.yarnpkg.com/inherits/-/inherits-2.0.3.tgz#633c2c83e3da42a502f52466022480f4208261de"
   integrity sha1-Yzwsg+PaQqUC9SRmAiSA9CCCYd4=
-
-inherits@^2.0.1, inherits@^2.0.3:
-  version "2.0.4"
-  resolved "https://registry.yarnpkg.com/inherits/-/inherits-2.0.4.tgz#0fa2c64f932917c3433a0ded55363aae37416b7c"
-  integrity sha512-k/vGaX4/Yla3WzyMCvTQOXYeIHvqOKtnqBduzTHpzpQZzAskKMhZ2K+EnBiSM9zGSoIFeMpXKxa4dYeZIQqewQ==
 
 ini@^1.3.5:
   version "1.3.5"

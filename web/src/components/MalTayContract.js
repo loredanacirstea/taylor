@@ -65,7 +65,8 @@ class MalTayContract extends Component {
     const rootAddress = {name: addresses.root, address: addresses[addresses.root], block: addresses.block};
 
     this.setState({ addresses, rootAddress, provider, signer });
-    this._web3util = taylor.getTaylor(provider, signer);
+    // this._web3util = taylor.getTaylor(provider, signer);
+    this._web3util = taylor.tay.getTay(provider, signer);
     await this.setContract(rootAddress.address, rootAddress.block);
   }
 
@@ -84,21 +85,22 @@ class MalTayContract extends Component {
         this.web3util = null;
     } else {
       this.web3util = this._web3util(address, block);
-      await this.web3util.init();
-      this.setState({ registered: this.web3util.registered });
-      this.setState({ rootFunctions: this.web3util.functions });
-      
+      console.log('this.web3util', this.web3util)
+      // await this.web3util.init();
+      // this.setState({ registered: this.web3util.registered });
+      // this.setState({ rootFunctions: this.web3util.functions });
+      console.log('onRootChange', backend, this.web3util)
       this.props.onRootChange(backend, this.web3util, await taylor.malBackend.getBackend(address, provider, signer));
 
-      this.web3util.watch(({ logtype, log }) => {
-        if (logtype === 'function') {
-          this.setState({ rootFunctions: this.web3util.functions });
-        } else {
-          this.setState({ registered: this.web3util.registered });
-        }
+      // this.web3util.watch(({ logtype, log }) => {
+      //   if (logtype === 'function') {
+      //     this.setState({ rootFunctions: this.web3util.functions });
+      //   } else {
+      //     this.setState({ registered: this.web3util.registered });
+      //   }
 
-        this.props.onFunctionsChange(this.web3util.functions);
-      });
+      //   this.props.onFunctionsChange(this.web3util.functions);
+      // });
     }
   }
 

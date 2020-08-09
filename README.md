@@ -188,3 +188,22 @@ Ethereum: `0xf149c02b892556eC1fCf39bF43A3bF5B4A9F2346`
 To see the current balance: https://etherscan.io/address/0xf149c02b892556eC1fCf39bF43A3bF5B4A9F2346.
 
 All participations to this project are public and are received into only one account, as required by the Moral Upgrade License (MUL2020): https://medium.com/@loredana.cirstea/mul2020-the-moral-upgrade-license-2020-b19dfbcbe54.
+
+
+
+
+scroll to
+
+2) go to column -> center & corner top right - 2 types
+
+- sa nu arate headers coloana & row
+
+
+- freeze & multiple splits
+
+
+
+- am primit 50$ sa-si faca un cont in ether.
+- give 10% until 200$ is gathered.
+
+

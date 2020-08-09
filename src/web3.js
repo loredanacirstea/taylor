@@ -25,15 +25,15 @@ const call = provider => address => async (data, txObj = {}) => {
     }, txObj);
     return await provider.call(transaction);
 }
-  
+
 const getLogs = provider => address => async (topic, filter = {} ) => {
     const lastBlock = await provider.getBlockNumber();
     filter = Object.assign({
         address: address,
-        topics: [ topic ],
         fromBlock: 0,
         toBlock: lastBlock,
     }, filter);
+    if (topic) filter.topics = [topic];
     return provider.getLogs(filter);
 }
 

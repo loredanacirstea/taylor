@@ -1,6 +1,6 @@
 import React from 'react';
 import { RegularPolygon, Arrow } from 'react-konva';
-import { Button, Icon } from 'native-base';
+import { Button, Icon, Picker } from 'native-base';
 import taylor from '@pipeos/taylor';
 import SpreadSheet, { DefaultCell } from '@rowsncolumns/spreadsheet';
 import Buttons from './Button.js';
@@ -85,6 +85,7 @@ class CanvasDatagrid extends React.Component {
                 onChange={this.props.onChange}
                 onChangeSelectedSheet={this.onChangeSelectedSheet}
                 onChangeCell={this.props.onChangeCell}
+                onChangeCells={this.props.onChangeCells}
             />
         )
     }
@@ -244,6 +245,7 @@ class Luxor extends React.Component {
 
         this.formatter = this.formatter.bind(this);
         this.onChangeCell = this.onChangeCell.bind(this);
+        this.onChangeCells = this.onChangeCells.bind(this);
         this.onChangeSelectedSheet = this.onChangeSelectedSheet.bind(this);
         this.onChange = this.onChange.bind(this);
         this.onSend = this.onSend.bind(this);
@@ -401,6 +403,21 @@ class Luxor extends React.Component {
             }
             return args;
         });
+        this.props.taylor_js.jsextend('ui-pick', async (args) => {
+            console.log('ui-pick args', args);
+            const corner_cell = lkeyToKey(args[0]).split(';').map(val => parseInt(val));
+            const items = args[1];
+            const newdata = {};
+            newdata[corner_cell[0]] = {};
+            newdata[corner_cell[0]][corner_cell[1]] = {
+                dataValidation: {
+                    prompt: "Pick",
+                    type: 'list',
+                    formulae: items,
+                },
+            }
+            return {response: null, newdata};
+        });
     }
 
     formatter(value, key, sheetId) {
@@ -439,12 +456,19 @@ class Luxor extends React.Component {
             api = this.props.taylor_web3;
         }
         if (!api) return value;
-        if (!executeSend && value.includes('!')) return value;
+        const isTx = value.includes('!');
+        if (!executeSend && isTx) return value;
         
         try {
             let newvalue = this.runExtensions(value);
             newvalue = this.replaceCellValues(sheetId, key, newvalue);
-            response = await api.call(newvalue);
+            console.log('-----', isTx)
+            if (!isTx) {
+                response = await api.call(newvalue);
+            } else {
+                response = await api.sendAndWait(newvalue);
+                console.log('response', response);
+            }
             if (response instanceof Object && response.newdata) {
                 this.mergeData(sheetId, response.newdata);
                 response = '';
@@ -476,7 +500,12 @@ class Luxor extends React.Component {
         return code;
     }
 
+    async onChangeCells(sheetId, cells) {
+        console.log('onChangeCells sheetId, cells', sheetId, cells);
+    }
+
     async onChangeCell(sheetId, value, cell) {
+        console.log('onChangeCell', sheetId, value, cell);
         const i = cell.rowIndex, j = cell.columnIndex;
         const key = cellkey(i, j);
         const saveddata = {};
@@ -581,6 +610,7 @@ class Luxor extends React.Component {
                     formatter={this.formatter}
                     Cell={ getCell({onSend: this.onSend, onExecute: this.executeCell}) }
                     onChangeCell={this.onChangeCell}
+                    onChangeCells={this.onChangeCells}
                     onChangeSelectedSheet={this.onChangeSelectedSheet}
                     onChange={this.onChange}
                     style={{ height: '100%', width: '100%' }}
@@ -784,7 +814,7 @@ function luxorUIExamples() {
         },
         {
             name: 'execute',
-            script: '(table-rowf "D9" (list (list 11 11 11 11)))',
+            script: '(ui-pick "D9" (list "item1" "item2" "item3") )',
         }
     ]
     const inir = 5;

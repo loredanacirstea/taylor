@@ -5,21 +5,18 @@ require('./extensions.js');
 const malReader = require('./mal/reader.js');
 const malTypes = require('./mal/types.js');
 const { sendTransaction, call, getLogs } = require('./web3.js');
-const _nativeEnv = require('./native.js');
+let _nativeEnv = require('./native.js');
 const malBackend = require('./mal_backend.js');
 const bootstrap_functions = require('./bootstrap.js');
+const {
+    u2b, u2h, b2u, b2h, h2u, h2b,
+    x0, strip0x, underNumberLimit,
+    bytesMarker,
+} = require('./utils.js');
 
-const u2b = value => value.toString(2);
-const u2h = value => value.toString(16);
-const b2u = value => parseInt(value, 2);
-const b2h = value => u2h(b2u(value));
-const h2u = value => parseInt(value, 16);
-const h2b = value => u2b(h2u(value));
-const x0 = value => '0x' + value;
-const strip0x = value => value.substring(0, 2) === '0x' ? value.substring(2) : value;
-const underNumberLimit = bnval => bnval.abs().lt(new BN(2).pow(new BN(16)));
+_nativeEnv = _nativeEnv.all
 
-const bytesMarker = '0x';
+
 const arityb = arity => u2b(arity).padStart(4, '0');
 const mutableb = mutable => mutable ? '1' : '0';
 const fidb = id => u2b(id).padStart(26, '0');

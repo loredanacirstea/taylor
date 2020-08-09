@@ -3,6 +3,7 @@ const { deployContractFromPath } = require('../../src/deploy.js');
 const { compileTaylorAndWrite } = require('../../src/build_utils.js');
 const taylor = require('../../src/index.js');
 
+// const PROVIDER_URL = 'http://127.0.0.1:8545';
 const PROVIDER_URL = 'http://192.168.1.140:8545';
 const provider = new ethers.providers.JsonRpcProvider(PROVIDER_URL);
 // Getting the accounts

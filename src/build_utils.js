@@ -3,7 +3,8 @@ const solc = require('solc')
 
 let cpath = __dirname.split('/');
 cpath.pop();
-const TAYLOR_PATH = cpath.join('/') + '/contracts/mal_like_tay.sol';
+// const TAYLOR_PATH = cpath.join('/') + '/contracts/mal_like_tay.sol';
+const TAYLOR_PATH = cpath.join('/') + '/contracts/taylor_v2_tay.sol';
 
 const solcDataYul = yulsource => JSON.stringify({
   language: 'Yul',
@@ -31,10 +32,11 @@ const compileContract = filePath => {
   }
   
   const output = JSON.parse(solc.compile(solcData(source)));
-
-  if (output.errors.length > 1 || !output.contracts) {
+  if (output.errors.length > 0 || !output.contracts) {
     const message = output.errors.map(err => err.formattedMessage).join('\n');
     const iserror = output.errors.find(err => err.formattedMessage.match(/error/i));
+    // const warnings = output.errors.filter(err => err.formattedMessage.match(/warning/i));
+    console.log('message', message);
     if (iserror) throw new Error(message);
   }
 
