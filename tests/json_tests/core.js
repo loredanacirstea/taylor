@@ -29,16 +29,16 @@ const tests = {
             decode: ['uint'],
         },
     ],
-    t12_: [
+    tn_ptr_: [
         {
-            test: '(t12_ (t2__ 256 12))',
+            test: '(tn_ptr_ (t2__ 256 12))',
             result: 256,
             decode: ['uint'],
         },
     ],
-    t21_: [
+    tn_len_: [
         {
-            test: '(t21_ (t2__ 256 12))',
+            test: '(tn_len_ (t2__ 256 12))',
             result: 12,
             decode: ['uint'],
         },

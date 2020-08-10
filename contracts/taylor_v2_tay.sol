@@ -36,7 +36,7 @@ object "Taylor" {
                 end_ptr := add(data_ptr, 8)
                 let arity := getFuncArity(sig4b)
                 
-                // If function is tuple__
+                // If function is tuple___
                 value_to_ptr := eq(and(sig, 0xffffffff), 0x4c)
                 
                 // allocate arity number of slots for argument pointers
@@ -643,21 +643,21 @@ object "Taylor" {
                 // create_
                 let value := mload(add(arg_ptrs_ptr, 32))
                 let code_ptr := mload(add(arg_ptrs_ptr, 64))
-                _result := create(value, t12_(code_ptr), t21_(code_ptr))
+                _result := create(value, tn_ptr_(code_ptr), tn_len_(code_ptr))
             }
             case 0x3400180300000037 {
                 // create2_
                 let value := mload(add(arg_ptrs_ptr, 32))
                 let code_ptr := mload(add(arg_ptrs_ptr, 64))
                 let s := mload(add(arg_ptrs_ptr, 96))
-                _result := create2(value, t12_(code_ptr), t21_(code_ptr), s)
+                _result := create2(value, tn_ptr_(code_ptr), tn_len_(code_ptr), s)
             }
             case 0x3400000000000038 {
                 // log
             }
             case 0x3400080100000039 {
                 let t2_ptr := _mload(add(arg_ptrs_ptr, 32))
-                _result := keccak256(t12_(t2_ptr), t21_(t2_ptr))
+                _result := keccak256(tn_ptr_(t2_ptr), tn_len_(t2_ptr))
             }
             case 0x340010020000003a {
                 // sstore_
@@ -682,8 +682,8 @@ object "Taylor" {
             case 0x340008010000003d {
                 // calldatacopy__
                 let calld__ := _mload(add(arg_ptrs_ptr, 32))
-                let calld_ptr := t12_(calld__)
-                let calld_len := t21_(calld__)
+                let calld_ptr := tn_ptr_(calld__)
+                let calld_len := tn_len_(calld__)
                 let mem_ptr := allocate(calld_len)
                 calldatacopy(mem_ptr, calld_ptr, calld_len)
                 _result := t2__(mem_ptr, calld_len)
@@ -691,8 +691,8 @@ object "Taylor" {
             case 0x340008010000003e {
                 // codecopy__
                 let calld__ := _mload(add(arg_ptrs_ptr, 32))
-                let calld_ptr := t12_(calld__)
-                let calld_len := t21_(calld__)
+                let calld_ptr := tn_ptr_(calld__)
+                let calld_len := tn_len_(calld__)
                 let mem_ptr := allocate(calld_len)
                 codecopy(mem_ptr, calld_ptr, calld_len)
                 _result := t2__(mem_ptr, calld_len)
@@ -701,8 +701,8 @@ object "Taylor" {
                 // extcodecopy__
                 let addr := _mload(add(arg_ptrs_ptr, 32))
                 let calld__ := _mload(add(arg_ptrs_ptr, 64))
-                let calld_ptr := t12_(calld__)
-                let calld_len := t21_(calld__)
+                let calld_ptr := tn_ptr_(calld__)
+                let calld_len := tn_len_(calld__)
                 let mem_ptr := allocate(calld_len)
                 extcodecopy(addr, mem_ptr, calld_ptr, calld_len)
                 _result := t2__(mem_ptr, calld_len)
@@ -710,8 +710,8 @@ object "Taylor" {
             case 0x3400080100000040 {
                 // returndatacopy__
                 let data__ := _mload(add(arg_ptrs_ptr, 32))
-                let data_ptr := t12_(data__)
-                let data_len := t21_(data__)
+                let data_ptr := tn_ptr_(data__)
+                let data_len := tn_len_(data__)
                 let mem_ptr := allocate(data_len)
                 returndatacopy(mem_ptr, data_ptr, data_len)
                 _result := t2__(mem_ptr, data_len)
@@ -722,7 +722,7 @@ object "Taylor" {
             }
             case 0x3400080100000042 {
                 let t2_1 := _mload(add(arg_ptrs_ptr, 32))
-                return_(t2_1)
+                return_d(t2_1)
             }
             case 0x3400080100000043 {
                 let addr := _mload(add(arg_ptrs_ptr, 32))
@@ -750,16 +750,21 @@ object "Taylor" {
             }
             case 0x3400080100000048 {
                 let t2_1 := _mload(add(arg_ptrs_ptr, 32))
-                _result := t12_(t2_1)
+                _result := tn_ptr_(t2_1)
             }
             case 0x3400080100000049 {
                 let t2_1 := _mload(add(arg_ptrs_ptr, 32))
-                _result := t21_(t2_1)
+                _result := tn_len_(t2_1)
             }
             case 0x340010020000004b {
                 let __ptr1 := _mload(add(arg_ptrs_ptr, 32))
                 let __ptr2 := _mload(add(arg_ptrs_ptr, 64))
                 _result := join__(__ptr1, __ptr2)
+            }
+            case 0x340010020000004d {
+                let __t3 := _mload(add(arg_ptrs_ptr, 32))
+                let __indexes := _mload(add(arg_ptrs_ptr, 64))
+                _result := get_tn__(__t3, __indexes)
             }
 
             default {
@@ -774,10 +779,10 @@ object "Taylor" {
                     log_(sub(arity, 1), __data_ptr, add(arg_ptrs_ptr, 64))
                 }
                 
-                // tuple__
+                // tuple___
                 case 0x4c {
                     let arity := mload(arg_ptrs_ptr)
-                    _result := tuple__(arity, add(arg_ptrs_ptr, 32))
+                    _result := tuple___(arity, add(arg_ptrs_ptr, 32))
                 }
                 default {
                     dtrequire(0, 0xeeff)
@@ -791,20 +796,52 @@ object "Taylor" {
             mstore(add(_result, 32), len)
         }
 
-        function t12_(t2_1) -> _result {
-            _result := _mload(t2_1)
+        function t3___(ptr, len, arity) -> _result {
+            _result := allocate(96)
+            // t3 marker
+            // 1000000000000000000000000000000000000000000000000000000000000000
+            // ptr := add(ptr, 0x8000000000000000)
+            
+            // mstore(0, ptr)
+            // return (0, 32)
+            
+            ptr := add(ptr, shl(248, 3))
+            
+            // mstore(0, ptr)
+            // return (0, 32)
+            
+            mstore(_result, ptr)
+            mstore(add(_result, 32), len)
+            mstore(add(_result, 64), arity)
         }
 
-        function t21_(t2_1) -> _result {
-            _result := _mload(add(t2_1, 32))
+        function ttype(___t3) -> _ttype {
+            _ttype := shr(248, _mload(___t3))
         }
 
-        function return_(t2_1) {
-            return(t12_(t2_1), t21_(t2_1))
+        function is_t3(___t3) -> _ist3 {
+            _ist3 := eq(ttype(___t3), 3)
+        }
+        
+        // 2 bytes ttype + 30 bytes ptr
+        function tn_ptr_(__tn) -> _result {
+            _result := and(_mload(__tn), 0xffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff)
+        }
+
+        function tn_len_(__tn) -> _result {
+            _result := _mload(add(__tn, 32))
+        }
+
+        function t3_arity_(___t3) -> _result {
+            _result := _mload(add(___t3, 64))
+        }
+
+        function return_d(t2_1) {
+            return(tn_ptr_(t2_1), tn_len_(t2_1))
         }
 
         function revert_(t2_1) {
-            revert(t12_(t2_1), t21_(t2_1))
+            revert(tn_ptr_(t2_1), tn_len_(t2_1))
         }
 
         function _mload(_ptr) -> _result {
@@ -820,17 +857,17 @@ object "Taylor" {
         }
 
         function join__(__ptr1, __ptr2) -> __ptr3 {
-            let len1 := t21_(__ptr1)
-            let len2 := t21_(__ptr2)
+            let len1 := tn_len_(__ptr1)
+            let len2 := tn_len_(__ptr2)
             let len := add(len1, len2)
             let ptr3 := allocate(len)
-            mmultistore(ptr3, t12_(__ptr1), len1)
-            mmultistore(add(ptr3, len1), t12_(__ptr2), len2)
+            mmultistore(ptr3, tn_ptr_(__ptr1), len1)
+            mmultistore(add(ptr3, len1), tn_ptr_(__ptr2), len2)
             __ptr3 := t2__(ptr3, len)
         }
 
         function call_bang__(addr, value, data_ptr) -> __ptr {
-            let success := call(gas(), addr, value, t12_(data_ptr), t21_(data_ptr), 0, 0)
+            let success := call(gas(), addr, value, tn_ptr_(data_ptr), tn_len_(data_ptr), 0, 0)
             
             if eq(success, 0) {
                 fail_call(addr, data_ptr)
@@ -839,7 +876,7 @@ object "Taylor" {
         }
 
         function callcode_bang__(addr, value, data_ptr) -> __ptr {
-            let success := callcode(gas(), addr, value, t12_(data_ptr), t21_(data_ptr), 0, 0)
+            let success := callcode(gas(), addr, value, tn_ptr_(data_ptr), tn_len_(data_ptr), 0, 0)
             
             if eq(success, 0) {
                 fail_call(addr, data_ptr)
@@ -848,7 +885,7 @@ object "Taylor" {
         }
 
         function delegatecall_bang__(addr, data_ptr) -> __ptr {
-            let success := delegatecall(gas(), addr, t12_(data_ptr), t21_(data_ptr), 0, 0)
+            let success := delegatecall(gas(), addr, tn_ptr_(data_ptr), tn_len_(data_ptr), 0, 0)
             
             if eq(success, 0) {
                 fail_call(addr, data_ptr)
@@ -857,7 +894,7 @@ object "Taylor" {
         }
 
         function call__(addr, data_ptr) -> __ptr {
-            let success := staticcall(gas(), addr, t12_(data_ptr), t21_(data_ptr), 0, 0)
+            let success := staticcall(gas(), addr, tn_ptr_(data_ptr), tn_len_(data_ptr), 0, 0)
 
             if eq(success, 0) {
                 fail_call(addr, data_ptr)
@@ -875,13 +912,13 @@ object "Taylor" {
         function fail_call(addr, data_ptr) {
             let error_msg := allocate(26)
             mslicestore(error_msg, uconcat(0xeedd, addr, 20), 22)
-            mslicestore(add(error_msg, 22), mslice(t12_(data_ptr), 4), 4)
+            mslicestore(add(error_msg, 22), mslice(tn_ptr_(data_ptr), 4), 4)
             revert(error_msg, 26)
         }
 
         function log_(arity, __data_ptr, topic_ptrs) {
-            let data_ptr := t12_(__data_ptr)
-            let data_len := t21_(__data_ptr)
+            let data_ptr := tn_ptr_(__data_ptr)
+            let data_len := tn_len_(__data_ptr)
             
             switch arity
             case 0 {
@@ -901,35 +938,42 @@ object "Taylor" {
             }
         }
 
-        function tuple__(arity, arg_ptrs) -> result_ptr__{
+        function tuple___(arity, arg_ptrs) -> result_ptr__{
             let _ptr := freeMemPtr()
             let last_offset := mul(arity, 32)
 
             for { let i := 0 } lt(i, arity) { i := add(i, 1) } {
                 let arg_ptr__ := mload(add(arg_ptrs, mul(i, 32)))
-                let arg_len := t21_(arg_ptr__)
+                let arg_len := tn_len_(arg_ptr__)
                 let head_ptr := add(_ptr, mul(i, 32))
 
                 switch arg_len
                 case 32 {
-                    mstore(head_ptr, mload(t12_(arg_ptr__)))
+                    mstore(head_ptr, mload(tn_ptr_(arg_ptr__)))
                 }
                 default {
                     mstore(head_ptr, last_offset)
-                    mstore(add(_ptr, last_offset), arg_len)
-                    last_offset := add(last_offset, 32)
 
-                    mmultistore(add(_ptr, last_offset), t12_(arg_ptr__), arg_len)
+                    if eq(ttype(arg_ptr__), 0) {
+                        mstore(add(_ptr, last_offset), arg_len)
+                        last_offset := add(last_offset, 32)
+                    }
+
+                    mmultistore(add(_ptr, last_offset), tn_ptr_(arg_ptr__), arg_len)
                     last_offset := add(last_offset, arg_len)
 
                     // Padd with zeros up to 32 bytes
-                    let padd := sub(32, mod(arg_len, 32))
-                    mstore(add(_ptr, last_offset), 0)
-                    last_offset := add(last_offset, padd)
+                    let rest := mod(arg_len, 32)
+                    if gt(rest, 0) {
+                        let padd := sub(32, mod(arg_len, 32))
+                        // Fill with zeros
+                        mstore(add(_ptr, last_offset), 0)
+                        last_offset := add(last_offset, padd)
+                    }
                 }
             }
             _ptr := allocate(last_offset)
-            result_ptr__ := t2__(_ptr, last_offset)
+            result_ptr__ := t3___(_ptr, last_offset, arity)
         }
     }}
 }

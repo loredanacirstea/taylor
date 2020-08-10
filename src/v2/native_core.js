@@ -1,11 +1,12 @@
 const _native_core = {
     if:          { mutable: false, arity: 3 },
     t2_:         { mutable: false, arity: 2 },
-    t12:         { mutable: false, arity: 1 },
-    t21:         { mutable: false, arity: 1 },
+    tn_ptr:      { mutable: false, arity: 1 },
+    tn_len:      { mutable: false, arity: 1 },
     mmstore_:    { mutable: false, arity: null },
     join_:       { mutable: false, arity: 2 },
-    tuple_:      { mutable: false, arity: null },
+    tuple__:     { mutable: false, arity: null },
+    get_tn__:    { mutable: false, arity: 2 },
     // fn:          { mutable: false, arity: null },
 }
 
