@@ -764,7 +764,16 @@ object "Taylor" {
             case 0x340010020000004d {
                 let __t3 := _mload(add(arg_ptrs_ptr, 32))
                 let __indexes := _mload(add(arg_ptrs_ptr, 64))
-                _result := get_tn__(__t3, __indexes)
+                _result := nth__(__t3, __indexes)
+            }
+            case 0x340008010000004e {
+                let ___t3 := _mload(add(arg_ptrs_ptr, 32))
+                _result := tuple_sol__(___t3)
+            }
+            case 0x340010020000004f {
+                let __t2 := _mload(add(arg_ptrs_ptr, 32))
+                let ___ttypes := _mload(add(arg_ptrs_ptr, 64))
+                _result := sol_tuple___(__t2, ___ttypes)
             }
 
             default {
@@ -799,17 +808,7 @@ object "Taylor" {
         function t3___(ptr, len, arity) -> _result {
             _result := allocate(96)
             // t3 marker
-            // 1000000000000000000000000000000000000000000000000000000000000000
-            // ptr := add(ptr, 0x8000000000000000)
-            
-            // mstore(0, ptr)
-            // return (0, 32)
-            
             ptr := add(ptr, shl(248, 3))
-            
-            // mstore(0, ptr)
-            // return (0, 32)
-            
             mstore(_result, ptr)
             mstore(add(_result, 32), len)
             mstore(add(_result, 64), arity)
@@ -938,14 +937,35 @@ object "Taylor" {
             }
         }
 
-        function tuple___(arity, arg_ptrs) -> result_ptr__{
+        function tuple___(arity, arg_ptrs) -> ___result {
+            let total_length := 0
+            for { let i := 0 } lt(i, arity) { i := add(i, 1) } {
+                let arg_ptr__ := mload(add(arg_ptrs, mul(i, 32)))
+                let arg_len := tn_len_(arg_ptr__)
+                total_length := add(total_length, arg_len)
+            }
+            ___result := t3___(arg_ptrs, total_length, arity)
+        }
+
+        function tuple_sol__(___t3) -> result_ptr__ {
             let _ptr := freeMemPtr()
-            let last_offset := mul(arity, 32)
+            let length := tuple_sol_internal__(___t3, _ptr)
+            _ptr := allocate(length)
+            result_ptr__ := t2__(_ptr, length)
+        }
+
+        function tuple_sol_internal__(___t3, _ptr) -> last_offset {
+            let arity := t3_arity_(___t3)
+            let arg_ptrs := tn_ptr_(___t3)
+
+            last_offset := mul(arity, 32)
 
             for { let i := 0 } lt(i, arity) { i := add(i, 1) } {
                 let arg_ptr__ := mload(add(arg_ptrs, mul(i, 32)))
                 let arg_len := tn_len_(arg_ptr__)
                 let head_ptr := add(_ptr, mul(i, 32))
+
+                // if and(eq(arity, 4), eq(i, 3)) { return(_ptr, last_offset) }
 
                 switch arg_len
                 case 32 {
@@ -954,12 +974,27 @@ object "Taylor" {
                 default {
                     mstore(head_ptr, last_offset)
 
-                    if eq(ttype(arg_ptr__), 0) {
+                    // if eq(arity, 4) { return(_ptr, last_offset) }
+
+                    let ttype_index := ttype(arg_ptr__)
+                    let content_ptr := 0
+
+                    // if eq(arity, 4) { return(_ptr, last_offset) }
+                    
+                    switch ttype_index
+                    case 3 {
+                        // t3
+                        arg_len := tuple_sol_internal__(arg_ptr__, add(_ptr, last_offset))
+                    }
+                    default {
+                        // t2 - add length & just copy the contents
                         mstore(add(_ptr, last_offset), arg_len)
                         last_offset := add(last_offset, 32)
+                        content_ptr := tn_ptr_(arg_ptr__)
+
+                        mmultistore(add(_ptr, last_offset), content_ptr, arg_len)
                     }
 
-                    mmultistore(add(_ptr, last_offset), tn_ptr_(arg_ptr__), arg_len)
                     last_offset := add(last_offset, arg_len)
 
                     // Padd with zeros up to 32 bytes
@@ -972,8 +1007,119 @@ object "Taylor" {
                     }
                 }
             }
-            _ptr := allocate(last_offset)
-            result_ptr__ := t3___(_ptr, last_offset, arity)
         }
+
+        // passes by reference
+        function nth__(__t3, index) -> result_ptr__{
+            dtrequire(lt(index, t3_arity_(__t3)), 0xeecc)
+            let content_ptr := tn_ptr_(__t3)
+            let item_ptr := add(content_ptr, mul(index, 32))
+            result_ptr__ := mload(item_ptr)
+        }
+
+        // solidity tuple (t2) -> tuple (t3)
+        function sol_tuple___(__t2, ___ttypes) -> ___result {
+            let t2data_ptr := tn_ptr_(__t2)
+            let arity := t3_arity_(___ttypes)
+            let tuple_content := allocate(mul(arity, 32))
+            let tuple_length := 0
+
+            for { let i := 0 } lt(i, arity) { i := add(i, 1) } {
+                let ttype_index_ptr := nth__(___ttypes, i)
+                let ttype_index := sol_tuple_ttype_index(ttype_index_ptr)
+                let valueOrOffset_ptr := add(t2data_ptr, mul(32, i))
+                
+                switch ttype_index
+                case 3 {
+                    // tuple t3
+                    let offset := mload(valueOrOffset_ptr)
+                    let _ptr := add(t2data_ptr, offset)
+                    let next_offset := sol_tuple_nextOffset(__t2, ___ttypes, add(i, 1))
+
+                    let data_len := sub(next_offset, offset)
+                    let data_ptr := sol_tuple___(t2__(_ptr, data_len), ttype_index_ptr)
+
+                    mstore(add(tuple_content, mul(i, 32)), data_ptr)
+                    tuple_length := add(tuple_length, data_len)
+                }
+                case 2 {
+                    // bytes t2
+                    let offset := mload(valueOrOffset_ptr)
+                    let data_ptr := add(t2data_ptr, offset)
+                    let data_len := mload(data_ptr)
+                    data_ptr := t2__(add(data_ptr, 32), data_len)
+
+                    mstore(add(tuple_content, mul(i, 32)), data_ptr)
+                    tuple_length := add(tuple_length, data_len)
+                }
+                default {
+                    // value t1
+                    let data_len := 32
+                    let data_ptr := t2__(valueOrOffset_ptr, data_len)
+
+                    mstore(add(tuple_content, mul(i, 32)), data_ptr)
+                    tuple_length := add(tuple_length, data_len)
+                }
+            }
+            ___result := t3___(tuple_content, tuple_length, arity)
+        }
+
+        function sol_tuple_ttype_index(ttype_index_ptr) -> _ttype_index {
+            _ttype_index := ttype(ttype_index_ptr)
+            if eq(_ttype_index, 0) {
+                _ttype_index := mload(tn_ptr_(ttype_index_ptr))
+            }
+        }
+
+        function sol_tuple_nextOffset(__t2, ___ttypes, i) -> _offset {
+            let arity := t3_arity_(___ttypes)
+            switch lt(i, arity)
+            case 0 {
+                _offset := tn_len_(__t2)
+            }
+            default {
+                let ttype_index_ptr := nth__(___ttypes, i)
+                let ttype_index := sol_tuple_ttype_index(ttype_index_ptr)
+                switch ttype_index
+                case 1 {
+                    _offset := sol_tuple_nextOffset(__t2, ___ttypes, add(i, 1))
+                }
+                default {
+                    _offset := add(tn_ptr_(__t2), mul(arity, i))
+                }
+            }
+        }
+
+        // makes a copy of the data
+        // function nth_sol__(__t2, index, ttype_index) -> result_ptr__{
+        //     // let
+        //     let data_ptr := tn_ptr_(__t2)
+        //     let head_val_ptr := add(data_ptr, mul(index, 32))
+            
+        //     switch ttype_index
+        //     case 2 {
+        //         // t2 bytes
+        //         let offset := mload(head_val_ptr)
+        //         let content_ptr := add(data_ptr, offset)
+        //         let length := mload(content_ptr)
+        //         // should we copy or pass by reference?
+        //         let new_ptr := allocate(length)
+        //         mmultistore(new_ptr, add(content_ptr, 32), length)
+        //         result_ptr__ := t2__(new_ptr, length)
+        //     }
+        //     case 3 {
+        //         // t3 tuple
+        //         let offset := mload(head_val_ptr)
+        //         let content_ptr := add(data_ptr, offset)
+
+        //         let total_length : t2_len_(__t2)
+        //         let next
+        //         let length := 
+        //     }
+        //     default {
+        //         // t1 value
+        //         result_ptr__ := t2__(head_val_ptr, 32)
+        //     }
+        // }
     }}
 }

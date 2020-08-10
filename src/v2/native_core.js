@@ -6,7 +6,9 @@ const _native_core = {
     mmstore_:    { mutable: false, arity: null },
     join_:       { mutable: false, arity: 2 },
     tuple__:     { mutable: false, arity: null },
-    get_tn__:    { mutable: false, arity: 2 },
+    nth_:        { mutable: false, arity: 2 },
+    tuple_sol_:  { mutable: false, arity: 1 },
+    sol_tuple__: { mutable: false, arity: 2 },
     // fn:          { mutable: false, arity: null },
 }
 
