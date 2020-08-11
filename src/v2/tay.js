@@ -19,12 +19,12 @@ const {
 } = require('../utils.js');
 
 const uint = (val, size=32) => u2h(val).padStart(size*2, '0');
-
 const rootids = {
+    unknown: '04000000',
     func_pure_untyped: '34000000',
     func_mutable_untyped: '3b000000',
+    number: '10000000',
 }
-
 const type_enc = {
     func: base => (id, bodylen, arity) => {
         return (
@@ -36,6 +36,11 @@ const type_enc = {
         ).padStart(16, '0');
     },
     bytelike: (length) => '40000000' + (new BN(length)).toString(16).padStart(8, '0'),
+    unknown: id => {
+        return (
+            (new BN(rootids.unknown, 16)).add(new BN(id))
+        )
+    },
 }
 type_enc.fpu = type_enc.func(rootids.func_pure_untyped);
 type_enc.fmu = type_enc.func(rootids.func_mutable_untyped);
@@ -64,6 +69,7 @@ Object.keys(nativeEnv).forEach((name, i) => {
         else {
             nativeEnv[name].hex = f;
         }
+        nativeEnv[name].hexf = f;
     });
 
 // console.log('nativeEnv', nativeEnv);
@@ -75,29 +81,34 @@ function expr2h(expression, defenv) {
     return { encoded, ast };
 }
 
+const ast2hSpecialMap = {
+    fn_: handleFn
+}
+
 function ast2h(ast, parent=null, unkownMap={}, defenv={}, arrItemType=null) {
     if (!(ast instanceof Array)) ast = [ast];
 
     // do not count the function itselt
     const arity = ast.length - 1;
 
-    // ast special extension
-    // if (ast[0] && ast[0].value
-    // if ast_ext[ast[0].value] -> return extension
-
-    // console.log('ast2h', ast);
+    if (ast[0] && ast[0].value && ast2hSpecialMap[ast[0].value]) {
+        return ast2hSpecialMap[ast[0].value](ast, parent, unkownMap, defenv, arrItemType);
+    }
 
     return ast.map((elem, i) => {
+        // nil
         if (elem === null) return uint(0);
 
         // if Symbol
         if (malTypes._symbol_Q(elem)) {
             let encoded;
+
+            if (unkownMap[elem.value]) return unkownMap[elem.value];
+
             if (typeof elem.value === 'string' && elem.value.slice(0, 2) === '0x') {
                 // treat as uint
-                return elem.value.slice(2).padStart(64, '0');
+                return rootids.number + elem.value.slice(2).padStart(64, '0');
             }
-            
             if (typeof nativeEnv[elem.value].hex === 'string') {
                 encoded = nativeEnv[elem.value].hex;
             }
@@ -111,8 +122,6 @@ function ast2h(ast, parent=null, unkownMap={}, defenv={}, arrItemType=null) {
         if (elem instanceof Array) {
             return ast2h(elem, ast, unkownMap, defenv);
         }
-
-        // console.log('---elem', elem);
 
         let value = elem;
         if (typeof elem === 'boolean') {
@@ -132,8 +141,37 @@ function ast2h(ast, parent=null, unkownMap={}, defenv={}, arrItemType=null) {
             }
         }
 
-        return uint(value);
+        return rootids.number + uint(value);
     }).join('');
+}
+
+function handleFn(ast, parent, unkownMap, defenv) {
+    const arity = ast[1].length;
+    const unkownMapcpy = JSON.parse(JSON.stringify(unkownMap))
+    const count = Object.keys(unkownMapcpy).length;
+
+    let lambdaArgs = ast[1].map((elem, i) => {
+        const enc = type_enc.unknown(count + i + 1).toString(16).padStart(8, '0');
+        unkownMapcpy[elem.value] = enc;
+        return enc;
+    });
+    lambdaArgs.splice(0, 0, type_enc.unknown(count).toString(16).padStart(8, '0'));
+    unkownMapcpy['self'] = lambdaArgs[0];
+    lambdaArgs = lambdaArgs.join('');
+    
+    const lambdaBody = ast2h(ast[2], ast, unkownMapcpy, defenv);
+
+    let encoded = nativeEnv.fn_.hex
+        + type_enc.bytelike(lambdaArgs.length/2) + lambdaArgs
+        + type_enc.bytelike(lambdaBody.length/2) + lambdaBody;
+
+    // we execute it with apply only if there is a parent ast
+    // with this lambda at index 0
+    if (parent && parent[0][0] && parent[0][0].value === ast[0].value) {
+        // apply arity: 1 + number of args
+        encoded = nativeEnv.apply_.hex(arity + 1) + encoded;
+    }
+    return encoded;
 }
 
 function decode (data, returntypes) {
@@ -171,9 +209,9 @@ const getTay = (provider, signer) => (address, deploymentBlock) => {
     interpreter.call = async (expr, txObj, returntypes) => {
         const {encoded, ast} = expr2h(expr);
         if (typeof returntypes === 'undefined') {
-            let ispointer = ast[0].value.includes('__');
+            let ispointer = ast[0].value && ast[0].value.includes('__');
             if (!ispointer) {
-                ispointer = ast[0].value.includes('#') && ast[1] && ast[1] instanceof Array && ast[1][0].value.includes('__');
+                ispointer = ast[0].value && ast[0].value.includes('#') && ast[1] && ast[1] instanceof Array && ast[1][0].value.includes('__');
             }
             if (ispointer) returntypes = null;
             else returntypes = ['uint'];

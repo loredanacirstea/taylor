@@ -70,48 +70,41 @@ const tests = {
             result: '0x6230783265643063303366616465363339386435343665643130303030801ed12ed0c03fade6398d546adc00000000000000',
             decode: null,
         }
-    ]
-    // tuple_: [
-    //     {
-    //         test: '(tuple_ (add_ 3 4) (add_ 7 8))',
-    //         result: 4,
-    //     },
-    // ],
-    // 'fn_': [
-    //     {
-    //         test: '(fn_ (a) a)',
-    //         result: '(fn_ (a) a)',
-    //         skip: true,
-    //     },
-    //     {
-    //         test: '( (fn_ (a) a) 7)',
-    //         result: 7,
-    //     },
-    //     {
-    //         test: '( (fn_ (a) (add_ a 1)) 10)',
-    //         result: 11,
-    //         only: true,
-    //     },
-    //     {
-    //         test: '( (fn_ (a b) (add_ a b)) 2 3)',
-    //         result: 5,
-    //     },
-    //     {
-    //         test: '( (fn_ (a b) (add_ a b)) (add_ (add_ (sub_ 7 2) 1) 41) (add_ 2 3))',
-    //         result: 52,
-    //     },
-    //     {
-    //         test: '( (fn_ (a b) (add_ (mul_ a b ) b)) 2 3)',
-    //         result: 9,
-    //     },
-    //     {
-    //         test: `( (fn_ (a b) (add_ a b))
-    //             (add_ (add_ (sub_ 7 2) 1) 41)
-    //             (add_ 2 3)
-    //         )`,
-    //         result: 52,
-    //     },
-    // ],
+    ],
+    'fn_': [
+        {
+            test: '(fn_ (a) a)',
+            result: '(fn_ (a) a)',
+            skip: true,
+        },
+        {
+            test: '( (fn_ (a) a) 7)',
+            result: 7,
+        },
+        {
+            test: '( (fn_ (a) (add_ a 1)) 10)',
+            result: 11,
+        },
+        {
+            test: '( (fn_ (a b) (add_ a b)) 6 7)',
+            result: 13,
+        },
+        {
+            test: '( (fn_ (a b) (add_ a b)) (add_ (add_ (sub_ 7 2) 1) 41) (add_ 2 3))',
+            result: 52,
+        },
+        {
+            test: '( (fn_ (a b) (add_ (mul_ a b ) b)) 2 3)',
+            result: 9,
+        },
+        {
+            test: `( (fn_ (a b) (add_ a b))
+                (add_ (add_ (sub_ 7 2) 1) 41)
+                (add_ 2 3)
+            )`,
+            result: 52,
+        },
+    ],
     // apply_: [
 
     // ],

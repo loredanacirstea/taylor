@@ -28,8 +28,37 @@ object "Taylor" {
             let isprocessed := 0
             let sig4b := get4b(data_ptr)
             let rootid := getRootId(sig4b)
-            
+
             switch rootid
+            
+            // unknown
+            case 0 {                
+                let subtype := shr(25, sig4b)
+
+                // unknown
+                if eq(subtype, 2) {
+                    // replace variables from lambdas
+                    let index := getFuncArity(sig4b)
+                    let value_ptr := add(add(env_ptr, 32), mul(index, 32))
+                    result_ptr := mload(value_ptr)
+                    end_ptr := add(data_ptr, 4)
+                }
+            }
+            
+            // number
+            case 1 {
+                // eliminate 4byte sig
+                result_ptr := _mload(add(data_ptr, 4))
+                end_ptr := add(data_ptr, 36)
+
+                // If we need to transform values into pointers (t2)
+                if value_to_ptr {
+                    let _ptr := allocate(32)
+                    mstore(_ptr, result_ptr)
+                    result_ptr := t2__(_ptr, 32)
+                }
+            }
+            
             // function
             case 3 {
                 let sig := get8b(data_ptr)
@@ -49,7 +78,7 @@ object "Taylor" {
 
                 for { let i := 0 } lt(i, arity) { i := add(i, 1) } {
                     let _end_ptr, arg_ptr := eval(end_ptr, env_ptr, value_to_ptr)
-                    
+
                     // store pointer to argument value
                     mstore(args_ptrs_now, arg_ptr)
                     end_ptr := _end_ptr
@@ -59,9 +88,10 @@ object "Taylor" {
                 let isnative := isFunctionNative(sig4b)
                 if isnative {
                     isprocessed := 1
-                    result_ptr := evalNativeFunc(sig, args_ptrs)
+                    result_ptr := evalNativeFunc(sig, args_ptrs, env_ptr)
                 }
             }
+            
             // bytelike
             case 4 {
                 let value_length := get4b(add(data_ptr, 4))
@@ -70,17 +100,9 @@ object "Taylor" {
                 result_ptr := t2__(_ptr, value_length)
                 end_ptr := add(add(data_ptr, 8), value_length)
             }
+            
             default {
-                // untyped evm uint
-                result_ptr := _mload(data_ptr)
-                end_ptr := add(data_ptr, 32)
-
-                // If we need to transform values into pointers (t2)
-                if value_to_ptr {
-                    let _ptr := allocate(32)
-                    mstore(_ptr, result_ptr)
-                    result_ptr := t2__(_ptr, 32)
-                }
+                dtrequire(0, 0xee00)
             }
         }
         
@@ -403,7 +425,7 @@ object "Taylor" {
             }
         }
 
-        function evalNativeFunc(fsig, arg_ptrs_ptr) -> _result {
+        function evalNativeFunc(fsig, arg_ptrs_ptr, env_ptr) -> _result {
             switch fsig
 
             case 0x3400100200000001 {
@@ -775,6 +797,11 @@ object "Taylor" {
                 let ___ttypes := _mload(add(arg_ptrs_ptr, 64))
                 _result := sol_tuple___(__t2, ___ttypes)
             }
+            case 0x3400100200000050 {
+                let __args := _mload(add(arg_ptrs_ptr, 32))
+                let ___body := _mload(add(arg_ptrs_ptr, 64))
+                _result := fn_(__args, ___body)
+            }
 
             default {
                 let id := and(fsig, 0xffffffff)
@@ -793,8 +820,14 @@ object "Taylor" {
                     let arity := mload(arg_ptrs_ptr)
                     _result := tuple___(arity, add(arg_ptrs_ptr, 32))
                 }
+                
+                // apply
+                case 0x51 {
+                    let ___lambda_ptr := mload(add(arg_ptrs_ptr, 32))
+                    _result := apply_(___lambda_ptr, add(arg_ptrs_ptr, 64), env_ptr)
+                }
                 default {
-                    dtrequire(0, 0xeeff)
+                    dtrequire(0, uconcat(0xeeff, fsig, 8))
                 }
             }
         }
@@ -841,6 +874,37 @@ object "Taylor" {
 
         function revert_(t2_1) {
             revert(tn_ptr_(t2_1), tn_len_(t2_1))
+        }
+
+        function fn_(__args, ___body) -> _result {
+            let content := allocate(64)
+            mstore(content, __args)
+            mstore(add(content, 32), ___body)
+            _result := t3___(content, add(tn_len_(__args), tn_len_(___body)), 2)
+        }
+
+        function apply_(___lambda_ptr, user_input, env_ptr) -> _result {
+            let lambda_ptr := tn_ptr_(___lambda_ptr)
+            let __lambda_args := mload(lambda_ptr)
+            let __lambda_body := mload(add(lambda_ptr, 32))
+            let lambda_args := tn_ptr_(__lambda_args)
+            let lambda_body := tn_ptr_(__lambda_body)
+            let arity := div(tn_len_(__lambda_args), 4)
+            
+            let env_arity := mload(env_ptr)
+            let new_env_ptr := copy_env(env_ptr)
+
+            // handle reference to self
+            addto_env(new_env_ptr, getFuncArity(get4b(lambda_args)), ___lambda_ptr)
+
+            // environment with lambda args mapped to input values
+            for { let i := 1 } lt(i, arity) { i := add(i, 1) } {
+                // arity same pos as index
+                let value_or_ptr := mload(add(user_input, mul(sub(i, 1), 32)))
+                addto_env(new_env_ptr, getFuncArity(get4b(add(lambda_args, mul(i, 4)))), value_or_ptr)
+            }
+            let end_ptr, result_ptr := eval(lambda_body, new_env_ptr, 0)
+            _result := result_ptr
         }
 
         function _mload(_ptr) -> _result {
@@ -1090,36 +1154,51 @@ object "Taylor" {
             }
         }
 
-        // makes a copy of the data
-        // function nth_sol__(__t2, index, ttype_index) -> result_ptr__{
-        //     // let
-        //     let data_ptr := tn_ptr_(__t2)
-        //     let head_val_ptr := add(data_ptr, mul(index, 32))
-            
-        //     switch ttype_index
-        //     case 2 {
-        //         // t2 bytes
-        //         let offset := mload(head_val_ptr)
-        //         let content_ptr := add(data_ptr, offset)
-        //         let length := mload(content_ptr)
-        //         // should we copy or pass by reference?
-        //         let new_ptr := allocate(length)
-        //         mmultistore(new_ptr, add(content_ptr, 32), length)
-        //         result_ptr__ := t2__(new_ptr, length)
-        //     }
-        //     case 3 {
-        //         // t3 tuple
-        //         let offset := mload(head_val_ptr)
-        //         let content_ptr := add(data_ptr, offset)
+        function copy_env(env_ptr) -> new_ptr {
+            let arity := mload(env_ptr)
+            new_ptr := allocate(add(32, mul(32, arity)))
+            mstore(new_ptr, arity)
 
-        //         let total_length : t2_len_(__t2)
-        //         let next
-        //         let length := 
-        //     }
-        //     default {
-        //         // t1 value
-        //         result_ptr__ := t2__(head_val_ptr, 32)
-        //     }
-        // }
+            let pos_ptr := add(new_ptr, 32)
+            let _orig_ptr := add(env_ptr, 32)
+            for { let i := 0 } lt(i, arity) { i := add(i, 1) } {
+                mstore(pos_ptr, mload(_orig_ptr))
+                pos_ptr := add(pos_ptr, 32)
+                _orig_ptr := add(_orig_ptr, 32)
+            }
+        }
+
+        function meld_env(target_ptr, source_ptr) {
+            let arity := mload(source_ptr)
+            let offset := 32
+            for { let i := 0 } lt(i, arity) { i := add(i, 1) } {
+                let val_ptr := mload(add(source_ptr, offset))
+                if gt(val_ptr, 0) {
+                    mstore(add(target_ptr, offset), val_ptr)
+                }
+                offset := add(offset, 32)
+            }
+            let old_arity := mload(target_ptr)
+            mstore(target_ptr, max(arity, old_arity))
+            if gt(arity, old_arity) {
+                let temp := allocate(mul(32, sub(arity, old_arity)))
+            }
+        }
+
+        function addto_env(env_ptr, index, var_ptr) {
+            let arity := mload(env_ptr)
+            let index_ptrs := add(env_ptr, 32)
+            mstore(
+                add(index_ptrs, mul(index, 32)),
+                var_ptr
+            )
+            
+            // we assume addto_env always comes after a copy_env or meld_env
+            if or(eq(index, arity), gt(index, arity)) {
+                let new_arity := add(index, 1)
+                mstore(env_ptr, new_arity)
+                let temp_ptr := allocate(mul(32, sub(new_arity, arity)))
+            }
+        }
     }}
 }

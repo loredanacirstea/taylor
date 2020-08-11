@@ -9,7 +9,8 @@ const _native_core = {
     nth_:        { mutable: false, arity: 2 },
     tuple_sol_:  { mutable: false, arity: 1 },
     sol_tuple__: { mutable: false, arity: 2 },
-    // fn:          { mutable: false, arity: null },
+    fn:          { mutable: false, arity: 2 },
+    apply:       { mutable: false, arity: null },
 }
 
 const docs = {
