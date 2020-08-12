@@ -149,14 +149,6 @@ object "Taylor" {
             len := 96
         }
 
-        function get4b(ptr) -> _sig {
-            _sig := mslice(ptr, 4)
-        }
-
-        function get8b(ptr) -> _sig {
-            _sig := mslice(ptr, 8)
-        }
-
         function readmiddle(value, _start, _len) -> newval {
             newval := shl(mul(8, _start), value)
             newval := shr(mul(8, sub(32, _len)), newval)
@@ -183,9 +175,15 @@ object "Taylor" {
         }
 
         function mslice(position, length) -> result {
-          if gt(length, 32) { revert(0, 0) } // protect against overflow
-        
           result := shr(sub(256, mul(length, 8)), mload(position))
+        }
+
+        function get4b(ptr) -> _sig {
+            _sig := shr(224, mload(ptr))
+        }
+
+        function get8b(ptr) -> _sig {
+            _sig := shr(192, mload(ptr))
         }
 
         function freeMemPtr() -> ptr {
