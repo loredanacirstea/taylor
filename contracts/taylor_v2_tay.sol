@@ -9,6 +9,9 @@ object "Taylor" {
     }
     object "Runtime" {
     code {
+
+        // set freeMemPtr at 0x40
+        mstore(0x40, 0xc0) // 192
         
         let _calldata := allocate(calldatasize())
         calldatacopy(_calldata, 0, calldatasize())
@@ -187,11 +190,10 @@ object "Taylor" {
 
         function freeMemPtr() -> ptr {
             ptr := mload(0x40)
-            if iszero(ptr) { ptr := 0xc0 } // 192
         }
         
         function allocate(size) -> ptr {
-            ptr := freeMemPtr()
+            ptr := mload(0x40)
             mstore(0x40, add(ptr, size))
         }
 
