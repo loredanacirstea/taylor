@@ -47,7 +47,7 @@ object "Taylor" {
             // number
             case 1 {
                 // eliminate 4byte sig
-                result_ptr := _mload(add(data_ptr, 4))
+                result_ptr := mload(add(data_ptr, 4))
                 end_ptr := add(data_ptr, 36)
 
                 // If we need to transform values into pointers (t2)
@@ -112,112 +112,6 @@ object "Taylor" {
             default {
                 dtrequire(0, 0xee00)
             }
-        }
-        
-        function untypedEval(fsig, arg_ptrs_ptr, env_ptr) -> result_ptr {
-            switch fsig
-
-            // store!
-            case 0x0000000000000001 {
-            }
-
-            // sload
-            case 0x0000000000000002 {
-            }
-
-            // def-untyped!
-            case 0x0000000000000003 {
-                let name_len := mslice(arg_ptrs_ptr, 4)
-                let name_ptr := add(arg_ptrs_ptr, 4)
-                let to_be_saved := add(name_ptr, name_len)
-                
-                // insert alias
-                let super_type := add(to_be_saved, 8) // len + list
-                let st := mslice(super_type, 8)
-                let signature := 0x0000000000000000
-                let index := 1
-                
-                // if eq(_nil_q(super_type), 0) {
-                    index := sload(mappingStorageKey(2, st))
-                    index := add(index, 1)
-                    signature := buildSig(st, index)
-
-                    // mstore(0, signature)
-                    // return (0, 32)
-
-                    let datalen := mslice(to_be_saved, 4)
-                    mslicestore(
-                        add(to_be_saved, datalen),
-                        index,
-                        4
-                    )
-                    mstorehead(to_be_saved, add(datalen, 4), 4)
-                // }
-                
-                let key := mappingStorageKey(1, signature)
-                storeData(to_be_saved, key)
-
-                sstore(mappingStorageKey(2, st), index)
-            }
-
-            // def-untyped
-            case 0x0000000000000004 {
-                let signature := get8b(arg_ptrs_ptr)
-                result_ptr := _dtype(signature)
-            }
-
-            default {
-                dtrequire(1, 0xe013)
-            }
-        }
-
-        function buildSig(signature, index) -> _id {
-            // mstore(0, signature)
-            // return (0, 32)
-            let super_data := _dtype(signature)
-            let data_len := mslice(super_data, 4)
-            if gt(data_len, 0) {
-                super_data := add(super_data, 4) // length
-
-                // return (add(super_data, sub(data_len, 16)), 96)
-                let parent_sig := mslice(add(super_data, 4), 8)
-                // let index2 := mslice(add(super_data, sub(data_len, 4)), 4)
-                let index2 := mslice(add(super_data, sub(data_len, 16)), 16)
-
-                // mstore(0, parent_sig)
-                // return (0, 32)
-
-                
-                let root_id := buildSig(parent_sig, index2)
-
-                // mstore(0, root_id)
-                // return (0, 32)
-                let shfts := mslice(add(super_data, 24), 4)
-
-                // mstore(0, shfts)
-                // return (0, 32)
-
-                _id := add(root_id, shl(shfts, index))
-            }
-        }
-
-        function _dtype(signature) -> result_ptr {
-            let key := mappingStorageKey(1, signature)
-            result_ptr := freeMemPtr()
-            getStoredData(result_ptr, key)
-
-            let len := mslice(result_ptr, 4)
-            result_ptr := allocate(add(len, 4))
-        }
-
-        function _nil_q(data_ptr) -> isnil {
-            isnil := eq(mslice(data_ptr, 8), 0x0000000000000000)
-        }
-
-        function _store(key, data_ptr) -> result_ptr {
-            let data_len := mslice(data_ptr, 4)
-
-            // storeDataInner(add(data_ptr, sig_len), key, data_len)
         }
 
         function getRootId(sig4b) -> _rootid {
@@ -288,11 +182,11 @@ object "Taylor" {
         function mslice(position, length) -> result {
           if gt(length, 32) { revert(0, 0) } // protect against overflow
         
-          result := shr(sub(256, mul(length, 8)), _mload(position))
+          result := shr(sub(256, mul(length, 8)), mload(position))
         }
 
         function freeMemPtr() -> ptr {
-            ptr := _mload(0x40)
+            ptr := mload(0x40)
             if iszero(ptr) { ptr := 0xc0 } // 192
         }
         
@@ -344,7 +238,7 @@ object "Taylor" {
                     let remaining := sub(sizeBytes, storedBytes)
                     switch gt(remaining, 31)
                     case 1 {
-                        mstore(add(_ptr_target, storedBytes), _mload(add(_ptr_source, storedBytes)))
+                        mstore(add(_ptr_target, storedBytes), mload(add(_ptr_source, storedBytes)))
                         storedBytes := add(storedBytes, 32)
                     }
                     case 0 {
@@ -377,7 +271,7 @@ object "Taylor" {
                 let remaining := sub(sizeBytes, storedBytes)
                 switch gt(remaining, 31)
                 case 1 {
-                    sstore(add(storageKey, index), _mload(add(_pointer, storedBytes)))
+                    sstore(add(storageKey, index), mload(add(_pointer, storedBytes)))
                     storedBytes := add(storedBytes, 32)
                     index := add(index, 1)
                 }
@@ -437,128 +331,128 @@ object "Taylor" {
             switch fsig
 
             case 0x3400100200000001 {
-                let a := _mload(add(arg_ptrs_ptr, 32))
-                let b := _mload(add(arg_ptrs_ptr, 64))
+                let a := mload(add(arg_ptrs_ptr, 32))
+                let b := mload(add(arg_ptrs_ptr, 64))
                 _result := add(a, b)
             }
             case 0x3400100200000002 {
-                let a := _mload(add(arg_ptrs_ptr, 32))
-                let b := _mload(add(arg_ptrs_ptr, 64))
+                let a := mload(add(arg_ptrs_ptr, 32))
+                let b := mload(add(arg_ptrs_ptr, 64))
                 _result := sub(a, b)
             }
             case 0x3400100200000003 {
-                let a := _mload(add(arg_ptrs_ptr, 32))
-                let b := _mload(add(arg_ptrs_ptr, 64))
+                let a := mload(add(arg_ptrs_ptr, 32))
+                let b := mload(add(arg_ptrs_ptr, 64))
                 _result := mul(a, b)
             }
             case 0x3400100200000004 {
-                let a := _mload(add(arg_ptrs_ptr, 32))
-                let b := _mload(add(arg_ptrs_ptr, 64))
+                let a := mload(add(arg_ptrs_ptr, 32))
+                let b := mload(add(arg_ptrs_ptr, 64))
                 _result := div(a, b)
             }
             case 0x3400100200000005 {
-                let a := _mload(add(arg_ptrs_ptr, 32))
-                let b := _mload(add(arg_ptrs_ptr, 64))
+                let a := mload(add(arg_ptrs_ptr, 32))
+                let b := mload(add(arg_ptrs_ptr, 64))
                 _result := sdiv(a, b)
             }
             case 0x3400100200000006 {
-                let a := _mload(add(arg_ptrs_ptr, 32))
-                let b := _mload(add(arg_ptrs_ptr, 64))
+                let a := mload(add(arg_ptrs_ptr, 32))
+                let b := mload(add(arg_ptrs_ptr, 64))
                 _result := mod(a, b)
             }
             case 0x3400100200000007 {
-                let a := _mload(add(arg_ptrs_ptr, 32))
-                let b := _mload(add(arg_ptrs_ptr, 64))
+                let a := mload(add(arg_ptrs_ptr, 32))
+                let b := mload(add(arg_ptrs_ptr, 64))
                 _result := smod(a, b)
             }
             case 0x3400100200000008 {
-                let a := _mload(add(arg_ptrs_ptr, 32))
-                let b := _mload(add(arg_ptrs_ptr, 64))
+                let a := mload(add(arg_ptrs_ptr, 32))
+                let b := mload(add(arg_ptrs_ptr, 64))
                 _result := exp(a, b)
             }
             case 0x3400080100000009 {
-                let a := _mload(add(arg_ptrs_ptr, 32))
+                let a := mload(add(arg_ptrs_ptr, 32))
                 _result := not(a)
             }
             case 0x340010020000000a {
-                let a := _mload(add(arg_ptrs_ptr, 32))
-                let b := _mload(add(arg_ptrs_ptr, 64))
+                let a := mload(add(arg_ptrs_ptr, 32))
+                let b := mload(add(arg_ptrs_ptr, 64))
                 _result := lt(a, b)
             }
             case 0x340010020000000b {
-                let a := _mload(add(arg_ptrs_ptr, 32))
-                let b := _mload(add(arg_ptrs_ptr, 64))
+                let a := mload(add(arg_ptrs_ptr, 32))
+                let b := mload(add(arg_ptrs_ptr, 64))
                 _result := gt(a, b)
             }
             case 0x340010020000000c {
-                let a := _mload(add(arg_ptrs_ptr, 32))
-                let b := _mload(add(arg_ptrs_ptr, 64))
+                let a := mload(add(arg_ptrs_ptr, 32))
+                let b := mload(add(arg_ptrs_ptr, 64))
                 _result := slt(a, b)
             }
             case 0x340010020000000d {
-                let a := _mload(add(arg_ptrs_ptr, 32))
-                let b := _mload(add(arg_ptrs_ptr, 64))
+                let a := mload(add(arg_ptrs_ptr, 32))
+                let b := mload(add(arg_ptrs_ptr, 64))
                 _result := sgt(a, b)
             }
             case 0x340010020000000e {
-                let a := _mload(add(arg_ptrs_ptr, 32))
-                let b := _mload(add(arg_ptrs_ptr, 64))
+                let a := mload(add(arg_ptrs_ptr, 32))
+                let b := mload(add(arg_ptrs_ptr, 64))
                 _result := eq(a, b)
             }
             case 0x340008010000000f {
-                let a := _mload(add(arg_ptrs_ptr, 32))
+                let a := mload(add(arg_ptrs_ptr, 32))
                 _result := iszero(a)
             }
             case 0x3400100200000010 {
-                let a := _mload(add(arg_ptrs_ptr, 32))
-                let b := _mload(add(arg_ptrs_ptr, 64))
+                let a := mload(add(arg_ptrs_ptr, 32))
+                let b := mload(add(arg_ptrs_ptr, 64))
                 _result := and(a, b)
             }
             case 0x3400100200000011 {
-                let a := _mload(add(arg_ptrs_ptr, 32))
-                let b := _mload(add(arg_ptrs_ptr, 64))
+                let a := mload(add(arg_ptrs_ptr, 32))
+                let b := mload(add(arg_ptrs_ptr, 64))
                 _result := or(a, b)
             }
             case 0x3400100200000012 {
-                let a := _mload(add(arg_ptrs_ptr, 32))
-                let b := _mload(add(arg_ptrs_ptr, 64))
+                let a := mload(add(arg_ptrs_ptr, 32))
+                let b := mload(add(arg_ptrs_ptr, 64))
                 _result := xor(a, b)
             }
             case 0x3400100200000013 {
-                let a := _mload(add(arg_ptrs_ptr, 32))
-                let b := _mload(add(arg_ptrs_ptr, 64))
+                let a := mload(add(arg_ptrs_ptr, 32))
+                let b := mload(add(arg_ptrs_ptr, 64))
                 _result := byte(a, b)
             }
             case 0x3400100200000014 {
-                let a := _mload(add(arg_ptrs_ptr, 32))
-                let b := _mload(add(arg_ptrs_ptr, 64))
+                let a := mload(add(arg_ptrs_ptr, 32))
+                let b := mload(add(arg_ptrs_ptr, 64))
                 _result := shl(a, b)
             }
             case 0x3400100200000015 {
-                let a := _mload(add(arg_ptrs_ptr, 32))
-                let b := _mload(add(arg_ptrs_ptr, 64))
+                let a := mload(add(arg_ptrs_ptr, 32))
+                let b := mload(add(arg_ptrs_ptr, 64))
                 _result := shr(a, b)
             }
             case 0x3400100200000016 {
-                let a := _mload(add(arg_ptrs_ptr, 32))
-                let b := _mload(add(arg_ptrs_ptr, 64))
+                let a := mload(add(arg_ptrs_ptr, 32))
+                let b := mload(add(arg_ptrs_ptr, 64))
                 _result := sar(a, b)
             }
             case 0x3400180300000017 {
-                let a := _mload(add(arg_ptrs_ptr, 32))
-                let b := _mload(add(arg_ptrs_ptr, 64))
-                let c := _mload(add(arg_ptrs_ptr, 96))
+                let a := mload(add(arg_ptrs_ptr, 32))
+                let b := mload(add(arg_ptrs_ptr, 64))
+                let c := mload(add(arg_ptrs_ptr, 96))
                 _result := addmod(a, b, c)
             }
             case 0x3400180300000018 {
-                let a := _mload(add(arg_ptrs_ptr, 32))
-                let b := _mload(add(arg_ptrs_ptr, 64))
-                let c := _mload(add(arg_ptrs_ptr, 96))
+                let a := mload(add(arg_ptrs_ptr, 32))
+                let b := mload(add(arg_ptrs_ptr, 64))
+                let c := mload(add(arg_ptrs_ptr, 96))
                 _result := mulmod(a, b, c)
             }
             case 0x3400100200000019 {
-                let a := _mload(add(arg_ptrs_ptr, 32))
-                let b := _mload(add(arg_ptrs_ptr, 64))
+                let a := mload(add(arg_ptrs_ptr, 32))
+                let b := mload(add(arg_ptrs_ptr, 64))
                 _result := signextend(a, b)
             }
             case 0x340000000000001a {
@@ -570,7 +464,7 @@ object "Taylor" {
             }
             // balance ; TODO address
             case 0x340008010000001c {
-                let addr := _mload(add(arg_ptrs_ptr, 32))
+                let addr := mload(add(arg_ptrs_ptr, 32))
                 _result := balance(addr)
             }
             // caller ; TODO address
@@ -581,7 +475,7 @@ object "Taylor" {
                 _result := callvalue()
             }
             case 0x340008010000001f {
-                let pos := _mload(add(arg_ptrs_ptr, 32))
+                let pos := mload(add(arg_ptrs_ptr, 32))
                 _result := calldataload(pos)
             }
             case 0x3400000000000020 {
@@ -591,14 +485,14 @@ object "Taylor" {
                 _result := codesize()
             }
             case 0x3400080100000022 {
-                let addr := _mload(add(arg_ptrs_ptr, 32))
+                let addr := mload(add(arg_ptrs_ptr, 32))
                 _result := extcodesize(addr)
             }
             case 0x3400000000000023 {
                 _result := returndatasize()
             }
             case 0x3400080100000024 {
-                let addr := _mload(add(arg_ptrs_ptr, 32))
+                let addr := mload(add(arg_ptrs_ptr, 32))
                 _result := extcodehash(addr)
             }
             case 0x3400000000000025 {
@@ -612,7 +506,7 @@ object "Taylor" {
                 _result := gasprice()
             }
             case 0x3400080100000028 {
-                let block_number := _mload(add(arg_ptrs_ptr, 32))
+                let block_number := mload(add(arg_ptrs_ptr, 32))
                 _result := blockhash(block_number)
             }
             case 0x3400000000000029 {
@@ -631,7 +525,7 @@ object "Taylor" {
                 _result := gaslimit()
             }
             case 0x340008010000002e {
-                let x := _mload(add(arg_ptrs_ptr, 32))
+                let x := mload(add(arg_ptrs_ptr, 32))
                 pop(x)
             }
             case 0x340000000000002f {
@@ -639,12 +533,12 @@ object "Taylor" {
             }
             case 0x3400080100000030 {
                 // mload_
-                let _ptr := _mload(add(arg_ptrs_ptr, 32))
-                _result := _mload(_ptr)
+                let _ptr := mload(add(arg_ptrs_ptr, 32))
+                _result := mload(_ptr)
             }
             case 0x3400080100000031 {
                 // _sload
-                let key := _mload(add(arg_ptrs_ptr, 32))
+                let key := mload(add(arg_ptrs_ptr, 32))
                 _result := sload(key)
             }
             case 0x3400180300000032 {
@@ -686,32 +580,32 @@ object "Taylor" {
                 // log
             }
             case 0x3400080100000039 {
-                let t2_ptr := _mload(add(arg_ptrs_ptr, 32))
+                let t2_ptr := mload(add(arg_ptrs_ptr, 32))
                 _result := keccak256(tn_ptr_(t2_ptr), tn_len_(t2_ptr))
             }
             case 0x340010020000003a {
                 // sstore_
-                let key := _mload(add(arg_ptrs_ptr, 32))
-                let value := _mload(add(arg_ptrs_ptr, 64))
+                let key := mload(add(arg_ptrs_ptr, 32))
+                let value := mload(add(arg_ptrs_ptr, 64))
                 sstore(key, value)
                 _result := key
             }
             case 0x340008010000003b {
                 // mstore__
-                let value := _mload(add(arg_ptrs_ptr, 32))
+                let value := mload(add(arg_ptrs_ptr, 32))
                 let _ptr := allocate(32)
                 mstore(_ptr, value)
                 _result := t2__(_ptr, 32)
             }
             case 0x340008010000003c {
-                let value := _mload(add(arg_ptrs_ptr, 32))
+                let value := mload(add(arg_ptrs_ptr, 32))
                 let _ptr := allocate(1)
                 mstore8(_ptr, and(value, 0xff))
                 _result := t2__(_ptr, 1)
             }
             case 0x340008010000003d {
                 // calldatacopy__
-                let calld__ := _mload(add(arg_ptrs_ptr, 32))
+                let calld__ := mload(add(arg_ptrs_ptr, 32))
                 let calld_ptr := tn_ptr_(calld__)
                 let calld_len := tn_len_(calld__)
                 let mem_ptr := allocate(calld_len)
@@ -720,7 +614,7 @@ object "Taylor" {
             }
             case 0x340008010000003e {
                 // codecopy__
-                let calld__ := _mload(add(arg_ptrs_ptr, 32))
+                let calld__ := mload(add(arg_ptrs_ptr, 32))
                 let calld_ptr := tn_ptr_(calld__)
                 let calld_len := tn_len_(calld__)
                 let mem_ptr := allocate(calld_len)
@@ -729,8 +623,8 @@ object "Taylor" {
             }
             case 0x340010020000003f {
                 // extcodecopy__
-                let addr := _mload(add(arg_ptrs_ptr, 32))
-                let calld__ := _mload(add(arg_ptrs_ptr, 64))
+                let addr := mload(add(arg_ptrs_ptr, 32))
+                let calld__ := mload(add(arg_ptrs_ptr, 64))
                 let calld_ptr := tn_ptr_(calld__)
                 let calld_len := tn_len_(calld__)
                 let mem_ptr := allocate(calld_len)
@@ -739,7 +633,7 @@ object "Taylor" {
             }
             case 0x3400080100000040 {
                 // returndatacopy__
-                let data__ := _mload(add(arg_ptrs_ptr, 32))
+                let data__ := mload(add(arg_ptrs_ptr, 32))
                 let data_ptr := tn_ptr_(data__)
                 let data_len := tn_len_(data__)
                 let mem_ptr := allocate(data_len)
@@ -747,15 +641,15 @@ object "Taylor" {
                 _result := t2__(mem_ptr, data_len)
             }
             case 0x3400080100000041 {
-                let t2_1 := _mload(add(arg_ptrs_ptr, 32))
+                let t2_1 := mload(add(arg_ptrs_ptr, 32))
                 revert_(t2_1)
             }
             case 0x3400080100000042 {
-                let t2_1 := _mload(add(arg_ptrs_ptr, 32))
+                let t2_1 := mload(add(arg_ptrs_ptr, 32))
                 return_d(t2_1)
             }
             case 0x3400080100000043 {
-                let addr := _mload(add(arg_ptrs_ptr, 32))
+                let addr := mload(add(arg_ptrs_ptr, 32))
                 selfdestruct(addr)
             }
             case 0x3400000000000044 {
@@ -764,55 +658,41 @@ object "Taylor" {
             case 0x3400000000000045 {
                 stop()
             }
-
-            // if_
-            // case 0x3400180300000046 {
-            //     // return (arg_ptrs_ptr, 96)
-            //     let cond := _mload(add(arg_ptrs_ptr, 32))
-            //     let branch1 := _mload(add(arg_ptrs_ptr, 64))
-            //     let branch2 := _mload(add(arg_ptrs_ptr, 96))
-            //     _result := branch1
-            //     if eq(cond, 0) {
-            //         _result := branch2
-            //     }
-            //     // mstore(0, _result)
-            //     // return (0, 32)
-            // }
             case 0x3400100200000047 {
-                let t1_1 := _mload(add(arg_ptrs_ptr, 32))
-                let t1_2 := _mload(add(arg_ptrs_ptr, 64))
+                let t1_1 := mload(add(arg_ptrs_ptr, 32))
+                let t1_2 := mload(add(arg_ptrs_ptr, 64))
                 _result := t2__(t1_1, t1_2)
             }
             case 0x3400080100000048 {
-                let t2_1 := _mload(add(arg_ptrs_ptr, 32))
+                let t2_1 := mload(add(arg_ptrs_ptr, 32))
                 _result := tn_ptr_(t2_1)
             }
             case 0x3400080100000049 {
-                let t2_1 := _mload(add(arg_ptrs_ptr, 32))
+                let t2_1 := mload(add(arg_ptrs_ptr, 32))
                 _result := tn_len_(t2_1)
             }
             case 0x340010020000004b {
-                let __ptr1 := _mload(add(arg_ptrs_ptr, 32))
-                let __ptr2 := _mload(add(arg_ptrs_ptr, 64))
+                let __ptr1 := mload(add(arg_ptrs_ptr, 32))
+                let __ptr2 := mload(add(arg_ptrs_ptr, 64))
                 _result := join__(__ptr1, __ptr2)
             }
             case 0x340010020000004d {
-                let __t3 := _mload(add(arg_ptrs_ptr, 32))
-                let __indexes := _mload(add(arg_ptrs_ptr, 64))
+                let __t3 := mload(add(arg_ptrs_ptr, 32))
+                let __indexes := mload(add(arg_ptrs_ptr, 64))
                 _result := nth__(__t3, __indexes)
             }
             case 0x340008010000004e {
-                let ___t3 := _mload(add(arg_ptrs_ptr, 32))
+                let ___t3 := mload(add(arg_ptrs_ptr, 32))
                 _result := tuple_sol__(___t3)
             }
             case 0x340010020000004f {
-                let __t2 := _mload(add(arg_ptrs_ptr, 32))
-                let ___ttypes := _mload(add(arg_ptrs_ptr, 64))
+                let __t2 := mload(add(arg_ptrs_ptr, 32))
+                let ___ttypes := mload(add(arg_ptrs_ptr, 64))
                 _result := sol_tuple___(__t2, ___ttypes)
             }
             case 0x3400100200000050 {
-                let __args := _mload(add(arg_ptrs_ptr, 32))
-                let ___body := _mload(add(arg_ptrs_ptr, 64))
+                let __args := mload(add(arg_ptrs_ptr, 32))
+                let ___body := mload(add(arg_ptrs_ptr, 64))
                 _result := fn_(__args, ___body)
             }
 
@@ -861,7 +741,7 @@ object "Taylor" {
         }
 
         function ttype(___t3) -> _ttype {
-            _ttype := shr(248, _mload(___t3))
+            _ttype := shr(248, mload(___t3))
         }
 
         function is_t3(___t3) -> _ist3 {
@@ -870,15 +750,15 @@ object "Taylor" {
         
         // 2 bytes ttype + 30 bytes ptr
         function tn_ptr_(__tn) -> _result {
-            _result := and(_mload(__tn), 0xffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff)
+            _result := and(mload(__tn), 0xffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff)
         }
 
         function tn_len_(__tn) -> _result {
-            _result := _mload(add(__tn, 32))
+            _result := mload(add(__tn, 32))
         }
 
         function t3_arity_(___t3) -> _result {
-            _result := _mload(add(___t3, 64))
+            _result := mload(add(___t3, 64))
         }
 
         function return_d(t2_1) {
@@ -919,18 +799,6 @@ object "Taylor" {
 
             let end_ptr, result_ptr := eval(lambda_body, new_env_ptr, 0)
             _result := result_ptr
-        }
-
-        function _mload(_ptr) -> _result {
-            // let maxsize := msize()
-            // if gt(maxsize, 0) {
-            //     dtrequire(lt(_ptr, msize()), 0xeeee)
-            // }
-            _result := mload(_ptr)
-
-            // mstore(0, msize())
-            // mstore(32, _ptr)
-            // return (0, 64)
         }
 
         function join__(__ptr1, __ptr2) -> __ptr3 {
