@@ -111,7 +111,7 @@ object "Taylor" {
             }
             
             default {
-                dtrequire(0, 0xee00)
+                dtrequire(0, 0xee00, rootid)
             }
         }
 
@@ -204,42 +204,14 @@ object "Taylor" {
             c := add(shl(mul(length_b, 8), a), b)
         }
 
-        function mslicestore(_ptr, val, length) {
-            let slot := 32
-            mstore(_ptr, shl(mul(sub(slot, length), 8), val))
-        }
-
-        // Use carefully - replaces head bytes in a byte32 chunk
-        function mstorehead(_ptr, value, length) {
-            let slot := 32
-            let temp := add(
-                mslice(add(_ptr, length), sub(slot, length)),
-                shl(mul(sub(slot, length), 8), value)
-            )
-            mstore(_ptr, temp)
-        }
-
         function mmultistore(_ptr_target, _ptr_source, sizeBytes) {
-            if gt(sizeBytes, 0) {
-                let slot := 32
-                let storedBytes := 0
-
-                for {} lt(storedBytes, sizeBytes) {} {
-                    let remaining := sub(sizeBytes, storedBytes)
-                    switch gt(remaining, 31)
-                    case 1 {
-                        mstore(add(_ptr_target, storedBytes), mload(add(_ptr_source, storedBytes)))
-                        storedBytes := add(storedBytes, 32)
-                    }
-                    case 0 {
-                        mslicestore(
-                            add(_ptr_target, storedBytes),
-                            mslice(add(_ptr_source, storedBytes), remaining),
-                            remaining
-                        )
-                        storedBytes := add(storedBytes, remaining)
-                    }
-                }
+            let slots := add(div(sizeBytes, 32), gt(mod(sizeBytes, 32), 0))
+            let t_now := _ptr_target
+            let s_now := _ptr_source
+            for { let i := 0 } lt(i, slots) { i := add(i, 1) } {
+                mstore(t_now, mload(s_now))
+                t_now := add(t_now, 32)
+                s_now := add(s_now, 32)
             }
         }
 
@@ -310,10 +282,11 @@ object "Taylor" {
             }
         }
 
-        function dtrequire(cond, error_bytes) {
+        function dtrequire(cond, error_bytes, error_msg) {
             if eq(cond, 0) {
-                mslicestore(0, error_bytes, 2)
-                revert(0, 2)
+                mstore(0, error_bytes)
+                mstore(0, error_msg)
+                revert(0, 64)
             }
         }
 
@@ -706,7 +679,7 @@ object "Taylor" {
                     _result := apply_(___lambda_ptr, add(arg_ptrs_ptr, 64), env_ptr)
                 }
                 default {
-                    dtrequire(0, uconcat(0xeeff, fsig, 8))
+                    dtrequire(0, 0xeeff, fsig)
                 }
             }
         }
@@ -834,10 +807,10 @@ object "Taylor" {
         }
 
         function fail_call(addr, data_ptr) {
-            let error_msg := allocate(26)
-            mslicestore(error_msg, uconcat(0xeedd, addr, 20), 22)
-            mslicestore(add(error_msg, 22), mslice(tn_ptr_(data_ptr), 4), 4)
-            revert(error_msg, 26)
+            mstore(0, 0xeedd)
+            mstore(32, addr)
+            mstore(64, mload(tn_ptr_(data_ptr)))
+            revert(0, 96)
         }
 
         function log_(arity, __data_ptr, topic_ptrs) {
@@ -927,7 +900,7 @@ object "Taylor" {
 
         // passes by reference
         function nth__(__t3, index) -> result_ptr__{
-            dtrequire(lt(index, t3_arity_(__t3)), 0xeecc)
+            dtrequire(lt(index, t3_arity_(__t3)), 0xeecc, 0)
             let content_ptr := tn_ptr_(__t3)
             let item_ptr := add(content_ptr, mul(index, 32))
             result_ptr__ := mload(item_ptr)
