@@ -23,29 +23,12 @@ object "Taylor" {
 
         mstore(0, response)
         return (0, 32)
-
-        
-        return (response, getTypedLength(response))
         
         function eval(data_ptr, env_ptr, value_to_ptr) -> end_ptr, result_ptr {
             let sig4b := get4b(data_ptr)
-            let rootid := getRootId(sig4b)
+            let rootid := shr(28, sig4b)
 
             switch rootid
-            
-            // unknown
-            case 0 {                
-                let subtype := shr(25, sig4b)
-
-                // unknown
-                if eq(subtype, 2) {
-                    // replace variables from lambdas
-                    let index := getFuncArity(sig4b)
-                    let value_ptr := add(add(env_ptr, 32), mul(index, 32))
-                    result_ptr := mload(value_ptr)
-                    end_ptr := add(data_ptr, 4)
-                }
-            }
             
             // number
             case 1 {
@@ -55,9 +38,10 @@ object "Taylor" {
 
                 // If we need to transform values into pointers (t2)
                 if value_to_ptr {
-                    let _ptr := allocate(32)
-                    mstore(_ptr, result_ptr)
-                    result_ptr := t2__(_ptr, 32)
+                    let _ptr := allocate(64)
+                    mstore(_ptr, 32)
+                    mstore(add(_ptr, 32), result_ptr)
+                    result_ptr := _ptr
                 }
             }
             
@@ -103,22 +87,32 @@ object "Taylor" {
                 }
             }
             
-            // bytelike
+            // bytelike -> t2 (pointer to content with length)
             case 4 {
                 let value_length := get4b(add(data_ptr, 4))
-                let _ptr := allocate(value_length)
-                mmultistore(_ptr, add(data_ptr, 8), value_length)
-                result_ptr := t2__(_ptr, value_length)
+                result_ptr := allocate(add(value_length, 32))
+                mstore(result_ptr, value_length)
+                mmultistore(add(result_ptr, 32), add(data_ptr, 8), value_length)
                 end_ptr := add(add(data_ptr, 8), value_length)
+            }
+
+            // unknown
+            case 0 {                
+                let subtype := shr(25, sig4b)
+
+                // unknown
+                if eq(subtype, 2) {
+                    // replace variables from lambdas
+                    let index := getFuncArity(sig4b)
+                    let value_ptr := add(add(env_ptr, 32), mul(index, 32))
+                    result_ptr := mload(value_ptr)
+                    end_ptr := add(data_ptr, 4)
+                }
             }
             
             default {
                 dtrequire(0, 0xee00)
             }
-        }
-
-        function getRootId(sig4b) -> _rootid {
-            _rootid := shr(28, sig4b)
         }
 
         function isFunction(sig4b) -> _isf {
@@ -143,10 +137,6 @@ object "Taylor" {
             mstore(ptr, key)
             mstore(add(ptr, 32), storageIndex)
             storageKey := keccak256(ptr, 64)
-        }
-
-        function getTypedLength(data_ptr) -> len {
-            len := 96
         }
 
         function readmiddle(value, _start, _len) -> newval {
@@ -593,60 +583,56 @@ object "Taylor" {
             case 0x340008010000003b {
                 // mstore__
                 let value := mload(add(arg_ptrs_ptr, 32))
-                let _ptr := allocate(32)
-                mstore(_ptr, value)
-                _result := t2__(_ptr, 32)
+                _result := allocate(64)
+                mstore(_result, 32)
+                mstore(add(_result, 32), value)
             }
             case 0x340008010000003c {
                 let value := mload(add(arg_ptrs_ptr, 32))
-                let _ptr := allocate(1)
-                mstore8(_ptr, and(value, 0xff))
-                _result := t2__(_ptr, 1)
+                _result := allocate(33)
+                mstore(_result, 1)
+                mstore8(add(_result, 32), and(value, 0xff))
             }
-            case 0x340008010000003d {
+            case 0x340010020000003d {
                 // calldatacopy__
-                let calld__ := mload(add(arg_ptrs_ptr, 32))
-                let calld_ptr := tn_ptr_(calld__)
-                let calld_len := tn_len_(calld__)
-                let mem_ptr := allocate(calld_len)
-                calldatacopy(mem_ptr, calld_ptr, calld_len)
-                _result := t2__(mem_ptr, calld_len)
+                let calld_ptr := mload(add(arg_ptrs_ptr, 32))
+                let calld_len := mload(add(arg_ptrs_ptr, 64))
+                _result := allocate(add(32, calld_len))
+                mstore(_result, calld_len)
+                calldatacopy(add(_result, 32), calld_ptr, calld_len)
             }
-            case 0x340008010000003e {
+            case 0x340010020000003e {
                 // codecopy__
-                let calld__ := mload(add(arg_ptrs_ptr, 32))
-                let calld_ptr := tn_ptr_(calld__)
-                let calld_len := tn_len_(calld__)
-                let mem_ptr := allocate(calld_len)
-                codecopy(mem_ptr, calld_ptr, calld_len)
-                _result := t2__(mem_ptr, calld_len)
+                let calld_ptr := mload(add(arg_ptrs_ptr, 32))
+                let calld_len := mload(add(arg_ptrs_ptr, 64))
+                _result := allocate(add(32, calld_len))
+                mstore(_result, calld_len)
+                codecopy(add(_result, 32), calld_ptr, calld_len)
             }
-            case 0x340010020000003f {
+            case 0x340018030000003f {
                 // extcodecopy__
                 let addr := mload(add(arg_ptrs_ptr, 32))
-                let calld__ := mload(add(arg_ptrs_ptr, 64))
-                let calld_ptr := tn_ptr_(calld__)
-                let calld_len := tn_len_(calld__)
-                let mem_ptr := allocate(calld_len)
-                extcodecopy(addr, mem_ptr, calld_ptr, calld_len)
-                _result := t2__(mem_ptr, calld_len)
+                let calld_ptr := mload(add(arg_ptrs_ptr, 64))
+                let calld_len := mload(add(arg_ptrs_ptr, 96))
+                _result := allocate(add(32, calld_len))
+                mstore(_result, calld_len)
+                extcodecopy(addr, add(_result, 32), calld_ptr, calld_len)
             }
-            case 0x3400080100000040 {
+            case 0x3400100200000040 {
                 // returndatacopy__
-                let data__ := mload(add(arg_ptrs_ptr, 32))
-                let data_ptr := tn_ptr_(data__)
-                let data_len := tn_len_(data__)
-                let mem_ptr := allocate(data_len)
-                returndatacopy(mem_ptr, data_ptr, data_len)
-                _result := t2__(mem_ptr, data_len)
+                let data_ptr := mload(add(arg_ptrs_ptr, 32))
+                let data_len := mload(add(arg_ptrs_ptr, 64))
+                _result := allocate(add(32, data_len))
+                mstore(_result, data_len)
+                returndatacopy(add(_result, 32), data_ptr, data_len)
             }
             case 0x3400080100000041 {
-                let t2_1 := mload(add(arg_ptrs_ptr, 32))
-                revert_(t2_1)
+                let t2_ptr := mload(add(arg_ptrs_ptr, 32))
+                revert_(t2_ptr)
             }
             case 0x3400080100000042 {
-                let t2_1 := mload(add(arg_ptrs_ptr, 32))
-                return_d(t2_1)
+                let t2_ptr := mload(add(arg_ptrs_ptr, 32))
+                return_d(t2_ptr)
             }
             case 0x3400080100000043 {
                 let addr := mload(add(arg_ptrs_ptr, 32))
@@ -659,17 +645,17 @@ object "Taylor" {
                 stop()
             }
             case 0x3400100200000047 {
-                let t1_1 := mload(add(arg_ptrs_ptr, 32))
-                let t1_2 := mload(add(arg_ptrs_ptr, 64))
-                _result := t2__(t1_1, t1_2)
+                // t2__ - removed
             }
             case 0x3400080100000048 {
+                // tn_ptr_
                 let t2_1 := mload(add(arg_ptrs_ptr, 32))
-                _result := tn_ptr_(t2_1)
+                _result := add(t2_1, 32)
             }
             case 0x3400080100000049 {
+                // tn_len_
                 let t2_1 := mload(add(arg_ptrs_ptr, 32))
-                _result := tn_len_(t2_1)
+                _result := mload(t2_1)
             }
             case 0x340010020000004b {
                 let __ptr1 := mload(add(arg_ptrs_ptr, 32))
@@ -688,7 +674,7 @@ object "Taylor" {
             case 0x340010020000004f {
                 let __t2 := mload(add(arg_ptrs_ptr, 32))
                 let ___ttypes := mload(add(arg_ptrs_ptr, 64))
-                _result := sol_tuple___(__t2, ___ttypes)
+                _result := sol_tuple___(tn_ptr_(__t2), tn_len_(__t2), ___ttypes)
             }
             case 0x3400100200000050 {
                 let __args := mload(add(arg_ptrs_ptr, 32))
@@ -710,8 +696,8 @@ object "Taylor" {
                 
                 // tuple___
                 case 0x4c {
-                    let arity := mload(arg_ptrs_ptr)
-                    _result := tuple___(arity, add(arg_ptrs_ptr, 32))
+                    mstore(arg_ptrs_ptr, build_t3_arity(mload(arg_ptrs_ptr)))
+                    _result := arg_ptrs_ptr
                 }
                 
                 // apply
@@ -725,21 +711,6 @@ object "Taylor" {
             }
         }
 
-        function t2__(ptr, len) -> _result {
-            _result := allocate(64)
-            mstore(_result, ptr)
-            mstore(add(_result, 32), len)
-        }
-
-        function t3___(ptr, len, arity) -> _result {
-            _result := allocate(96)
-            // t3 marker
-            ptr := add(ptr, shl(248, 3))
-            mstore(_result, ptr)
-            mstore(add(_result, 32), len)
-            mstore(add(_result, 64), arity)
-        }
-
         function ttype(___t3) -> _ttype {
             _ttype := shr(248, mload(___t3))
         }
@@ -747,33 +718,38 @@ object "Taylor" {
         function is_t3(___t3) -> _ist3 {
             _ist3 := eq(ttype(___t3), 3)
         }
-        
-        // 2 bytes ttype + 30 bytes ptr
+
         function tn_ptr_(__tn) -> _result {
-            _result := and(mload(__tn), 0xffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff)
+            _result := add(__tn, 32)
         }
 
         function tn_len_(__tn) -> _result {
-            _result := mload(add(__tn, 32))
+            _result := and(mload(__tn), 0xffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff)
+        }
+
+        function build_t3_arity(numb) -> _arity {
+            // t3 marker
+            _arity := add(numb, shl(248, 3))
         }
 
         function t3_arity_(___t3) -> _result {
-            _result := mload(add(___t3, 64))
+            // _result := mload(add(___t3, 64))
+            _result := and(mload(___t3), 0xffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff)
         }
 
-        function return_d(t2_1) {
-            return(tn_ptr_(t2_1), tn_len_(t2_1))
+        function return_d(t2_ptr) {
+            return(add(t2_ptr, 32), mload(t2_ptr))
         }
 
-        function revert_(t2_1) {
-            revert(tn_ptr_(t2_1), tn_len_(t2_1))
+        function revert_(t2_ptr) {
+            revert(add(t2_ptr, 32), mload(t2_ptr))
         }
 
         function fn_(__args, ___body) -> _result {
-            let content := allocate(64)
-            mstore(content, __args)
-            mstore(add(content, 32), ___body)
-            _result := t3___(content, add(tn_len_(__args), tn_len_(___body)), 2)
+            _result := allocate(96)
+            mstore(_result, build_t3_arity(2))
+            mstore(add(_result, 32), __args)
+            mstore(add(_result, 64), ___body)
         }
 
         function apply_(___lambda_ptr, user_input, env_ptr) -> _result {
@@ -805,10 +781,13 @@ object "Taylor" {
             let len1 := tn_len_(__ptr1)
             let len2 := tn_len_(__ptr2)
             let len := add(len1, len2)
-            let ptr3 := allocate(len)
+            let ptr3 := allocate(add(32, len))
+            __ptr3 := ptr3
+            mstore(ptr3, len)
+            ptr3 := add(ptr3, 32)
             mmultistore(ptr3, tn_ptr_(__ptr1), len1)
-            mmultistore(add(ptr3, len1), tn_ptr_(__ptr2), len2)
-            __ptr3 := t2__(ptr3, len)
+            ptr3 := add(ptr3, len1)
+            mmultistore(ptr3, tn_ptr_(__ptr2), len2)
         }
 
         function call_bang__(addr, value, data_ptr) -> __ptr {
@@ -849,9 +828,9 @@ object "Taylor" {
 
         function success_call() -> __ptr {
             let outsize := returndatasize()
-            let result_ptr := allocate(outsize)
-            returndatacopy(result_ptr, 0, outsize)
-            __ptr := t2__(result_ptr, outsize)
+            __ptr := allocate(add(32, outsize))
+            mstore(__ptr, outsize)
+            returndatacopy(add(32, __ptr), 0, outsize)
         }
 
         function fail_call(addr, data_ptr) {
@@ -882,22 +861,13 @@ object "Taylor" {
                 log4(data_ptr, data_len, mload(topic_ptrs), mload(add(topic_ptrs, 32)), mload(add(topic_ptrs, 64)), mload(add(topic_ptrs, 96)))
             }
         }
-
-        function tuple___(arity, arg_ptrs) -> ___result {
-            let total_length := 0
-            for { let i := 0 } lt(i, arity) { i := add(i, 1) } {
-                let arg_ptr__ := mload(add(arg_ptrs, mul(i, 32)))
-                let arg_len := tn_len_(arg_ptr__)
-                total_length := add(total_length, arg_len)
-            }
-            ___result := t3___(arg_ptrs, total_length, arity)
-        }
-
+        
         function tuple_sol__(___t3) -> result_ptr__ {
-            let _ptr := freeMemPtr()
-            let length := tuple_sol_internal__(___t3, _ptr)
-            _ptr := allocate(length)
-            result_ptr__ := t2__(_ptr, length)
+            result_ptr__ := allocate(32)
+            let internal_ptr := freeMemPtr()
+            let length := tuple_sol_internal__(___t3, internal_ptr)
+            internal_ptr := allocate(length)
+            mstore(result_ptr__, length)
         }
 
         function tuple_sol_internal__(___t3, _ptr) -> last_offset {
@@ -964,50 +934,44 @@ object "Taylor" {
         }
 
         // solidity tuple (t2) -> tuple (t3)
-        function sol_tuple___(__t2, ___ttypes) -> ___result {
-            let t2data_ptr := tn_ptr_(__t2)
+        function sol_tuple___(content_ptr, content_len, ___ttypes) -> ___result {
             let arity := t3_arity_(___ttypes)
-            let tuple_content := allocate(mul(arity, 32))
-            let tuple_length := 0
+            let tuple_content := allocate(add(32, mul(arity, 32)))
+            ___result := tuple_content
+            mstore(tuple_content, build_t3_arity(arity))
+            tuple_content := add(tuple_content, 32)
 
             for { let i := 0 } lt(i, arity) { i := add(i, 1) } {
                 let ttype_index_ptr := nth__(___ttypes, i)
                 let ttype_index := sol_tuple_ttype_index(ttype_index_ptr)
-                let valueOrOffset_ptr := add(t2data_ptr, mul(32, i))
+                let valueOrOffset_ptr := add(content_ptr, mul(32, i))
                 
                 switch ttype_index
                 case 3 {
                     // tuple t3
                     let offset := mload(valueOrOffset_ptr)
-                    let _ptr := add(t2data_ptr, offset)
-                    let next_offset := sol_tuple_nextOffset(__t2, ___ttypes, add(i, 1))
-
+                    let next_offset := sol_tuple_nextOffset(content_ptr, content_len, ___ttypes, add(i, 1))
+                    let _ptr := add(content_ptr, offset)
                     let data_len := sub(next_offset, offset)
-                    let data_ptr := sol_tuple___(t2__(_ptr, data_len), ttype_index_ptr)
-
+                    let data_ptr := sol_tuple___(_ptr, data_len, ttype_index_ptr)
                     mstore(add(tuple_content, mul(i, 32)), data_ptr)
-                    tuple_length := add(tuple_length, data_len)
                 }
                 case 2 {
                     // bytes t2
                     let offset := mload(valueOrOffset_ptr)
-                    let data_ptr := add(t2data_ptr, offset)
+                    let data_ptr := add(content_ptr, offset)
                     let data_len := mload(data_ptr)
-                    data_ptr := t2__(add(data_ptr, 32), data_len)
-
                     mstore(add(tuple_content, mul(i, 32)), data_ptr)
-                    tuple_length := add(tuple_length, data_len)
                 }
                 default {
                     // value t1
                     let data_len := 32
-                    let data_ptr := t2__(valueOrOffset_ptr, data_len)
-
+                    let data_ptr := allocate(64)
+                    mstore(data_ptr, data_len)
+                    mstore(add(data_ptr, 32), mload(valueOrOffset_ptr))
                     mstore(add(tuple_content, mul(i, 32)), data_ptr)
-                    tuple_length := add(tuple_length, data_len)
                 }
             }
-            ___result := t3___(tuple_content, tuple_length, arity)
         }
 
         function sol_tuple_ttype_index(ttype_index_ptr) -> _ttype_index {
@@ -1017,21 +981,21 @@ object "Taylor" {
             }
         }
 
-        function sol_tuple_nextOffset(__t2, ___ttypes, i) -> _offset {
+        function sol_tuple_nextOffset(content_ptr, content_len, ___ttypes, i) -> _offset {
             let arity := t3_arity_(___ttypes)
             switch lt(i, arity)
             case 0 {
-                _offset := tn_len_(__t2)
+                _offset := content_len
             }
             default {
                 let ttype_index_ptr := nth__(___ttypes, i)
                 let ttype_index := sol_tuple_ttype_index(ttype_index_ptr)
                 switch ttype_index
                 case 1 {
-                    _offset := sol_tuple_nextOffset(__t2, ___ttypes, add(i, 1))
+                    _offset := sol_tuple_nextOffset(content_ptr, content_len, ___ttypes, add(i, 1))
                 }
                 default {
-                    _offset := add(tn_ptr_(__t2), mul(arity, i))
+                    _offset := add(content_ptr, mul(arity, i))
                 }
             }
         }

@@ -63,10 +63,10 @@ const _nativeEVM = {
     mstore_:       {mutable: false, arity: 1, inputs: [], outputs: [] },
     mstore8_:      {mutable: false, arity: 1, inputs: [], outputs: [] },
     
-    calldatacopy_: {mutable: false, arity: 1, inputs: [], outputs: [] },
-    codecopy_:    {mutable: false, arity: 1, inputs: [], outputs: [] },
-    extcodecopy_: {mutable: false, arity: 2, inputs: [], outputs: [] },
-    returndatacopy_:{mutable: false, arity: 1, inputs: [], outputs: [] },
+    calldatacopy_: {mutable: false, arity: 2, inputs: [], outputs: [] },
+    codecopy_:    {mutable: false, arity: 2, inputs: [], outputs: [] },
+    extcodecopy_: {mutable: false, arity: 3, inputs: [], outputs: [] },
+    returndatacopy_:{mutable: false, arity: 2, inputs: [], outputs: [] },
 
     'revert#':       {mutable: false, arity: 1 },
     'return#':       {mutable: false, arity: 1 },
