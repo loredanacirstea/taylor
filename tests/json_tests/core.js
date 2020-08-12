@@ -17,29 +17,17 @@ const tests = {
             result: 6,
         },
     ],
-    t2__: [
-        {
-            test: '(t2__ 256 32)',
-            result: [256, 12],
-            skip: true,
-        },
-        {
-            test: '(return# (t2__ 2048 32))',
-            result: 0,
-            decode: ['uint'],
-        },
-    ],
     tn_ptr_: [
         {
-            test: '(tn_ptr_ (t2__ 256 12))',
-            result: 256,
+            test: '(tn_ptr_ (mstore__ 12))',
+            result: 404,
             decode: ['uint'],
         },
     ],
     tn_len_: [
         {
-            test: '(tn_len_ (t2__ 256 12))',
-            result: 12,
+            test: '(tn_len_ (mstore__ 12))',
+            result: 32,
             decode: ['uint'],
         },
     ],
@@ -106,7 +94,7 @@ const tests = {
         },
         {
             test: `( (fn_ (n) 
-                (if_ (or_ (eq_ n 1) (eq_ n 2))
+                (if_ (lt_ n 3)
                     1
                     (add_ (self (sub_ n 1)) (self (sub_ n 2)) )
                 )

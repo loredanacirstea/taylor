@@ -369,22 +369,22 @@ const tests = {
     ],
     calldatacopy__: [
         {
-            test: '(return# (calldatacopy__ (t2__ 0 32) ))',
-            result: '0x3400080100000042340008010000003d34001002000000471000000000000000',
+            test: '(return# (calldatacopy__ 0 32 ))',
+            result: '0x3400080100000042340010020000003d10000000000000000000000000000000',
             decode: ['bytes32'],
         },
     ],
     codecopy__: [
         {
-            test: '(return# (codecopy__ (t2__ 0 10) ))',
-            result: '0x6100076101d2565b3681',
+            test: '(return# (codecopy__ 0 10 ))',
+            result: '0x60c06040526040513681',
             decode: null,
         },
     ],
     extcodecopy__: [
         {
-            test: '(return# (extcodecopy__ (address_ ) (t2__ 0 10) ))',
-            result: '0x6100076101d2565b3681',
+            test: '(return# (extcodecopy__ (address_ ) 0 10 ))',
+            result: '0x60c06040526040513681',
             decode: null,
         },
     ],
@@ -418,7 +418,7 @@ const tests = {
     ],
     returndatacopy__: [
         {
-            test: '(return# (returndatacopy__ (t2__ 0 0) ))',
+            test: '(return# (returndatacopy__ 0 0 ))',
             result: '0x',
             decode: null,
         },

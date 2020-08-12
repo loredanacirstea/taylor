@@ -738,12 +738,14 @@ object "Taylor" {
 
             // handle reference to self
             addto_env(new_env_ptr, getFuncArity(get4b(lambda_args)), ___lambda_ptr)
+            lambda_args := add(lambda_args, 4)
 
             // environment with lambda args mapped to input values
             for { let i := 1 } lt(i, arity) { i := add(i, 1) } {
                 // arity same pos as index
-                let value_or_ptr := mload(add(user_input, mul(sub(i, 1), 32)))
-                addto_env(new_env_ptr, getFuncArity(get4b(add(lambda_args, mul(i, 4)))), value_or_ptr)
+                addto_env(new_env_ptr, getFuncArity(get4b(lambda_args)),  mload(user_input))
+                user_input := add(user_input, 32)
+                lambda_args := add(lambda_args, 4)
             }
 
             let end_ptr, result_ptr := eval(lambda_body, new_env_ptr, 0)
