@@ -25,7 +25,6 @@ object "Taylor" {
         return (response, getTypedLength(response))
         
         function eval(data_ptr, env_ptr, value_to_ptr) -> end_ptr, result_ptr {
-            let isprocessed := 0
             let sig4b := get4b(data_ptr)
             let rootid := getRootId(sig4b)
 
@@ -76,19 +75,28 @@ object "Taylor" {
                 mstore(args_ptrs, arity)
                 let args_ptrs_now := add(args_ptrs, 32)
 
-                for { let i := 0 } lt(i, arity) { i := add(i, 1) } {
-                    let _end_ptr, arg_ptr := eval(end_ptr, env_ptr, value_to_ptr)
+                let isif := eq(sig, 0x3400180300000046)
+                switch isif
+                case 0 {
+                    for { let i := 0 } lt(i, arity) { i := add(i, 1) } {
+                        let _end_ptr, arg_ptr := eval(end_ptr, env_ptr, value_to_ptr)
+                        
+                        // store pointer to argument value
+                        mstore(args_ptrs_now, arg_ptr)
+                        end_ptr := _end_ptr
+                        args_ptrs_now := add(args_ptrs_now, 32)
+                    }
 
-                    // store pointer to argument value
-                    mstore(args_ptrs_now, arg_ptr)
-                    end_ptr := _end_ptr
-                    args_ptrs_now := add(args_ptrs_now, 32)
+
+                    let isnative := isFunctionNative(sig4b)
+                    if isnative {
+                        result_ptr := evalNativeFunc(sig, args_ptrs, env_ptr)
+                    }
                 }
-
-                let isnative := isFunctionNative(sig4b)
-                if isnative {
-                    isprocessed := 1
-                    result_ptr := evalNativeFunc(sig, args_ptrs, env_ptr)
+                case 1 {
+                    let _end_ptr, _result_ptr := if_(end_ptr, env_ptr)
+                    end_ptr := _end_ptr
+                    result_ptr := _result_ptr
                 }
             }
             
@@ -756,15 +764,20 @@ object "Taylor" {
             case 0x3400000000000045 {
                 stop()
             }
-            case 0x3400180300000046 {
-                let cond := _mload(add(arg_ptrs_ptr, 32))
-                let branch1 := _mload(add(arg_ptrs_ptr, 64))
-                let branch2 := _mload(add(arg_ptrs_ptr, 96))
-                _result := branch1
-                if eq(cond, 0) {
-                    _result := branch2
-                }
-            }
+
+            // if_
+            // case 0x3400180300000046 {
+            //     // return (arg_ptrs_ptr, 96)
+            //     let cond := _mload(add(arg_ptrs_ptr, 32))
+            //     let branch1 := _mload(add(arg_ptrs_ptr, 64))
+            //     let branch2 := _mload(add(arg_ptrs_ptr, 96))
+            //     _result := branch1
+            //     if eq(cond, 0) {
+            //         _result := branch2
+            //     }
+            //     // mstore(0, _result)
+            //     // return (0, 32)
+            // }
             case 0x3400100200000047 {
                 let t1_1 := _mload(add(arg_ptrs_ptr, 32))
                 let t1_2 := _mload(add(arg_ptrs_ptr, 64))
@@ -903,6 +916,7 @@ object "Taylor" {
                 let value_or_ptr := mload(add(user_input, mul(sub(i, 1), 32)))
                 addto_env(new_env_ptr, getFuncArity(get4b(add(lambda_args, mul(i, 4)))), value_or_ptr)
             }
+
             let end_ptr, result_ptr := eval(lambda_body, new_env_ptr, 0)
             _result := result_ptr
         }
@@ -1199,6 +1213,32 @@ object "Taylor" {
                 mstore(env_ptr, new_arity)
                 let temp_ptr := allocate(mul(32, sub(new_arity, arity)))
             }
+        }
+
+        function if_(_ptr, env_ptr) -> end_ptr, result_ptr {
+            let cond_end, cond_answ := eval(_ptr, env_ptr, 0)
+            let cond_value := cond_answ
+            let branch1len := get4b(add(cond_end, 4))
+            
+            // bytes sig
+            cond_end := add(cond_end, 8)
+
+            switch cond_value
+            case 1 {
+                let act_end, act_ptr := eval(cond_end, env_ptr, 0)
+                result_ptr := act_ptr
+                cond_end := add(cond_end, branch1len)
+                cond_end := add(cond_end, 8)
+            }
+            case 0 {
+                cond_end := add(cond_end, branch1len)
+                cond_end := add(cond_end, 8)
+                let act_end, act_ptr := eval(cond_end, env_ptr, 0)
+                result_ptr := act_ptr
+            }
+
+            let branch2len := get4b(add(add(cond_end, cond_end), 4))
+            end_ptr := add(add(cond_end, branch1len), branch2len)
         }
     }}
 }

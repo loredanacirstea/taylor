@@ -82,7 +82,8 @@ function expr2h(expression, defenv) {
 }
 
 const ast2hSpecialMap = {
-    fn_: handleFn
+    fn_: handleFn,
+    if_: handleIf,
 }
 
 function ast2h(ast, parent=null, unkownMap={}, defenv={}, arrItemType=null) {
@@ -103,7 +104,11 @@ function ast2h(ast, parent=null, unkownMap={}, defenv={}, arrItemType=null) {
         if (malTypes._symbol_Q(elem)) {
             let encoded;
 
-            if (unkownMap[elem.value]) return unkownMap[elem.value];
+            if (unkownMap[elem.value]) {
+                let val = unkownMap[elem.value];
+                if (elem.value === 'self' && ast[0] && ast[0].value === 'self') val = nativeEnv.apply_.hex(arity + 1) + val;
+                return val;
+            }
 
             if (typeof elem.value === 'string' && elem.value.slice(0, 2) === '0x') {
                 // treat as uint
@@ -172,6 +177,17 @@ function handleFn(ast, parent, unkownMap, defenv) {
         encoded = nativeEnv.apply_.hex(arity + 1) + encoded;
     }
     return encoded;
+}
+
+function handleIf(ast, parent, unkownMap, defenv) {
+    const unknownMap_cpy = JSON.parse(JSON.stringify(unkownMap))
+    const condition = ast2h(ast[1], ast, unknownMap_cpy, defenv);
+    const action1body = ast2h(ast[2], ast, unknownMap_cpy, defenv);
+    const action2body = ast2h(ast[3], ast, unknownMap_cpy, defenv);
+    return nativeEnv.if_.hex
+        + condition        
+        + type_enc.bytelike(action1body.length/2) + action1body
+        + type_enc.bytelike(action2body.length/2) + action2body
 }
 
 function decode (data, returntypes) {

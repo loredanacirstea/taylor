@@ -104,6 +104,15 @@ const tests = {
             )`,
             result: 52,
         },
+        {
+            test: `( (fn_ (n) 
+                (if_ (or_ (eq_ n 1) (eq_ n 2))
+                    1
+                    (add_ (self (sub_ n 1)) (self (sub_ n 2)) )
+                )
+            ) 8)`,
+            result: 21,
+        },
     ],
     // apply_: [
 
