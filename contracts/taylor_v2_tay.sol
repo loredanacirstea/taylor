@@ -47,43 +47,34 @@ object "Taylor" {
             
             // function
             case 3 {
-                let sig := get8b(data_ptr)
                 end_ptr := add(data_ptr, 8)
+
                 let arity := getFuncArity(sig4b)
-                
+                let funcid := mslice(add(data_ptr, 4), 4)
+
                 // If function is tuple___
-                value_to_ptr := eq(and(sig, 0xffffffff), 0x4c)
-                
+                let new_value_to_ptr := eq(funcid, 0x4c)
+
                 // allocate arity number of slots for argument pointers
                 let args_ptrs := allocate(mul(add(arity, 1), 32))
-                
+
                 // first argument is the number of arguments
                 // for variadic functions
                 mstore(args_ptrs, arity)
                 let args_ptrs_now := add(args_ptrs, 32)
 
-                let isif := eq(sig, 0x3400180300000046)
-                switch isif
-                case 0 {
-                    for { let i := 0 } lt(i, arity) { i := add(i, 1) } {
-                        let _end_ptr, arg_ptr := eval(end_ptr, env_ptr, value_to_ptr)
-                        
-                        // store pointer to argument value
-                        mstore(args_ptrs_now, arg_ptr)
-                        end_ptr := _end_ptr
-                        args_ptrs_now := add(args_ptrs_now, 32)
-                    }
+                for { let i := 0 } lt(i, arity) { i := add(i, 1) } {
+                    let _end_ptr, arg_ptr := eval(end_ptr, env_ptr, new_value_to_ptr)
 
-
-                    let isnative := isFunctionNative(sig4b)
-                    if isnative {
-                        result_ptr := evalNativeFunc(sig, args_ptrs, env_ptr)
-                    }
-                }
-                case 1 {
-                    let _end_ptr, _result_ptr := if_(end_ptr, env_ptr)
+                    // store pointer to argument value
+                    mstore(args_ptrs_now, arg_ptr)
                     end_ptr := _end_ptr
-                    result_ptr := _result_ptr
+                    args_ptrs_now := add(args_ptrs_now, 32)
+                }
+
+                let isnative := isFunctionNative(sig4b)
+                if isnative {
+                    result_ptr := evalNativeFunc(get8b(data_ptr), args_ptrs, env_ptr)
                 }
             }
             
@@ -97,7 +88,7 @@ object "Taylor" {
             }
 
             // unknown
-            case 0 {                
+            case 0 {
                 let subtype := shr(25, sig4b)
 
                 // unknown
@@ -285,7 +276,7 @@ object "Taylor" {
         function dtrequire(cond, error_bytes, error_msg) {
             if eq(cond, 0) {
                 mstore(0, error_bytes)
-                mstore(0, error_msg)
+                mstore(32, error_msg)
                 revert(0, 64)
             }
         }
@@ -617,6 +608,12 @@ object "Taylor" {
             case 0x3400000000000045 {
                 stop()
             }
+            case 0x3400180300000046 {
+                let condition := mload(add(arg_ptrs_ptr, 32))
+                let __branch1 := mload(add(arg_ptrs_ptr, 64))
+                let __branch2 := mload(add(arg_ptrs_ptr, 96))
+                _result := if_(condition, __branch1, __branch2, env_ptr)
+            }
             case 0x3400100200000047 {
                 // t2__ - removed
             }
@@ -706,7 +703,6 @@ object "Taylor" {
         }
 
         function t3_arity_(___t3) -> _result {
-            // _result := mload(add(___t3, 64))
             _result := and(mload(___t3), 0xffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff)
         }
 
@@ -1022,30 +1018,16 @@ object "Taylor" {
             }
         }
 
-        function if_(_ptr, env_ptr) -> end_ptr, result_ptr {
-            let cond_end, cond_answ := eval(_ptr, env_ptr, 0)
-            let cond_value := cond_answ
-            let branch1len := get4b(add(cond_end, 4))
-            
-            // bytes sig
-            cond_end := add(cond_end, 8)
-
-            switch cond_value
-            case 1 {
-                let act_end, act_ptr := eval(cond_end, env_ptr, 0)
-                result_ptr := act_ptr
-                cond_end := add(cond_end, branch1len)
-                cond_end := add(cond_end, 8)
-            }
+        function if_(condition, __branch1, __branch2, env_ptr) -> _result {
+            switch condition
             case 0 {
-                cond_end := add(cond_end, branch1len)
-                cond_end := add(cond_end, 8)
-                let act_end, act_ptr := eval(cond_end, env_ptr, 0)
-                result_ptr := act_ptr
+                let act_end, act_ptr := eval(tn_ptr_(__branch2), env_ptr, 0)
+                _result := act_ptr
             }
-
-            let branch2len := get4b(add(add(cond_end, cond_end), 4))
-            end_ptr := add(add(cond_end, branch1len), branch2len)
+            default {
+                let act_end, act_ptr := eval(tn_ptr_(__branch1), env_ptr, 0)
+                _result := act_ptr
+            }
         }
     }}
 }
