@@ -57,7 +57,7 @@ describe.each([
 
     if (backendname !== 'chain') return;
     let addr, call_send_contract, sigs, expr, args;
-    
+
     it('call__ & call!__ - prereq', async function () {
         call_send_contract = await getTestCallContract();
         addr = call_send_contract.address;
@@ -144,7 +144,7 @@ describe.each([
         ))`, {}, ['uint']);
         expect(resp).toBe(4);
 
-        resp = await instance.call(`(return# (nth__ 
+        resp = await instance.call(`(return# (nth__
             (nth__
                 (tuple___ 100 4 (tuple___ "0x112233445566" "hello" 5) 16)
                 2
@@ -178,7 +178,7 @@ describe.each([
     });
 
     it('tuple solidity calls', async function () {
-        // resp = await instance.call(`(return# (call__ ${addr} 
+        // resp = await instance.call(`(return# (call__ ${addr}
         //     (join__
         //         "${sigs.testTuple}"
         //         (tuple_sol__ (tuple___ 100 4 (tuple___ "0x112233445566" "hello" 5) 16))
@@ -190,7 +190,7 @@ describe.each([
         // )`, {}, ['uint']);
         // expect(resp).toBe(125);
 
-        resp = await instance.call(`(return# (call__ ${addr} 
+        resp = await instance.call(`(return# (call__ ${addr}
             (join__
                 "${sigs.getaTuple}"
                 (tuple_sol__ (tuple___ "0x112233445566" "hello" 5))

@@ -3,7 +3,7 @@ object "Taylor" {
         // store owner
         // mappingStorageKey_owner
         sstore(7, caller())
-        
+
         datacopy(0, dataoffset("Runtime"), datasize("Runtime"))
         return(0, datasize("Runtime"))
     }
@@ -12,7 +12,7 @@ object "Taylor" {
 
         // set freeMemPtr at 0x40
         mstore(0x40, 0xc0) // 192
-        
+
         let _calldata := allocate(calldatasize())
         calldatacopy(_calldata, 0, calldatasize())
 
@@ -23,13 +23,13 @@ object "Taylor" {
 
         mstore(0, response)
         return (0, 32)
-        
+
         function eval(data_ptr, env_ptr, value_to_ptr) -> end_ptr, result_ptr {
             let sig4b := get4b(data_ptr)
             let rootid := shr(28, sig4b)
 
             switch rootid
-            
+
             // number
             case 1 {
                 // eliminate 4byte sig
@@ -44,7 +44,7 @@ object "Taylor" {
                     result_ptr := _ptr
                 }
             }
-            
+
             // function
             case 3 {
                 end_ptr := add(data_ptr, 8)
@@ -77,7 +77,7 @@ object "Taylor" {
                     result_ptr := evalNativeFunc(get8b(data_ptr), args_ptrs, env_ptr)
                 }
             }
-            
+
             // bytelike -> t2 (pointer to content with length)
             case 4 {
                 let value_length := get4b(add(data_ptr, 4))
@@ -100,7 +100,7 @@ object "Taylor" {
                     end_ptr := add(data_ptr, 4)
                 }
             }
-            
+
             default {
                 dtrequire(0, 0xee00, rootid)
             }
@@ -109,7 +109,7 @@ object "Taylor" {
         function isFunction(sig4b) -> _isf {
             _isf := eq(shr(28, sig4b), 3)
         }
-        
+
         // 0011 x 100 xxxx xxxxxxxxxxxxxx xxxxxx
         function isFunctionNative(sig4b) -> _isfn {
             _isfn := eq(and(shr(24, sig4b), 0x07), 4)
@@ -170,7 +170,7 @@ object "Taylor" {
         function freeMemPtr() -> ptr {
             ptr := mload(0x40)
         }
-        
+
         function allocate(size) -> ptr {
             ptr := mload(0x40)
             mstore(0x40, add(ptr, size))
@@ -656,20 +656,20 @@ object "Taylor" {
                 let id := and(fsig, 0xffffffff)
 
                 switch id
-                
+
                 // log_
                 case 0x38 {
                     let arity := mload(arg_ptrs_ptr)
                     let __data_ptr := mload(add(arg_ptrs_ptr, 32))
                     log_(sub(arity, 1), __data_ptr, add(arg_ptrs_ptr, 64))
                 }
-                
+
                 // tuple___
                 case 0x4c {
                     mstore(arg_ptrs_ptr, build_t3_arity(mload(arg_ptrs_ptr)))
                     _result := arg_ptrs_ptr
                 }
-                
+
                 // apply
                 case 0x51 {
                     let ___lambda_ptr := mload(add(arg_ptrs_ptr, 32))
@@ -728,7 +728,7 @@ object "Taylor" {
             let lambda_args := tn_ptr_(__lambda_args)
             let lambda_body := tn_ptr_(__lambda_body)
             let arity := div(tn_len_(__lambda_args), 4)
-            
+
             let env_arity := mload(env_ptr)
             let new_env_ptr := copy_env(env_ptr)
 
@@ -763,7 +763,7 @@ object "Taylor" {
 
         function call_bang__(addr, value, data_ptr) -> __ptr {
             let success := call(gas(), addr, value, tn_ptr_(data_ptr), tn_len_(data_ptr), 0, 0)
-            
+
             if eq(success, 0) {
                 fail_call(addr, data_ptr)
             }
@@ -772,7 +772,7 @@ object "Taylor" {
 
         function callcode_bang__(addr, value, data_ptr) -> __ptr {
             let success := callcode(gas(), addr, value, tn_ptr_(data_ptr), tn_len_(data_ptr), 0, 0)
-            
+
             if eq(success, 0) {
                 fail_call(addr, data_ptr)
             }
@@ -781,7 +781,7 @@ object "Taylor" {
 
         function delegatecall_bang__(addr, data_ptr) -> __ptr {
             let success := delegatecall(gas(), addr, tn_ptr_(data_ptr), tn_len_(data_ptr), 0, 0)
-            
+
             if eq(success, 0) {
                 fail_call(addr, data_ptr)
             }
@@ -814,7 +814,7 @@ object "Taylor" {
         function log_(arity, __data_ptr, topic_ptrs) {
             let data_ptr := tn_ptr_(__data_ptr)
             let data_len := tn_len_(__data_ptr)
-            
+
             switch arity
             case 0 {
                 log0(data_ptr, data_len)
@@ -832,7 +832,7 @@ object "Taylor" {
                 log4(data_ptr, data_len, mload(topic_ptrs), mload(add(topic_ptrs, 32)), mload(add(topic_ptrs, 64)), mload(add(topic_ptrs, 96)))
             }
         }
-        
+
         function tuple_sol__(___t3) -> result_ptr__ {
             result_ptr__ := allocate(32)
             let internal_ptr := freeMemPtr()
@@ -867,7 +867,7 @@ object "Taylor" {
                     let content_ptr := 0
 
                     // if eq(arity, 4) { return(_ptr, last_offset) }
-                    
+
                     switch ttype_index
                     case 3 {
                         // t3
@@ -916,7 +916,7 @@ object "Taylor" {
                 let ttype_index_ptr := nth__(___ttypes, i)
                 let ttype_index := sol_tuple_ttype_index(ttype_index_ptr)
                 let valueOrOffset_ptr := add(content_ptr, mul(32, i))
-                
+
                 switch ttype_index
                 case 3 {
                     // tuple t3
@@ -1009,7 +1009,7 @@ object "Taylor" {
                 add(index_ptrs, mul(index, 32)),
                 var_ptr
             )
-            
+
             // we assume addto_env always comes after a copy_env or meld_env
             if or(eq(index, arity), gt(index, arity)) {
                 let new_arity := add(index, 1)

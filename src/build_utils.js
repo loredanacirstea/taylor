@@ -26,11 +26,11 @@ var solcDataSol = source => JSON.stringify({
 const compileContract = filePath => {
   const source = fs.readFileSync(filePath).toString();
   let solcData = solcDataYul;
-  
+
   if (!filePath.includes('tay.sol')) {
     solcData = solcDataSol;
   }
-  
+
   const output = JSON.parse(solc.compile(solcData(source)));
   if (output.errors.length > 0 || !output.contracts) {
     const message = output.errors.map(err => err.formattedMessage).join('\n');
