@@ -33,20 +33,20 @@ Examples to try out: (!only one line at a time)
 (map _fib (list 5 8 2))
 ```
 
-## Ballot 
+## Ballot
 
 Implementing Solidity's Ballot contract from https://solidity.readthedocs.io/en/v0.6.10/solidity-by-example.html#voting. See https://github.com/loredanacirstea/taylor/blob/ff253038d8b83f48b4d897f3b6b455924ef848a2/tests/maltay.test.js#L1159 for ver. 0.0.2.
 
 ```lisp
-(list 
+(list
     ; weight, voted, delegate, vote (proposal index)
     (defstruct! Voter (list Uint Bool Address Uint))
-    
+
     ; name, voteCount
     (defstruct! Proposal (list String32 Uint) )
 
     (defmap! "voters" Address "Voter")
-    
+
     ; (name! chairperson (save! (caller)))
     (store! 0 (caller))
 
@@ -136,20 +136,20 @@ Implementing Solidity's Ballot contract from https://solidity.readthedocs.io/en/
                 sender_raw (mapget voters (caller))
                 ; values for: weight, voted, delegate, vote
                 sender (list-struct sender_raw)
-                
+
                 ; types for: weight, voted, delegate, vote
                 sender_types (defstruct Voter)
-                
+
                 ; DB index for each struct component
                 sender_indexes (refs-struct sender_raw)
-                
+
                 proposal_raw (getfrom Proposal proposalIndex)
                 ; values: name, voteCount
                 proposal (list-struct proposal_raw)
                 proposal_types (defstruct Proposal)
                 proposal_indexes (refs-struct proposal_raw)
             )
-            (if (or 
+            (if (or
                     (or (nil? sender) (true? (nth sender 1)))
                     (lt (nth sender 0) 1)
                 )
@@ -159,7 +159,7 @@ Implementing Solidity's Ballot contract from https://solidity.readthedocs.io/en/
                     (update! (nth sender_types 1) (nth sender_indexes 1) true)
                     ; sender.vote = proposal
                     (update! (nth sender_types 3) (nth sender_indexes 3) proposalIndex)
-                    
+
                     ; proposals[proposal].voteCount += sender.weight
                     (update! (nth proposal_types 1) (nth proposal_indexes 1) (add (nth sender 0) (nth proposal 1)))
                 )
@@ -188,22 +188,3 @@ Ethereum: `0xf149c02b892556eC1fCf39bF43A3bF5B4A9F2346`
 To see the current balance: https://etherscan.io/address/0xf149c02b892556eC1fCf39bF43A3bF5B4A9F2346.
 
 All participations to this project are public and are received into only one account, as required by the Moral Upgrade License (MUL2020): https://medium.com/@loredana.cirstea/mul2020-the-moral-upgrade-license-2020-b19dfbcbe54.
-
-
-
-
-scroll to
-
-2) go to column -> center & corner top right - 2 types
-
-- sa nu arate headers coloana & row
-
-
-- freeze & multiple splits
-
-
-
-- am primit 50$ sa-si faca un cont in ether.
-- give 10% until 200$ is gathered.
-
-
