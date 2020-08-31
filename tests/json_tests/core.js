@@ -93,14 +93,23 @@ const tests = {
             result: 52,
         },
         {
-            test: `( (fn_ (n) 
+            test: `( (fn_ (n)
                 (if_ (lt_ n 3)
                     1
                     (add_ (self (sub_ n 1)) (self (sub_ n 2)) )
                 )
             ) 8)`,
             result: 21,
+            wait: 60000,
         },
+        {
+            test: `((fn_ (n max) (if_ (gt_ n max)
+                    n
+                    (self (add_ n 1) max)
+                )
+            ) 0 4)`,
+            result: 5,
+        }
     ],
     // apply_: [
 

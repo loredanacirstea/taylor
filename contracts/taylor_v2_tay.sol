@@ -216,60 +216,27 @@ object "Taylor" {
             storeDataInner(_pointer, storageKey, sizeBytes)
         }
 
+        // last slot might be dirty with other data
         function storeDataInner(_pointer, storageKey, sizeBytes) {
-            let storedBytes := 0
-            let index := 0
-
-            for {} lt(storedBytes, sizeBytes) {} {
-                let remaining := sub(sizeBytes, storedBytes)
-                switch gt(remaining, 31)
-                case 1 {
-                    sstore(add(storageKey, index), mload(add(_pointer, storedBytes)))
-                    storedBytes := add(storedBytes, 32)
-                    index := add(index, 1)
-                }
-                case 0 {
-                    if gt(remaining, 0) {
-                        sslicestore(add(storageKey, index), mslice(add(_pointer, storedBytes), remaining), remaining)
-                        storedBytes := add(storedBytes, remaining)
-                    }
-                }
-                setTxPayable()
+            let slots := add(div(sizeBytes, 32), gt(mod(sizeBytes, 32), 0))
+            for { let i := 0 } lt(i, slots) { i := add(i, 1) } {
+                sstore(add(storageKey, i), mload(_pointer))
+                _pointer := add(_pointer, 32)
             }
         }
 
         function getStoredData(_pointer, storageKey) {
-            let slot := 32
             // read first storage slot, for the length
             mstore(_pointer, sload(storageKey))
-
-            let sizeBytes := mslice(_pointer, 4)
-            let loadedBytes := sub(slot, 4)
-
-            if gt(sizeBytes, loadedBytes) {
-                getStoredDataInner(add(_pointer, 32), add(storageKey, 1), sizeBytes, loadedBytes)
-            }
+            getStoredDataInner(add(_pointer, 32), add(storageKey, 1), sub(mslice(_pointer, 4), 28))
         }
 
-        function getStoredDataInner(_pointer, storageKey, sizeBytes, loadedBytes) {
-            let slot := 32
-            let index := 0
-
-            for {} lt(loadedBytes, sizeBytes) {} {
-                let remaining := sub(sizeBytes, loadedBytes)
-                switch gt(remaining, 31)
-                case 1 {
-                    mstore(_pointer, sload(add(storageKey, index)))
-                    loadedBytes := add(loadedBytes, 32)
-                    index := add(index, 1)
-                    _pointer := add(_pointer, slot)
-                }
-                case 0 {
-                    if gt(remaining, 0) {
-                        mstore(_pointer, sload(add(storageKey, index)))
-                        loadedBytes := add(loadedBytes, remaining)
-                    }
-                }
+        function getStoredDataInner(_pointer, storageKey, sizeBytes) {
+            let slots := add(div(sizeBytes, 32), gt(mod(sizeBytes, 32), 0))
+            let t_now := _pointer
+            for { let i := 0 } lt(i, slots) { i := add(i, 1) } {
+                mstore(t_now, sload(add(storageKey, i)))
+                t_now := add(t_now, 32)
             }
         }
 

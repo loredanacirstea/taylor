@@ -136,12 +136,12 @@ function ast2h(ast, parent=null, unkownMap={}, defenv={}, arrItemType=null) {
             if (elem.slice(0, 2) === '0x') {
                 // treat as bytes
                 value = elem.slice(2);
-                value = type_enc.bytelike(value.length/2) + value; 
+                value = type_enc.bytelike(value.length/2) + value;
                 return value;
             } else {
                 // value = parseInt(elem) || 0;
                 value = value.hexEncode();
-                value = type_enc.bytelike(value.length/2) + value; 
+                value = type_enc.bytelike(value.length/2) + value;
                 return value;
             }
         }
@@ -163,7 +163,7 @@ function handleFn(ast, parent, unkownMap, defenv) {
     lambdaArgs.splice(0, 0, type_enc.unknown(count).toString(16).padStart(8, '0'));
     unkownMapcpy['self'] = lambdaArgs[0];
     lambdaArgs = lambdaArgs.join('');
-    
+
     const lambdaBody = ast2h(ast[2], ast, unkownMapcpy, defenv);
 
     let encoded = nativeEnv.fn_.hex
@@ -185,13 +185,13 @@ function handleIf(ast, parent, unkownMap, defenv) {
     const action1body = ast2h(ast[2], ast, unknownMap_cpy, defenv);
     const action2body = ast2h(ast[3], ast, unknownMap_cpy, defenv);
     return nativeEnv.if_.hex
-        + condition        
+        + condition
         + type_enc.bytelike(action1body.length/2) + action1body
         + type_enc.bytelike(action2body.length/2) + action2body
 }
 
 function decode (data, returntypes) {
-    console.log('decode data', data, returntypes)
+    // console.log('decode data', data, returntypes)
     let decoded;
     if (returntypes && returntypes[0] === 'string') {
         return data.slice(2).hexDecode();
@@ -254,8 +254,30 @@ const getTay = (provider, signer) => (address, deploymentBlock) => {
 
     interpreter.init = () => {};
     interpreter.watch = () => {};
-    interpreter.estimateGas = () => new BN(1000000);
-    interpreter.calculateCost = () => 1000000
+
+    interpreter.estimateGas_raw = async (data, txObj={}) => {
+        txObj = Object.assign({
+            from: await signer.getAddress(),
+            to: interpreter.address,
+            data,
+        }, txObj);
+
+        const res = await provider.estimateGas(txObj).catch(console.log);
+        return {gas: res.toNumber(), executionGas: res.toNumber() - 21832}
+    }
+
+    interpreter.estimateGas = async (expression, txObj={}) => {
+        txObj = Object.assign({
+            from: await signer.getAddress(),
+            to: interpreter.address,
+            data: expr2h(expression).encoded,
+        }, txObj);
+
+        const res = await provider.estimateGas(txObj).catch(console.log);
+        return {gas: res.toNumber(), executionGas: res.toNumber() - 21832}
+    }
+
+    interpreter.calculateCost = async (expression, txObj) => (await interpreter.estimateGas(expression, txObj)).gas * 2;
 
     return interpreter;
 }

@@ -1,4 +1,4 @@
-pragma solidity >=0.4.22 <0.7.0;
+pragma solidity 0.7.0;
 
 
 /// @title Vendor Registration contract. This is where vendors are registered in the system.

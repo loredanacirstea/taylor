@@ -33,7 +33,7 @@ const tests = {
     ],
     if_lambda: [
         {
-            test: `(if (gt 4 1) 
+            test: `(if (gt 4 1)
                 ( (fn* (a b) (add a b)) 2 3 )
                 (add (sub 7 2) 1)
             )`,
@@ -285,7 +285,7 @@ const tests = {
     partial_application: [
         {
             test: `( let* (
-                    somef (fn* (a) 
+                    somef (fn* (a)
                         (fn* (b) (add a b))
                     )
                     somef2 (somef 4)
@@ -915,8 +915,8 @@ const tests = {
             prereq: ['fibonacci'],
         },
         {
-            test: `(let* 
-                (recursivefn 
+            test: `(let*
+                (recursivefn
                     (fn* (n) (if (gt n 5) n (recursivefn (add n 1)) ) )
                 )
                 (recursivefn 2)
@@ -924,8 +924,8 @@ const tests = {
             result: 6,
         },
         {
-            test: `(let* 
-                (localfibo 
+            test: `(let*
+                (localfibo
                     (fn* (n) (if (or (eq n 1) (eq n 2)) 1 (add(localfibo (sub n 1)) (localfibo (sub n 2)) ) ))
                 )
                 (localfibo 8)
@@ -1115,7 +1115,7 @@ const tests = {
         },
         {
             test: `(nslice
-                (array 
+                (array
                     (array 7 8 9 10 11 12)
                     (array 1 2 6 7 8 6)
                     (array 13 14 15 16 17 18)
@@ -1127,20 +1127,20 @@ const tests = {
         },
         {
             test: `(nslice
-                (array 
-                    (array 
+                (array
+                    (array
                         (array 7 8 9 10 11 12)
                         (array 1 2 6 7 8 6)
                         (array 13 14 15 16 17 18)
                         (array 11 12 16 17 18 16)
                     )
-                    (array 
+                    (array
                         (array 27 28 29 210 211 212)
                         (array 21 22 26 27 28 26)
                         (array 213 214 215 216 217 218)
                         (array 221 222 226 227 228 226)
                     )
-                    (array 
+                    (array
                         (array 47 48 49 410 411 412)
                         (array 41 42 46 47 48 46)
                         (array 413 414 415 416 417 418)
@@ -1195,7 +1195,7 @@ const tests = {
     ],
     prod: [
         {
-            test: `(prod 
+            test: `(prod
                 (array (array 3 5) (array 3 4))
                 (array (array 2 3) (array 3 4))
             )`,
@@ -1203,7 +1203,7 @@ const tests = {
             skip: true,
         },
         {
-            test: `(prod 
+            test: `(prod
                 (array (array -3 -5) (array -3 4))
                 (array (array -2 3) (array 3 4))
             )`,
@@ -1219,8 +1219,8 @@ const tests = {
             skip: true,
         },
         {
-            test: `(prod 
-                (array (array 3 5 9 2) (array 1 15 19 12) (array 2 3 4 2) ) 
+            test: `(prod
+                (array (array 3 5 9 2) (array 1 15 19 12) (array 2 3 4 2) )
                 (array (array 1 1 1) (array 3 3 3) (array 2 2 2) (array 1 1 1) )
             )`,
             result: [[38, 38, 38], [96, 96, 96], [21, 21, 21]],

@@ -1,4 +1,4 @@
-pragma solidity >=0.4.22 <0.7.0;
+pragma solidity 0.7.0;
 pragma experimental ABIEncoderV2;
 
 contract TestCallSend {
@@ -41,5 +41,14 @@ contract TestCallSend {
     function getaTuple(bytes memory a, string memory b, uint c) public pure returns(TT2 memory) {
         TT1 memory tup = TT1(a, b, c);
         return TT2(5, 5, tup, 10);
+    }
+
+    function sqrt(uint x) public pure returns (uint y) {
+        uint z = (x + 1) / 2;
+        y = x;
+        while (z < y) {
+            y = z;
+            z = (x / z + z) / 2;
+        }
     }
 }

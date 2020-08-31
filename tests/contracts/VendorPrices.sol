@@ -1,4 +1,4 @@
-pragma solidity >=0.4.22 <0.7.0;
+pragma solidity 0.7.0;
 
 
 /// @title Vendor Prices contract. This is where vendors register their product prices in the system.
@@ -20,7 +20,7 @@ contract VendorPrices {
     function calculateQuantity(uint256 product_id, address vendor, uint256 wei_value) view public returns (uint256 quantity) {
         require(wei_value > 0);
         bytes32 key = keccak256(abi.encodePacked(vendor, product_id));
-        
+
         require(prices[key] > 0);
         quantity = wei_value / prices[key];
     }

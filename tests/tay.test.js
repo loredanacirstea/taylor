@@ -6,7 +6,7 @@ const tests = require('./json_tests/index.js');
 
 describe.each([
     ['chain'],
-    ['js'],
+    // ['js'],
 ])(' (%s)', (backendname) => {
     let instance;
     if (backendname === 'chain') {
@@ -23,6 +23,27 @@ describe.each([
                 .then(inst => instance = inst);
         });
     }
+
+    it.skip('test recurs', async function () {
+        expr = `((fn_ (n max) (if_ (gt_ n max)
+        n
+        (self (add_ n 1) max)
+    )
+    ) 0 12)`;
+        expr = `(add_ 2 1)`;
+        resp = await instance.call(expr, {}, ['uint']);
+        expect(resp).toEqual(13);
+    });
+
+    // 10 - 470195 gas
+    // 12 - gas estimation doesn't work
+    it.skip('test recurs', async function () {
+        // expr = `0x0000000000000000000000000000000000000000000000000000000000000018`; // 19
+        expr = `0x00000000000000000000000000000000000000000000000000000000000000010000000000000000000000000000000000000000000000000000000000000012`;
+        resp = await instance.call_raw(expr);
+        // console.log('----gas: ', await instance.estimateGas_raw(expr))
+        expect(parseInt(resp.substring(2), 16)).toEqual(1012);
+    },70000);
 
     let resp;
     for (name of Object.keys(tests.evm.tests)) {
@@ -71,13 +92,11 @@ describe.each([
             getaTuple: call_send_contract.interface.getSighash('getaTuple'),
             testTuple: call_send_contract.interface.getSighash('testTuple'),
         }
-        console.log('sigs', sigs);
     }, 10000);
 
     it('call__ add', async function () {
         args = sigs.add + taylor.u2h(3).padStart(64, '0') + taylor.u2h(9).padStart(64, '0');
         expr = `(return# (call__ ${addr} "${args}" ))`;
-        console.log('--expr', expr);
         resp = await instance.call(expr);
         expect(resp).toEqual('0x' + taylor.u2h(12).padStart(64, '0'));
     });
@@ -91,7 +110,6 @@ describe.each([
     it('call!__ increase (state change)', async function () {
         args = sigs.increase + taylor.u2h(9).padStart(64, '0');
         expr = `(call!__ ${addr} 0 "${args}" )`;
-        console.log('--expr', expr);
         resp = await instance.send(expr);
 
         expr = `(return# (call__ ${addr} "${sigs.somevar}" ))`;
