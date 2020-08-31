@@ -1,377 +1,220 @@
 const BN = require('bn.js');
 require('../src/extensions.js');
-const { taylor, signer, provider } = require('./setup/fixtures.js');
-// const tayf = require('../src/native.js');
+const { taylor, signer, provider, getTestCallContract } = require('./setup/fixtures.js');
 const tay = require('../src/v2/tay.js');
+const tests = require('./json_tests/index.js');
 
-const bootstrap = {
-    'alias!': `(def! alias! (fn* (name value)
-(store! (keccak256 10 name) value)
-))`,
+describe.each([
+    ['chain'],
+    // ['js'],
+])(' (%s)', (backendname) => {
+    let instance;
+    if (backendname === 'chain') {
+        beforeAll(() => {
+            return taylor.deployRebuild(2).then(t => {
+              console.log('****Tay', t.address);
+              instance = tay.getTay(t.provider, t.signer)(t.address);
+            })
+              .then(() => tay.js.getBackend(instance.address, instance.provider, instance.signer))
+        }, 50000);
+    } else {
+        beforeAll(() => {
+            return tay.js.getBackend(null, provider, signer)
+                .then(inst => instance = inst);
+        });
+    }
 
-    'alias': `(def! alias (fn* (name)
-(sload (keccak256 10 name))
-))`,
-
-    dtype: `(def! dtype (fn* (signature)
-(sload (keccak256 11 signature))
-))`,
-
-    getTypeIndex: `(def! getTypeIndex (fn* (signature)
-(let* (
-        currentIndex (sload (keccak256 12 signature))
+    it.skip('test recurs', async function () {
+        expr = `((fn_ (n max) (if_ (gt_ n max)
+        n
+        (self (add_ n 1) max)
     )
-    (add 1 (if (nil? currentIndex) 0 currentIndex))
-)
-))`,
-
-    buildSig: `(def! buildSig (fn* (super kidIndex inputs)
-(if (nil? super)
-    (list 0 0)
-    (let* (
-            super_type (dtype super)
-            super_type_sigf (nth super_type 5)
-            id (buildSig (nth super_type 0) (nth super_type 1) (nth super_type 4))
-            sig (add
-                (nth id 0)
-                (shl (nth super_type 3) kidIndex)
-            )
-        )
-        (list
-            (if (nil? super_type_sigf)
-                sig
-                (apply super_type_sigf sig inputs)
-            )
-            (add (nth id 1) (nth super_type 2) )
-        )
-    )
-)
-))`,
-
-    formatSig: `(def! formatSig (fn* (value)
-(let* (
-        bvalue (join "0x" value)
-        bvalue_len (length bvalue)
-    )
-    (join bvalue (contig (sub 8 bvalue_len) "0x00") )
-)
-))`,
-
-    padleft: `(def! padleft (fn* (value size padding)
-(let* (
-        bvalue (join "0x" value)
-    )
-    (join (contig (sub size (length bvalue)) padding) bvalue )
-)
-))`,
-
-    'dtype!': `(def! dtype! (fn* (super name idbits idshifts inputs scriptSig scriptExecute)
-(let* (
-        salt 11
-        ; index (getTypeIndex super)
-        id_data (buildSig super (getTypeIndex super) inputs)
-        signature (formatSig (nth id_data 0))
-    )
-    (list
-        (alias! name signature)
-        (store! (keccak256 salt signature) (list super (getTypeIndex super) idbits idshifts inputs scriptSig scriptExecute))
-        (store!
-            (keccak256 12 super) 
-            (getTypeIndex super)
-        )
-        ; (log salt signature name)
-    )
-)
-))`,
-}
-
-let Tay, TayJs;
-
-beforeAll(() => {
-  return taylor.deployRebuild().then(t => {
-    console.log('****Tay', t.address);
-    Tay = tay.getTay(t.provider, t.signer)(t.address);
-  })
-    .then(() => tay.js.getBackend(Tay.address, Tay.provider, Tay.signer))
-}, 50000);
-
-// afterAll(() => {
-//     if (Tay) Tay.unwatch();
-//     return;
-// });
-
-const types = {
-    root: `(def-untyped! root nil 4 28 (list root) nil nil)`
-}
-
-const tth = {
-    root: '0000000000000000',
-    nil: '0000000000000000',
-    'store!': '0000000000000001',
-    sload: '0000000000000002',
-    def_unt_bang: '0000000000000003',  // def-untyped!
-    def_unt: '0000000000000004',
-    uint: (size, val) => (new taylor.BN('1a380000', 16)).add(new BN(size)).toString(16) + taylor.u2h(val).padStart(size * 2, '0'),
-    string: len => '48000000' + taylor.u2h(len).padStart(8, '0'),
-    list: arity => (new taylor.BN('28800000', 16)).add(new BN(arity)).toString(16),
-}
-
-describe('taylor bootstrap', function () {
-    let resp, expr;
-
-    test.only('native functions', async function () {
-        resp = await Tay.call('(add 5 15)')
-        console.log('resp', resp);
-        expect(resp).toBe(20);
+    ) 0 12)`;
+        expr = `(add_ 2 1)`;
+        resp = await instance.call(expr, {}, ['uint']);
+        expect(resp).toEqual(13);
     });
 
-    test.only('native functions', async function () {
-        resp = await Tay.call('(add (sub 25 15) 3)')
-        console.log('resp', resp);
-        expect(resp).toBe(13);
-    });
+    // 10 - 470195 gas
+    // 12 - gas estimation doesn't work
+    it.skip('test recurs', async function () {
+        // expr = `0x0000000000000000000000000000000000000000000000000000000000000018`; // 19
+        expr = `0x00000000000000000000000000000000000000000000000000000000000000010000000000000000000000000000000000000000000000000000000000000012`;
+        resp = await instance.call_raw(expr);
+        // console.log('----gas: ', await instance.estimateGas_raw(expr))
+        expect(parseInt(resp.substring(2), 16)).toEqual(1012);
+    },70000);
 
-    test.only('native functions', async function () {
-        resp = await Tay.call('(add (iszero 0) (iszero 4))')
-        console.log('resp', resp);
-        expect(resp).toBe(1);
-    });
-
-    test('def-untyped! root', async function () {
-        // (def-untyped! )
-        let name = "root".hexEncode();
-        console.log('name', name);
-        expr = '0x' + tth.def_unt_bang
-           //  + tth.string(name.length) + name
-           + taylor.u2h(name.length / 2).padStart(8, '0') + name
-        
-        let tobesaved = tth.list(5)
-            + tth.nil // super
-            + tth.uint(4, 4)
-            + tth.uint(4, 28)
-            + tth.nil + tth.nil;
-        expr += taylor.u2h(tobesaved.length / 2).padStart(8, '0') + tobesaved;
-
-        console.log('expr', expr);
-        resp = await TaylorC.send_raw(expr);
-        // resp = await TaylorC.call_raw(expr);
-        // expect(resp).toBe('0x44556677');
-
-        expr = '0x' + tth.def_unt
-            + tth.root;
-        resp = await TaylorC.call_raw(expr);
-        console.log('resp', resp);
-        // expect(resp).toBe('0x44556677');
-    });
-
-    test('def-untyped! number', async function () {
-        // (def-untyped! )
-        let name = "number".hexEncode();
-        console.log('name', name);
-        expr = '0x' + tth.def_unt_bang
-           //  + tth.string(name.length) + name
-           + taylor.u2h(name.length / 2).padStart(8, '0') + name
-        
-        let tobesaved = tth.list(5)
-            + tth.root // super
-            + tth.uint(4, 4)
-            + tth.uint(4, 28)
-            + tth.nil + tth.nil;
-        expr += taylor.u2h(tobesaved.length / 2).padStart(8, '0') + tobesaved;
-
-        console.log('expr', expr);
-        // resp = await TaylorC.send_raw(expr);
-        resp = await TaylorC.call_raw(expr);
-        expect(resp).toBe('0x44522222222256677');
-
-        expr = '0x' + tth.def_unt
-            + tth.root;
-        resp = await TaylorC.call_raw(expr);
-        console.log('resp', resp);
-        // expect(resp).toBe('0x44556677');
-    });
-});
-
-describe.skip('dtype_2', function () {
     let resp;
+    for (name of Object.keys(tests.evm.tests)) {
+        const tts = tests.evm.tests[name]
+        tts.map((tt, i) => {
+            let testapi = test;
+            if (tt.skip) testapi = test.skip;
+            if (tt.only) testapi = test.only;
 
-    test('alias', async function () {
-        resp = await TaylorC.sendAndWait('(alias! "name1" "0x44556677" )');
-        resp = await TaylorC.call('(alias "name1")');
-        expect(resp).toBe('0x44556677');
+            testapi(name + '_' + i, async function () {
+                resp = await instance.call(tt.test, tt.txObj || {}, tt.decode);
+                if (tt.process) resp = tt.process(resp, instance);
+                expect(resp).toEqual(tt.result);
+            }, tt.wait || 10000);
+        });
+    }
+
+    for (name of Object.keys(tests.core.tests)) {
+        const tts = tests.core.tests[name]
+        tts.map((tt, i) => {
+            let testapi = test;
+            if (tt.skip) testapi = test.skip;
+            if (tt.only) testapi = test.only;
+
+            testapi(name + '_' + i, async function () {
+                resp = await instance.call(tt.test, tt.txObj || {}, tt.decode);
+                if (tt.process) resp = tt.process(resp, instance);
+                expect(resp).toEqual(tt.result);
+            }, tt.wait || 10000);
+        });
+    }
+
+    if (backendname !== 'chain') return;
+    let addr, call_send_contract, sigs, expr, args;
+
+    it('call__ & call!__ - prereq', async function () {
+        call_send_contract = await getTestCallContract();
+        addr = call_send_contract.address;
+        sigs = {
+            add: call_send_contract.interface.getSighash('add'),
+            somevar: call_send_contract.interface.getSighash('somevar'),
+            increase: call_send_contract.interface.getSighash('increase'),
+            setname: call_send_contract.interface.getSighash('setname'),
+            name: call_send_contract.interface.getSighash('name'),
+            pay: call_send_contract.interface.getSighash('pay'),
+            getaTuple: call_send_contract.interface.getSighash('getaTuple'),
+            testTuple: call_send_contract.interface.getSighash('testTuple'),
+        }
+    }, 10000);
+
+    it('call__ add', async function () {
+        args = sigs.add + taylor.u2h(3).padStart(64, '0') + taylor.u2h(9).padStart(64, '0');
+        expr = `(return# (call__ ${addr} "${args}" ))`;
+        resp = await instance.call(expr);
+        expect(resp).toEqual('0x' + taylor.u2h(12).padStart(64, '0'));
     });
 
-    test('buildSig super nil', async function () {
-        resp = await TaylorC.call('(buildSig nil 1 nil)');
-        expect(resp).toEqual([0, 0]);
+    it('call__ somevar', async function () {
+        expr = `(return# (call__ ${addr} "${sigs.somevar}" ))`;
+        resp = await instance.call(expr);
+        expect(resp).toEqual('0x' + taylor.u2h(5).padStart(64, '0'));
     });
 
-    test('formatSig 0', async function () {
-        resp = await TaylorC.call('(formatSig 0)');
-        expect(resp).toEqual('0x0000000000000000');
+    it('call!__ increase (state change)', async function () {
+        args = sigs.increase + taylor.u2h(9).padStart(64, '0');
+        expr = `(call!__ ${addr} 0 "${args}" )`;
+        resp = await instance.send(expr);
+
+        expr = `(return# (call__ ${addr} "${sigs.somevar}" ))`;
+        resp = await instance.call(expr);
+        expect(resp).toEqual('0x' + taylor.u2h(14).padStart(64, '0'));
     });
 
-    test.skip('insert type: any', async function () {
-        // 0000000000000000000000000000000000000000000000000000000000000000 - id
-        // 1110000000000000000000000000000000000000000000000000000000000000 - kids mask
-        // 0xe000000000000000 - mask
-        resp = await TaylorC.call(`(dtype! nil "any" 3 61 (list "any")
-            (fn* (id inputs)
-                id
-            )
-            (fn* (value) 
-                (join "0x0000000000000000" value)
-            )
-        )`);
-        expect(resp).toBe(4)
+    it('call!__ payable', async function () {
+        args = sigs.pay + taylor.u2h(9).padStart(64, '0');
+        const value = 10;
+        expr = `(call!__ ${addr} ${value} "${args}" )`;
+        resp = await instance.send(expr, { value });
+        expect((await instance.provider.getBalance(addr)).toNumber()).toBe(value);
     });
 
-    test('insert type: any', async function () {
-        // 0000000000000000000000000000000000000000000000000000000000000000 - id
-        // 1110000000000000000000000000000000000000000000000000000000000000 - kids mask
-        // 0xe000000000000000 - mask
-        resp = await TaylorC.sendAndWait(`(dtype! nil "any" 3 61 (list "any")
-            (fn* (id inputs)
-                id
-            )
-            (fn* (value) 
-                (join "0x0000000000000000" value)
-            )
-        )`);
+    it('log_', async function () {
+        await instance.send(`(log_ "0x3400180300000032000000000000000000000000cd0139bBE12581e7c4E30A3F91158de6544B64bA")`);
+        await instance.send(`(log_ "0x112233445566778899" 10)`);
+        await instance.send(`(log_ "0x112233445566778899" 10 88)`);
+        await instance.send(`(log_ "0x112233445566778899" 10 88 99)`);
+        await instance.send(`(log_ "0x112233445566778899" 10 88 99 1500)`);
+
+        let logs;
+        logs = await instance.getLogs();
+        expect(logs.length).toBe(5);
+        logs.forEach((log, i) => {
+            expect(log.topics.length).toBe(i);
+        });
     });
 
-    test('alias any', async function () {
-        resp = await TaylorC.call('(alias "any")');
-        expect(resp).toBe('0x0000000000000000');
+    it('tuple___ simple', async function () {
+        resp = await instance.call('(return# (tuple_sol__ (tuple___ 100 4) ))');
+        expect(resp).toBe('0x00000000000000000000000000000000000000000000000000000000000000640000000000000000000000000000000000000000000000000000000000000004');
     });
 
-    test('dtype any', async function () {
-        // idshifts
-        resp = await TaylorC.call('(nth (dtype (alias "any")) 3)');
-        expect(resp).toBe(61);
-
-        resp = await TaylorC.call('(getTypeIndex nil)');
-        expect(resp).toBe(2);
-
-        resp = await TaylorC.call('(getTypeIndex (alias "any") )');
-        expect(resp).toBe(1);
-
-        // index
-        resp = await TaylorC.call('(nth (dtype (alias "any")) 1)');
-        expect(resp).toBe(1);
+    it('tuple___ with bytes', async function () {
+        resp = await instance.call('(return# (tuple_sol__ (tuple___ 100 4 "0x112233445566" "hello" 5) ))');
+        expect(resp).toBe('0x0000000000000000000000000000000000000000000000000000000000000064000000000000000000000000000000000000000000000000000000000000000400000000000000000000000000000000000000000000000000000000000000a000000000000000000000000000000000000000000000000000000000000000e0000000000000000000000000000000000000000000000000000000000000000500000000000000000000000000000000000000000000000000000000000000061122334455660000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000568656c6c6f000000000000000000000000000000000000000000000000000000');
     });
 
-    test('buildSig super any', async function () {
-        resp = await TaylorC.call('(buildSig (alias "any") 1 nil)');
-        expect(resp).toEqual(['2000000000000000', 3]);
+    it('tuple___ with tuple', async function () {
+        resp = await instance.call('(return# (tuple_sol__ (tuple___ 100 4 (tuple___ "0x112233445566" "hello" 5) 16) ))');
+        expect(resp).toBe('0x0000000000000000000000000000000000000000000000000000000000000064000000000000000000000000000000000000000000000000000000000000000400000000000000000000000000000000000000000000000000000000000000800000000000000000000000000000000000000000000000000000000000000010000000000000000000000000000000000000000000000000000000000000006000000000000000000000000000000000000000000000000000000000000000a0000000000000000000000000000000000000000000000000000000000000000500000000000000000000000000000000000000000000000000000000000000061122334455660000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000568656c6c6f000000000000000000000000000000000000000000000000000000');
     });
 
-    test('insert type: number', async function () {
-        // 0010000000000000000000000000000000000000000000000000000000000000 - id
-        // 0001100000000000000000000000000000000000000000000000000000000000 - kids mask
-        // 0xe000000000000000 - mask
-        resp = await TaylorC.sendAndWait(`(dtype! (alias "any") "number" 2 59 (list "number")
-            (fn* (id inputs)
-                id
-            )
-            (fn* (value) 
-                (join "0x" value)
-            )
-        )`);
-        resp = await TaylorC.call('(alias "number")');
-        expect(resp).toBe('0x2000000000000000');
+    it('nth__', async function () {
+        resp = await instance.call(`(return# (nth__
+            (tuple___ 100 4 (tuple___ "0x112233445566" "hello" 5) 16)
+            1
+        ))`, {}, ['uint']);
+        expect(resp).toBe(4);
+
+        resp = await instance.call(`(return# (nth__
+            (nth__
+                (tuple___ 100 4 (tuple___ "0x112233445566" "hello" 5) 16)
+                2
+            ) 1
+        ))`, {}, ['string']);
+        expect(resp).toBe('hello');
     });
 
-    test('insert type: real', async function () {
-        resp = await TaylorC.sendAndWait(`(dtype! (alias "number") "real" 3 56 (list "real")
-            (fn* (id inputs)
-                id
-            )
-            (fn* (value) 
-                (join "0x" value)
-            )
-        )`);
-        resp = await TaylorC.call('(alias "real")');
-        expect(resp).toBe('0x2800000000000000');
-    }, 20000);
-
-    // test('insert type: uint', async function () {
-    //     resp = await TaylorC.sendAndWait(`(dtype! (alias "real") "uint" 0 0 (list "uint")
-    //         (fn* (id inputs)
-    //             id
-    //         )
-    //         (fn* (value) 
-    //             (join "0x" value)
-    //         )
-    //     )`);
-    //     resp = await TaylorC.call('(alias "uint")');
-    //     expect(resp).toBe('0x2900000000000000');
-    // }, 20000);
-
-    test('insert type: uint', async function () {
-        resp = await TaylorC.sendAndWait(`(dtype! (alias "real") "uint" 0 0 (list "uint")
-            (fn* (id size)
-                (add id size)
-            )
-            (fn* (size value)
-                (join-untyped 
-                    (formatSig (nth (buildSig (alias "uint") 0 size) 0) )
-                    (padleft value size "0x00")
-                )
-            )
-        )`);
-        resp = await TaylorC.call('(alias "uint")');
-        expect(resp).toBe('0x2900000000000000');
-    }, 20000);
-
-    test('execute type: uint', async function () {
-        resp = await TaylorC.call_no_decode('(apply (nth (dtype (alias "uint")) 6) 10 14)');
-        // resp = await TaylorC.call_raw(expr2h('(apply (nth (dtype (alias "uint")) 6) 10 14)'));
-        expect(resp).toBe('0x290000000000000a0000000000000000000e');
+    it('sol_tuple___', async function () {
+        resp = await instance.call(`(return# (tuple_sol__ (sol_tuple___
+            (tuple_sol__ (tuple___ 100 4))
+            (tuple___ 1 1)
+        )))`);
+        expect(resp).toBe('0x00000000000000000000000000000000000000000000000000000000000000640000000000000000000000000000000000000000000000000000000000000004');
     });
 
-    test('insert type: function', async function () {
-        resp = await TaylorC.sendAndWait(`(dtype! (alias "any") "function" 1 60 nil
-            (fn* (id inputs)
-                id
-                (let* (
-                    arity (length inputs)
-                    ;mutable <from name>
-                )
-                    (add (add (exp 2 31) (shl 27 arity)) (shl 1 id) )
-                    ; (add (add (add (exp 2 31) (shl 27 arity)) (shl 1 id) ) mutable)
-                )
-            )
-            (fn* (value) 
-                (join "0x" value)
-            )
-        )`);
-        resp = await TaylorC.call('(alias "function")');
-        expect(resp).toBe('0x4000000000000000');
+    it('sol_tuple___', async function () {
+        resp = await instance.call(`(return# (tuple_sol__ (sol_tuple___
+            (tuple_sol__ (tuple___ "0x112233445566" "hello" 5) )
+            (tuple___ 2 2 1)
+        )))`);
+        expect(resp).toBe('0x000000000000000000000000000000000000000000000000000000000000006000000000000000000000000000000000000000000000000000000000000000a0000000000000000000000000000000000000000000000000000000000000000500000000000000000000000000000000000000000000000000000000000000061122334455660000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000568656c6c6f000000000000000000000000000000000000000000000000000000');
     });
 
-    test('insert type: functionT', async function () {
-        resp = await TaylorC.sendAndWait(`(dtype! (alias "function") "functionT" 1 60 nil
-            nil
-            (fn* (value) nil)
-        )`);
-        resp = await TaylorC.call('(alias "functionT")');
-        expect(resp).toBe('0x5000000000000000');
-    }, 20000);
+    it('sol_tuple___', async function () {
+        resp = await instance.call(`(return# (tuple_sol__ (sol_tuple___
+            (tuple_sol__ (tuple___ 100 4 (tuple___ "0x112233445566" "hello" 5) 16))
+            (tuple___ 1 1 (tuple___ 2 2 1) 1)
+        )))`);
+        expect(resp).toBe('0x0000000000000000000000000000000000000000000000000000000000000064000000000000000000000000000000000000000000000000000000000000000400000000000000000000000000000000000000000000000000000000000000800000000000000000000000000000000000000000000000000000000000000010000000000000000000000000000000000000000000000000000000000000006000000000000000000000000000000000000000000000000000000000000000a0000000000000000000000000000000000000000000000000000000000000000500000000000000000000000000000000000000000000000000000000000000061122334455660000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000568656c6c6f000000000000000000000000000000000000000000000000000000');
+    });
 
-    test('insert type: afunc', async function () {
-        resp = await TaylorC.sendAndWait(`(dtype! (alias "functionT") "afunc" 0 0 (list "0x2900000000000006" "0x2900000000000006")
-            nil
-            (fn* (a b) (add a b))
-        )`);
-        resp = await TaylorC.call('(alias "afunc")');
-        expect(resp).toBe('0x6000000000000000');
-    }, 20000);
+    it('tuple solidity calls', async function () {
+        // resp = await instance.call(`(return# (call__ ${addr}
+        //     (join__
+        //         "${sigs.testTuple}"
+        //         (tuple_sol__ (tuple___ 100 4 (tuple___ "0x112233445566" "hello" 5) 16))
+        //     )
+        // ))`, {}, ['uint']);
+        // expect(resp).toBe(125);
 
-    test('execute afunc', async function () {
-        resp = await TaylorC.call_no_decode('(apply (nth (dtype (alias "afunc")) 6) 10 14)');
-        // resp = await TaylorC.call_raw(expr2h('(apply (nth (dtype (alias "uint")) 6) 10 14)'));
-        // expect(resp).toBe('0x290000000000000600000000000000000018');
-        expect(resp).toBe('0x0a91000400000018');
+        // resp = await instance.call(`(return# (tuple_sol__ (tuple___ 100 4 (tuple___ "0x112233445566" "hello" 5) 16))
+        // )`, {}, ['uint']);
+        // expect(resp).toBe(125);
+
+        resp = await instance.call(`(return# (call__ ${addr}
+            (join__
+                "${sigs.getaTuple}"
+                (tuple_sol__ (tuple___ "0x112233445566" "hello" 5))
+            )
+        ))`);
+
+        expect(resp).toBe('0x0000000000000000000000000000000000000000000000000000000000000020000000000000000000000000000000000000000000000000000000000000000500000000000000000000000000000000000000000000000000000000000000050000000000000000000000000000000000000000000000000000000000000080000000000000000000000000000000000000000000000000000000000000000a000000000000000000000000000000000000000000000000000000000000006000000000000000000000000000000000000000000000000000000000000000a0000000000000000000000000000000000000000000000000000000000000000500000000000000000000000000000000000000000000000000000000000000061122334455660000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000568656c6c6f000000000000000000000000000000000000000000000000000000');
     });
 });

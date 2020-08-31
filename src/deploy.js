@@ -28,8 +28,8 @@ const deployTaylorFromPath = (signer) => async () => {
   return deployContractFromPath(signer)(TAYLOR_PATH);
 }
 
-const deployTaylorFromBuild = signer => {
-  const compiledTaylor = require('../build/taylor.js');
+const deployTaylorFromBuild = (signer, ver=1) => {
+  const compiledTaylor = require(`../build/taylor_v${ver}.js`);
   return deployContract(signer)({evm: compiledTaylor});
 }
 

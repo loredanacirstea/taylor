@@ -9,7 +9,7 @@ let MalB;
 const getMalBackend = taylor.malBackend.getBackend;
 
 beforeAll(() => {
-  return taylor.deployRebuild().then(t => {
+  return taylor.deployRebuild(1).then(t => {
     MalTay = t;
     console.log('****MalTay', MalTay.address);
     return MalTay.bootstrap();
@@ -43,7 +43,7 @@ it('test encoding & decoding', function () {
     expect(encode([5, 4, 8, 3, 5], {type: 'list'})).toEqual('0x110000050a910001050a910001040a910001080a910001030a91000105');
     expect(decode('0x110000050a910001050a910001040a910001080a910001030a91000105')).toEqual([5, 4, 8, 3, 5]);
     expect(decode(encode([5, 4, 8, 3, 5], {type: 'list'}))).toEqual([5, 4, 8, 3, 5]);
-    
+
     expect(encode(7, {type: 'uint', size: 4})).toEqual('0x0a91000400000007');
     expect(decode('0x0a91000400000007')).toEqual(7);
     expect(decode(encode(7, {type: 'uint', size: 4}))).toEqual(7);
@@ -100,8 +100,8 @@ it('eth-abi-decode', async function () {
 it('test registration & executing from root contract', async function () {
     let expr, resp;
 
-    const maltay2 = await taylor.deployRebuild();
-    const maltay3 = await taylor.deployRebuild();
+    const maltay2 = await taylor.deployRebuild(1);
+    const maltay3 = await taylor.deployRebuild(1);
 
     // Register
     // TODO: type integer
@@ -128,7 +128,7 @@ it('test registration & executing from root contract', async function () {
     // use function directly in maltay3
     resp = await maltay3.call('(fib 8)');
     expect(resp).toBe(21);
-    
+
     // test functions through MalTay root contract
     await MalTay.init();
     resp = await MalTay.call('(fib (quad 2) )');
@@ -140,7 +140,7 @@ it('test registration & executing from root contract', async function () {
 
 it('test printer', async function () {
     let expr;
-    
+
     expr = expr2h('(add 4 7)');
     expect(expr2h(expr2s(expr))).toBe(expr);
 
@@ -179,7 +179,7 @@ it('test evm functions', async function() {
     expect(resp).toBe(0xc);
 
     // TODO calls
-    
+
     const account = await MalTay.provider.getSigner(8).getAddress();
     resp = await MalTay.call_raw(expr2h(`(balance "${account}")`));
     expect(resp).toBe('0x0a9100200000000000000000000000000000000000000000000000056bc75e2d63100000');
@@ -197,7 +197,7 @@ it('test compact dynamic length storage', async function () {
     let resp, receipt;
     const count = 36;
     const maxLength = 80;
-    
+
     const exampleArrLengths = [...new Array(count)].map(() => getRandomInt(maxLength))
     const exampleArr = exampleArrLengths.map(len => '0x' + [...new Array(len)].map((_, i) => (i+1).toString(16).padStart(2, '0')).join(''))
 
@@ -284,34 +284,34 @@ describe('test arrays & structs', function () {
 
     it('test structs', async function() {
         let resp;
-    
+
         // 0x0400000424000001
         await MalTay.sendAndWait('(defstruct! astruct (list "0x0a910004" "0x0a910004") )');
-    
+
         resp = await MalTay.call(`(getfrom Struct 0)`);
         expect(resp).toEqual('0x11000002040000040a910004040000040a910004');
 
         resp = await MalTay.call(`(defstruct astruct)`);
         expect(resp).toEqual(['0x0a910004', '0x0a910004']);
-        
+
         await MalTay.send('(struct! astruct (list 4 6) )');
 
         resp = await MalTay.call(`(refs-struct (getfrom astruct 0))`);
         expect(resp).toEqual([0, 1]);
-    
+
         resp = await MalTay.call(`(getfrom Uint 0)`);
         expect(resp).toEqual(4);
-    
+
         resp = await MalTay.call(`(getfrom Uint 1)`);
         expect(resp).toEqual(6);
-    
+
         resp = await MalTay.call(`(list-struct (getfrom astruct 0))`);
         expect(resp).toEqual([4, 6]);
     }, 20000);
 
     it('test array simple', async function() {
         let resp;
-    
+
         resp = await MalTay.call('(array 4 8 9)');
         expect(resp).toEqual([4, 8, 9]);
 
@@ -320,14 +320,14 @@ describe('test arrays & structs', function () {
 
         resp = await MalTay.call('(array (array (array 4 8 9) (array 4 8 9)) (array (array 4 8 9) (array 4 -8 9)))');
         expect(resp).toEqual([[[4, 8, 9], [4, 8, 9]], [[4, 8, 9], [4, -8, 9]]]);
-    
+
         await MalTay.send('(save! (array 4 8 9) )');
-    
+
         resp = await MalTay.call(`(getfrom "0x400000030a910004" 0)`);
         expect(resp).toEqual([4, 8, 9]);
 
         await MalTay.send('(save! (array 4 -8 9) )');
-    
+
         resp = await MalTay.call(`(getfrom "0x400000030a890004" 0)`);
         expect(resp).toEqual([4, -8, 9]);
     });
@@ -361,11 +361,11 @@ describe('test arrays & structs', function () {
         resp = await MalTay.call(`(list-struct (getfrom astruct2 0))`);
         expect(resp).toEqual([[6, 8, 11], [2, 7, 9]]);
     });
-    
+
     it('struct: anotherstruct with bytes20 array', async function() {
         await MalTay.sendAndWait('(defstruct! anotherstruct (list "0x04000003" "0x4000000604000014") )');
         scount += 1;
-    
+
         resp = await MalTay.call(`(getfrom Struct ${scount})`);
         expect(resp).toEqual('0x110000020400000404000003040000084000000604000014');
 
@@ -373,7 +373,7 @@ describe('test arrays & structs', function () {
             '0x1111111111111111111111111111111111111111', '0x2222222222222222222222222222222222222222', '0x3333333333333333333333333333333333333333', '0x4444444444444444444444444444444444444444', '0x5555555555555555555555555555555555555555', '0x6666666666666666666666666666666666666666'
         ];
         let arrstr = `"${arr.join('" "')}"`;
-        
+
         resp = await MalTay.call(`(array ${arrstr})`);
         expect(resp).toEqual(arr);
 
@@ -416,16 +416,16 @@ describe('test arrays & structs', function () {
             [[ 2, 3, 4 ], [ 2, 3, 4 ], [ 5, 6, 7 ], [ 5, 6, 7 ]],
             [[ 2, 3, 4 ], [ 2, 3, 4 ], [ 5, 6, 7 ], [ 5, 6, 7 ]],
         ]
-        
+
         resp = await MalTay.call(array_2_3_expr);
         expect(resp).toEqual(array_2_3);
-        
+
         resp = await MalTay.call(array_2_4_3_expr);
         expect(resp).toEqual(array_2_4_3);
 
         await MalTay.sendAndWait('(defstruct! struct3 (list "0x40000002400000030a910004" "0x4000000240000004400000030a910004") )');
 
-        await MalTay.send(`(struct! struct3 (list 
+        await MalTay.send(`(struct! struct3 (list
             ${array_2_3_expr}
             ${array_2_4_3_expr}
         ))`);
@@ -503,7 +503,7 @@ describe('test dynamic storage', function () {
         resp = await MalTay.call(`(getdyn "0x400000000a910004" 1)`);
         expect(resp).toEqual([1, 2, 3, 4, 5]);
 
-        
+
         await MalTay.send('(push! "0x400000000400000a" 0 "0x21222324252627282930" )');
         await MalTay.send('(push! "0x400000000400000a" 0 "0x31323334353637383940" )');
         resp = await MalTay.call(`(getdyn "0x400000000400000a" 0)`);
@@ -551,7 +551,7 @@ describe('evm: call & call!', function () {
     test('call! payable', async function () {
         // pay(uint256)
         expect((await MalTay.provider.getBalance(addr)).toNumber()).toBe(0);
-        
+
         await MalTay.send(`(call! "${addr}" "${sigs.pay}" 20 "0x0000000000000000000000000000000000000000000000000000000000000007")`);
         expect((await MalTay.provider.getBalance(addr)).toNumber()).toBe(20);
     });
@@ -629,7 +629,7 @@ describe('web3 only', function () {
 
 describe('javascript eth-call & eth-call!', function () {
     let addr, call_send_contract, resp, expected;
-    
+
     it('call & send - prereq', async function () {
         call_send_contract = await getTestCallContract();
         addr = call_send_contract.address;
@@ -646,7 +646,7 @@ describe('javascript eth-call & eth-call!', function () {
         expect(resp).toEqual("SomeName");
         expect(resp).toEqual(expected);
     });
-    
+
     test('eth-call pure', async function () {
         resp = await MalB.call(`(eth-call "${addr}" "add(uint,uint)->(uint)" (list 5 6) )`);
         expected = await call_send_contract.add(5, 6);
@@ -672,7 +672,7 @@ describe.each([
     let instance;
     if (backendname === 'web3') {
         beforeAll(() => {
-            return taylor.deployRebuild().then(contract => {
+            return taylor.deployRebuild(1).then(contract => {
                 console.log('****Taylor2', contract.address);
                 instance = contract;
                 return instance.bootstrap();
@@ -727,7 +727,7 @@ describe.each([
     it('test used stored fn 2', async function () {
         let resp;
         let name = 'func2'
-    
+
         await instance.sendAndWait('(def! func2 (fn* (a b) (add (add (sub a b) a) b)))');
         if (backendname === 'web3') {
             resp = await instance.call_raw('0x44444442' + name.hexEncode().padStart(64, '0'));
@@ -951,7 +951,7 @@ it('test arrayToBytes', async function() {
 describe('test mapping', function () {
     it('value: simple type', async function() {
         let resp;
-        
+
         await MalTay.send('(defmap! "balances" Address Uint)');
         resp = await MalTay.call('(getfrom Map 0)');
         expect(resp).toBe(expr2h('(Address)') + expr2h('(Uint)').substring(2))
@@ -989,7 +989,7 @@ describe('test mapping', function () {
 
 describe('matrix/n-dim array functions', function () {
     let resp;
-    
+
     test('matrix excludeMatrix', async function() {
         resp = await MalTay.call('(excludeMatrix (array (array 6 1 2) (array 3 4 5) (array 7 6 9))  1 1 )');
         expect(resp).toEqual([[6, 2], [7, 9]]);
@@ -999,13 +999,13 @@ describe('matrix/n-dim array functions', function () {
     }, 20000);
 
     test('prod matrix', async function() {
-        resp = await MalTay.call(`(prod 
+        resp = await MalTay.call(`(prod
             (array (array 3 5) (array 3 4))
             (array (array 2 3) (array 3 4))
         )`);
         expect(resp).toEqual([[21, 29], [18, 25]]);
 
-        resp = await MalTay.call(`(prod 
+        resp = await MalTay.call(`(prod
             (array (array -3 -5) (array -3 4))
             (array (array -2 3) (array 3 4))
         )`);
@@ -1017,8 +1017,8 @@ describe('matrix/n-dim array functions', function () {
         // )`);
         // expect(resp).toEqual([[42, 58], [47, 65], [39, 54]]);
 
-        // resp = await MalTay.call(`(prod 
-        //     (array (array 3 5 9 2) (array 1 15 19 12) (array 2 3 4 2) ) 
+        // resp = await MalTay.call(`(prod
+        //     (array (array 3 5 9 2) (array 1 15 19 12) (array 2 3 4 2) )
         //     (array (array 1 1 1) (array 3 3 3) (array 2 2 2) (array 1 1 1) )
         // )`);
         // expect(resp).toEqual([[38, 38, 38], [96, 96, 96], [21, 21, 21]]);
@@ -1041,19 +1041,19 @@ describe('ballot contract', function() {
     let voter1, voter2, voter3,
         voter1_addr, voter2_addr, voter3_addr;
 
-    const init = `(list 
+    const init = `(list
         ; weight, voted, delegate, vote (proposal index)
         (defstruct! Voter (list Uint Bool Address Uint))
-        
+
         ; name, voteCount
         (defstruct! Proposal (list String32 Uint) )
-    
+
         (defmap! "voters" Address "Voter")
-        
+
         ; (name! chairperson (save! (caller)))
         (store! 0 (caller))
     )`;
-    
+
     const init2 = `(list
         (struct! Proposal (list "proposal1" 0))
         (struct! Proposal (list "proposal2" 0))
@@ -1081,20 +1081,20 @@ describe('ballot contract', function() {
                 sender_raw (mapget voters (caller))
                 ; values for: weight, voted, delegate, vote
                 sender (list-struct sender_raw)
-                
+
                 ; types for: weight, voted, delegate, vote
                 sender_types (defstruct Voter)
-                
+
                 ; DB index for each struct component
                 sender_indexes (refs-struct sender_raw)
-                
+
                 proposal_raw (getfrom Proposal proposalIndex)
                 ; values: name, voteCount
                 proposal (list-struct proposal_raw)
                 proposal_types (defstruct Proposal)
                 proposal_indexes (refs-struct proposal_raw)
             )
-            (if (or 
+            (if (or
                     (or (nil? sender) (true? (nth sender 1)))
                     (lt (nth sender 0) 1)
                 )
@@ -1104,7 +1104,7 @@ describe('ballot contract', function() {
                     (update! (nth sender_types 1) (nth sender_indexes 1) true)
                     ; sender.vote = proposal
                     (update! (nth sender_types 3) (nth sender_indexes 3) proposalIndex)
-                    
+
                     ; proposals[proposal].voteCount += sender.weight
                     (update! (nth proposal_types 1) (nth proposal_indexes 1) (add (nth sender 0) (nth proposal 1)))
                 )
@@ -1213,7 +1213,7 @@ describe('ballot contract', function() {
         expect(resp).toBe(true);
 
         await MalTay.sendAndWait(giveRightToVote);
-        
+
         await MalTay.send('(giveRightToVote! "0xe8B7665DE12D67bC802aEcb8eef4D8bd34741C51")');
 
         resp = await MalTay.call('(nil? (mapget "voters" "0xe8B7665DE12D67bC802aEcb8eef4D8bd34741C51"))');
@@ -1335,7 +1335,7 @@ describe.skip('test update!', function() {
                 (update! (nth stypes 1) (nth indexes 1) 7)
             )
         )`);
-    
+
         resp = await MalTay.call('(refs-struct (getfrom UpdatableStruct 0))')
         expect(resp).toEqual([0, 0]);
 
