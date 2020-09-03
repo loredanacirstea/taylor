@@ -3454,7 +3454,22 @@ selfdestruct_10:  // 0xff
             jump
             stop
             stop
-
+        self_0x:  // 0x10b
+            pop
+            self_0x_extra
+            //
+            // push
+            jump
+            stop
+            stop
+        super_1x:  // 0x10c
+            pop
+            super_1x_extra
+            //
+            // push
+            jump
+            stop
+            stop
         jump_10_extra:
             0xe0        // start of data data_ptr
             // push1
@@ -3907,7 +3922,8 @@ for_stack_4:
 0x40
             add
             mload
-            0x20
+
+            0x40     // after arity and self
             add
             dup2   // index, env_ptr, index
             0x20
@@ -3922,23 +3938,24 @@ for_stack_4:
             // push
             mload
             jump
-        apply_xx_extra: // args, lambda_ptr
+        apply_xx_extra: // args, lambda_ptr__
+            dup1  // args, lambda_ptr__, lambda_ptr__
             0x20
-            add   // after length lambda_ptr // args, lambda_ptr, lambda_ptr
+            add   // after length lambda_ptr // args, lambda_ptr__, lambda_ptr, lambda_ptr
             dup1     // load lambda head todo: require id is lambda id
-            /* (5) getfourb // args, lambda_ptr, 4b   // args, lambda_ptr, 4b   */
+            /* (5) getfourb // args, lambda_ptr__, lambda_ptr, 4b   // args, lambda_ptr__, lambda_ptr, 4b   */
 // expects a pointer
             mload
             0xe0
             shr
 
-            /* (1) getfuncarity // lambda arity // args, lambda_ptr, lambda_arity   // lambda arity // args, lambda_ptr, lambda_arity   */
+            /* (1) getfuncarity // lambda arity // args, lambda_ptr__, lambda_ptr, lambda_arity   // lambda arity // args, lambda_ptr__, lambda_ptr, lambda_arity   */
 // expects a 4byte value
             0x3f
             and
 
             // move lambda pointer to lambda body
-            swap1   // args, lambda_arity, lambda_ptr
+            swap1   // args, lambda_ptr__, lambda_arity, lambda_ptr
             0x08
             add     // lambda sig
             dup2
@@ -3946,34 +3963,46 @@ for_stack_4:
             mul     // unknowns offset
             add     // move lambda ptr at body
 
-            swap1   // args, lambda_ptr, lambda_arity
+            swap1   // args, lambda_ptr__, lambda_ptr, lambda_arity
 
             // create new memory frame with new env
             // TODO meld new env with old env
 
-            dup1            // lambda_arity
-            /* (0) t22_init_ 0x40   // new_env_ptr   // new_env_ptr   */
-// expects arity // 0x40   // new_env_ptr = freeMemPtr
+            dup1             // args, lambda_ptr__, lambda_ptr, lambda_arity, lambda_arity
+            0x01
+            add              // self
+            /* (0) t22_init_ 0x40   // args, lambda_ptr__, lambda_ptr, lambda_arity, new_env_ptr   // args, lambda_ptr__, lambda_ptr, lambda_arity, new_env_ptr   */
+// expects arity // 0x40   // args = freeMemPtr
     dup1
     0x20
     mul
     0x20
     add
 
-    // alloc 0x40   // new_env_ptr    // freeMemPtr
-    0x40   // new_env_ptr
+    // alloc 0x40   // args    // freeMemPtr
+    0x40   // args
     mload
     swap1
     dup2
     add
-    0x40   // new_env_ptr
+    0x40   // args
     mstore
 
     swap1       // store arity first
     dup2
     mstore
-            dup1
+
+            // storing reference to self
+            swap1   // args, lambda_ptr__, lambda_ptr, new_env_ptr, lambda_arity
+            swap2   // args, lambda_ptr__, lambda_arity, new_env_ptr, lambda_ptr
+            swap3   // args, lambda_ptr, lambda_arity, new_env_ptr, lambda_ptr__
+            dup2    // args, lambda_ptr, lambda_arity, new_env_ptr, lambda_ptr__, new_env_ptr
             0x20
+            add
+            mstore  // args, lambda_ptr, lambda_arity, new_env_ptr
+
+            dup1
+            0x40
             add    // current_env_ptr
 
             swap1
@@ -4084,7 +4113,6 @@ for_stack_5:
 0x120
             add
             mstore
-
             tag_eval
             jump
 
@@ -4470,5 +4498,20 @@ for_stack_7:
 
             tag_eval
             jump
+        self_0x_extra:
+            /* (16) getframe //   //   */
+0xe0
+            mload
+            /* (2) getenvptr //   //    */
+0x40
+            add
+            mload
+            0x20
+            add       // args, lambda_ptr
+            mload
+            apply_xx_extra
+            jump
+        super_1x_extra:
+            stop
 
     }

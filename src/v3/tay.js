@@ -106,17 +106,17 @@ const ast2hSpecialMap = {
     if: handleIf,
 }
 
-function ast2h(ast, parent=null, unkownMap={}, defenv={}, arrItemType=null, aaa=null) {
+function ast2h(ast, parent=null, unkownMap={}, defenv={}, arrItemType=null, reverseArgs=true) {
+    if (!(ast instanceof Array)) ast = [ast];
 
-    // add apply if needed
-    // !aaa - fn* should not already have a parent (e.g. encoded as function body)
-    if (!aaa && ast && ast[0][0] && ast[0][0].value === 'fn*') {
+    // add apply if needed and not applied yet
+    if (ast && ast[0][0] && ast[0][0].value === 'fn*' &&
+        (!parent || parent[0].value !== 'apply')
+    ) {
         ast.splice(0, 0, malTypes._symbol('apply'));
     }
 
-    if (!(ast instanceof Array)) ast = [ast];
-
-    if(!aaa) {
+    if(reverseArgs) {
         ast = [ast[0]].concat(ast.slice(1).reverse());
     }
 
@@ -155,7 +155,7 @@ function ast2h(ast, parent=null, unkownMap={}, defenv={}, arrItemType=null, aaa=
         }
 
         if (elem instanceof Array) {
-            return ast2h(elem, ast, unkownMap, defenv);
+            return ast2h(elem, ast, unkownMap, defenv, null, true);
         }
 
         let value = elem;
@@ -211,9 +211,9 @@ function handleFn(ast, parent, unkownMap, defenv) {
 // ast is inversed
 function handleIf(ast, parent, unkownMap, defenv) {
     const unknownMap_cpy = JSON.parse(JSON.stringify(unkownMap))
-    const condition = ast2h(ast[3], ast, unknownMap_cpy, defenv);
-    const action1body = ast2h(ast[2], ast, unknownMap_cpy, defenv);
-    const action2body = ast2h(ast[1], ast, unknownMap_cpy, defenv);
+    const condition = ast2h(ast[3], ast, unknownMap_cpy, defenv, null, true);
+    const action1body = ast2h(ast[2], ast, unknownMap_cpy, defenv, null, true);
+    const action2body = ast2h(ast[1], ast, unknownMap_cpy, defenv, null, true);
     const len = (condition.length + action1body.length + action2body.length) / 2;
     return type_enc.fpu('if', len, 3, 0)
         + type_enc.bytelike(action2body)

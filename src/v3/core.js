@@ -10,6 +10,8 @@ const core = {
     setalias: '108',
     getalias: '109',
     if: '10a',
+    self: '10b',
+    super: '10c',
 }
 
 module.exports = core;

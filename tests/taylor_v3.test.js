@@ -54,6 +54,23 @@ describe.each([
         expect(resp).toEqual(20);
     });
 
+    it('recursive lambda', async function () {
+        let resp;
+        resp = await instance.call(`((fn* (n max) (if (gt_ n max)
+                n
+                (self (add_ n 1) max)
+            )
+        ) 3 1)`);
+        expect(resp).toEqual(3);
+
+        resp = await instance.call(`((fn* (n max) (if (gt_ n max)
+                n
+                (self (add_ n 1) max)
+            )
+        ) 0 2)`);
+        expect(resp).toEqual(3);
+    });
+
     let resp;
     for (name of Object.keys(tests.evm.tests)) {
         const tts = tests.evm.tests[name]
