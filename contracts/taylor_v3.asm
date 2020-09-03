@@ -44,6 +44,8 @@ dataSize(sub_0)
 
 
 
+
+
         // GETTERS  //
 
 
@@ -64,7 +66,11 @@ dataSize(sub_0)
 
 
 
+
+
         // SETTERS  //
+
+
 
 
 
@@ -126,11 +132,12 @@ calldatasize
         // 0xe0 for loop end
         // 0x100 for loop return tag
         // 0x120 eval return tag
+        // 0x140 0/1 delete/don't delete
 
         // for stack we use: 0x00 - 0x40, 0xa0-0x120
 
         // MEMORY FRAME INIT
-        0x140
+        0x160
         /* (0) allocate 0x40      */
 0x40
     mload
@@ -723,7 +730,7 @@ for_stack_2:
             // step 499
 
             // MEMORY FRAME INIT  //
-            0x140
+            0x160
             /* (2) allocate 0x40      */
 0x40
     mload
@@ -3423,6 +3430,22 @@ selfdestruct_10:  // 0xff
             jump
             stop
             stop
+        setalias_20:   // 0x108  // name pointer
+            pop
+            setalias_20_extra
+            //
+            // push
+            jump
+            stop
+            stop
+        getalias_11:   // 0x109  // name pointer -> signature
+            pop
+            getalias_11_extra
+            //
+            // push
+            jump
+            stop
+            stop
         jump_10_extra:
             0xe0        // start of data data_ptr
             // push1
@@ -3996,7 +4019,7 @@ for_stack_5:
             pop  // lambda_ptr, new_env_ptr
 
             // MEMORY FRAME INIT  //
-            0x140
+            0x160
             /* (4) allocate 0x40  // lambda_ptr, new_env_ptr, new_frame_ptr   // lambda_ptr, new_env_ptr, new_frame_ptr   */
 0x40  // lambda_ptr
     mload
@@ -4078,8 +4101,8 @@ for_stack_5:
             mload
             jump
         setfn_10_extra:  // pointer to lambda - length & lambda
-            // TODO: set correct arity
-            0x3400100000000000
+            // TODO: build sig, set correct arity
+            0x3400100000000000000000000000000000000000000000000000000000000000
             /* (0) getfncounter //   //   */
 0x01
             sload
@@ -4185,6 +4208,7 @@ for_stack_6:
             add
             0x01
             sstore
+
             0xc0
             // push
             mload
@@ -4193,9 +4217,8 @@ for_stack_6:
             0x20
             add
             mload
-            0xc0
-            shr
-            0xfffffbffffffffff    // mem/stack -> 0
+
+            0xfffffbffffffffffffffffffffffffffffffffffffffffffffffffffffffffff    // mem/stack -> 0
             and
 
             /* (1) getfnkey //  key   //  key   */
@@ -4312,6 +4335,89 @@ for_stack_7:
             pop
             pop
             pop   // leave target_ptr on stack
+
+            0xc0
+            // push
+            mload
+            jump
+        setalias_20_extra:  // name pointer, signature ptr TODO might be > 32 bytes save with length
+            // sig, name_ptr
+            /* (0) getnamehash // sig, key   // sig, key   */
+// expects pointer to name (bytes)
+
+            0x03    // seed
+            0x00
+            mstore
+
+            // hash name first, so we don't need to copy the bytes
+            dup1
+            mload   // length
+            swap1   // length, ptr
+            sha3
+
+            0x20
+            mstore
+
+            0x40
+            0x00
+            sha3
+            sstore
+            0x01           // add a success result on stack
+            0xc0
+            // push
+            mload
+            jump
+        getalias_11_extra:  // name pointer -> signature pointer
+            /* (1) getnamehash //   //   */
+// expects pointer to name (bytes)
+
+            0x03    // seed
+            0x00
+            mstore
+
+            // hash name first, so we don't need to copy the bytes
+            dup1
+            mload   // length
+            swap1   // length, ptr
+            sha3
+
+            0x20
+            mstore
+
+            0x40
+            0x00
+            sha3
+            sload        // load signature
+
+            0x20          // TODO multi slots
+            /* (0) t2_init__ 0x40      */
+// expects length // 0x40 = freeMemPtr
+    dup1
+    0x20
+    add           // length, fulllength
+
+    // alloc 0x40    // freeMemPtr
+    0x40
+    mload
+    swap1
+    dup2
+    add
+    0x40
+    mstore     // length, ptr
+
+    dup1       // store length   // length, ptr, ptr
+    swap2      // ptr, ptr, length
+    swap1      // ptr, length, ptr
+    mstore     // ptr
+            dup1      // sig, sig_ptr, sig_ptr
+            swap2    // sig_ptr, sig_ptr, sig
+            swap1    // sig_ptr, sig, sig_ptr
+
+            /* (0) t2_ptr_ //   //    */
+// expects t2 pointer
+    0x20
+    add
+            mstore    // sig_ptr
 
             0xc0
             // push

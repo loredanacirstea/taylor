@@ -7,6 +7,8 @@ const core = {
     apply: '105',
     setfn: '106',
     getfn: '107',
+    setalias: '108',
+    getalias: '109',
 }
 
 module.exports = core;

@@ -33,6 +33,10 @@ const rootids = {
     mapping: '0111',
     other: '1000',
 }
+const subids_bytelike = {
+    bytes: '01',
+    string: '10',
+}
 
 const type_enc = {
     number: value => {
@@ -42,11 +46,13 @@ const type_enc = {
             + v.toString(16).padStart(64, '0')
         );
     },
-    bytelike: value => {
+    bytelike: (value, isString=false, encoding=0) => {
+        const head = rootids.bytelike + subids_bytelike[isString ? 'string' : 'bytes'];
+        const val = strip0x(value);
         return (
-            new BN(rootids.bytelike.padEnd(32, '0'), 2).toString(16)
-            + new BN(value.length / 2).toString(16).padStart(8, '0')
-            + value
+            new BN(head.padEnd(32, '0'), 2).toString(16).padStart(8, '0')
+            + new BN(val.length / 2).toString(16).padStart(8, '0')
+            + val
         );
     },
     // TODO: mutability, etc.
@@ -101,12 +107,14 @@ const ast2hSpecialMap = {
 }
 
 function ast2h(ast, parent=null, unkownMap={}, defenv={}, arrItemType=null, aaa=null) {
-    if (!(ast instanceof Array)) ast = [ast];
 
     // add apply if needed
-    if (ast && ast[0][0] && ast[0][0].value === 'fn*') {
+    // !aaa - fn* should not already have a parent (e.g. encoded as function body)
+    if (!aaa && ast && ast[0][0] && ast[0][0].value === 'fn*') {
         ast.splice(0, 0, malTypes._symbol('apply'));
     }
+
+    if (!(ast instanceof Array)) ast = [ast];
 
     if(!aaa) {
         ast = [ast[0]].concat(ast.slice(1).reverse());
@@ -158,12 +166,12 @@ function ast2h(ast, parent=null, unkownMap={}, defenv={}, arrItemType=null, aaa=
             if (elem.slice(0, 2) === '0x') {
                 // treat as bytes
                 value = elem.slice(2);
-                value = type_enc.bytelike(value.length/2) + value;
+                value = type_enc.bytelike(value);
                 return value;
             } else {
                 // value = parseInt(elem) || 0;
                 value = value.hexEncode();
-                value = type_enc.bytelike(value.length/2) + value;
+                value = type_enc.bytelike(value, true);
                 return value;
             }
         }
@@ -207,8 +215,8 @@ function handleIf(ast, parent, unkownMap, defenv) {
     const action2body = ast2h(ast[3], ast, unknownMap_cpy, defenv);
     return nativeEnv.if_.hex
         + condition
-        + type_enc.bytelike(action1body.length/2) + action1body
-        + type_enc.bytelike(action2body.length/2) + action2body
+        + type_enc.bytelike(action1body)
+        + type_enc.bytelike(action2body)
 }
 
 function decode (data, returntypes) {
