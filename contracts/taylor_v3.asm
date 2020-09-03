@@ -3446,6 +3446,15 @@ selfdestruct_10:  // 0xff
             jump
             stop
             stop
+        if_3x:   // 0x10a  // branch2_ptr, branch1_ptr, cond
+            pop
+            if_3x_extra
+            //
+            // push
+            jump
+            stop
+            stop
+
         jump_10_extra:
             0xe0        // start of data data_ptr
             // push1
@@ -4422,6 +4431,44 @@ for_stack_7:
             0xc0
             // push
             mload
+            jump
+        if_3x_extra:   // 0x10a  // branch2_ptr, branch1_ptr, cond
+            iszero
+            if_3x_branch2
+            jumpi
+            swap1
+            pop     // remove branch2_ptr
+
+            /* (1) t2_ptr_ // get actual pointer   // get actual pointer   */
+// expects t2 pointer
+    0x20
+    add
+            /* (14) getframe // branch1_ptr, frame_ptr   // branch1_ptr, frame_ptr   */
+0xe0
+            mload
+            /* (3) setdataptr //   //    */
+0x20
+            add
+            mstore
+
+            tag_eval
+            jump
+        if_3x_branch2:
+            pop    // remove branch1_ptr
+
+            /* (2) t2_ptr_ // get actual pointer   // get actual pointer   */
+// expects t2 pointer
+    0x20
+    add
+            /* (15) getframe // branch2_ptr, frame_ptr   // branch2_ptr, frame_ptr   */
+0xe0
+            mload
+            /* (4) setdataptr //   //    */
+0x20
+            add
+            mstore
+
+            tag_eval
             jump
 
     }

@@ -45,6 +45,15 @@ describe.each([
         expect(resp).toEqual(8);
     });
 
+    it('if', async function () {
+        let resp;
+        resp = await instance.call('(if (gt_ 4 3) (add_ 4 5) (mul_ 4 5) )');
+        expect(resp).toEqual(9);
+
+        resp = await instance.call('(if (lt_ 4 3) (add_ 4 5) (mul_ 4 5) )');
+        expect(resp).toEqual(20);
+    });
+
     let resp;
     for (name of Object.keys(tests.evm.tests)) {
         const tts = tests.evm.tests[name]

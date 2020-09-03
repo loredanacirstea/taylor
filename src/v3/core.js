@@ -9,6 +9,7 @@ const core = {
     getfn: '107',
     setalias: '108',
     getalias: '109',
+    if: '10a',
 }
 
 module.exports = core;
