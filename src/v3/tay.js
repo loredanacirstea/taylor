@@ -56,10 +56,10 @@ const type_enc = {
         );
     },
     // TODO: mutability, etc.
-    fmu: (name, bodylen, arity, mem = 0) => {
+    fmu: (name, bodylen, arity, stack = true) => {
         return (new BN(rootids.function + '0' + '001'
             + u2b(bodylen).padStart(14, '0')
-            + u2b(mem).padStart(4, '0')
+            + u2b(stack ? 0 : 1).padStart(4, '0')
             + u2b(arity).padStart(6, '0')
         , 2)).toString(16) + nativeEnv[name].padStart(8, '0')
     },
@@ -104,9 +104,11 @@ function expr2h(expression, defenv) {
 const ast2hSpecialMap = {
     'fn*': handleFn,
     if: handleIf,
+    memory: handleMem,
+    stack: handleStack,
 }
 
-function ast2h(ast, parent=null, unkownMap={}, defenv={}, arrItemType=null, reverseArgs=true) {
+function ast2h(ast, parent=null, unkownMap={}, defenv={}, arrItemType=null, reverseArgs=true, stack=true) {
     if (!(ast instanceof Array)) ast = [ast];
 
     // add apply if needed and not applied yet
@@ -141,7 +143,7 @@ function ast2h(ast, parent=null, unkownMap={}, defenv={}, arrItemType=null, reve
 
             if (unkownMap[elem.value]) {
                 let val = unkownMap[elem.value];
-                if (elem.value === 'self' && ast[0] && ast[0].value === 'self') val = type_enc.fpu('apply', 0, arity + 1, 0) + val;
+                if (elem.value === 'self' && ast[0] && ast[0].value === 'self') val = type_enc.fpu('apply', 0, arity + 1, stack) + val;
                 return val;
             }
 
@@ -150,12 +152,12 @@ function ast2h(ast, parent=null, unkownMap={}, defenv={}, arrItemType=null, reve
                 return type_enc.number(elem.value);
             }
 
-            const body = ast2h(ast.slice(1), ast, unkownMap, defenv, null, true);
-            return type_enc.fpu(elem.value, body.length / 2, arity, 0);
+            const body = ast2h(ast.slice(1), ast, unkownMap, defenv, null, true, stack);
+            return type_enc.fpu(elem.value, body.length / 2, arity, stack);
         }
 
         if (elem instanceof Array) {
-            return ast2h(elem, ast, unkownMap, defenv, null, true);
+            return ast2h(elem, ast, unkownMap, defenv, null, true, stack);
         }
 
         let value = elem;
@@ -180,7 +182,7 @@ function ast2h(ast, parent=null, unkownMap={}, defenv={}, arrItemType=null, reve
 }
 
 // apply byte(lambda)
-function handleFn(ast, parent, unkownMap, defenv) {
+function handleFn(ast, parent, unkownMap, defenv, arrItemType, reverseArgs, stack) {
     const arity = ast[1].length;
     const unkownMapcpy = JSON.parse(JSON.stringify(unkownMap))
     const count = Object.keys(unkownMapcpy).length;
@@ -189,7 +191,7 @@ function handleFn(ast, parent, unkownMap, defenv) {
     let lambdaArgs = ast[1].map((elem, i) => {
         // const index = count + i + 1;
         const index = count + i;
-        const enc = type_enc.fpu('unknown', index, 0, 0);
+        const enc = type_enc.fpu('unknown', index, 0, stack);
         unkownMapcpy[elem.value] = enc;
         largs.push(index.toString(16).padStart(4, '0'));
         return enc;
@@ -199,9 +201,9 @@ function handleFn(ast, parent, unkownMap, defenv) {
 
     lambdaArgs = lambdaArgs.join('');
     largs = largs.join('');
-    const lambdaBody = ast2h(ast[2], ast, unkownMapcpy, defenv, null, true);
+    const lambdaBody = ast2h(ast[2], ast, unkownMapcpy, defenv, null, true, stack);
     // fpu?; body length (without args)
-    let encoded = type_enc.fpu('fn*', lambdaBody.length/2, arity, 0)
+    let encoded = type_enc.fpu('fn*', lambdaBody.length/2, arity, stack)
         + largs
         + lambdaBody;
     encoded = type_enc.bytelike(encoded);
@@ -209,16 +211,24 @@ function handleFn(ast, parent, unkownMap, defenv) {
 }
 
 // ast is inversed
-function handleIf(ast, parent, unkownMap, defenv) {
+function handleIf(ast, parent, unkownMap, defenv, arrItemType, reverseArgs, stack) {
     const unknownMap_cpy = JSON.parse(JSON.stringify(unkownMap))
-    const condition = ast2h(ast[3], ast, unknownMap_cpy, defenv, null, true);
-    const action1body = ast2h(ast[2], ast, unknownMap_cpy, defenv, null, true);
-    const action2body = ast2h(ast[1], ast, unknownMap_cpy, defenv, null, true);
+    const condition = ast2h(ast[3], ast, unknownMap_cpy, defenv, null, true, stack);
+    const action1body = ast2h(ast[2], ast, unknownMap_cpy, defenv, null, true, stack);
+    const action2body = ast2h(ast[1], ast, unknownMap_cpy, defenv, null, true, stack);
     const len = (condition.length + action1body.length + action2body.length) / 2;
-    return type_enc.fpu('if', len, 3, 0)
+    return type_enc.fpu('if', len, 3, stack)
         + type_enc.bytelike(action2body)
         + type_enc.bytelike(action1body)
         + condition
+}
+
+function handleMem(ast, parent, unkownMap, defenv) {
+    return ast2h(ast[1], parent, unkownMap, defenv, null, true, false);
+}
+
+function handleStack(ast, parent, unkownMap, defenv) {
+    return ast2h(ast[1], parent, unkownMap, defenv, null, true, true);
 }
 
 function decode (data, returntypes) {

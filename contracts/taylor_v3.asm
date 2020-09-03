@@ -960,19 +960,6 @@ for_stack_2:
         swap1
         sub      // fid, actual_partials_start, actual_arity
 
-        // we need the last partial, going in reverse
-        0x01
-        dup2   // arity
-        sub
-        0x20
-        mul
-        dup3   // current_partial
-        add
-        swap2  // replace partial ptr
-        pop
-
-        // put arguments on the stack in reverse order
-
         eval_native_function   // fid,  current_partial, arity, tag
         swap1  // fid, current_partial, tag, arity
         0x00
@@ -1004,8 +991,7 @@ for_stack_3:
             swap5
             swap4
             0x20
-            swap1
-            sub
+            add
             swap3
             swap2
             swap1

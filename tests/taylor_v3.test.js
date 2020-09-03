@@ -54,6 +54,23 @@ describe.each([
         expect(resp).toEqual(20);
     });
 
+    it('memory-stack', async function () {
+        let resp;
+
+        resp = await instance.call('(add_ (sub_ 9 (mul_ 1 3)) 5)');
+        expect(resp).toEqual(11);
+
+        resp = await instance.call('(memory (add_ (sub_ 9 (mul_ 1 3)) 5) )');
+        expect(resp).toEqual(11);
+
+        resp = await instance.call('(stack (add_ (sub_ 9 (mul_ 1 3)) 5) )');
+        expect(resp).toEqual(11);
+
+        // TODO: mix stack & memory - needs adapter function
+        // resp = await instance.call('(memory (add_ (stack (sub_ 9 (mul_ 1 3)) ) 5) )');
+        // expect(resp).toEqual(11);
+    });
+
     it('recursive lambda', async function () {
         let resp;
         resp = await instance.call(`((fn* (n max) (if (gt_ n max)
