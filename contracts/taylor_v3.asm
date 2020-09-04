@@ -12,6 +12,7 @@
 
 
 
+
 dataSize(sub_0)
     dataOffset(sub_0)
     0x00
@@ -69,6 +70,10 @@ dataSize(sub_0)
 
 
         // SETTERS  //
+
+
+
+
 
 
 
@@ -354,6 +359,12 @@ calldatasize
         dup2    // result_ptr
         mstore  // frame_ptr, data_ptr, length, result_ptr
 
+        0x01
+        dup5
+        /* (0) setdelmarker // do not delete frame   // do not delete frame   */
+0x140
+            add
+            mstore
 
         dup2    // length
         dup4     // source_ptr
@@ -866,6 +877,7 @@ for_stack_2:
                 /* (6) getframe //   //   */
 0xe0
             mload
+
                 mload     // get previous frame
                 0xe0
                 mstore
@@ -3883,42 +3895,83 @@ for_stack_4:
             add
             return
         unknown_11_extra:
-            /* (11) getframe //   //   */
+            /* (11) getframe //  frame_ptr   //  frame_ptr   */
 0xe0
             mload
-            dup1
-            /* (6) getdataptr //   //   */
+            dup1        //  frame_ptr, frame_ptr
+            /* (6) getdataptr //  frame_ptr, data_ptr   //  frame_ptr, data_ptr   */
 0x20
             add
             mload
-            /* (4) getfourb //   //   */
+            /* (4) getfourb //  frame_ptr, fourb   //  frame_ptr, fourb   */
 // expects a pointer
             mload
             0xe0
             shr
-            /* (0) getfunclength //   //   */
+
+            dup1        //  frame_ptr, fourb, fourb
+            /* (0) getfunclength // frame_ptr, fourb, length   // frame_ptr, fourb, length   */
 // expects a 4byte value
             0xfffc00
             and
             0x0a
             shr
 
-            swap1   // index, frame_ptr
-            /* (1) getenvptr //  index, env_ptr   //  index, env_ptr   */
-0x40
-            add
-            mload
+            swap1       // frame_ptr, length, fourb
+            /* (1) getfuncarity // frame_ptr, length, arity // frame_ptr, index, superIndex   // frame_ptr, length, arity // frame_ptr, index, superIndex   */
+// expects a 4byte value
+            0x3f
+            and
+
+            dup3        // frame_ptr, index, superIndex, frame_ptr
+            swap1       // frame_ptr, index, frame_ptr, superIndex
+            /* (0) getsuperenv // frame_ptr, index, env_ptr   // frame_ptr, index, env_ptr   */
+// frame_ptr, index
+            getsuperenv_0  // frame_ptr, index, tag
+            swap1                  // frame_ptr, tag, index
+            0x00
+
+for_stack_5:
+        dup2   // end
+        dup2   // start
+        lt
+        forloop_stack_5
+        jumpi
+        pop    // pop end, step
+        pop
+        jump
+    forloop_stack_5:   // any content variables are kept after jumptag, end, step
+
+                // frame_ptr, tag, end, step
+                dup4
+                mload    // prev_frame_ptr
+                swap4
+                pop     // replace with prev_frame_ptr
+
+    forloop_end_stack_5:
+        0x01   // start/step first
+        add
+        for_stack_5
+        jump
+            getsuperenv_0:
+                // last frame_ptr
+
+                0x40   // get ptr env
+                add
+                mload
 
             0x40     // after arity and self
-            add
-            dup2   // index, env_ptr, index
+            add      // frame_ptr, index, env_ptr
+            dup2   // frame_ptr, index, env_ptr, index
             0x20
             mul
-            add    // index, env_ptr
+            add    // frame_ptr, index, env_ptr
             mload  // load env value
 
             swap1   // pop index
             pop
+            swap1
+            pop    // pop frame_ptr
 
             0xc0
             // push
@@ -3935,7 +3988,7 @@ for_stack_4:
             0xe0
             shr
 
-            /* (1) getfuncarity // lambda arity // args, lambda_ptr__, lambda_ptr, lambda_arity   // lambda arity // args, lambda_ptr__, lambda_ptr, lambda_arity   */
+            /* (2) getfuncarity // lambda arity // args, lambda_ptr__, lambda_ptr, lambda_arity   // lambda arity // args, lambda_ptr__, lambda_ptr, lambda_arity   */
 // expects a 4byte value
             0x3f
             and
@@ -3998,16 +4051,16 @@ for_stack_4:
             swap1  // args, lambda_ptr, new_env_ptr, current_env_ptr, tag, lambda_arity
             0x00
 
-for_stack_5:
+for_stack_6:
         dup2   // end
         dup2   // start
         lt
-        forloop_stack_5
+        forloop_stack_6
         jumpi
         pop    // pop end, step
         pop
         jump
-    forloop_stack_5:   // any content variables are kept after jumptag, end, step
+    forloop_stack_6:   // any content variables are kept after jumptag, end, step
 
                 // args, lambda_ptr, new_env_ptr, current_env_ptr, tag, end, step
 
@@ -4032,10 +4085,10 @@ for_stack_5:
                 swap6
                 pop
 
-    forloop_end_stack_5:
+    forloop_end_stack_6:
         0x01   // start/step first
         add
-        for_stack_5
+        for_stack_6
         jump
 
         apply_xx_extra_mfor_end:
@@ -4109,15 +4162,9 @@ for_stack_5:
             /* (13) getframe //   //   */
 0xe0
             mload
-            dup1
             mload     // get previous frame
             0xe0
             mstore
-
-            // TODO // DEALLOC
-            //0x40    // change free mem ptr - dealloc
-            //mstore
-            pop
 
             0xc0
             // push
@@ -4185,16 +4232,16 @@ for_stack_5:
             swap1             // source_ptr, key, tag, slots/end
             0x00
 
-for_stack_6:
+for_stack_7:
         dup2   // end
         dup2   // start
         lt
-        forloop_stack_6
+        forloop_stack_7
         jumpi
         pop    // pop end, step
         pop
         jump
-    forloop_stack_6:   // any content variables are kept after jumptag, end, step
+    forloop_stack_7:   // any content variables are kept after jumptag, end, step
 
                 // source_ptr, key, tag, end, step
 
@@ -4215,10 +4262,10 @@ for_stack_6:
                 swap4
                 pop
 
-    forloop_end_stack_6:
+    forloop_end_stack_7:
         0x01   // start/step first
         add
-        for_stack_6
+        for_stack_7
         jump
         mmultisstore_end_0:
             pop
@@ -4320,16 +4367,16 @@ for_stack_6:
             dup4             // slots
             0x00
 
-for_stack_7:
+for_stack_8:
         dup2   // end
         dup2   // start
         lt
-        forloop_stack_7
+        forloop_stack_8
         jumpi
         pop    // pop end, step
         pop
         jump
-    forloop_stack_7:   // any content variables are kept after jumptag, end, step
+    forloop_stack_8:   // any content variables are kept after jumptag, end, step
 
                 // target_ptr, slots, target_ptr, key2, tag, end, step
                 dup4
@@ -4349,10 +4396,10 @@ for_stack_7:
                 swap4
                 pop
 
-    forloop_end_stack_7:
+    forloop_end_stack_8:
         0x01   // start/step first
         add
-        for_stack_7
+        for_stack_8
         jump
         mmultisload_end_0:
             pop
@@ -4436,7 +4483,7 @@ for_stack_7:
             swap2    // sig_ptr, sig_ptr, sig
             swap1    // sig_ptr, sig, sig_ptr
 
-            /* (0) t2_ptr_ //   //    */
+            /* (0) t2_ptr_ //   //   */
 // expects t2 pointer
     0x20
     add
@@ -4460,7 +4507,7 @@ for_stack_7:
             /* (14) getframe // branch1_ptr, frame_ptr   // branch1_ptr, frame_ptr   */
 0xe0
             mload
-            /* (3) setdataptr //   //    */
+            /* (3) setdataptr //   //   */
 0x20
             add
             mstore
@@ -4477,7 +4524,7 @@ for_stack_7:
             /* (15) getframe // branch2_ptr, frame_ptr   // branch2_ptr, frame_ptr   */
 0xe0
             mload
-            /* (4) setdataptr //   //    */
+            /* (4) setdataptr //   //   */
 0x20
             add
             mstore
@@ -4488,7 +4535,7 @@ for_stack_7:
             /* (16) getframe //   //   */
 0xe0
             mload
-            /* (2) getenvptr //   //    */
+            /* (1) getenvptr //   //   */
 0x40
             add
             mload
@@ -4498,6 +4545,51 @@ for_stack_7:
             apply_xx_extra
             jump
         super_1x_extra:
-            stop
+            // index
+            /* (17) getframe //   //   */
+0xe0
+            mload
+            swap1     // frame_ptr, super index
+
+            /* (1) getsuperenv //   //   */
+// frame_ptr, index
+            getsuperenv_1  // frame_ptr, index, tag
+            swap1                  // frame_ptr, tag, index
+            0x00
+
+for_stack_9:
+        dup2   // end
+        dup2   // start
+        lt
+        forloop_stack_9
+        jumpi
+        pop    // pop end, step
+        pop
+        jump
+    forloop_stack_9:   // any content variables are kept after jumptag, end, step
+
+                // frame_ptr, tag, end, step
+                dup4
+                mload    // prev_frame_ptr
+                swap4
+                pop     // replace with prev_frame_ptr
+
+    forloop_end_stack_9:
+        0x01   // start/step first
+        add
+        for_stack_9
+        jump
+            getsuperenv_1:
+                // last frame_ptr
+
+                0x40   // get ptr env
+                add
+                mload
+
+            0x20
+            add       // args, lambda_ptr
+            mload
+            apply_xx_extra
+            jump
 
     }

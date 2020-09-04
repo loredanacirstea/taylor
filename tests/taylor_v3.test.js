@@ -103,4 +103,37 @@ describe.each([
             }, tt.wait || 10000);
         });
     }
+    it('recursive lambda memory', async function () {
+        let resp;
+        resp = await instance.call(`(memory
+            ((fn* (n max) (if (gt_ n max)
+                n
+                (self (add_ n 1) max)
+            )
+        ) 0 2) )`);
+        expect(resp).toEqual(3);
+    });
+
+    it('test fn in fn', async function () {
+        let resp;
+        resp = await instance.call(`((fn* (a)
+            (if (eq_ 0 (mod_ a 2))
+                ((fn* (b) (div_ b 2) ) a)
+                a
+            )
+        ) 6)`);
+        expect(resp).toEqual(3);
+    });
+
+    it('test super', async function () {
+        let resp;
+        resp = await instance.call(`((fn* (a)
+            (if (eq_ 0 (mod_ a 2))
+                ((fn* (b) (super 1 (div_ b 2) ) ) a)
+                a
+            )
+        ) 6)`);
+        expect(resp).toEqual(3);
+    }, 10000);
+
 });

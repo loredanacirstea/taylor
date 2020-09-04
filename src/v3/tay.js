@@ -108,7 +108,7 @@ const ast2hSpecialMap = {
     stack: handleStack,
 }
 
-function ast2h(ast, parent=null, unkownMap={}, defenv={}, arrItemType=null, reverseArgs=true, stack=true) {
+function ast2h(ast, parent=null, unkownMap={}, defenv={}, arrItemType=null, reverseArgs=true, stack=true, envdepth=0) {
     if (!(ast instanceof Array)) ast = [ast];
 
     // add apply if needed and not applied yet
@@ -123,7 +123,7 @@ function ast2h(ast, parent=null, unkownMap={}, defenv={}, arrItemType=null, reve
     }
 
     if (ast[0] && ast[0].value && ast2hSpecialMap[ast[0].value]) {
-        return ast2hSpecialMap[ast[0].value](ast, parent, unkownMap, defenv, arrItemType);
+        return ast2hSpecialMap[ast[0].value](ast, parent, unkownMap, defenv, arrItemType, reverseArgs, stack, envdepth);
     }
 
     // do not count the function itselt
@@ -134,7 +134,7 @@ function ast2h(ast, parent=null, unkownMap={}, defenv={}, arrItemType=null, reve
         if (elem === null) return uint(0);
 
         if (elem[0] && elem[0].value && ast2hSpecialMap[elem[0].value]) {
-            return ast2hSpecialMap[elem[0].value](elem, parent, unkownMap, defenv, arrItemType);
+            return ast2hSpecialMap[elem[0].value](elem, parent, unkownMap, defenv, arrItemType, reverseArgs, stack, envdepth);
         }
 
         // if Symbol
@@ -142,7 +142,9 @@ function ast2h(ast, parent=null, unkownMap={}, defenv={}, arrItemType=null, reve
             let encoded;
 
             if (unkownMap[elem.value]) {
-                let val = unkownMap[elem.value];
+                const { index, depth } = unkownMap[elem.value]
+                let val = type_enc.fpu('unknown', index, depth - envdepth, stack);
+
                 if (elem.value === 'self' && ast[0] && ast[0].value === 'self') val = type_enc.fpu('apply', 0, arity + 1, stack) + val;
                 return val;
             }
@@ -152,12 +154,12 @@ function ast2h(ast, parent=null, unkownMap={}, defenv={}, arrItemType=null, reve
                 return type_enc.number(elem.value);
             }
 
-            const body = ast2h(ast.slice(1), ast, unkownMap, defenv, null, true, stack);
+            const body = ast2h(ast.slice(1), ast, unkownMap, defenv, null, true, stack, envdepth);
             return type_enc.fpu(elem.value, body.length / 2, arity, stack);
         }
 
         if (elem instanceof Array) {
-            return ast2h(elem, ast, unkownMap, defenv, null, true, stack);
+            return ast2h(elem, ast, unkownMap, defenv, null, true, stack, envdepth);
         }
 
         let value = elem;
@@ -182,26 +184,23 @@ function ast2h(ast, parent=null, unkownMap={}, defenv={}, arrItemType=null, reve
 }
 
 // apply byte(lambda)
-function handleFn(ast, parent, unkownMap, defenv, arrItemType, reverseArgs, stack) {
+function handleFn(ast, parent, unkownMap, defenv, arrItemType, reverseArgs, stack, envdepth) {
+    envdepth += 1;
     const arity = ast[1].length;
-    const unkownMapcpy = JSON.parse(JSON.stringify(unkownMap))
-    const count = Object.keys(unkownMapcpy).length;
+    const unkownMapcpy = JSON.parse(JSON.stringify(unkownMap));
     let largs = [];
 
     let lambdaArgs = ast[1].map((elem, i) => {
-        // const index = count + i + 1;
-        const index = count + i;
-        const enc = type_enc.fpu('unknown', index, 0, stack);
-        unkownMapcpy[elem.value] = enc;
+        const index = i;
+        const enc = type_enc.fpu('unknown', i, 0, stack);
+        unkownMapcpy[elem.value] = { depth: envdepth, index: i };
         largs.push(index.toString(16).padStart(4, '0'));
         return enc;
     });
-    // lambdaArgs.splice(0, 0, type_enc.fpu('unknown', count, 0, 0));
-    // unkownMapcpy['self'] = lambdaArgs[0];
 
     lambdaArgs = lambdaArgs.join('');
     largs = largs.join('');
-    const lambdaBody = ast2h(ast[2], ast, unkownMapcpy, defenv, null, true, stack);
+    const lambdaBody = ast2h(ast[2], ast, unkownMapcpy, defenv, null, true, stack, envdepth);
     // fpu?; body length (without args)
     let encoded = type_enc.fpu('fn*', lambdaBody.length/2, arity, stack)
         + largs
@@ -211,11 +210,11 @@ function handleFn(ast, parent, unkownMap, defenv, arrItemType, reverseArgs, stac
 }
 
 // ast is inversed
-function handleIf(ast, parent, unkownMap, defenv, arrItemType, reverseArgs, stack) {
+function handleIf(ast, parent, unkownMap, defenv, arrItemType, reverseArgs, stack, envdepth) {
     const unknownMap_cpy = JSON.parse(JSON.stringify(unkownMap))
-    const condition = ast2h(ast[3], ast, unknownMap_cpy, defenv, null, true, stack);
-    const action1body = ast2h(ast[2], ast, unknownMap_cpy, defenv, null, true, stack);
-    const action2body = ast2h(ast[1], ast, unknownMap_cpy, defenv, null, true, stack);
+    const condition = ast2h(ast[3], ast, unknownMap_cpy, defenv, null, true, stack, envdepth);
+    const action1body = ast2h(ast[2], ast, unknownMap_cpy, defenv, null, true, stack, envdepth);
+    const action2body = ast2h(ast[1], ast, unknownMap_cpy, defenv, null, true, stack, envdepth);
     const len = (condition.length + action1body.length + action2body.length) / 2;
     return type_enc.fpu('if', len, 3, stack)
         + type_enc.bytelike(action2body)
@@ -223,12 +222,12 @@ function handleIf(ast, parent, unkownMap, defenv, arrItemType, reverseArgs, stac
         + condition
 }
 
-function handleMem(ast, parent, unkownMap, defenv) {
-    return ast2h(ast[1], parent, unkownMap, defenv, null, true, false);
+function handleMem(ast, parent, unkownMap, defenv, arrItemType, reverseArgs, stack, envdepth) {
+    return ast2h(ast[1], parent, unkownMap, defenv, null, true, false, envdepth);
 }
 
-function handleStack(ast, parent, unkownMap, defenv) {
-    return ast2h(ast[1], parent, unkownMap, defenv, null, true, true);
+function handleStack(ast, parent, unkownMap, defenv, arrItemType, reverseArgs, stack, envdepth) {
+    return ast2h(ast[1], parent, unkownMap, defenv, null, true, true, envdepth);
 }
 
 function decode (data, returntypes) {
