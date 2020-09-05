@@ -237,17 +237,18 @@ calldatasize
     eval_end_processing_mem:
 
             // current_frame_ptr, result_ptr, end_ptr on stack
-            dup3      // current_frame_ptr, result_ptr, end_ptr, memframe_ptr
-            /* (1) getoutputptr //   //   */
+            dup3      // current_frame_ptr, result_ptr, end_ptr, frame_ptr
+            /* (1) getoutputptr //   current_frame_ptr, result_ptr, end_ptr, output_ptr   //   current_frame_ptr, result_ptr, end_ptr, output_ptr   */
 0xa0
             add
             mload
             mload  // actual output_ptr // current_frame_ptr, result_ptr, end_ptr, output_ptr
 
             swap1   // current_frame_ptr, result_ptr, output_ptr, end_ptr
-            dup2
+            dup2    // current_frame_ptr, result_ptr, output_ptr, end_ptr, output_ptr
+
             0x20
-            add
+            add     // current_frame_ptr, result_ptr, output_ptr, end_ptr, output_ptr
             mstore   // current_frame_ptr, result_ptr, output_ptr
 
             0x40
@@ -1030,8 +1031,6 @@ for_stack_3:
         add
         jump
     eval_native_function_post:
-        // save result in frame
-
         /* (10) getframe //   //   */
 0xe0
             mload
@@ -4130,7 +4129,17 @@ for_stack_6:
             mstore
 
             // lambda_ptr, new_env_ptr, new_frame_ptr, prev_frame_ptr
-            pop  // lambda_ptr, new_env_ptr, new_frame_ptr
+            /* (2) getoutputptr // lambda_ptr, new_env_ptr, new_frame_ptr, output_ptr   // lambda_ptr, new_env_ptr, new_frame_ptr, output_ptr   */
+0xa0
+            add
+            mload
+            dup2         // lambda_ptr, new_env_ptr, new_frame_ptr, output_ptr, new_frame_ptr
+            /* (1) setoutputptr // lambda_ptr, new_env_ptr, new_frame_ptr   // lambda_ptr, new_env_ptr, new_frame_ptr   */
+0xa0
+            add
+            mstore
+
+            // pop  // lambda_ptr, new_env_ptr, new_frame_ptr
 
             swap1  // lambda_ptr, new_frame_ptr, new_env_ptr
             dup2
@@ -4139,9 +4148,9 @@ for_stack_6:
             add
             mstore
 
-            swap1
-            dup2
-            /* (2) setdataptr //   //   */
+            swap1      // new_frame_ptr, lambda_ptr
+            dup2       // new_frame_ptr, lambda_ptr, new_frame_ptr
+            /* (2) setdataptr // new_frame_ptr   // new_frame_ptr   */
 0x20
             add
             mstore
@@ -4156,10 +4165,31 @@ for_stack_6:
             jump
 
         apply_xx_extra_eval_end:
-            // just leave on the stack the result
-
-            // previous frame
             /* (13) getframe //   //   */
+0xe0
+            mload
+            /* (5) getloco //   //   */
+0x60
+            add
+            mload
+            iszero   // jump if stack
+            apply_xx_extra_eval_end_both
+            jumpi
+
+            // mem - put result on stack
+            /* (14) getframe //   //   */
+0xe0
+            mload
+            /* (3) getoutputptr //   //   */
+0xa0
+            add
+            mload
+            0x40        // result_ptr ; end_ptr is at 0x20
+            add
+            mload
+        apply_xx_extra_eval_end_both:
+            // previous frame
+            /* (15) getframe //   //   */
 0xe0
             mload
             mload     // get previous frame
@@ -4504,7 +4534,7 @@ for_stack_8:
 // expects t2 pointer
     0x20
     add
-            /* (14) getframe // branch1_ptr, frame_ptr   // branch1_ptr, frame_ptr   */
+            /* (16) getframe // branch1_ptr, frame_ptr   // branch1_ptr, frame_ptr   */
 0xe0
             mload
             /* (3) setdataptr //   //   */
@@ -4521,7 +4551,7 @@ for_stack_8:
 // expects t2 pointer
     0x20
     add
-            /* (15) getframe // branch2_ptr, frame_ptr   // branch2_ptr, frame_ptr   */
+            /* (17) getframe // branch2_ptr, frame_ptr   // branch2_ptr, frame_ptr   */
 0xe0
             mload
             /* (4) setdataptr //   //   */
@@ -4532,7 +4562,7 @@ for_stack_8:
             tag_eval
             jump
         self_0x_extra:
-            /* (16) getframe //   //   */
+            /* (18) getframe //   //   */
 0xe0
             mload
             /* (1) getenvptr //   //   */
@@ -4546,7 +4576,7 @@ for_stack_8:
             jump
         super_1x_extra:
             // index
-            /* (17) getframe //   //   */
+            /* (19) getframe //   //   */
 0xe0
             mload
             swap1     // frame_ptr, super index

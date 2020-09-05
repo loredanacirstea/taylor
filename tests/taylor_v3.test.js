@@ -77,16 +77,10 @@ describe.each([
                 n
                 (self (add_ n 1) max)
             )
-        ) 3 1)`);
+        ) 0 2)`);  // 200
         expect(resp).toEqual(3);
+    }, 300000);
 
-        resp = await instance.call(`((fn* (n max) (if (gt_ n max)
-                n
-                (self (add_ n 1) max)
-            )
-        ) 0 2)`);
-        expect(resp).toEqual(3);
-    });
 
     let resp;
     for (name of Object.keys(tests.evm.tests)) {
