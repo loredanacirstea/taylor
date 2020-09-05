@@ -5,6 +5,7 @@ const malReader = require('../mal/reader.js');
 const malTypes = require('../mal/types.js');
 const { sendTransaction, call, getLogs } = require('../web3.js');
 const nativeEvm = require('./evm.js');
+const wrappedEvm = require('./evmw.js');
 const nativeCore = require('./core.js');
 
 const nativeEvm_ = {};
@@ -12,7 +13,7 @@ Object.keys(nativeEvm).forEach(fname => {
     nativeEvm_[fname + '_'] = nativeEvm[fname];
 });
 
-const nativeEnv = Object.assign({}, nativeEvm_, nativeCore);
+const nativeEnv = Object.assign({}, nativeEvm_, wrappedEvm, nativeCore);
 
 const {
     u2b, u2h, b2u, b2h, h2u, h2b,
@@ -112,7 +113,7 @@ function ast2h(ast, parent=null, unkownMap={}, defenv={}, arrItemType=null, reve
     if (!(ast instanceof Array)) ast = [ast];
 
     // add apply if needed and not applied yet
-    if (ast && ast[0][0] && ast[0][0].value === 'fn*' &&
+    if (ast && ast[0] && ast[0][0] && ast[0][0].value === 'fn*' &&
         (!parent || parent[0].value !== 'apply')
     ) {
         ast.splice(0, 0, malTypes._symbol('apply'));
@@ -133,7 +134,7 @@ function ast2h(ast, parent=null, unkownMap={}, defenv={}, arrItemType=null, reve
         // nil
         if (elem === null) return uint(0);
 
-        if (elem[0] && elem[0].value && ast2hSpecialMap[elem[0].value]) {
+        if (elem && elem[0] && elem[0].value && ast2hSpecialMap[elem[0].value]) {
             return ast2hSpecialMap[elem[0].value](elem, parent, unkownMap, defenv, arrItemType, reverseArgs, stack, envdepth);
         }
 

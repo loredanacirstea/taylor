@@ -3473,6 +3473,225 @@ selfdestruct_10:  // 0xff
             jump
             stop
             stop
+        /* (110) eopcode 0x10d, 111      */
+unused_111:  // 0x10d
+        stop
+        stop
+        stop
+        stop
+        stop
+        stop
+        stop
+        /* (111) eopcode 0x10e, 112      */
+unused_112:  // 0x10e
+        stop
+        stop
+        stop
+        stop
+        stop
+        stop
+        stop
+        /* (112) eopcode 0x10f, 113      */
+unused_113:  // 0x10f
+        stop
+        stop
+        stop
+        stop
+        stop
+        stop
+        stop
+        /* (113) eopcode 0x110, 114      */
+unused_114:  // 0x110
+        stop
+        stop
+        stop
+        stop
+        stop
+        stop
+        stop
+        /* (114) eopcode 0x111, 115      */
+unused_115:  // 0x111
+        stop
+        stop
+        stop
+        stop
+        stop
+        stop
+        stop
+        /* (115) eopcode 0x112, 116      */
+unused_116:  // 0x112
+        stop
+        stop
+        stop
+        stop
+        stop
+        stop
+        stop
+        /* (116) eopcode 0x113, 117      */
+unused_117:  // 0x113
+        stop
+        stop
+        stop
+        stop
+        stop
+        stop
+        stop
+        /* (117) eopcode 0x114, 118      */
+unused_118:  // 0x114
+        stop
+        stop
+        stop
+        stop
+        stop
+        stop
+        stop
+        /* (118) eopcode 0x115, 119      */
+unused_119:  // 0x115
+        stop
+        stop
+        stop
+        stop
+        stop
+        stop
+        stop
+        /* (119) eopcode 0x116, 120      */
+unused_120:  // 0x116
+        stop
+        stop
+        stop
+        stop
+        stop
+        stop
+        stop
+        /* (120) eopcode 0x117, 121      */
+unused_121:  // 0x117
+        stop
+        stop
+        stop
+        stop
+        stop
+        stop
+        stop
+        /* (121) eopcode 0x118, 122      */
+unused_122:  // 0x118
+        stop
+        stop
+        stop
+        stop
+        stop
+        stop
+        stop
+        /* (122) eopcode 0x119, 123      */
+unused_123:  // 0x119
+        stop
+        stop
+        stop
+        stop
+        stop
+        stop
+        stop
+        /* (123) eopcode 0x11a, 124      */
+unused_124:  // 0x11a
+        stop
+        stop
+        stop
+        stop
+        stop
+        stop
+        stop
+        /* (124) eopcode 0x11b, 125      */
+unused_125:  // 0x11b
+        stop
+        stop
+        stop
+        stop
+        stop
+        stop
+        stop
+        /* (125) eopcode 0x11c, 126      */
+unused_126:  // 0x11c
+        stop
+        stop
+        stop
+        stop
+        stop
+        stop
+        stop
+        /* (126) eopcode 0x11d, 127      */
+unused_127:  // 0x11d
+        stop
+        stop
+        stop
+        stop
+        stop
+        stop
+        stop
+        /* (127) eopcode 0x11e, 128      */
+unused_128:  // 0x11e
+        stop
+        stop
+        stop
+        stop
+        stop
+        stop
+        stop
+        /* (128) eopcode 0x11f, 129      */
+unused_129:  // 0x11f
+        stop
+        stop
+        stop
+        stop
+        stop
+        stop
+        stop
+        calldatacopy__21:     // 0x120
+            pop
+            calldatacopy__21_extra
+            //
+            // push
+            jump
+            stop
+            stop
+        codecopy__21:     // 0x121
+            pop
+            codecopy__21_extra
+            //
+            // push
+            jump
+            stop
+            stop
+        extcodecopy__31:     // 0x122
+            pop
+            extcodecopy__31_extra
+            //
+            // push
+            jump
+            stop
+            stop
+        returndatacopy__21:     // 0x123
+            pop
+            returndatacopy__21_extra
+            //
+            // push
+            jump
+            stop
+            stop
+        revert_10:     // 0x124
+            pop
+            revert_10_extra
+            //
+            // push
+            jump
+            stop
+            stop
+        keccak256_11:     // 0x125
+            pop
+            keccak256_11_extra
+            //
+            // push
+            jump
+            stop
+            stop
         jump_10_extra:
             0xe0        // start of data data_ptr
             // push1
@@ -3892,13 +4111,6 @@ for_stack_4:
             pop
             pop
             pop
-        return_10_extra:
-            dup1   // pointer
-            mload  // length
-            swap1
-            0x20
-            add
-            return
         unknown_11_extra:
             /* (11) getframe //  frame_ptr   //  frame_ptr   */
 0xe0
@@ -4628,6 +4840,174 @@ for_stack_9:
             add       // args, lambda_ptr
             mload
             apply_xx_extra
+            jump
+        return_10_extra:
+            dup1   // pointer
+            mload  // length
+            swap1
+            0x20
+            add
+            return
+        revert_10_extra:
+            dup1   // pointer
+            mload  // length
+            swap1
+            0x20
+            add
+            revert
+        calldatacopy__21_extra:
+                              // calld_length, calld_start
+            dup2              // calld_length, calld_start, calld_length
+            /* (1) t2_init__ 0x40    // calld_length, calld_start, mem_ptr__   // calld_length, calld_start, mem_ptr__   */
+// expects length // 0x40    // calld_length = freeMemPtr
+    dup1
+    0x20
+    add           // length, fulllength
+
+    // alloc 0x40    // calld_length    // freeMemPtr
+    0x40    // calld_length
+    mload
+    swap1
+    dup2
+    add
+    0x40    // calld_length
+    mstore     // length, ptr
+
+    dup1       // store length   // length, ptr, ptr
+    swap2      // ptr, ptr, length
+    swap1      // ptr, length, ptr
+    mstore     // ptr
+            swap2             // mem_ptr__, calld_start, calld_length
+            swap1             // mem_ptr__, calld_length, calld_start
+            dup3
+            /* (3) t2_ptr_ // mem_ptr__, calld_length, calld_start, ptr   // mem_ptr__, calld_length, calld_start, ptr   */
+// expects t2 pointer
+    0x20
+    add
+            calldatacopy      // mem_ptr__
+            0xc0
+            // push
+            mload
+            jump
+        codecopy__21_extra:
+                              // calld_length, calld_start
+            dup2              // calld_length, calld_start, calld_length
+            /* (2) t2_init__ 0x40    // calld_length, calld_start, mem_ptr__   // calld_length, calld_start, mem_ptr__   */
+// expects length // 0x40    // calld_length = freeMemPtr
+    dup1
+    0x20
+    add           // length, fulllength
+
+    // alloc 0x40    // calld_length    // freeMemPtr
+    0x40    // calld_length
+    mload
+    swap1
+    dup2
+    add
+    0x40    // calld_length
+    mstore     // length, ptr
+
+    dup1       // store length   // length, ptr, ptr
+    swap2      // ptr, ptr, length
+    swap1      // ptr, length, ptr
+    mstore     // ptr
+            swap2             // mem_ptr__, calld_start, calld_length
+            swap1             // mem_ptr__, calld_length, calld_start
+            dup3
+            /* (4) t2_ptr_ // mem_ptr__, calld_length, calld_start, ptr   // mem_ptr__, calld_length, calld_start, ptr   */
+// expects t2 pointer
+    0x20
+    add
+            codecopy          // mem_ptr__
+            0xc0
+            // push
+            mload
+            jump
+        extcodecopy__31_extra:
+                              // calld_length, calld_start, address
+            dup3              // calld_length, calld_start, address, calld_length
+            /* (3) t2_init__ 0x40    // calld_length, calld_start, address, mem_ptr__   // calld_length, calld_start, address, mem_ptr__   */
+// expects length // 0x40    // calld_length = freeMemPtr
+    dup1
+    0x20
+    add           // length, fulllength
+
+    // alloc 0x40    // calld_length    // freeMemPtr
+    0x40    // calld_length
+    mload
+    swap1
+    dup2
+    add
+    0x40    // calld_length
+    mstore     // length, ptr
+
+    dup1       // store length   // length, ptr, ptr
+    swap2      // ptr, ptr, length
+    swap1      // ptr, length, ptr
+    mstore     // ptr
+            swap3             // mem_ptr__, calld_start, address, calld_length
+            swap2             // mem_ptr__, calld_length, address, calld_start
+            swap1             // mem_ptr__, calld_length, calld_start, address
+            dup4
+            /* (5) t2_ptr_ // mem_ptr__, calld_length, calld_start, address, ptr   // mem_ptr__, calld_length, calld_start, address, ptr   */
+// expects t2 pointer
+    0x20
+    add
+            swap1             //  mem_ptr__, calld_length, calld_start, ptr, address
+            extcodecopy       // mem_ptr__
+            0xc0
+            // push
+            mload
+            jump
+        returndatacopy__21_extra:
+                              // calld_length, calld_start
+            dup2              // calld_length, calld_start, calld_length
+            /* (4) t2_init__ 0x40    // calld_length, calld_start, mem_ptr__   // calld_length, calld_start, mem_ptr__   */
+// expects length // 0x40    // calld_length = freeMemPtr
+    dup1
+    0x20
+    add           // length, fulllength
+
+    // alloc 0x40    // calld_length    // freeMemPtr
+    0x40    // calld_length
+    mload
+    swap1
+    dup2
+    add
+    0x40    // calld_length
+    mstore     // length, ptr
+
+    dup1       // store length   // length, ptr, ptr
+    swap2      // ptr, ptr, length
+    swap1      // ptr, length, ptr
+    mstore     // ptr
+            swap2             // mem_ptr__, calld_start, calld_length
+            swap1             // mem_ptr__, calld_length, calld_start
+            dup3
+            /* (6) t2_ptr_ // mem_ptr__, calld_length, calld_start, ptr   // mem_ptr__, calld_length, calld_start, ptr   */
+// expects t2 pointer
+    0x20
+    add
+            returndatacopy    // mem_ptr__
+            0xc0
+            // push
+            mload
+            jump
+        keccak256_11_extra:
+            // t2ptr__
+            dup1         // t2ptr__, t2ptr__
+            /* (0) t2_len_ // t2ptr__, len   // t2ptr__, len   */
+// expects t2 pointer
+    mload
+            swap1
+            /* (7) t2_ptr_ // len, ptr_   // len, ptr_   */
+// expects t2 pointer
+    0x20
+    add
+            keccak256
+            0xc0
+            // push
+            mload
             jump
 
     }

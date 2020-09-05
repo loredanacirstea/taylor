@@ -7,7 +7,45 @@ const tests = require('./json_tests/index.js');
 describe.each([
     ['chain'],
     // ['js'],
-])(' (%s)', (backendname) => {
+])('Test EVM (%s)', (backendname) => {
+    let instance;
+    if (backendname === 'chain') {
+        beforeAll(() => {
+            return taylor.deployRebuild(3).then(t => {
+              console.log('****Tay', t.address);
+              instance = tay.getTay(t.provider, t.signer)(t.address);
+            })
+            //   .then(() => tay.js.getBackend(instance.address, instance.provider, instance.signer))
+        }, 50000);
+    } else {
+        // beforeAll(() => {
+        //     return tay.js.getBackend(null, provider, signer)
+        //         .then(inst => instance = inst);
+        // });
+    }
+
+    let resp;
+    for (name of Object.keys(tests.evm.tests)) {
+        const tts = tests.evm.tests[name]
+        tts.map((tt, i) => {
+            let testapi = test;
+            if (tt.skip) testapi = test.skip;
+            if (tt.only) testapi = test.only;
+
+            testapi(name + '_' + i, async function () {
+                resp = await instance.call(tt.test, tt.txObj || {}, tt.decode);
+                if (tt.process) resp = tt.process(resp, instance);
+                expect(resp).toEqual(tt.result);
+            }, tt.wait || 10000);
+        });
+    }
+
+});
+
+describe.each([
+    ['chain'],
+    // ['js'],
+])('Test core (%s)', (backendname) => {
     let instance;
     if (backendname === 'chain') {
         beforeAll(() => {
@@ -82,21 +120,6 @@ describe.each([
     }, 300000);
 
 
-    let resp;
-    for (name of Object.keys(tests.evm.tests)) {
-        const tts = tests.evm.tests[name]
-        tts.map((tt, i) => {
-            let testapi = test;
-            if (tt.skip) testapi = test.skip;
-            if (tt.only) testapi = test.only;
-
-            testapi(name + '_' + i, async function () {
-                resp = await instance.call(tt.test, tt.txObj || {}, tt.decode);
-                if (tt.process) resp = tt.process(resp, instance);
-                expect(resp).toEqual(tt.result);
-            }, tt.wait || 10000);
-        });
-    }
     it('recursive lambda memory', async function () {
         let resp;
         resp = await instance.call(`(memory
@@ -162,5 +185,4 @@ describe.each([
         ) 6)`);
         expect(resp).toEqual(3);
     }, 10000);
-
 });
