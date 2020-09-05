@@ -106,7 +106,40 @@ describe.each([
             )
         ) 0 2) )`);
         expect(resp).toEqual(3);
-    });
+    }, 300000);
+
+    it('recursive lambda memory', async function () {
+        let resp;
+        resp = await instance.call(`(memory
+            ((fn* (n max) (if (gt_ n max)
+                n
+                (add_ (self (add_ n 1) max) 5)
+            )
+        ) 0 2) )`); // 100
+        expect(resp).toEqual(18);
+    }, 300000);
+
+    it('fibonacci lambda', async function () {
+        let resp;
+        resp = await instance.call(`((fn* (n)
+            (if (or_ (eq_ n 1) (eq_ n 2))
+                1
+                (add_ (self (sub_ n 1)) (self (sub_ n 2)) )
+            )
+        ) 8)`);  // 10
+        expect(resp).toEqual(21);
+    }, 30000);
+
+    it('fibonacci lambda memory', async function () {
+        let resp;
+        resp = await instance.call(`(memory ((fn* (n)
+            (if (or_ (eq_ n 1) (eq_ n 2))
+                1
+                (add_ (self (sub_ n 1)) (self (sub_ n 2)) )
+            )
+        ) 8) )`);  // 10
+        expect(resp).toEqual(21);
+    }, 1000000);
 
     it('test fn in fn', async function () {
         let resp;

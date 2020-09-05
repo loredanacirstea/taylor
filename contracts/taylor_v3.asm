@@ -936,7 +936,13 @@ for_stack_2:
         jump
 
     test_tag:
-        stop
+        0x00
+        mstore
+        0x20
+        mstore
+        0x40
+        0x00
+        return
 
     eval_function_for_end_mem:
         /* (9) getframe //   //   */
@@ -4184,7 +4190,9 @@ for_stack_6:
 0xa0
             add
             mload
-            0x40        // result_ptr ; end_ptr is at 0x20
+
+            mload   // output_ptr - arity
+            0x40    // result_ptr ; end_ptr is at 0x20
             add
             mload
         apply_xx_extra_eval_end_both:
