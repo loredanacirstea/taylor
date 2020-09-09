@@ -20,7 +20,7 @@ const tests = {
     t2_ptr_: [
         {
             test: '(t2_ptr_ (mmstore__ 12))',
-            result: 1972,
+            result: 1620,
             decode: ['uint'],
         },
     ],
@@ -137,17 +137,37 @@ const tests = {
                     1
                     (add_ (self (sub_ n 1)) (self (sub_ n 2)) )
                 )
-            ) 8)`,
+            ) 8)`,  // 19
             result: 21,
-            wait: 60000,
+            wait: 600000,
+        },
+        {
+            test: `(memory ( (fn* (n)
+                (if (lt_ n 3)
+                    1
+                    (add_ (self (sub_ n 1)) (self (sub_ n 2)) )
+                )
+            ) 8))`,  // 18
+            result: 21,
+            wait: 600000,
         },
         {
             test: `((fn* (n max) (if (gt_ n max)
                     n
                     (self (add_ n 1) max)
                 )
-            ) 0 4)`,
+            ) 0 4)`, // 500
             result: 5,
+            wait: 600000,
+        },
+        {
+            test: `(memory ((fn* (n max) (if (gt_ n max)
+                    n
+                    (self (add_ n 1) max)
+                )
+            ) 0 4))`, // 450
+            result: 5,
+            wait: 600000,
         }
     ],
 }

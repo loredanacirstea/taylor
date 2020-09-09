@@ -377,14 +377,14 @@ const tests = {
     codecopy__: [
         {
             test: '(return# (codecopy__ 0 10 ))',
-            result: '0x61039960a052603a60c0',
+            result: '0x6103aa60a052603a60c0',
             decode: null,
         },
     ],
     extcodecopy__: [
         {
             test: '(return# (extcodecopy__ (address_ ) 0 10 ))',
-            result: '0x61039960a052603a60c0',
+            result: '0x6103aa60a052603a60c0',
             decode: null,
         },
     ],

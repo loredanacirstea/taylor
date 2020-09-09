@@ -879,9 +879,24 @@ for_stack_2:
 0xe0
             mload
 
+                dup1
                 mload     // get previous frame
                 0xe0
                 mstore
+
+                /* (0) dealloc_frame //   //   */
+// expects frame ptr
+            dup1
+            0x140  // get del mark
+            add
+            mload
+            keep_frame_0
+            jumpi
+            dup1  // just to keep stack balanced
+            0x40
+            mstore
+            keep_frame_0:
+                pop
             eval_function_for_content_post:
 
     forloop_end_0:
@@ -4412,12 +4427,20 @@ unused_158:  // 0x14f
     add
     0x40
     mstore
+            0x01
+            /* (11) getframe //   //   */
+0xe0
+            mload
+            /* (1) setdelmarker // do not delete frame   // do not delete frame   */
+0x140
+            add
+            mstore
             0xc0
             // push
             mload
             jump
         unknown_11_extra:
-            /* (11) getframe //  frame_ptr   //  frame_ptr   */
+            /* (12) getframe //  frame_ptr   //  frame_ptr   */
 0xe0
             mload
             dup1        //  frame_ptr, frame_ptr
@@ -4628,7 +4651,7 @@ for_stack_5:
     0x40  // lambda_ptr
     mstore
 
-            /* (12) getframe // lambda_ptr, new_env_ptr, new_frame_ptr, prev_frame_ptr   // lambda_ptr, new_env_ptr, new_frame_ptr, prev_frame_ptr   */
+            /* (13) getframe // lambda_ptr, new_env_ptr, new_frame_ptr, prev_frame_ptr   // lambda_ptr, new_env_ptr, new_frame_ptr, prev_frame_ptr   */
 0xe0
             mload
             dup1   // lambda_ptr, new_env_ptr, new_frame_ptr, prev_frame_ptr, prev_frame_ptr
@@ -4689,7 +4712,7 @@ for_stack_5:
             jump
 
         apply_xx_extra_eval_end:
-            /* (13) getframe //   //   */
+            /* (14) getframe //   //   */
 0xe0
             mload
             /* (5) getloco //   //   */
@@ -4701,7 +4724,7 @@ for_stack_5:
             jumpi
 
             // mem - put result on stack
-            /* (14) getframe //   //   */
+            /* (15) getframe //   //   */
 0xe0
             mload
             /* (3) getoutputptr //   //   */
@@ -4715,7 +4738,7 @@ for_stack_5:
             mload
         apply_xx_extra_eval_end_both:
             // previous frame
-            /* (15) getframe //   //   */
+            /* (16) getframe //   //   */
 0xe0
             mload
             mload     // get previous frame
@@ -4962,6 +4985,15 @@ for_stack_7:
             pop
             pop   // leave target_ptr on stack
 
+            0x01
+            /* (17) getframe //   //   */
+0xe0
+            mload
+            /* (2) setdelmarker // do not delete frame   // do not delete frame   */
+0x140
+            add
+            mstore
+
             0xc0
             // push
             mload
@@ -5045,6 +5077,15 @@ for_stack_7:
     add
             mstore    // sig_ptr
 
+            0x01
+            /* (18) getframe //   //   */
+0xe0
+            mload
+            /* (3) setdelmarker // do not delete frame   // do not delete frame   */
+0x140
+            add
+            mstore
+
             0xc0
             // push
             mload
@@ -5060,7 +5101,7 @@ for_stack_7:
 // expects t2 pointer
     0x20
     add
-            /* (16) getframe // branch1_ptr, frame_ptr   // branch1_ptr, frame_ptr   */
+            /* (19) getframe // branch1_ptr, frame_ptr   // branch1_ptr, frame_ptr   */
 0xe0
             mload
             /* (3) setdataptr //   //   */
@@ -5077,7 +5118,7 @@ for_stack_7:
 // expects t2 pointer
     0x20
     add
-            /* (17) getframe // branch2_ptr, frame_ptr   // branch2_ptr, frame_ptr   */
+            /* (20) getframe // branch2_ptr, frame_ptr   // branch2_ptr, frame_ptr   */
 0xe0
             mload
             /* (4) setdataptr //   //   */
@@ -5088,7 +5129,7 @@ for_stack_7:
             tag_eval
             jump
         self_0x_extra:
-            /* (18) getframe //   //   */
+            /* (21) getframe //   //   */
 0xe0
             mload
             /* (1) getenvptr //   //   */
@@ -5102,7 +5143,7 @@ for_stack_7:
             jump
         super_1x_extra:
             // index
-            /* (19) getframe //   //   */
+            /* (22) getframe //   //   */
 0xe0
             mload
             swap1     // frame_ptr, super index
@@ -5191,6 +5232,16 @@ for_stack_8:
     0x20
     add
             calldatacopy      // mem_ptr__
+
+            0x01
+            /* (23) getframe //   //   */
+0xe0
+            mload
+            /* (4) setdelmarker // do not delete frame   // do not delete frame   */
+0x140
+            add
+            mstore
+
             0xc0
             // push
             mload
@@ -5225,6 +5276,16 @@ for_stack_8:
     0x20
     add
             codecopy          // mem_ptr__
+
+            0x01
+            /* (24) getframe //   //   */
+0xe0
+            mload
+            /* (5) setdelmarker // do not delete frame   // do not delete frame   */
+0x140
+            add
+            mstore
+
             0xc0
             // push
             mload
@@ -5261,6 +5322,16 @@ for_stack_8:
     add
             swap1             //  mem_ptr__, calld_length, calld_start, ptr, address
             extcodecopy       // mem_ptr__
+
+            0x01
+            /* (25) getframe //   //   */
+0xe0
+            mload
+            /* (6) setdelmarker // do not delete frame   // do not delete frame   */
+0x140
+            add
+            mstore
+
             0xc0
             // push
             mload
@@ -5295,6 +5366,16 @@ for_stack_8:
     0x20
     add
             returndatacopy    // mem_ptr__
+
+            0x01
+            /* (26) getframe //   //   */
+0xe0
+            mload
+            /* (7) setdelmarker // do not delete frame   // do not delete frame   */
+0x140
+            add
+            mstore
+
             0xc0
             // push
             mload
@@ -5318,7 +5399,7 @@ for_stack_8:
         mmstore__x1_extra:
             // multiple 32byte items
 
-            /* (20) getframe //   //   */
+            /* (27) getframe //   //   */
 0xe0
             mload
             /* (7) getdataptr //   //   */
@@ -5399,6 +5480,16 @@ for_stack_9:
         jump
         mmstore__x1_extra_1:
             pop
+
+            0x01
+            /* (28) getframe //   //   */
+0xe0
+            mload
+            /* (8) setdelmarker // do not delete frame   // do not delete frame   */
+0x140
+            add
+            mstore
+
             0xc0
             // push
             mload
@@ -5406,7 +5497,7 @@ for_stack_9:
         mmstore8__x1_extra:
             // multiple 32byte items
 
-            /* (21) getframe //   //   */
+            /* (29) getframe //   //   */
 0xe0
             mload
             /* (8) getdataptr //   //   */
@@ -5457,6 +5548,16 @@ for_stack_9:
 
         mmstore8__x1_extra_1:
             pop
+
+            0x01
+            /* (30) getframe //   //   */
+0xe0
+            mload
+            /* (9) setdelmarker // do not delete frame   // do not delete frame   */
+0x140
+            add
+            mstore
+
             0xc0
             // push
             mload
@@ -5586,6 +5687,15 @@ for_stack_9:
     add
             returndatacopy       // ptr__
 
+            0x01
+            /* (31) getframe //   //   */
+0xe0
+            mload
+            /* (10) setdelmarker // do not delete frame   // do not delete frame   */
+0x140
+            add
+            mstore
+
             0xc0
             // push
             mload
@@ -5595,6 +5705,16 @@ for_stack_9:
 // expects t2 pointer
     0x20
     add
+
+            0x01
+            /* (32) getframe //   //   */
+0xe0
+            mload
+            /* (11) setdelmarker // do not delete frame   // do not delete frame   */
+0x140
+            add
+            mstore
+
             0xc0
             // push
             mload
@@ -5610,14 +5730,14 @@ for_stack_9:
         log__x0_extra:
             // topics, data_ptr__
             dup1
-            /* (6) t2_len_ //   //    */
+            /* (6) t2_len_ //   //   */
 // expects t2 pointer
     mload
             /* (16) t2_ptr_ // topics, data_len, data_ptr   // topics, data_len, data_ptr   */
 // expects t2 pointer
     0x20
     add
-            /* (22) getframe //   //   */
+            /* (33) getframe //   //   */
 0xe0
             mload
             /* (9) getdataptr //   //   */
@@ -5664,12 +5784,22 @@ for_stack_9:
             log0_20
             jump
         join__x1_extra:
+
+            0x01
+            /* (34) getframe //   //   */
+0xe0
+            mload
+            /* (12) setdelmarker // do not delete frame   // do not delete frame   */
+0x140
+            add
+            mstore
+
             0xc0
             // push
             mload
             jump
         tuple___x1_extra:
-            /* (23) getframe //   //   */
+            /* (35) getframe //   //   */
 0xe0
             mload
             /* (10) getdataptr //   //   */
@@ -5751,6 +5881,16 @@ for_stack_10:
         jump
         tuple___x1_extra_:
             pop
+
+            0x01
+            /* (36) getframe //   //   */
+0xe0
+            mload
+            /* (13) setdelmarker // do not delete frame   // do not delete frame   */
+0x140
+            add
+            mstore
+
             0xc0
             // push
             mload
@@ -5781,7 +5921,7 @@ for_stack_10:
     dup2     // ptr, arity, ptr
     mstore   // store arity at pointer -> ptr
 
-            /* (24) getframe //   //   */
+            /* (37) getframe //   //   */
 0xe0
             mload
             /* (4) getoutputptr //   //   */
@@ -5800,7 +5940,7 @@ for_stack_10:
     mstore
 
             map_xx_extra_loop
-            /* (25) getframe //   //   */
+            /* (38) getframe //   //   */
 0xe0
             mload
             /* (3) setreturn //   //   */
@@ -5809,7 +5949,7 @@ for_stack_10:
             mstore
 
             0x00
-            /* (26) getframe //   //   */
+            /* (39) getframe //   //   */
 0xe0
             mload
             /* (1) setforstep //   //   */
@@ -5834,7 +5974,7 @@ for_stack_10:
 
         map_xx_extra_loop:
             // arg_ptr, lambda_ptr, result
-            /* (27) getframe //   //   */
+            /* (40) getframe //   //   */
 0xe0
             mload
             /* (5) getoutputptr // arg_ptr, lambda_ptr, result, ptr   // arg_ptr, lambda_ptr, result, ptr   */
@@ -5843,7 +5983,7 @@ for_stack_10:
             mload
             mload
             0x01
-            /* (0) t3_item_ //   //    */
+            /* (0) t3_item_ //   //   */
 // expects t3 pointer, index on stack
     0x20
     mul
@@ -5882,7 +6022,7 @@ for_stack_10:
 
             pop
             pop
-            /* (28) getframe //   //   */
+            /* (41) getframe //   //   */
 0xe0
             mload
             /* (6) getoutputptr //   //   */
@@ -5892,7 +6032,7 @@ for_stack_10:
             mload
 
             0x01
-            /* (1) t3_item_ //   //    */
+            /* (1) t3_item_ //   //   */
 // expects t3 pointer, index on stack
     0x20
     mul
@@ -5902,7 +6042,7 @@ for_stack_10:
     mload
 
             eval_function_for_content     // usual return after a list item is processed
-            /* (29) getframe //   //   */
+            /* (42) getframe //   //   */
 0xe0
             mload
             /* (4) setreturn //   //   */
@@ -5910,12 +6050,12 @@ for_stack_10:
             add
             mstore
 
-            /* (30) getframe // result_ptr, frame_ptr   // result_ptr, frame_ptr   */
+            /* (43) getframe // result_ptr, frame_ptr   // result_ptr, frame_ptr   */
 0xe0
             mload
             swap1     // frame_ptr, result_ptr
 
-            /* (31) getframe //   //   */
+            /* (44) getframe //   //   */
 0xe0
             mload
             /* (7) getoutputptr //   //   */
@@ -5936,6 +6076,15 @@ for_stack_10:
 
             eval_native_function     // this is the usual value
             0xc0
+            mstore
+
+            0x01
+            /* (45) getframe //   //   */
+0xe0
+            mload
+            /* (14) setdelmarker // do not delete frame   // do not delete frame   */
+0x140
+            add
             mstore
 
             eval_end_processing        // go directly to processing end; expects frame_ptr, result_ptr, end_ptr
