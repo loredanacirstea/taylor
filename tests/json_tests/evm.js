@@ -444,22 +444,21 @@ const tests = {
             decode: ['bytes32'],
         },
         {
-            test: '(keccak256_ (mstore__ 1000))',
+            test: '(keccak256_ (mmstore__ 1000))',
             result: '0xef9d334ee3e15416314a60312ef616e881c3bfffe4b60b11befc2707c79b7d35',
             decode: ['bytes32'],
-            skip: true,
         },
     ],
     'revert#': [
         {
-            test: '(revert# (mstore__ 1000))',
+            test: '(revert# (mmstore__ 1000))',
             error: true,
             skip: true,
         }
     ],
     'return#': [
         {
-            test: '(return# (mstore__ 5))',
+            test: '(return# (mmstore__ 5))',
             result: 5,
             decode: ['uint'],
         }
@@ -478,23 +477,30 @@ const tests = {
             skip: true,
         },
     ],
-    mstore__: [
+    mmstore__: [
         {
-            test: '(return# (mstore__ 1000))',
+            test: '(return# (mmstore__ 1000))',
             result: 1000,
             decode: ['uint'],
         }
     ],
-    mstore8__: [
+    mmstore8__: [
         {
-            test: '(return# (mstore8__ 3))',
+            test: '(return# (mmstore8__ 3))',
             result: '0x03',
             decode: null,
         },
     ],
     mload_: [
         {
-            test: '(mload_ (tn_ptr_ (mstore__ 1000)))',
+            test: '(mload_ (tn_ptr_ (mmstore__ 1000)))',
+            result: 1000,
+            decode: ['uint'],
+        }
+    ],
+    mmload__: [
+        {
+            test: '(return# (mmstore__ 1000))',
             result: 1000,
             decode: ['uint'],
         }

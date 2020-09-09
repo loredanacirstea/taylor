@@ -3385,14 +3385,15 @@ selfdestruct_10:  // 0xff
             jump
             stop
             stop
-        mmultimstore_30: // 0x102
-            pop
-            mmultimstore_30_extra
-            //
-            // push
-            jump
-            stop
-            stop
+        /* (110) eopcode 0x102, 110      */
+unused_110:  // 0x102
+        stop
+        stop
+        stop
+        stop
+        stop
+        stop
+        stop
         unknown_11:   // 0x103
             pop
             unknown_11_extra
@@ -3473,7 +3474,7 @@ selfdestruct_10:  // 0xff
             jump
             stop
             stop
-        /* (110) eopcode 0x10d, 111      */
+        /* (111) eopcode 0x10d, 111      */
 unused_111:  // 0x10d
         stop
         stop
@@ -3482,7 +3483,7 @@ unused_111:  // 0x10d
         stop
         stop
         stop
-        /* (111) eopcode 0x10e, 112      */
+        /* (112) eopcode 0x10e, 112      */
 unused_112:  // 0x10e
         stop
         stop
@@ -3491,7 +3492,7 @@ unused_112:  // 0x10e
         stop
         stop
         stop
-        /* (112) eopcode 0x10f, 113      */
+        /* (113) eopcode 0x10f, 113      */
 unused_113:  // 0x10f
         stop
         stop
@@ -3500,7 +3501,7 @@ unused_113:  // 0x10f
         stop
         stop
         stop
-        /* (113) eopcode 0x110, 114      */
+        /* (114) eopcode 0x110, 114      */
 unused_114:  // 0x110
         stop
         stop
@@ -3509,7 +3510,7 @@ unused_114:  // 0x110
         stop
         stop
         stop
-        /* (114) eopcode 0x111, 115      */
+        /* (115) eopcode 0x111, 115      */
 unused_115:  // 0x111
         stop
         stop
@@ -3518,7 +3519,7 @@ unused_115:  // 0x111
         stop
         stop
         stop
-        /* (115) eopcode 0x112, 116      */
+        /* (116) eopcode 0x112, 116      */
 unused_116:  // 0x112
         stop
         stop
@@ -3527,7 +3528,7 @@ unused_116:  // 0x112
         stop
         stop
         stop
-        /* (116) eopcode 0x113, 117      */
+        /* (117) eopcode 0x113, 117      */
 unused_117:  // 0x113
         stop
         stop
@@ -3536,7 +3537,7 @@ unused_117:  // 0x113
         stop
         stop
         stop
-        /* (117) eopcode 0x114, 118      */
+        /* (118) eopcode 0x114, 118      */
 unused_118:  // 0x114
         stop
         stop
@@ -3545,7 +3546,7 @@ unused_118:  // 0x114
         stop
         stop
         stop
-        /* (118) eopcode 0x115, 119      */
+        /* (119) eopcode 0x115, 119      */
 unused_119:  // 0x115
         stop
         stop
@@ -3554,7 +3555,7 @@ unused_119:  // 0x115
         stop
         stop
         stop
-        /* (119) eopcode 0x116, 120      */
+        /* (120) eopcode 0x116, 120      */
 unused_120:  // 0x116
         stop
         stop
@@ -3563,7 +3564,7 @@ unused_120:  // 0x116
         stop
         stop
         stop
-        /* (120) eopcode 0x117, 121      */
+        /* (121) eopcode 0x117, 121      */
 unused_121:  // 0x117
         stop
         stop
@@ -3572,7 +3573,7 @@ unused_121:  // 0x117
         stop
         stop
         stop
-        /* (121) eopcode 0x118, 122      */
+        /* (122) eopcode 0x118, 122      */
 unused_122:  // 0x118
         stop
         stop
@@ -3581,7 +3582,7 @@ unused_122:  // 0x118
         stop
         stop
         stop
-        /* (122) eopcode 0x119, 123      */
+        /* (123) eopcode 0x119, 123      */
 unused_123:  // 0x119
         stop
         stop
@@ -3590,7 +3591,7 @@ unused_123:  // 0x119
         stop
         stop
         stop
-        /* (123) eopcode 0x11a, 124      */
+        /* (124) eopcode 0x11a, 124      */
 unused_124:  // 0x11a
         stop
         stop
@@ -3599,7 +3600,7 @@ unused_124:  // 0x11a
         stop
         stop
         stop
-        /* (124) eopcode 0x11b, 125      */
+        /* (125) eopcode 0x11b, 125      */
 unused_125:  // 0x11b
         stop
         stop
@@ -3608,7 +3609,7 @@ unused_125:  // 0x11b
         stop
         stop
         stop
-        /* (125) eopcode 0x11c, 126      */
+        /* (126) eopcode 0x11c, 126      */
 unused_126:  // 0x11c
         stop
         stop
@@ -3617,7 +3618,7 @@ unused_126:  // 0x11c
         stop
         stop
         stop
-        /* (126) eopcode 0x11d, 127      */
+        /* (127) eopcode 0x11d, 127      */
 unused_127:  // 0x11d
         stop
         stop
@@ -3626,7 +3627,7 @@ unused_127:  // 0x11d
         stop
         stop
         stop
-        /* (127) eopcode 0x11e, 128      */
+        /* (128) eopcode 0x11e, 128      */
 unused_128:  // 0x11e
         stop
         stop
@@ -3635,7 +3636,7 @@ unused_128:  // 0x11e
         stop
         stop
         stop
-        /* (128) eopcode 0x11f, 129      */
+        /* (129) eopcode 0x11f, 129      */
 unused_129:  // 0x11f
         stop
         stop
@@ -3687,6 +3688,102 @@ unused_129:  // 0x11f
         keccak256_11:     // 0x125
             pop
             keccak256_11_extra
+            //
+            // push
+            jump
+            stop
+            stop
+        mmstore__x1: // 0x126
+            pop
+            mmstore__x1_extra
+            //
+            // push
+            jump
+            stop
+            stop
+        mmstore8__x1: // 0x127
+            pop
+            mmstore8__x1_extra
+            //
+            // push
+            jump
+            stop
+            stop
+        mmload__21: // 0x128
+            pop
+            mmload__21_extra
+            //
+            // push
+            jump
+            stop
+            stop
+        msload__21: // 0x129
+            pop
+            msload__21_extra
+            //
+            // push
+            jump
+            stop
+            stop
+        msstore_20: // 0x12a
+            pop
+            msstore_20_extra
+            //
+            // push
+            jump
+            stop
+            stop
+        call__21:       // 0x12b
+            pop
+            call__21_extra
+            //
+            // push
+            jump
+            stop
+            stop
+        call_bang__31:  // 0x12c
+            pop
+            call_bang__31_extra
+            //
+            // push
+            jump
+            stop
+            stop
+        callcode__31:    // 0x12d
+            pop
+            callcode__31_extra
+            //
+            // push
+            jump
+            stop
+            stop
+        delegatecall__21:     // 0x12e
+            pop
+            delegatecall__21_extra
+            //
+            // push
+            jump
+            stop
+            stop
+        log__x0:     // 0x12f
+            pop
+            log__x0_extra
+            //
+            // push
+            jump
+            stop
+            stop
+        t2_ptr_11:            // 0x130
+            pop
+            t2_ptr_11_extra
+            //
+            // push
+            jump
+            stop
+            stop
+        t2_len_11:            // 0x131
+            pop
+            t2_len_11_extra
             //
             // push
             jump
@@ -4043,74 +4140,6 @@ unused_129:  // 0x11f
             // push
             mload
             jump
-        mmultimstore_30_extra:
-            /* (1) mmultimstore //   //   */
-// alloc before using it
-            // size_bytes, source_ptr, target_ptr
-            dup3   // size_bytes
-
-            // calc slots
-            0x20
-            dup2
-            div
-
-            0x00
-            0x20
-            dup4
-            mod
-            gt
-            add
-
-            swap1
-            pop
-
-            // end calc slots
-
-            swap3            // slots, source_ptr, target_ptr ; replace length with slots
-            pop
-
-            mmultimstore_end_1
-            dup4             // slots
-            0x00
-
-for_stack_4:
-        dup2   // end
-        dup2   // start
-        lt
-        forloop_stack_4
-        jumpi
-        pop    // pop end, step
-        pop
-        jump
-    forloop_stack_4:   // any content variables are kept after jumptag, end, step
-
-                // slots, source_ptr, target_ptr, tag, end, step
-                dup5
-                mload
-                dup5
-                mstore
-
-                dup5
-                0x20
-                add
-                swap5
-                pop
-
-                dup4
-                0x20
-                add
-                swap4
-                pop
-
-    forloop_end_stack_4:
-        0x01   // start/step first
-        add
-        for_stack_4
-        jump
-        mmultimstore_end_1:
-            pop
-            pop
-            pop
         unknown_11_extra:
             /* (11) getframe //  frame_ptr   //  frame_ptr   */
 0xe0
@@ -4148,16 +4177,16 @@ for_stack_4:
             swap1                  // frame_ptr, tag, index
             0x00
 
-for_stack_5:
+for_stack_4:
         dup2   // end
         dup2   // start
         lt
-        forloop_stack_5
+        forloop_stack_4
         jumpi
         pop    // pop end, step
         pop
         jump
-    forloop_stack_5:   // any content variables are kept after jumptag, end, step
+    forloop_stack_4:   // any content variables are kept after jumptag, end, step
 
                 // frame_ptr, tag, end, step
                 dup4
@@ -4165,10 +4194,10 @@ for_stack_5:
                 swap4
                 pop     // replace with prev_frame_ptr
 
-    forloop_end_stack_5:
+    forloop_end_stack_4:
         0x01   // start/step first
         add
-        for_stack_5
+        for_stack_4
         jump
             getsuperenv_0:
                 // last frame_ptr
@@ -4268,16 +4297,16 @@ for_stack_5:
             swap1  // args, lambda_ptr, new_env_ptr, current_env_ptr, tag, lambda_arity
             0x00
 
-for_stack_6:
+for_stack_5:
         dup2   // end
         dup2   // start
         lt
-        forloop_stack_6
+        forloop_stack_5
         jumpi
         pop    // pop end, step
         pop
         jump
-    forloop_stack_6:   // any content variables are kept after jumptag, end, step
+    forloop_stack_5:   // any content variables are kept after jumptag, end, step
 
                 // args, lambda_ptr, new_env_ptr, current_env_ptr, tag, end, step
 
@@ -4302,10 +4331,10 @@ for_stack_6:
                 swap6
                 pop
 
-    forloop_end_stack_6:
+    forloop_end_stack_5:
         0x01   // start/step first
         add
-        for_stack_6
+        for_stack_5
         jump
 
         apply_xx_extra_mfor_end:
@@ -4482,16 +4511,16 @@ for_stack_6:
             swap1             // source_ptr, key, tag, slots/end
             0x00
 
-for_stack_7:
+for_stack_6:
         dup2   // end
         dup2   // start
         lt
-        forloop_stack_7
+        forloop_stack_6
         jumpi
         pop    // pop end, step
         pop
         jump
-    forloop_stack_7:   // any content variables are kept after jumptag, end, step
+    forloop_stack_6:   // any content variables are kept after jumptag, end, step
 
                 // source_ptr, key, tag, end, step
 
@@ -4512,10 +4541,10 @@ for_stack_7:
                 swap4
                 pop
 
-    forloop_end_stack_7:
+    forloop_end_stack_6:
         0x01   // start/step first
         add
-        for_stack_7
+        for_stack_6
         jump
         mmultisstore_end_0:
             pop
@@ -4617,16 +4646,16 @@ for_stack_7:
             dup4             // slots
             0x00
 
-for_stack_8:
+for_stack_7:
         dup2   // end
         dup2   // start
         lt
-        forloop_stack_8
+        forloop_stack_7
         jumpi
         pop    // pop end, step
         pop
         jump
-    forloop_stack_8:   // any content variables are kept after jumptag, end, step
+    forloop_stack_7:   // any content variables are kept after jumptag, end, step
 
                 // target_ptr, slots, target_ptr, key2, tag, end, step
                 dup4
@@ -4646,10 +4675,10 @@ for_stack_8:
                 swap4
                 pop
 
-    forloop_end_stack_8:
+    forloop_end_stack_7:
         0x01   // start/step first
         add
-        for_stack_8
+        for_stack_7
         jump
         mmultisload_end_0:
             pop
@@ -4807,16 +4836,16 @@ for_stack_8:
             swap1                  // frame_ptr, tag, index
             0x00
 
-for_stack_9:
+for_stack_8:
         dup2   // end
         dup2   // start
         lt
-        forloop_stack_9
+        forloop_stack_8
         jumpi
         pop    // pop end, step
         pop
         jump
-    forloop_stack_9:   // any content variables are kept after jumptag, end, step
+    forloop_stack_8:   // any content variables are kept after jumptag, end, step
 
                 // frame_ptr, tag, end, step
                 dup4
@@ -4824,10 +4853,10 @@ for_stack_9:
                 swap4
                 pop     // replace with prev_frame_ptr
 
-    forloop_end_stack_9:
+    forloop_end_stack_8:
         0x01   // start/step first
         add
-        for_stack_9
+        for_stack_8
         jump
             getsuperenv_1:
                 // last frame_ptr
@@ -5009,5 +5038,362 @@ for_stack_9:
             // push
             mload
             jump
+        mmstore__x1_extra:
+            // multiple 32byte items
+
+            /* (20) getframe //   //   */
+0xe0
+            mload
+            /* (7) getdataptr //   //   */
+0x20
+            add
+            mload
+            /* (6) getfourb //   //   */
+// expects a pointer
+            mload
+            0xe0
+            shr
+            /* (3) getfuncarity // items, arity   // items, arity   */
+// expects a 4byte value
+            0x3f
+            and
+            dup1            // items, arity, arity
+            0x20
+            mul
+            /* (5) t2_init__ 0x40  // items, arity, ptr   // items, arity, ptr   */
+// expects length // 0x40  // items = freeMemPtr
+    dup1
+    0x20
+    add           // length, fulllength
+
+    // alloc 0x40  // items    // freeMemPtr
+    0x40  // items
+    mload
+    swap1
+    dup2
+    add
+    0x40  // items
+    mstore     // length, ptr
+
+    dup1       // store length   // length, ptr, ptr
+    swap2      // ptr, ptr, length
+    swap1      // ptr, length, ptr
+    mstore     // ptr
+            dup1
+            /* (8) t2_ptr_ // items, arity, ptr, current ptr   // items, arity, ptr, current ptr   */
+// expects t2 pointer
+    0x20
+    add
+            swap1           // items, arity, current_ptr, ptr
+            swap2           // items, ptr, current_ptr, arity
+            mmstore__x1_extra_1
+            swap1           // items, ptr, current_ptr, tag, arity
+            0x00            // items, ptr, current_ptr, tag, arity, start
+
+for_stack_9:
+        dup2   // end
+        dup2   // start
+        lt
+        forloop_stack_9
+        jumpi
+        pop    // pop end, step
+        pop
+        jump
+    forloop_stack_9:   // any content variables are kept after jumptag, end, step
+
+                // items, ptr, current_ptr, tag, end, step
+                dup6     // items, ptr, current_ptr tag, end, step, item
+                dup5     // items, ptr, current_ptr, tag, end, step, item, current_ptr
+                mstore   // items, ptr, current_ptr, tag, end, step
+
+                swap1    // items, ptr, current_ptr, tag, step, end
+                swap2    // items, ptr, current_ptr, end, step, tag
+                swap3    // items, ptr, tag, end, step, current_ptr
+                0x20     // current_ptr increase
+                add
+                swap4    // items, current_ptr, tag, end, step, ptr
+                swap5
+                pop      // rest_items, ptr, current, tag, end, step
+
+    forloop_end_stack_9:
+        0x01   // start/step first
+        add
+        for_stack_9
+        jump
+        mmstore__x1_extra_1:
+            pop
+            0xc0
+            // push
+            mload
+            jump
+        mmstore8__x1_extra:
+            // multiple 32byte items
+
+            /* (21) getframe //   //   */
+0xe0
+            mload
+            /* (8) getdataptr //   //   */
+0x20
+            add
+            mload
+            /* (7) getfourb //   //   */
+// expects a pointer
+            mload
+            0xe0
+            shr
+            /* (4) getfuncarity // items, arity   // items, arity   */
+// expects a 4byte value
+            0x3f
+            and
+            dup1            // items, arity, arity
+            0x20
+            mul
+            /* (6) t2_init__ 0x40  // items, arity, ptr   // items, arity, ptr   */
+// expects length // 0x40  // items = freeMemPtr
+    dup1
+    0x20
+    add           // length, fulllength
+
+    // alloc 0x40  // items    // freeMemPtr
+    0x40  // items
+    mload
+    swap1
+    dup2
+    add
+    0x40  // items
+    mstore     // length, ptr
+
+    dup1       // store length   // length, ptr, ptr
+    swap2      // ptr, ptr, length
+    swap1      // ptr, length, ptr
+    mstore     // ptr
+            dup1
+            /* (9) t2_ptr_ // items, arity, ptr, current ptr   // items, arity, ptr, current ptr   */
+// expects t2 pointer
+    0x20
+    add
+            swap1           // items, arity, current_ptr, ptr
+            swap2           // items, ptr, current_ptr, arity
+            mmstore8__x1_extra_1
+            swap1           // items, ptr, current_ptr, tag, arity
+            0x00            // items, ptr, current_ptr, tag, arity, start
+
+        mmstore8__x1_extra_1:
+            pop
+            0xc0
+            // push
+            mload
+            jump
+        mmload__21_extra:
+            0xc0
+            // push
+            mload
+            jump
+        msstore_20_extra:
+            0xc0
+            // push
+            mload
+            jump
+        msload__21_extra:
+            0xc0
+            // push
+            mload
+            jump
+        call__21_extra:
+            // data_ptr, addr
+            0x00
+            0x00
+            dup4
+            /* (1) t2_len_ //   //   */
+// expects t2 pointer
+    mload
+            dup5
+            /* (10) t2_ptr_ // data_ptr, addr, out_size, out_ptr, in_size, in_ptr   // data_ptr, addr, out_size, out_ptr, in_size, in_ptr   */
+// expects t2 pointer
+    0x20
+    add
+            dup5       // data_ptr, addr, out_size, out_ptr, in_size, in_ptr, addr
+            gas
+            staticcall
+            call__common
+            jump
+        call_bang__31_extra:
+            // data_ptr, value, addr
+            0x00
+            0x00       // data_ptr, value, addr, out_size, out_ptr
+            dup5       // data_ptr, value, addr, out_size, out_ptr, data_ptr
+            /* (2) t2_len_ //   //   */
+// expects t2 pointer
+    mload
+            dup6
+            /* (11) t2_ptr_ // data_ptr, value, addr, out_size, out_ptr, in_size, in_ptr   // data_ptr, value, addr, out_size, out_ptr, in_size, in_ptr   */
+// expects t2 pointer
+    0x20
+    add
+            dup6       // data_ptr, value, addr, out_size, out_ptr, in_size, in_ptr, value
+            dup6       // data_ptr, value, addr, out_size, out_ptr, in_size, in_ptr, value, addr
+            gas
+            call
+            call__common
+            jump
+        callcode__31_extra:
+            // data_ptr, value, addr
+            0x00
+            0x00       // data_ptr, value, addr, out_size, out_ptr
+            dup5       // data_ptr, value, addr, out_size, out_ptr, data_ptr
+            /* (3) t2_len_ //   //   */
+// expects t2 pointer
+    mload
+            dup6
+            /* (12) t2_ptr_ // data_ptr, value, addr, out_size, out_ptr, in_size, in_ptr   // data_ptr, value, addr, out_size, out_ptr, in_size, in_ptr   */
+// expects t2 pointer
+    0x20
+    add
+            dup6       // data_ptr, value, addr, out_size, out_ptr, in_size, in_ptr, value
+            dup6       // data_ptr, value, addr, out_size, out_ptr, in_size, in_ptr, value, addr
+            gas
+            callcode
+            call__common
+            jump
+        delegatecall__21_extra:
+            // data_ptr, addr
+            0x00
+            0x00
+            dup4
+            /* (4) t2_len_ //   //   */
+// expects t2 pointer
+    mload
+            dup5
+            /* (13) t2_ptr_ // data_ptr, addr, out_size, out_ptr, in_size, in_ptr   // data_ptr, addr, out_size, out_ptr, in_size, in_ptr   */
+// expects t2 pointer
+    0x20
+    add
+            dup5       // data_ptr, addr, out_size, out_ptr, in_size, in_ptr, addr
+            gas
+            delegatecall
+            call__common
+            jump
+        call__common:
+            // if failed
+            iszero
+            revert_internal
+            jumpi
+
+            // success
+            returndatasize
+            /* (7) t2_init__ 0x40       // ptr__   // ptr__   */
+// expects length // 0x40       // ptr__ = freeMemPtr
+    dup1
+    0x20
+    add           // length, fulllength
+
+    // alloc 0x40       // ptr__    // freeMemPtr
+    0x40       // ptr__
+    mload
+    swap1
+    dup2
+    add
+    0x40       // ptr__
+    mstore     // length, ptr
+
+    dup1       // store length   // length, ptr, ptr
+    swap2      // ptr, ptr, length
+    swap1      // ptr, length, ptr
+    mstore     // ptr
+            returndatasize
+            0x00                 // ptr__, size, rptr
+            dup3                 // ptr__, size, rptr, ptr__
+            /* (14) t2_ptr_ // ptr__, size, rptr, ptr   // ptr__, size, rptr, ptr   */
+// expects t2 pointer
+    0x20
+    add
+            returndatacopy       // ptr__
+
+            0xc0
+            // push
+            mload
+            jump
+        t2_ptr_11_extra:
+            /* (15) t2_ptr_ //   //   */
+// expects t2 pointer
+    0x20
+    add
+            0xc0
+            // push
+            mload
+            jump
+        t2_len_11_extra:
+            /* (5) t2_len_ //   //   */
+// expects t2 pointer
+    mload
+            0xc0
+            // push
+            mload
+            jump
+        log__x0_extra:
+            // topics, data_ptr__
+            dup1
+            /* (6) t2_len_ //   //    */
+// expects t2 pointer
+    mload
+            /* (16) t2_ptr_ // topics, data_len, data_ptr   // topics, data_len, data_ptr   */
+// expects t2 pointer
+    0x20
+    add
+            /* (22) getframe //   //   */
+0xe0
+            mload
+            /* (9) getdataptr //   //   */
+0x20
+            add
+            mload
+            /* (8) getfourb //   //   */
+// expects a pointer
+            mload
+            0xe0
+            shr
+            /* (5) getfuncarity // topics, data_len, data_ptr, arity   // topics, data_len, data_ptr, arity   */
+// expects a 4byte value
+            0x3f
+            and
+            0x01
+            swap1
+            sub
+
+            dup1
+            0x04
+            eq
+            log4_60
+            jumpi
+
+            dup1
+            0x03
+            eq
+            log3_50
+            jumpi
+
+            dup1
+            0x02
+            eq
+            log2_40
+            jumpi
+
+            dup1
+            0x01
+            eq
+            log1_30
+            jumpi
+
+            log0_20
+            jump
+        revert_internal:
+            // error data, error code
+            0x00
+            mstore
+            0x20
+            mstore
+            0x40
+            0x00
+            revert
 
     }

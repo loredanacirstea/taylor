@@ -1,32 +1,32 @@
 const tests = {
-    if_: [
+    if: [
         {
-            test: '(if_ 1 (add_ 1 3) 6)',
+            test: '(if 1 (add_ 1 3) 6)',
             result: 4,
         },
         {
-            test: '(if_ 0 (add_ 1 3) 6)',
+            test: '(if 0 (add_ 1 3) 6)',
             result: 6,
         },
         {
-            test: '(if_ (eq_ 7 7) (add_ 1 3) 6)',
+            test: '(if (eq_ 7 7) (add_ 1 3) 6)',
             result: 4,
         },
         {
-            test: '(if_ (eq_ 7 9) (add_ 1 3) 6)',
+            test: '(if (eq_ 7 9) (add_ 1 3) 6)',
             result: 6,
         },
     ],
-    tn_ptr_: [
+    t2_ptr_: [
         {
-            test: '(tn_ptr_ (mstore__ 12))',
+            test: '(t2_ptr_ (mstore__ 12))',
             result: 404,
             decode: ['uint'],
         },
     ],
-    tn_len_: [
+    t2_len_: [
         {
-            test: '(tn_len_ (mstore__ 12))',
+            test: '(t2_len_ (mstore__ 12))',
             result: 32,
             decode: ['uint'],
         },
@@ -59,41 +59,41 @@ const tests = {
             decode: null,
         }
     ],
-    'fn_': [
+    'fn*': [
         {
-            test: '(fn_ (a) a)',
-            result: '(fn_ (a) a)',
+            test: '(fn* (a) a)',
+            result: '(fn* (a) a)',
             skip: true,
         },
         {
-            test: '( (fn_ (a) a) 7)',
+            test: '( (fn* (a) a) 7)',
             result: 7,
         },
         {
-            test: '( (fn_ (a) (add_ a 1)) 10)',
+            test: '( (fn* (a) (add_ a 1)) 10)',
             result: 11,
         },
         {
-            test: '( (fn_ (a b) (add_ a b)) 6 7)',
+            test: '( (fn* (a b) (add_ a b)) 6 7)',
             result: 13,
         },
         {
-            test: '( (fn_ (a b) (add_ a b)) (add_ (add_ (sub_ 7 2) 1) 41) (add_ 2 3))',
+            test: '( (fn* (a b) (add_ a b)) (add_ (add_ (sub_ 7 2) 1) 41) (add_ 2 3))',
             result: 52,
         },
         {
-            test: '( (fn_ (a b) (add_ (mul_ a b ) b)) 2 3)',
+            test: '( (fn* (a b) (add_ (mul_ a b ) b)) 2 3)',
             result: 9,
         },
         {
-            test: `( (fn_ (a b) (add_ a b))
+            test: `( (fn* (a b) (add_ a b))
                 (add_ (add_ (sub_ 7 2) 1) 41)
                 (add_ 2 3)
             )`,
             result: 52,
         },
         {
-            test: `( (fn_ (n)
+            test: `( (fn* (n)
                 (if_ (lt_ n 3)
                     1
                     (add_ (self (sub_ n 1)) (self (sub_ n 2)) )
@@ -103,7 +103,7 @@ const tests = {
             wait: 60000,
         },
         {
-            test: `((fn_ (n max) (if_ (gt_ n max)
+            test: `((fn* (n max) (if_ (gt_ n max)
                     n
                     (self (add_ n 1) max)
                 )
@@ -123,9 +123,9 @@ const tests = {
     //     {
     //         test: `(for_
     //             0
-    //             (fn_ (step input_ptr input_size) (gt_ step 5))
-    //             (fn_ (step) (add_ step 1))
-    //             (fn_ (step input_ptr input_size) ())
+    //             (fn* (step input_ptr input_size) (gt_ step 5))
+    //             (fn* (step) (add_ step 1))
+    //             (fn* (step input_ptr input_size) ())
     //             input_ptr,
     //             input_size
     //         )`,
