@@ -237,6 +237,10 @@ function decode (data, returntypes) {
     if (returntypes && returntypes[0] === 'string') {
         return data.slice(2).hexDecode();
     }
+    if (returntypes === 'tuple') {
+        const arity = ethers.utils.defaultAbiCoder.decode(['uint'], data)[0].toNumber();
+        return ethers.utils.defaultAbiCoder.decode('uint '.repeat(arity).split(' '), '0x' + data.substring(66)).map(val => val.toNumber());
+    }
     if (returntypes) {
         decoded = ethers.utils.defaultAbiCoder.decode(returntypes, data);
     } else decoded = [data];

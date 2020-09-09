@@ -19,14 +19,14 @@ const tests = {
     ],
     t2_ptr_: [
         {
-            test: '(t2_ptr_ (mstore__ 12))',
-            result: 404,
+            test: '(t2_ptr_ (mmstore__ 12))',
+            result: 1972,
             decode: ['uint'],
         },
     ],
     t2_len_: [
         {
-            test: '(t2_len_ (mstore__ 12))',
+            test: '(t2_len_ (mmstore__ 12))',
             result: 32,
             decode: ['uint'],
         },
@@ -58,6 +58,45 @@ const tests = {
             result: '0x6230783265643063303366616465363339386435343665643130303030801ed12ed0c03fade6398d546adc00000000000000',
             decode: null,
         }
+    ],
+    t3___: [
+        {
+            test: '(return___# (tuple___ 4 5 9))',
+            result: [4, 5, 9],
+            decode: 'tuple',
+        },
+    ],
+    map_: [
+        {
+            test: '(return___# (map_ (fn* (a) 9) (tuple___ 4 5 9)))',
+            result: [9, 9, 9],
+            decode: 'tuple',
+        },
+        {
+            test: '(return___# (map_ (fn* (a) (add_ a 4)) (tuple___ 4 5 9 7) ))',
+            result: [8, 9, 13, 11],
+            decode: 'tuple',
+        },
+        {
+            test: '(return___# (map_ (fn* (a) (mul_ a 4)) (tuple___ 4 5 9) ))',
+            result: [16, 20, 36],
+            decode: 'tuple',
+        },
+        {
+            test: '(return___# (map_ (fn* (a) 9) (tuple___ 7) ))',
+            result: [9],
+            decode: 'tuple',
+        },
+        {
+            test: '(return___# (map_ (fn* (a) (add_ a 4)) (tuple___ 7 5) ))',
+            result: [11, 9],
+            decode: 'tuple',
+        },
+        {
+            test: '(return___# (map_ (fn* (a) (add_ a 4)) (map_ (fn* (a) (mul_ a 4)) (tuple___ 4 5 9) ) ))',
+            result: [20, 24, 40],
+            decode: 'tuple',
+        },
     ],
     'fn*': [
         {
@@ -94,7 +133,7 @@ const tests = {
         },
         {
             test: `( (fn* (n)
-                (if_ (lt_ n 3)
+                (if (lt_ n 3)
                     1
                     (add_ (self (sub_ n 1)) (self (sub_ n 2)) )
                 )
@@ -103,7 +142,7 @@ const tests = {
             wait: 60000,
         },
         {
-            test: `((fn* (n max) (if_ (gt_ n max)
+            test: `((fn* (n max) (if (gt_ n max)
                     n
                     (self (add_ n 1) max)
                 )
@@ -111,28 +150,6 @@ const tests = {
             result: 5,
         }
     ],
-    // apply_: [
-
-    // ],
-    // for_: [
-    //     {
-    //         test: '(for_ init exit_test opstep  func input_ptr, input_size)',
-    //         result: 4,
-    //         skip: true,
-    //     },
-    //     {
-    //         test: `(for_
-    //             0
-    //             (fn* (step input_ptr input_size) (gt_ step 5))
-    //             (fn* (step) (add_ step 1))
-    //             (fn* (step input_ptr input_size) ())
-    //             input_ptr,
-    //             input_size
-    //         )`,
-    //         result: 4,
-    //         skip: true,
-    //     },
-    // ]
 }
 
 const prereq = [];

@@ -24,6 +24,8 @@ const wrapped_t2 = {
     'stop#': '00',
     'selfdestruct#': 'ff',
     'invalid#': '',
+
+    'return___#': '14b',
 }
 
 module.exports = wrapped_t2;

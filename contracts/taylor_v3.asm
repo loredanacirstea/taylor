@@ -882,6 +882,7 @@ for_stack_2:
                 mload     // get previous frame
                 0xe0
                 mstore
+            eval_function_for_content_post:
 
     forloop_end_0:
 
@@ -1037,10 +1038,10 @@ for_stack_3:
         add
         jump
     eval_native_function_post:
-        /* (10) getframe //   //   */
+        /* (10) getframe // result_ptr, frame_ptr   // result_ptr, frame_ptr   */
 0xe0
             mload
-        swap1
+        swap1        // frame_ptr, result_ptr
 
         dup2    // frame - get last partial for end_ptr
         /* (2) getpartialsptr //   //   */
@@ -3789,6 +3790,281 @@ unused_129:  // 0x11f
             jump
             stop
             stop
+        /* (130) eopcode 0x132, 130      */
+unused_130:  // 0x132
+        stop
+        stop
+        stop
+        stop
+        stop
+        stop
+        stop
+        /* (131) eopcode 0x133, 131      */
+unused_131:  // 0x133
+        stop
+        stop
+        stop
+        stop
+        stop
+        stop
+        stop
+        /* (132) eopcode 0x134, 132      */
+unused_132:  // 0x134
+        stop
+        stop
+        stop
+        stop
+        stop
+        stop
+        stop
+        /* (133) eopcode 0x135, 133      */
+unused_133:  // 0x135
+        stop
+        stop
+        stop
+        stop
+        stop
+        stop
+        stop
+        /* (134) eopcode 0x136, 134      */
+unused_134:  // 0x136
+        stop
+        stop
+        stop
+        stop
+        stop
+        stop
+        stop
+        /* (135) eopcode 0x137, 135      */
+unused_135:  // 0x137
+        stop
+        stop
+        stop
+        stop
+        stop
+        stop
+        stop
+        /* (136) eopcode 0x138, 136      */
+unused_136:  // 0x138
+        stop
+        stop
+        stop
+        stop
+        stop
+        stop
+        stop
+        /* (137) eopcode 0x139, 137      */
+unused_137:  // 0x139
+        stop
+        stop
+        stop
+        stop
+        stop
+        stop
+        stop
+        /* (138) eopcode 0x13a, 138      */
+unused_138:  // 0x13a
+        stop
+        stop
+        stop
+        stop
+        stop
+        stop
+        stop
+        /* (139) eopcode 0x13b, 139      */
+unused_139:  // 0x13b
+        stop
+        stop
+        stop
+        stop
+        stop
+        stop
+        stop
+        /* (140) eopcode 0x13c, 140      */
+unused_140:  // 0x13c
+        stop
+        stop
+        stop
+        stop
+        stop
+        stop
+        stop
+        /* (141) eopcode 0x13d, 141      */
+unused_141:  // 0x13d
+        stop
+        stop
+        stop
+        stop
+        stop
+        stop
+        stop
+        /* (142) eopcode 0x13e, 142      */
+unused_142:  // 0x13e
+        stop
+        stop
+        stop
+        stop
+        stop
+        stop
+        stop
+        /* (143) eopcode 0x13f, 143      */
+unused_143:  // 0x13f
+        stop
+        stop
+        stop
+        stop
+        stop
+        stop
+        stop
+        join__x1:       // 0x140
+            pop
+            join__x1_extra
+            //
+            // push
+            jump
+            stop
+            stop
+        /* (144) eopcode 0x141, 144      */
+unused_144:  // 0x141
+        stop
+        stop
+        stop
+        stop
+        stop
+        stop
+        stop
+        /* (145) eopcode 0x142, 145      */
+unused_145:  // 0x142
+        stop
+        stop
+        stop
+        stop
+        stop
+        stop
+        stop
+        /* (146) eopcode 0x143, 146      */
+unused_146:  // 0x143
+        stop
+        stop
+        stop
+        stop
+        stop
+        stop
+        stop
+        /* (147) eopcode 0x144, 147      */
+unused_147:  // 0x144
+        stop
+        stop
+        stop
+        stop
+        stop
+        stop
+        stop
+        /* (148) eopcode 0x145, 148      */
+unused_148:  // 0x145
+        stop
+        stop
+        stop
+        stop
+        stop
+        stop
+        stop
+        /* (149) eopcode 0x146, 149      */
+unused_149:  // 0x146
+        stop
+        stop
+        stop
+        stop
+        stop
+        stop
+        stop
+        /* (150) eopcode 0x147, 150      */
+unused_150:  // 0x147
+        stop
+        stop
+        stop
+        stop
+        stop
+        stop
+        stop
+        /* (151) eopcode 0x148, 151      */
+unused_151:  // 0x148
+        stop
+        stop
+        stop
+        stop
+        stop
+        stop
+        stop
+        /* (152) eopcode 0x149, 152      */
+unused_152:  // 0x149
+        stop
+        stop
+        stop
+        stop
+        stop
+        stop
+        stop
+        tuple___x1:         // 0x14a
+            pop
+            tuple___x1_extra
+            //
+            // push
+            jump
+            stop
+            stop
+        return___10: // 0x14b
+            pop
+            return___10_extra
+            //
+            // push
+            jump
+            stop
+            stop
+        /* (153) eopcode 0x14c, 155      */
+unused_155:  // 0x14c
+        stop
+        stop
+        stop
+        stop
+        stop
+        stop
+        stop
+        /* (154) eopcode 0x14d, 156      */
+unused_156:  // 0x14d
+        stop
+        stop
+        stop
+        stop
+        stop
+        stop
+        stop
+        /* (155) eopcode 0x14e, 157      */
+unused_157:  // 0x14e
+        stop
+        stop
+        stop
+        stop
+        stop
+        stop
+        stop
+        /* (156) eopcode 0x14f, 158      */
+unused_158:  // 0x14f
+        stop
+        stop
+        stop
+        stop
+        stop
+        stop
+        stop
+        map_xx:         // 0x150
+            pop
+            map_xx_extra
+            //
+            // push
+            jump
+            stop
+            stop
         jump_10_extra:
             0xe0        // start of data data_ptr
             // push1
@@ -4256,9 +4532,9 @@ for_stack_4:
             dup1             // args, lambda_ptr__, lambda_ptr, lambda_arity, lambda_arity
             0x01
             add              // self
-            /* (0) t22_init_ 0x40   // args, lambda_ptr__, lambda_ptr, lambda_arity, new_env_ptr   // args, lambda_ptr__, lambda_ptr, lambda_arity, new_env_ptr   */
-// expects arity // 0x40   // args = freeMemPtr
-    dup1
+            /* (2) t3_init__ 0x40   // args, lambda_ptr__, lambda_ptr, lambda_arity, new_env_ptr   // args, lambda_ptr__, lambda_ptr, lambda_arity, new_env_ptr   */
+// expects on stack: arity
+    dup1   // arity
     0x20
     mul
     0x20
@@ -4273,9 +4549,9 @@ for_stack_4:
     0x40   // args
     mstore
 
-    swap1       // store arity first
-    dup2
-    mstore
+    swap1    // ptr, arity
+    dup2     // ptr, arity, ptr
+    mstore   // store arity at pointer -> ptr
 
             // storing reference to self
             swap1   // args, lambda_ptr__, lambda_ptr, new_env_ptr, lambda_arity
@@ -4387,6 +4663,7 @@ for_stack_5:
             mstore
 
             // pop  // lambda_ptr, new_env_ptr, new_frame_ptr
+
 
             swap1  // lambda_ptr, new_frame_ptr, new_env_ptr
             dup2
@@ -5386,6 +5663,322 @@ for_stack_9:
 
             log0_20
             jump
+        join__x1_extra:
+            0xc0
+            // push
+            mload
+            jump
+        tuple___x1_extra:
+            /* (23) getframe //   //   */
+0xe0
+            mload
+            /* (10) getdataptr //   //   */
+0x20
+            add
+            mload
+            /* (9) getfourb //   //   */
+// expects a pointer
+            mload
+            0xe0
+            shr
+            /* (6) getfuncarity //   //   */
+// expects a 4byte value
+            0x3f
+            and
+
+            dup1
+            /* (3) t3_init__ 0x40  // args, arity, ptr   // args, arity, ptr   */
+// expects on stack: arity
+    dup1   // arity
+    0x20
+    mul
+    0x20
+    add
+
+    // alloc 0x40  // args    // freeMemPtr
+    0x40  // args
+    mload
+    swap1
+    dup2
+    add
+    0x40  // args
+    mstore
+
+    swap1    // ptr, arity
+    dup2     // ptr, arity, ptr
+    mstore   // store arity at pointer -> ptr
+            dup1            // args, arity, ptr, ptr
+            0x20
+            add             // args, arity, ptr, current_ptr
+            swap1           // args, arity, current_ptr, ptr
+            swap2           // args, ptr, current_ptr, arity
+
+            tuple___x1_extra_
+            swap1
+            0x00
+
+for_stack_10:
+        dup2   // end
+        dup2   // start
+        lt
+        forloop_stack_10
+        jumpi
+        pop    // pop end, step
+        pop
+        jump
+    forloop_stack_10:   // any content variables are kept after jumptag, end, step
+
+                // args, ptr, current_ptr, tag, end, start
+                dup6        // args, ptr, current_ptr, tag, end, start, arg
+                dup5        // args, ptr, current_ptr, tag, end, start, arg, current_ptr
+                mstore      // args, ptr, current_ptr, tag, end, start
+                dup4        // args, ptr, current_ptr, tag, end, start, current_ptr
+                0x20
+                add
+                swap4
+                pop         // args, ptr, current_ptr, tag, end, start
+                swap1
+                swap2
+                swap3
+                swap4
+                swap5
+                pop
+
+    forloop_end_stack_10:
+        0x01   // start/step first
+        add
+        for_stack_10
+        jump
+        tuple___x1_extra_:
+            pop
+            0xc0
+            // push
+            mload
+            jump
+        map_xx_extra:
+            // t3___ptr, lambda_ptr
+
+            dup2
+            mload     // arity
+            /* (4) t3_init__ 0x40    // t3___ptr, lambda_ptr, result_ptr   // t3___ptr, lambda_ptr, result_ptr   */
+// expects on stack: arity
+    dup1   // arity
+    0x20
+    mul
+    0x20
+    add
+
+    // alloc 0x40    // t3___ptr    // freeMemPtr
+    0x40    // t3___ptr
+    mload
+    swap1
+    dup2
+    add
+    0x40    // t3___ptr
+    mstore
+
+    swap1    // ptr, arity
+    dup2     // ptr, arity, ptr
+    mstore   // store arity at pointer -> ptr
+
+            /* (24) getframe //   //   */
+0xe0
+            mload
+            /* (4) getoutputptr //   //   */
+0xa0
+            add
+            mload
+            mload           // t3___ptr, lambda_ptr, result_ptr, output_ptr
+            0x01
+            /* (0) t3_setitem // t3___ptr, lambda_ptr   // t3___ptr, lambda_ptr   */
+// expects result, t3 pointer, index on stack
+    0x20
+    mul
+    0x20
+    add
+    add
+    mstore
+
+            map_xx_extra_loop
+            /* (25) getframe //   //   */
+0xe0
+            mload
+            /* (3) setreturn //   //   */
+0x120
+            add
+            mstore
+
+            0x00
+            /* (26) getframe //   //   */
+0xe0
+            mload
+            /* (1) setforstep //   //   */
+0xc0
+            add
+            mstore
+
+            dup2
+            /* (4) t3item_ 0x00      */
+// expects 0x00 = index and t3 pointer on stack
+    // TODO revert when out of bounds
+    0x00
+    0x20
+    mul
+    0x20
+    add
+    add
+    mload
+            dup2      // arg_ptr, lambda_ptr, arg, lambda_ptr
+            apply_xx_extra
+            jump
+
+        map_xx_extra_loop:
+            // arg_ptr, lambda_ptr, result
+            /* (27) getframe //   //   */
+0xe0
+            mload
+            /* (5) getoutputptr // arg_ptr, lambda_ptr, result, ptr   // arg_ptr, lambda_ptr, result, ptr   */
+0xa0
+            add
+            mload
+            mload
+            0x01
+            /* (0) t3_item_ //   //    */
+// expects t3 pointer, index on stack
+    0x20
+    mul
+    0x20
+    add
+    add
+    mload
+
+            0xe0
+            mload
+            0xc0
+            add
+            mload   // step
+
+            /* (1) t3_setitem // arg_ptr, lambda_ptr   // arg_ptr, lambda_ptr   */
+// expects result, t3 pointer, index on stack
+    0x20
+    mul
+    0x20
+    add
+    add
+    mstore
+
+
+            dup2    // arg_ptr, lambda_ptr, arg_ptr
+            mload   // arg_ptr, lambda_ptr, arity
+
+            0xe0
+            mload
+            0xc0
+            add
+            mload   // arg_ptr, lambda_ptr, arity, step
+            lt
+            map_xx_extra_loop_
+            jumpi
+
+            pop
+            pop
+            /* (28) getframe //   //   */
+0xe0
+            mload
+            /* (6) getoutputptr //   //   */
+0xa0
+            add
+            mload
+            mload
+
+            0x01
+            /* (1) t3_item_ //   //    */
+// expects t3 pointer, index on stack
+    0x20
+    mul
+    0x20
+    add
+    add
+    mload
+
+            eval_function_for_content     // usual return after a list item is processed
+            /* (29) getframe //   //   */
+0xe0
+            mload
+            /* (4) setreturn //   //   */
+0x120
+            add
+            mstore
+
+            /* (30) getframe // result_ptr, frame_ptr   // result_ptr, frame_ptr   */
+0xe0
+            mload
+            swap1     // frame_ptr, result_ptr
+
+            /* (31) getframe //   //   */
+0xe0
+            mload
+            /* (7) getoutputptr //   //   */
+0xa0
+            add
+            mload
+            mload
+            0x00
+            /* (2) t3_item_ // frame_ptr, result_ptr, end_ptr   // frame_ptr, result_ptr, end_ptr   */
+// expects t3 pointer, index on stack
+    0x20
+    mul
+    0x20
+    add
+    add
+    mload
+
+
+            eval_native_function     // this is the usual value
+            0xc0
+            mstore
+
+            eval_end_processing        // go directly to processing end; expects frame_ptr, result_ptr, end_ptr
+            jump
+        map_xx_extra_loop_:
+            0xe0
+            mload
+            0xc0
+            add
+            mload   // step
+
+            0x01
+            add    // step, step incr
+            dup1    // step, step
+
+            0xe0
+            mload
+            0xc0
+            add     // step, step incr, ptr
+            mstore   // arg_ptr, lambda_ptr, step
+
+            dup3
+            swap1       // arg_ptr, lambda_ptr, arg_ptr, step
+            /* (3) t3_item_ // arg_ptr, lambda_ptr, arg   // arg_ptr, lambda_ptr, arg   */
+// expects t3 pointer, index on stack
+    0x20
+    mul
+    0x20
+    add
+    add
+    mload
+            dup2      // arg_ptr, lambda_ptr, arg, lambda_ptr
+            apply_xx_extra
+            jump
+        return___10_extra:
+            dup1   // pointer
+            mload  // arity
+            0x20
+            mul
+            0x20
+            add
+            swap1   // size, pointer
+            return
         revert_internal:
             // error data, error code
             0x00

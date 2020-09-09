@@ -11,6 +11,10 @@ const core = {
     if: '10a',
     self: '10b',
     super: '10c',
+    join__: '140',
+    map_: '150',
+    reduce_: '151',
+    tuple___: '14a',
 }
 
 module.exports = core;
