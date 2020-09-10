@@ -5784,6 +5784,209 @@ for_stack_9:
             log0_20
             jump
         join__x1_extra:
+            // t2_2, t2_1
+            swap1     // t2_1, t2_2
+            dup2      // t2_1, t2_2, t2_1
+            /* (7) t2_len_ // t2_1, t2_2, t2_len   // t2_1, t2_2, t2_len   */
+// expects t2 pointer
+    mload
+            dup2      //
+            /* (8) t2_len_ // t2_1, t2_2, t2_1_len, t2_2_len   // t2_1, t2_2, t2_1_len, t2_2_len   */
+// expects t2 pointer
+    mload
+            dup2
+            dup2
+            add       // t2_1, t2_2, t2_1_len, t2_2_len, len
+
+            /* (8) t2_init__ 0x40  // t2_1, t2_2, t2_1_len, t2_2_len, t2_3__   // t2_1, t2_2, t2_1_len, t2_2_len, t2_3__   */
+// expects length // 0x40  // t2_1 = freeMemPtr
+    dup1
+    0x20
+    add           // length, fulllength
+
+    // alloc 0x40  // t2_1    // freeMemPtr
+    0x40  // t2_1
+    mload
+    swap1
+    dup2
+    add
+    0x40  // t2_1
+    mstore     // length, ptr
+
+    dup1       // store length   // length, ptr, ptr
+    swap2      // ptr, ptr, length
+    swap1      // ptr, length, ptr
+    mstore     // ptr
+
+            swap2     // t2_1, t2_2, t2_3__, t2_2_len, t2_1_len
+            dup1      // t2_1, t2_2, t2_3__, t2_2_len, t2_1_len, t2_1_len
+            dup6      // t2_1, t2_2, t2_3__, t2_2_len, t2_1_len, t2_1_len, t2_1
+            /* (17) t2_ptr_ // t2_1, t2_2, t2_3__, t2_2_len, t2_1_len, t2_1_len, t2_1_ptr   // t2_1, t2_2, t2_3__, t2_2_len, t2_1_len, t2_1_len, t2_1_ptr   */
+// expects t2 pointer
+    0x20
+    add
+            dup5      // t2_1, t2_2, t2_3__, t2_2_len, t2_1_len, t2_1_len, t2_1_ptr, t2_3__
+            /* (18) t2_ptr_ // t2_1, t2_2, t2_3__, t2_2_len, t2_1_len, t2_1_len, t2_1_ptr, t2_3_ptr   // t2_1, t2_2, t2_3__, t2_2_len, t2_1_len, t2_1_len, t2_1_ptr, t2_3_ptr   */
+// expects t2 pointer
+    0x20
+    add
+            /* (1) mmultimstore // size_bytes, source_ptr, target_ptr // t2_1, t2_2, t2_3__, t2_2_len, t2_1_len   // size_bytes, source_ptr, target_ptr // t2_1, t2_2, t2_3__, t2_2_len, t2_1_len   */
+// alloc before using it
+            // size_bytes, source_ptr, target_ptr
+            dup3   // size_bytes
+
+            // calc slots
+            0x20
+            dup2
+            div
+
+            0x00
+            0x20
+            dup4
+            mod
+            gt
+            add
+
+            swap1
+            pop
+
+            // end calc slots
+
+            swap3            // slots, source_ptr, target_ptr ; replace length with slots
+            pop
+
+            mmultimstore_end_1
+            dup4             // slots
+            0x00
+
+for_stack_10:
+        dup2   // end
+        dup2   // start
+        lt
+        forloop_stack_10
+        jumpi
+        pop    // pop end, step
+        pop
+        jump
+    forloop_stack_10:   // any content variables are kept after jumptag, end, step
+
+                // slots, source_ptr, target_ptr, tag, end, step
+                dup5
+                mload
+                dup5
+                mstore
+
+                dup5
+                0x20
+                add
+                swap5
+                pop
+
+                dup4
+                0x20
+                add
+                swap4
+                pop
+
+    forloop_end_stack_10:
+        0x01   // start/step first
+        add
+        for_stack_10
+        jump
+        mmultimstore_end_1:
+            pop
+            pop
+            pop
+
+
+            dup2      // t2_1, t2_2, t2_3__, t2_2_len, t2_1_len, t2_2_len
+            dup5      // t2_1, t2_2, t2_3__, t2_2_len, t2_1_len, t2_2_len, t2_2
+            /* (19) t2_ptr_ // t2_1, t2_2, t2_3__, t2_2_len, t2_1_len, t2_2_len, t2_2_ptr   // t2_1, t2_2, t2_3__, t2_2_len, t2_1_len, t2_2_len, t2_2_ptr   */
+// expects t2 pointer
+    0x20
+    add
+            dup5      // t2_1, t2_2, t2_3__, t2_2_len, t2_1_len, t2_2_len, t2_2_ptr, t2_3__
+            /* (20) t2_ptr_ // t2_1, t2_2, t2_3__, t2_2_len, t2_1_len, t2_2_len, t2_2_ptr, t2_3__ptr   // t2_1, t2_2, t2_3__, t2_2_len, t2_1_len, t2_2_len, t2_2_ptr, t2_3__ptr   */
+// expects t2 pointer
+    0x20
+    add
+            dup4
+            add       // t2_1, t2_2, t2_3__, t2_2_len, t2_1_len, t2_2_len, t2_2_ptr, t2_3__ptr
+            /* (2) mmultimstore // t2_1, t2_2, t2_3__, t2_2_len, t2_1_len   // t2_1, t2_2, t2_3__, t2_2_len, t2_1_len   */
+// alloc before using it
+            // size_bytes, source_ptr, target_ptr
+            dup3   // size_bytes
+
+            // calc slots
+            0x20
+            dup2
+            div
+
+            0x00
+            0x20
+            dup4
+            mod
+            gt
+            add
+
+            swap1
+            pop
+
+            // end calc slots
+
+            swap3            // slots, source_ptr, target_ptr ; replace length with slots
+            pop
+
+            mmultimstore_end_2
+            dup4             // slots
+            0x00
+
+for_stack_11:
+        dup2   // end
+        dup2   // start
+        lt
+        forloop_stack_11
+        jumpi
+        pop    // pop end, step
+        pop
+        jump
+    forloop_stack_11:   // any content variables are kept after jumptag, end, step
+
+                // slots, source_ptr, target_ptr, tag, end, step
+                dup5
+                mload
+                dup5
+                mstore
+
+                dup5
+                0x20
+                add
+                swap5
+                pop
+
+                dup4
+                0x20
+                add
+                swap4
+                pop
+
+    forloop_end_stack_11:
+        0x01   // start/step first
+        add
+        for_stack_11
+        jump
+        mmultimstore_end_2:
+            pop
+            pop
+            pop
+
+
+            pop
+            pop
+            swap1
+            pop
+            swap1
+            pop
 
             0x01
             /* (34) getframe //   //   */
@@ -5847,16 +6050,16 @@ for_stack_9:
             swap1
             0x00
 
-for_stack_10:
+for_stack_12:
         dup2   // end
         dup2   // start
         lt
-        forloop_stack_10
+        forloop_stack_12
         jumpi
         pop    // pop end, step
         pop
         jump
-    forloop_stack_10:   // any content variables are kept after jumptag, end, step
+    forloop_stack_12:   // any content variables are kept after jumptag, end, step
 
                 // args, ptr, current_ptr, tag, end, start
                 dup6        // args, ptr, current_ptr, tag, end, start, arg
@@ -5874,10 +6077,10 @@ for_stack_10:
                 swap5
                 pop
 
-    forloop_end_stack_10:
+    forloop_end_stack_12:
         0x01   // start/step first
         add
-        for_stack_10
+        for_stack_12
         jump
         tuple___x1_extra_:
             pop
