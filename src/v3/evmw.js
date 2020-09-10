@@ -19,6 +19,8 @@ const wrapped_t2 = {
     t2_ptr_: '130',
     t2_len_: '131',
 
+    'store!_': '13a',
+
     'return#': '101',
     'revert#': '124',
     'stop#': '00',

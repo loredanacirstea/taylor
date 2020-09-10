@@ -1,18 +1,3 @@
-// %0 = freeMemPtr, %1 = current_frame_ptr, %2 = number of frame slots
-// on stack: return tag, extra_ptr, output_ptr, partials_ptr, input_ptr, prev_ptr
-
-
-
-
-
-
-
-
-
-
-
-
-
 dataSize(sub_0)
     dataOffset(sub_0)
     0x00
@@ -285,7 +270,7 @@ calldatasize
         0x00           // here is output_ptr
         mload
         /* (0) t3item_ 0x01   // result_ptr   // result_ptr   */
-// expects 0x01   // result_ptr = index and t3 pointer on stack
+// expects t3 pointer on stack ; 0 = index
     // TODO revert when out of bounds
     0x01   // result_ptr
     0x20
@@ -512,7 +497,7 @@ for_stack_0:
     0x20
     add
 
-    // alloc 0x40   // partials_ptr    // freeMemPtr
+    // alloc
     0x40   // partials_ptr
     mload
     swap1
@@ -520,6 +505,7 @@ for_stack_0:
     add
     0x40   // partials_ptr
     mstore
+    // end alloc
 
     swap1    // ptr, arity
     dup2     // ptr, arity, ptr
@@ -541,7 +527,7 @@ for_stack_0:
     add
 
 
-    // alloc 0x40  // partial1    // freeMemPtr
+    // alloc
     0x40  // partial1
     mload
     swap1
@@ -549,6 +535,7 @@ for_stack_0:
     add
     0x40  // partial1
     mstore
+    // end alloc
 
     dup2   // store arity
     dup2   // ptr
@@ -641,7 +628,7 @@ for_stack_2:
     0x20
     add
 
-    // alloc 0x40  //partial    // freeMemPtr
+    // alloc
     0x40  //partial
     mload
     swap1
@@ -649,6 +636,7 @@ for_stack_2:
     add
     0x40  //partial
     mstore
+    // end alloc
 
     swap1    // ptr, arity
     dup2     // ptr, arity, ptr
@@ -818,7 +806,7 @@ for_stack_2:
             sub       // previous partial
             mload
             /* (1) t3item_ 0x00    // end_ptr is new data_ptr // new_frame_ptr, data_ptr   // end_ptr is new data_ptr // new_frame_ptr, data_ptr   */
-// expects 0x00    // end_ptr is new data_ptr // new_frame_ptr = index and t3 pointer on stack
+// expects t3 pointer on stack ; 0 = index
     // TODO revert when out of bounds
     0x00    // end_ptr is new data_ptr // new_frame_ptr
     0x20
@@ -1014,7 +1002,7 @@ for_stack_3:
             dup4
             mload
             /* (2) t3item_ 0x01   // result_ptr   // result_ptr   */
-// expects 0x01   // result_ptr = index and t3 pointer on stack
+// expects t3 pointer on stack ; 0 = index
     // TODO revert when out of bounds
     0x01   // result_ptr
     0x20
@@ -1071,7 +1059,7 @@ for_stack_3:
         add
         mload
         /* (3) t3item_ 0x00      */
-// expects 0x00 = index and t3 pointer on stack
+// expects t3 pointer on stack ; 0 = index
     // TODO revert when out of bounds
     0x00
     0x20
@@ -3877,16 +3865,15 @@ unused_137:  // 0x139
         stop
         stop
         stop
-        /* (138) eopcode 0x13a, 138      */
-unused_138:  // 0x13a
-        stop
-        stop
-        stop
-        stop
-        stop
-        stop
-        stop
-        /* (139) eopcode 0x13b, 139      */
+        sstore_21:            // 0x13a
+            pop
+            sstore_21_extra
+            //
+            // push
+            jump
+            stop
+            stop
+        /* (138) eopcode 0x13b, 139      */
 unused_139:  // 0x13b
         stop
         stop
@@ -3895,7 +3882,7 @@ unused_139:  // 0x13b
         stop
         stop
         stop
-        /* (140) eopcode 0x13c, 140      */
+        /* (139) eopcode 0x13c, 140      */
 unused_140:  // 0x13c
         stop
         stop
@@ -3904,7 +3891,7 @@ unused_140:  // 0x13c
         stop
         stop
         stop
-        /* (141) eopcode 0x13d, 141      */
+        /* (140) eopcode 0x13d, 141      */
 unused_141:  // 0x13d
         stop
         stop
@@ -3913,7 +3900,7 @@ unused_141:  // 0x13d
         stop
         stop
         stop
-        /* (142) eopcode 0x13e, 142      */
+        /* (141) eopcode 0x13e, 142      */
 unused_142:  // 0x13e
         stop
         stop
@@ -3922,7 +3909,7 @@ unused_142:  // 0x13e
         stop
         stop
         stop
-        /* (143) eopcode 0x13f, 143      */
+        /* (142) eopcode 0x13f, 143      */
 unused_143:  // 0x13f
         stop
         stop
@@ -3939,7 +3926,7 @@ unused_143:  // 0x13f
             jump
             stop
             stop
-        /* (144) eopcode 0x141, 144      */
+        /* (143) eopcode 0x141, 144      */
 unused_144:  // 0x141
         stop
         stop
@@ -3948,7 +3935,7 @@ unused_144:  // 0x141
         stop
         stop
         stop
-        /* (145) eopcode 0x142, 145      */
+        /* (144) eopcode 0x142, 145      */
 unused_145:  // 0x142
         stop
         stop
@@ -3957,7 +3944,7 @@ unused_145:  // 0x142
         stop
         stop
         stop
-        /* (146) eopcode 0x143, 146      */
+        /* (145) eopcode 0x143, 146      */
 unused_146:  // 0x143
         stop
         stop
@@ -3966,7 +3953,7 @@ unused_146:  // 0x143
         stop
         stop
         stop
-        /* (147) eopcode 0x144, 147      */
+        /* (146) eopcode 0x144, 147      */
 unused_147:  // 0x144
         stop
         stop
@@ -3975,7 +3962,7 @@ unused_147:  // 0x144
         stop
         stop
         stop
-        /* (148) eopcode 0x145, 148      */
+        /* (147) eopcode 0x145, 148      */
 unused_148:  // 0x145
         stop
         stop
@@ -3984,7 +3971,7 @@ unused_148:  // 0x145
         stop
         stop
         stop
-        /* (149) eopcode 0x146, 149      */
+        /* (148) eopcode 0x146, 149      */
 unused_149:  // 0x146
         stop
         stop
@@ -3993,7 +3980,7 @@ unused_149:  // 0x146
         stop
         stop
         stop
-        /* (150) eopcode 0x147, 150      */
+        /* (149) eopcode 0x147, 150      */
 unused_150:  // 0x147
         stop
         stop
@@ -4002,7 +3989,7 @@ unused_150:  // 0x147
         stop
         stop
         stop
-        /* (151) eopcode 0x148, 151      */
+        /* (150) eopcode 0x148, 151      */
 unused_151:  // 0x148
         stop
         stop
@@ -4011,7 +3998,7 @@ unused_151:  // 0x148
         stop
         stop
         stop
-        /* (152) eopcode 0x149, 152      */
+        /* (151) eopcode 0x149, 152      */
 unused_152:  // 0x149
         stop
         stop
@@ -4036,7 +4023,7 @@ unused_152:  // 0x149
             jump
             stop
             stop
-        /* (153) eopcode 0x14c, 155      */
+        /* (152) eopcode 0x14c, 155      */
 unused_155:  // 0x14c
         stop
         stop
@@ -4045,7 +4032,7 @@ unused_155:  // 0x14c
         stop
         stop
         stop
-        /* (154) eopcode 0x14d, 156      */
+        /* (153) eopcode 0x14d, 156      */
 unused_156:  // 0x14d
         stop
         stop
@@ -4054,7 +4041,7 @@ unused_156:  // 0x14d
         stop
         stop
         stop
-        /* (155) eopcode 0x14e, 157      */
+        /* (154) eopcode 0x14e, 157      */
 unused_157:  // 0x14e
         stop
         stop
@@ -4063,7 +4050,7 @@ unused_157:  // 0x14e
         stop
         stop
         stop
-        /* (156) eopcode 0x14f, 158      */
+        /* (155) eopcode 0x14f, 158      */
 unused_158:  // 0x14f
         stop
         stop
@@ -4563,7 +4550,7 @@ for_stack_4:
     0x20
     add
 
-    // alloc 0x40   // args    // freeMemPtr
+    // alloc
     0x40   // args
     mload
     swap1
@@ -4571,6 +4558,7 @@ for_stack_4:
     add
     0x40   // args
     mstore
+    // end alloc
 
     swap1    // ptr, arity
     dup2     // ptr, arity, ptr
@@ -5049,12 +5037,12 @@ for_stack_7:
 
             0x20          // TODO multi slots
             /* (0) t2_init__ 0x40      */
-// expects length // 0x40 = freeMemPtr
+// expects length; 0 = freeMemPtr
     dup1
     0x20
     add           // length, fulllength
 
-    // alloc 0x40    // freeMemPtr
+    // alloc
     0x40
     mload
     swap1
@@ -5062,6 +5050,7 @@ for_stack_7:
     add
     0x40
     mstore     // length, ptr
+    // end alloc
 
     dup1       // store length   // length, ptr, ptr
     swap2      // ptr, ptr, length
@@ -5206,12 +5195,12 @@ for_stack_8:
                               // calld_length, calld_start
             dup2              // calld_length, calld_start, calld_length
             /* (1) t2_init__ 0x40    // calld_length, calld_start, mem_ptr__   // calld_length, calld_start, mem_ptr__   */
-// expects length // 0x40    // calld_length = freeMemPtr
+// expects length; 0 = freeMemPtr
     dup1
     0x20
     add           // length, fulllength
 
-    // alloc 0x40    // calld_length    // freeMemPtr
+    // alloc
     0x40    // calld_length
     mload
     swap1
@@ -5219,6 +5208,7 @@ for_stack_8:
     add
     0x40    // calld_length
     mstore     // length, ptr
+    // end alloc
 
     dup1       // store length   // length, ptr, ptr
     swap2      // ptr, ptr, length
@@ -5250,12 +5240,12 @@ for_stack_8:
                               // calld_length, calld_start
             dup2              // calld_length, calld_start, calld_length
             /* (2) t2_init__ 0x40    // calld_length, calld_start, mem_ptr__   // calld_length, calld_start, mem_ptr__   */
-// expects length // 0x40    // calld_length = freeMemPtr
+// expects length; 0 = freeMemPtr
     dup1
     0x20
     add           // length, fulllength
 
-    // alloc 0x40    // calld_length    // freeMemPtr
+    // alloc
     0x40    // calld_length
     mload
     swap1
@@ -5263,6 +5253,7 @@ for_stack_8:
     add
     0x40    // calld_length
     mstore     // length, ptr
+    // end alloc
 
     dup1       // store length   // length, ptr, ptr
     swap2      // ptr, ptr, length
@@ -5294,12 +5285,12 @@ for_stack_8:
                               // calld_length, calld_start, address
             dup3              // calld_length, calld_start, address, calld_length
             /* (3) t2_init__ 0x40    // calld_length, calld_start, address, mem_ptr__   // calld_length, calld_start, address, mem_ptr__   */
-// expects length // 0x40    // calld_length = freeMemPtr
+// expects length; 0 = freeMemPtr
     dup1
     0x20
     add           // length, fulllength
 
-    // alloc 0x40    // calld_length    // freeMemPtr
+    // alloc
     0x40    // calld_length
     mload
     swap1
@@ -5307,6 +5298,7 @@ for_stack_8:
     add
     0x40    // calld_length
     mstore     // length, ptr
+    // end alloc
 
     dup1       // store length   // length, ptr, ptr
     swap2      // ptr, ptr, length
@@ -5340,12 +5332,12 @@ for_stack_8:
                               // calld_length, calld_start
             dup2              // calld_length, calld_start, calld_length
             /* (4) t2_init__ 0x40    // calld_length, calld_start, mem_ptr__   // calld_length, calld_start, mem_ptr__   */
-// expects length // 0x40    // calld_length = freeMemPtr
+// expects length; 0 = freeMemPtr
     dup1
     0x20
     add           // length, fulllength
 
-    // alloc 0x40    // calld_length    // freeMemPtr
+    // alloc
     0x40    // calld_length
     mload
     swap1
@@ -5353,6 +5345,7 @@ for_stack_8:
     add
     0x40    // calld_length
     mstore     // length, ptr
+    // end alloc
 
     dup1       // store length   // length, ptr, ptr
     swap2      // ptr, ptr, length
@@ -5419,12 +5412,12 @@ for_stack_8:
             0x20
             mul
             /* (5) t2_init__ 0x40  // items, arity, ptr   // items, arity, ptr   */
-// expects length // 0x40  // items = freeMemPtr
+// expects length; 0 = freeMemPtr
     dup1
     0x20
     add           // length, fulllength
 
-    // alloc 0x40  // items    // freeMemPtr
+    // alloc
     0x40  // items
     mload
     swap1
@@ -5432,6 +5425,7 @@ for_stack_8:
     add
     0x40  // items
     mstore     // length, ptr
+    // end alloc
 
     dup1       // store length   // length, ptr, ptr
     swap2      // ptr, ptr, length
@@ -5517,12 +5511,12 @@ for_stack_9:
             0x20
             mul
             /* (6) t2_init__ 0x40  // items, arity, ptr   // items, arity, ptr   */
-// expects length // 0x40  // items = freeMemPtr
+// expects length; 0 = freeMemPtr
     dup1
     0x20
     add           // length, fulllength
 
-    // alloc 0x40  // items    // freeMemPtr
+    // alloc
     0x40  // items
     mload
     swap1
@@ -5530,6 +5524,7 @@ for_stack_9:
     add
     0x40  // items
     mstore     // length, ptr
+    // end alloc
 
     dup1       // store length   // length, ptr, ptr
     swap2      // ptr, ptr, length
@@ -5660,12 +5655,12 @@ for_stack_9:
             // success
             returndatasize
             /* (7) t2_init__ 0x40       // ptr__   // ptr__   */
-// expects length // 0x40       // ptr__ = freeMemPtr
+// expects length; 0 = freeMemPtr
     dup1
     0x20
     add           // length, fulllength
 
-    // alloc 0x40       // ptr__    // freeMemPtr
+    // alloc
     0x40       // ptr__
     mload
     swap1
@@ -5673,6 +5668,7 @@ for_stack_9:
     add
     0x40       // ptr__
     mstore     // length, ptr
+    // end alloc
 
     dup1       // store length   // length, ptr, ptr
     swap2      // ptr, ptr, length
@@ -5799,12 +5795,12 @@ for_stack_9:
             add       // t2_1, t2_2, t2_1_len, t2_2_len, len
 
             /* (8) t2_init__ 0x40  // t2_1, t2_2, t2_1_len, t2_2_len, t2_3__   // t2_1, t2_2, t2_1_len, t2_2_len, t2_3__   */
-// expects length // 0x40  // t2_1 = freeMemPtr
+// expects length; 0 = freeMemPtr
     dup1
     0x20
     add           // length, fulllength
 
-    // alloc 0x40  // t2_1    // freeMemPtr
+    // alloc
     0x40  // t2_1
     mload
     swap1
@@ -5812,6 +5808,7 @@ for_stack_9:
     add
     0x40  // t2_1
     mstore     // length, ptr
+    // end alloc
 
     dup1       // store length   // length, ptr, ptr
     swap2      // ptr, ptr, length
@@ -6028,7 +6025,7 @@ for_stack_11:
     0x20
     add
 
-    // alloc 0x40  // args    // freeMemPtr
+    // alloc
     0x40  // args
     mload
     swap1
@@ -6036,6 +6033,7 @@ for_stack_11:
     add
     0x40  // args
     mstore
+    // end alloc
 
     swap1    // ptr, arity
     dup2     // ptr, arity, ptr
@@ -6111,7 +6109,7 @@ for_stack_12:
     0x20
     add
 
-    // alloc 0x40    // t3___ptr    // freeMemPtr
+    // alloc
     0x40    // t3___ptr
     mload
     swap1
@@ -6119,6 +6117,7 @@ for_stack_12:
     add
     0x40    // t3___ptr
     mstore
+    // end alloc
 
     swap1    // ptr, arity
     dup2     // ptr, arity, ptr
@@ -6162,7 +6161,7 @@ for_stack_12:
 
             dup2
             /* (4) t3item_ 0x00      */
-// expects 0x00 = index and t3 pointer on stack
+// expects t3 pointer on stack ; 0 = index
     // TODO revert when out of bounds
     0x00
     0x20
@@ -6321,6 +6320,15 @@ for_stack_12:
     mload
             dup2      // arg_ptr, lambda_ptr, arg, lambda_ptr
             apply_xx_extra
+            jump
+        sstore_21_extra:
+            dup1     // value, key, key
+            swap2    // key, key, value
+            swap1    // key, value, key
+            sstore   // key
+            0xc0
+            // push
+            mload
             jump
         return___10_extra:
             dup1   // pointer
