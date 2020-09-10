@@ -104,17 +104,24 @@ function expr2h(expression, defenv) {
 
 const ast2hSpecialMap = {
     'fn*': handleFn,
+    'def!': handleDef,
     if: handleIf,
     memory: handleMem,
     stack: handleStack,
 }
 
+const parentNotApply = parent => !parent || parent[0].value !== 'apply';
+// ( (fn* ...) ...args)
+const isExecutableLambda = ast => ast && ast[0] && ast[0][0] && ast[0][0].value === 'fn*';
+// (fnname ...args) - not unknown, not native fn
+const isExecutableStored = (ast, unkownMap) => ast && ast[0] && malTypes._symbol_Q(ast[0]) && !ast2hSpecialMap[ast[0].value] && !unkownMap[ast[0].value] && !nativeEnv[ast[0].value];
+
 function ast2h(ast, parent=null, unkownMap={}, defenv={}, arrItemType=null, reverseArgs=true, stack=true, envdepth=0) {
     if (!(ast instanceof Array)) ast = [ast];
 
     // add apply if needed and not applied yet
-    if (ast && ast[0] && ast[0][0] && ast[0][0].value === 'fn*' &&
-        (!parent || parent[0].value !== 'apply')
+    if (parentNotApply(parent)
+        && (isExecutableLambda(ast) || isExecutableStored(ast, unkownMap))
     ) {
         ast.splice(0, 0, malTypes._symbol('apply'));
     }
@@ -155,8 +162,14 @@ function ast2h(ast, parent=null, unkownMap={}, defenv={}, arrItemType=null, reve
                 return type_enc.number(elem.value);
             }
 
-            const body = ast2h(ast.slice(1), ast, unkownMap, defenv, null, true, stack, envdepth);
-            return type_enc.fpu(elem.value, body.length / 2, arity, stack);
+            // It is a function name - either compiled or stored
+            if (nativeEnv[elem.value]) {
+                const body = ast2h(ast.slice(1), ast, unkownMap, defenv, null, true, stack, envdepth);
+                return type_enc.fpu(elem.value, body.length / 2, arity, stack);
+            }
+
+            // Stored function
+            return handleStored(elem, ast, unkownMap, defenv, null, true, stack, envdepth);
         }
 
         if (elem instanceof Array) {
@@ -229,6 +242,29 @@ function handleMem(ast, parent, unkownMap, defenv, arrItemType, reverseArgs, sta
 
 function handleStack(ast, parent, unkownMap, defenv, arrItemType, reverseArgs, stack, envdepth) {
     return ast2h(ast[1], parent, unkownMap, defenv, null, true, true, envdepth);
+}
+
+function handleDef(ast, parent, unkownMap, defenv, arrItemType, reverseArgs, stack, envdepth) {
+    const newast = [
+        malTypes._symbol('setalias'),
+        ast[2].value,   // fn alias
+        [
+            malTypes._symbol('setfn'),
+            ast[1],
+        ],
+    ];
+    return ast2h(newast, parent, unkownMap, defenv, arrItemType, reverseArgs, stack, envdepth);
+}
+
+function handleStored(ast, parent, unkownMap, defenv, arrItemType, reverseArgs, stack, envdepth) {
+    const newast = [
+        malTypes._symbol('getfn'),
+        [
+            malTypes._symbol('getalias'),
+            ast.value,
+        ]
+    ];
+    return ast2h(newast, parent, unkownMap, defenv, arrItemType, reverseArgs, stack, envdepth);
 }
 
 function decode (data, returntypes) {

@@ -98,6 +98,14 @@ describe.each([
         expect(resp).toEqual(8);
     });
 
+    it('def!', async function () {
+        let resp;
+        await instance.send('(def! fnmul (fn* (a b) (mul_ a b)) )');
+
+        resp = await instance.call('(fnmul 4 2)');
+        expect(resp).toEqual(8);
+    });
+
     it('if', async function () {
         let resp;
         resp = await instance.call('(if (gt_ 4 3) (add_ 4 5) (mul_ 4 5) )');
