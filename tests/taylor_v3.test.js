@@ -89,7 +89,7 @@ describe.each([
 
     it('stored', async function () {
         let resp;
-        await instance.send('(setalias "mulmul" (setfn (fn* (a b) (mul_ a b))) )');
+        await instance.send('(setalias! "mulmul" (setfn! (fn* (a b) (mul_ a b))) )');
 
         resp = await instance.call('(apply (getfn "0x3400100000000000") 4 2)');
         expect(resp).toEqual(8);

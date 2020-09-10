@@ -246,10 +246,10 @@ function handleStack(ast, parent, unkownMap, defenv, arrItemType, reverseArgs, s
 
 function handleDef(ast, parent, unkownMap, defenv, arrItemType, reverseArgs, stack, envdepth) {
     const newast = [
-        malTypes._symbol('setalias'),
+        malTypes._symbol('setalias!'),
         ast[2].value,   // fn alias
         [
-            malTypes._symbol('setfn'),
+            malTypes._symbol('setfn!'),
             ast[1],
         ],
     ];
