@@ -56,49 +56,43 @@ const type_enc = {
             + val
         );
     },
-    // TODO: mutability, etc.
-    fmu: (name, bodylen, arity, stack = true) => {
-        return (new BN(rootids.function + '0' + '001'
+    function: (name, codehex, bodylen, arity, ftype = 0, stack = true) => {
+        const mutability = name.includes('!') ? 1 : 0;
+        const id = rootids.function + u2b(mutability) + u2b(ftype).padStart(3, '0')
             + u2b(bodylen).padStart(14, '0')
             + u2b(stack ? 0 : 1).padStart(4, '0')
-            + u2b(arity).padStart(6, '0')
-        , 2)).toString(16) + nativeEnv[name].padStart(8, '0')
+            + u2b(arity).padStart(6, '0');
+        return (new BN(id, 2)).toString(16) + codehex.padStart(8, '0')
     },
 }
-type_enc.fpu = type_enc.fmu; // TODO fix
+type_enc.function_compiled = (name, bodylen, arity, stack = true) => type_enc.function(name, nativeEnv[name], bodylen, arity, 0, stack)
+type_enc.function_stored = (name, codehex, bodylen, arity, stack = true) => type_enc.function(name, codehex, bodylen, arity, 1, stack)
+type_enc.function_lambda = (name, bodylen, arity, stack = true) => type_enc.function(name, nativeEnv[name], bodylen, arity, 2, stack)
 
-Object.keys(nativeEnv).forEach((name, i) => {
-        const { arity, mutability } = nativeEnv[name];
-        let appliedf, count = i+1;
-        if (mutability) {
-            appliedf = type_enc.fmu;
-            // mutableCount ++;
-            // count = mutableCount;
-        } else {
-            appliedf = type_enc.fpu;
-            // pureCount ++;
-            // count = pureCount;
-        }
-        const f = (arity, bodylen) => {
-            bodylen = bodylen || arity * 32;
-            return appliedf(count, bodylen, arity);
-        }
-        if (arity || arity === 0) {
-            nativeEnv[name].id = f(arity)
-            nativeEnv[name].hex = nativeEnv[name].id;
-        }
-        else {
-            nativeEnv[name].hex = f;
-        }
-        nativeEnv[name].hexf = f;
-    });
+// Object.keys(nativeEnv).forEach((name, i) => {
+//         const { arity, mutability } = nativeEnv[name];
+//         let appliedf, count = i+1;
+//         appliedf = type_enc.function_compiled;
+//         const f = (arity, bodylen) => {
+//             bodylen = bodylen || arity * 32;
+//             return appliedf(count, bodylen, arity);
+//         }
+//         if (arity || arity === 0) {
+//             nativeEnv[name].id = f(arity)
+//             nativeEnv[name].hex = nativeEnv[name].id;
+//         }
+//         else {
+//             nativeEnv[name].hex = f;
+//         }
+//         nativeEnv[name].hexf = f;
+//     });
 
 // console.log('nativeEnv', nativeEnv);
 
 function expr2h(expression, defenv) {
     const ast = malReader.read_str(expression);
     const encoded = x0(ast2h(ast, null, {}, defenv));
-    // console.log('encoded', encoded);
+    console.log('encoded', encoded);
     return { encoded, ast };
 }
 
@@ -108,6 +102,7 @@ const ast2hSpecialMap = {
     if: handleIf,
     memory: handleMem,
     stack: handleStack,
+    sig: handleSig,
 }
 
 const parentNotApply = parent => !parent || parent[0].value !== 'apply';
@@ -151,9 +146,9 @@ function ast2h(ast, parent=null, unkownMap={}, defenv={}, arrItemType=null, reve
 
             if (unkownMap[elem.value]) {
                 const { index, depth } = unkownMap[elem.value]
-                let val = type_enc.fpu('unknown', index, depth - envdepth, stack);
+                let val = type_enc.function_compiled('unknown', index, depth - envdepth, stack);
 
-                if (elem.value === 'self' && ast[0] && ast[0].value === 'self') val = type_enc.fpu('apply', 0, arity + 1, stack) + val;
+                if (elem.value === 'self' && ast[0] && ast[0].value === 'self') val = type_enc.function_compiled('apply', 0, arity + 1, stack) + val;
                 return val;
             }
 
@@ -165,7 +160,7 @@ function ast2h(ast, parent=null, unkownMap={}, defenv={}, arrItemType=null, reve
             // It is a function name - either compiled or stored
             if (nativeEnv[elem.value]) {
                 const body = ast2h(ast.slice(1), ast, unkownMap, defenv, null, true, stack, envdepth);
-                return type_enc.fpu(elem.value, body.length / 2, arity, stack);
+                return type_enc.function_compiled(elem.value, body.length / 2, arity, stack);
             }
 
             // Stored function
@@ -206,7 +201,7 @@ function handleFn(ast, parent, unkownMap, defenv, arrItemType, reverseArgs, stac
 
     let lambdaArgs = ast[1].map((elem, i) => {
         const index = i;
-        const enc = type_enc.fpu('unknown', i, 0, stack);
+        const enc = type_enc.function_compiled('unknown', i, 0, stack);
         unkownMapcpy[elem.value] = { depth: envdepth, index: i };
         largs.push(index.toString(16).padStart(4, '0'));
         return enc;
@@ -216,7 +211,7 @@ function handleFn(ast, parent, unkownMap, defenv, arrItemType, reverseArgs, stac
     largs = largs.join('');
     const lambdaBody = ast2h(ast[2], ast, unkownMapcpy, defenv, null, true, stack, envdepth);
     // fpu?; body length (without args)
-    let encoded = type_enc.fpu('fn*', lambdaBody.length/2, arity, stack)
+    let encoded = type_enc.function_lambda('fn*', lambdaBody.length/2, arity, stack)
         + largs
         + lambdaBody;
     encoded = type_enc.bytelike(encoded);
@@ -230,7 +225,7 @@ function handleIf(ast, parent, unkownMap, defenv, arrItemType, reverseArgs, stac
     const action1body = ast2h(ast[2], ast, unknownMap_cpy, defenv, null, true, stack, envdepth);
     const action2body = ast2h(ast[1], ast, unknownMap_cpy, defenv, null, true, stack, envdepth);
     const len = (condition.length + action1body.length + action2body.length) / 2;
-    return type_enc.fpu('if', len, 3, stack)
+    return type_enc.function_compiled('if', len, 3, stack)
         + type_enc.bytelike(action2body)
         + type_enc.bytelike(action1body)
         + condition
@@ -258,17 +253,14 @@ function handleDef(ast, parent, unkownMap, defenv, arrItemType, reverseArgs, sta
 
 function handleStored(ast, parent, unkownMap, defenv, arrItemType, reverseArgs, stack, envdepth) {
     const newast = [
-        malTypes._symbol('getfn'),
-        [
-            malTypes._symbol('getalias'),
-            ast.value,
-        ]
-    ];
+        malTypes._symbol('getalias'),
+        ast.value,
+    ]
     return ast2h(newast, parent, unkownMap, defenv, arrItemType, reverseArgs, stack, envdepth);
 }
 
 function decode (data, returntypes) {
-    // console.log('decode data', data, returntypes)
+    console.log('decode data', data, returntypes)
     let decoded;
     if (returntypes && returntypes[0] === 'string') {
         return data.slice(2).hexDecode();

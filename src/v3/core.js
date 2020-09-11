@@ -15,6 +15,12 @@ const core = {
     map_: '150',
     reduce_: '151',
     tuple___: '14a',
+
+    'setroot!': '160',
+    'setleaf!': '161',
+    'apply-compiled': '162',
+    'apply-stored': '163',
+    'apply-lambda': '164',
 }
 
 module.exports = core;

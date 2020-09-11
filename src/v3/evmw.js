@@ -18,6 +18,7 @@ const wrapped_t2 = {
     log_: '12f',
     t2_ptr_: '130',
     t2_len_: '131',
+    'create!_': '132',
 
     'store!_': '13a',
 

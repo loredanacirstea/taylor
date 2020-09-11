@@ -208,6 +208,20 @@ describe.each([
         ) 6)`);
         expect(resp).toEqual(3);
     }, 10000);
+
+    it('test registration', async function () {
+        let resp;
+        const tay2_ = await taylor.deployRebuild(3);
+        const tay2 = tay.getTay(tay2_.provider, tay2_.signer)(tay2_.address);
+
+        await tay2.send('(setalias! "mulmul" (setfn! (fn* (a b) (mul_ a b))) )');
+
+
+        await instance.send(`(setleaf! ${tay2.address} )`);
+
+        resp = await instance.call('(apply "0x3100004200000000" 4 2)');
+        expect(resp).toEqual(8);
+    });
 });
 
 describe('Test calls', () => {
