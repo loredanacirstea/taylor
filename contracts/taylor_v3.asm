@@ -86,6 +86,19 @@ dataSize(sub_0)
 
 
 
+        // 0x60 free
+        // 0x80 cache for tags
+        // 0xa0 stop tag
+        // 0xc0 return tag from compiled fns
+        // 0xe0 current mem frame
+        // 0x100 ptr to bytecode for evm interpreter
+        // 0x120 ptr to calldata for evm interpreter
+        // 0x140 mem offset for evm interpreter
+        // 0x160 current data_ptr for evm interpreter - maybe this should be in the mem frame
+        // 0x180 ptr to entire calldata - data_ptr
+
+
+
         // start tag value - native functions
         /* (0) mmstore 0xa0, stop_00      */
 stop_00
@@ -101,14 +114,14 @@ tag_eval
         // 0xe0 - current memory frame
 
         // copy input data in memory
-        /* (0) calld 0x100     // data_ptr   // data_ptr   */
+        /* (0) calld 0x180     // data_ptr   // data_ptr   */
 calldatasize
     0x00
-    0x100     // data_ptr
+    0x180     // data_ptr
     calldatacopy
 
         // freeMemPtr
-        0x100
+        0x180
         calldatasize
         add
         0x40
@@ -149,7 +162,7 @@ calldatasize
         mstore
 
         // everything is 0 except:
-        0x100   // data_ptr
+        0x180   // data_ptr
         dup2
         /* (0) setdataptr //   //   */
 0x20
@@ -1559,52 +1572,47 @@ callvalue_01:  // 0x34
         mload
         jump
         stop
-        /* (31) wopcode 0x35, calldataload, calldataload_11      */
-calldataload_11:  // 0x35
-        pop
-        calldataload
-        0xc0
-        // push
-        mload
-        jump
-        stop
-        /* (32) wopcode 0x36, calldatasize, calldatasize_01      */
-calldatasize_01:  // 0x36
-        pop
-        calldatasize
-        0xc0
-        // push
-        mload
-        jump
-        stop
-        /* (33) wopcode 0x37, calldatacopy, calldatacopy_30      */
-calldatacopy_30:  // 0x37
-        pop
-        calldatacopy
-        0xc0
-        // push
-        mload
-        jump
-        stop
-        /* (34) wopcode 0x38, codesize, codesize_01      */
-codesize_01:  // 0x38
-        pop
-        codesize
-        0xc0
-        // push
-        mload
-        jump
-        stop
-        /* (35) wopcode 0x39, codecopy, codecopy_30      */
-codecopy_30:  // 0x39
-        pop
-        codecopy
-        0xc0
-        // push
-        mload
-        jump
-        stop
-        /* (36) wopcode 0x3a, gasprice, gasprice_01      */
+        calldataload_11:  // 0x35
+            pop
+            calldataload_11_extra
+            //
+            // push2 ?
+            jump
+            stop
+            stop
+        calldatasize_01:  // 0x36
+            pop
+            calldatasize_01_extra
+            //
+            // push2 ?
+            jump
+            stop
+            stop
+        calldatacopy_30:  // 0x37
+            pop
+            calldatacopy_30_extra
+            //
+            // push2 ?
+            jump
+            stop
+            stop
+        codesize_01:  // 0x38
+            pop
+            codesize_01_extra
+            //
+            // push2 ?
+            jump
+            stop
+            stop
+        codecopy_30:  // 0x39
+            pop
+            codecopy_30_extra
+            //
+            // push2 ?
+            jump
+            stop
+            stop
+        /* (31) wopcode 0x3a, gasprice, gasprice_01      */
 gasprice_01:  // 0x3a
         pop
         gasprice
@@ -1613,7 +1621,7 @@ gasprice_01:  // 0x3a
         mload
         jump
         stop
-        /* (37) wopcode 0x3b, extcodesize, extcodesize_11      */
+        /* (32) wopcode 0x3b, extcodesize, extcodesize_11      */
 extcodesize_11:  // 0x3b
         pop
         extcodesize
@@ -1622,16 +1630,15 @@ extcodesize_11:  // 0x3b
         mload
         jump
         stop
-        /* (38) wopcode 0x3c, extcodecopy, extcodecopy_40      */
-extcodecopy_40:  // 0x3c
-        pop
-        extcodecopy
-        0xc0
-        // push
-        mload
-        jump
-        stop
-        /* (39) wopcode 0x3d, returndatasize, returndatasize_01      */
+        extcodecopy_40:  // 0x3c
+            pop
+            extcodecopy_40_extra
+            //
+            // push2 ?
+            jump
+            stop
+            stop
+        /* (33) wopcode 0x3d, returndatasize, returndatasize_01      */
 returndatasize_01:  // 0x3d
         pop
         returndatasize
@@ -1640,16 +1647,15 @@ returndatasize_01:  // 0x3d
         mload
         jump
         stop
-        /* (40) wopcode 0x3e, returndatacopy, returndatacopy_30      */
-returndatacopy_30:  // 0x3e
-        pop
-        returndatacopy
-        0xc0
-        // push
-        mload
-        jump
-        stop
-        /* (41) wopcode 0x3f, extcodehash, extcodehash_11      */
+        returndatacopy_30:  // 0x3e
+            pop
+            returndatacopy_30_extra
+            //
+            // push2 ?
+            jump
+            stop
+            stop
+        /* (34) wopcode 0x3f, extcodehash, extcodehash_11      */
 extcodehash_11:  // 0x3f
         pop
         extcodehash
@@ -1658,7 +1664,7 @@ extcodehash_11:  // 0x3f
         mload
         jump
         stop
-        /* (42) wopcode 0x40, blockhash, blockhash_11      */
+        /* (35) wopcode 0x40, blockhash, blockhash_11      */
 blockhash_11:  // 0x40
         pop
         blockhash
@@ -1667,7 +1673,7 @@ blockhash_11:  // 0x40
         mload
         jump
         stop
-        /* (43) wopcode 0x41, coinbase, coinbase_01      */
+        /* (36) wopcode 0x41, coinbase, coinbase_01      */
 coinbase_01:  // 0x41
         pop
         coinbase
@@ -1676,7 +1682,7 @@ coinbase_01:  // 0x41
         mload
         jump
         stop
-        /* (44) wopcode 0x42, timestamp, timestamp_01      */
+        /* (37) wopcode 0x42, timestamp, timestamp_01      */
 timestamp_01:  // 0x42
         pop
         timestamp
@@ -1685,7 +1691,7 @@ timestamp_01:  // 0x42
         mload
         jump
         stop
-        /* (45) wopcode 0x43, number, number_01      */
+        /* (38) wopcode 0x43, number, number_01      */
 number_01:  // 0x43
         pop
         number
@@ -1694,7 +1700,7 @@ number_01:  // 0x43
         mload
         jump
         stop
-        /* (46) wopcode 0x44, difficulty, difficulty_01      */
+        /* (39) wopcode 0x44, difficulty, difficulty_01      */
 difficulty_01:  // 0x44
         pop
         difficulty
@@ -1703,7 +1709,7 @@ difficulty_01:  // 0x44
         mload
         jump
         stop
-        /* (47) wopcode 0x45, gaslimit, gaslimit_01      */
+        /* (40) wopcode 0x45, gaslimit, gaslimit_01      */
 gaslimit_01:  // 0x45
         pop
         gaslimit
@@ -1712,7 +1718,7 @@ gaslimit_01:  // 0x45
         mload
         jump
         stop
-        /* (48) wopcode 0x46, stop, chainid_01      */
+        /* (41) wopcode 0x46, stop, chainid_01      */
 chainid_01:  // 0x46
         pop
         stop
@@ -1721,7 +1727,7 @@ chainid_01:  // 0x46
         mload
         jump
         stop
-        /* (49) wopcode 0x47, stop, selfbalance_01      */
+        /* (42) wopcode 0x47, stop, selfbalance_01      */
 selfbalance_01:  // 0x47
         pop
         stop
@@ -1802,7 +1808,7 @@ unused_29:  // 0x4f
         stop
         stop
         stop
-        /* (50) wopcode 0x50, pop, pop_00      */
+        /* (43) wopcode 0x50, pop, pop_00      */
 pop_00:  // 0x50
         pop
         pop
@@ -1811,34 +1817,31 @@ pop_00:  // 0x50
         mload
         jump
         stop
-        /* (51) wopcode 0x51, mload, mload_11      */
-mload_11:  // 0x51
-        pop
-        mload
-        0xc0
-        // push
-        mload
-        jump
-        stop
-        /* (52) wopcode 0x52, mstore, mstore_20      */
-mstore_20:  // 0x52
-        pop
-        mstore
-        0xc0
-        // push
-        mload
-        jump
-        stop
-        /* (53) wopcode 0x53, mstore8, mstore8_20      */
-mstore8_20:  // 0x53
-        pop
-        mstore8
-        0xc0
-        // push
-        mload
-        jump
-        stop
-        /* (54) wopcode 0x54, sload, sload_11      */
+        mload_11:  // 0x51
+            pop
+            mload_11_extra
+            //
+            // push2
+            jump
+            stop
+            stop
+        mstore_20:  // 0x52
+            pop
+            mstore_20_extra
+            //
+            // push2
+            jump
+            stop
+            stop
+        mstore8_20:  // 0x53
+            pop
+            mstore8_20_extra
+            //
+            // push2
+            jump
+            stop
+            stop
+        /* (44) wopcode 0x54, sload, sload_11      */
 sload_11:  // 0x54
         pop
         sload
@@ -1847,7 +1850,7 @@ sload_11:  // 0x54
         mload
         jump
         stop
-        /* (55) wopcode 0x55, sstore, sstore_20      */
+        /* (45) wopcode 0x55, sstore, sstore_20      */
 sstore_20:  // 0x55
         pop
         sstore
@@ -1864,15 +1867,15 @@ sstore_20:  // 0x55
             jump
             stop
             stop
-        jumpi_20:    // 0x57  // cond, new data_ptr, v0 -> dest, v0, cond, jump_10
+        jumpi_20:    // 0x57  // cond, tag
+            pop
             jumpi_20_extra
             //
             // push?
             jump
             stop
             stop
-            stop
-        /* (56) wopcode 0x58, pc, pc_01      */
+        /* (46) wopcode 0x58, pc, pc_01      */
 pc_01:  // 0x58
         pop
         pc
@@ -1881,7 +1884,7 @@ pc_01:  // 0x58
         mload
         jump
         stop
-        /* (57) wopcode 0x59, msize, msize_01      */
+        /* (47) wopcode 0x59, msize, msize_01      */
 msize_01:  // 0x59
         pop
         msize
@@ -1890,7 +1893,7 @@ msize_01:  // 0x59
         mload
         jump
         stop
-        /* (58) wopcode 0x5a, gas, gas_01      */
+        /* (48) wopcode 0x5a, gas, gas_01      */
 gas_01:  // 0x5a
         pop
         gas
@@ -1899,7 +1902,7 @@ gas_01:  // 0x5a
         mload
         jump
         stop
-        /* (59) wopcode 0x5b, jumpdest, jumpdest_00      */
+        /* (49) wopcode 0x5b, jumpdest, jumpdest_00      */
 jumpdest_00:  // 0x5b
         pop
         jumpdest
@@ -2520,7 +2523,7 @@ swap16_00:  // 0x9f
         mload
         jump
         stop
-        /* (60) wopcode 0xa0, log0, log0_20      */
+        /* (50) wopcode 0xa0, log0, log0_20      */
 log0_20:  // 0xa0
         pop
         log0
@@ -2529,7 +2532,7 @@ log0_20:  // 0xa0
         mload
         jump
         stop
-        /* (61) wopcode 0xa1, log1, log1_30      */
+        /* (51) wopcode 0xa1, log1, log1_30      */
 log1_30:  // 0xa1
         pop
         log1
@@ -2538,7 +2541,7 @@ log1_30:  // 0xa1
         mload
         jump
         stop
-        /* (62) wopcode 0xa2, log2, log2_40      */
+        /* (52) wopcode 0xa2, log2, log2_40      */
 log2_40:  // 0xa2
         pop
         log2
@@ -2547,7 +2550,7 @@ log2_40:  // 0xa2
         mload
         jump
         stop
-        /* (63) wopcode 0xa3, log3, log3_50      */
+        /* (53) wopcode 0xa3, log3, log3_50      */
 log3_50:  // 0xa3
         pop
         log3
@@ -2556,7 +2559,7 @@ log3_50:  // 0xa3
         mload
         jump
         stop
-        /* (64) wopcode 0xa4, log4, log4_60      */
+        /* (54) wopcode 0xa4, log4, log4_60      */
 log4_60:  // 0xa4
         pop
         log4
@@ -3235,7 +3238,7 @@ unused_103:  // 0xef
         stop
         stop
         stop
-        /* (65) wopcode 0xf0, create, create_31      */
+        /* (55) wopcode 0xf0, create, create_31      */
 create_31:  // 0xf0
         pop
         create
@@ -3244,7 +3247,7 @@ create_31:  // 0xf0
         mload
         jump
         stop
-        /* (66) wopcode 0xf1, call, call_71      */
+        /* (56) wopcode 0xf1, call, call_71      */
 call_71:  // 0xf1
         pop
         call
@@ -3253,7 +3256,7 @@ call_71:  // 0xf1
         mload
         jump
         stop
-        /* (67) wopcode 0xf2, callcode, callcode_71      */
+        /* (57) wopcode 0xf2, callcode, callcode_71      */
 callcode_71:  // 0xf2
         pop
         callcode
@@ -3262,16 +3265,15 @@ callcode_71:  // 0xf2
         mload
         jump
         stop
-        /* (68) wopcode 0xf3, return, return_20      */
-return_20:  // 0xf3
-        pop
-        return
-        0xc0
-        // push
-        mload
-        jump
-        stop
-        /* (69) wopcode 0xf4, delegatecall, delegatecall_61      */
+        return_20: // 0xf3
+            pop
+            return_20_extra
+            //
+            // push
+            jump
+            stop
+            stop
+        /* (58) wopcode 0xf4, delegatecall, delegatecall_61      */
 delegatecall_61:  // 0xf4
         pop
         delegatecall
@@ -3280,7 +3282,7 @@ delegatecall_61:  // 0xf4
         mload
         jump
         stop
-        /* (70) wopcode 0xf5, create2, create2_41      */
+        /* (59) wopcode 0xf5, create2, create2_41      */
 create2_41:  // 0xf5
         pop
         create2
@@ -3325,7 +3327,7 @@ unused_107:  // 0xf9
         stop
         stop
         stop
-        /* (71) wopcode 0xfa, staticcall, staticcall_61      */
+        /* (60) wopcode 0xfa, staticcall, staticcall_61      */
 staticcall_61:  // 0xfa
         pop
         staticcall
@@ -3352,7 +3354,7 @@ unused_109:  // 0xfc
         stop
         stop
         stop
-        /* (72) wopcode 0xfd, revert, revert_20      */
+        /* (61) wopcode 0xfd, revert, revert_20      */
 revert_20:  // 0xfd
         pop
         revert
@@ -3370,7 +3372,7 @@ unused_110:  // 0xfe
         stop
         stop
         stop
-        /* (73) wopcode 0xff, selfdestruct, selfdestruct_10      */
+        /* (62) wopcode 0xff, selfdestruct, selfdestruct_10      */
 selfdestruct_10:  // 0xff
         pop
         selfdestruct
@@ -4301,24 +4303,40 @@ unused_178:  // 0x169
             stop
             stop
         jump_10_extra:
-            0xe0        // start of data data_ptr
-            // push1
-            add
-            0x80          // store new data_ptr
-            // push
-            mstore
+            // tag
+            0x100      // bytecode ptr
+            mload
+            add        // get actual position
+
+            0x160
+            mstore     // update current bytecode ptr
+
             0xc0
             // push
             mload
             jump
         jumpi_20_extra:
-            swap1    // cond, v0, dest
-            swap2    // dest, v0, cond
-            jump_10
-            // push
+            // cond, tag
+            swap1      // tag, cond
+            jumpi_20_extra_jump
             jumpi
-            pop
-            pop
+            pop      // pop tag
+
+            0xc0
+            // push
+            mload
+            jump
+
+        jumpi_20_extra_jump:
+            // tag
+            // add bytecode offset to tag
+            0x100
+            mload     // bytecode pointer
+            add       // cond, real_pos
+            0x160
+            mstore    // change current bytecode ptr
+
+
             0xc0
             // push
             mload
@@ -6752,17 +6770,34 @@ for_stack_12:
             mload
             jump
         interpret_11_extra:
-            // ptr to bytecode
-            /* (25) t2_ptr_ //   //   */
+            // ptr to calldata, ptr to bytecode
+            /* (25) t2_ptr_ // store ptr to bytecode   // store ptr to bytecode   */
 // expects t2 pointer
     0x20
     add
-            0x80
+            dup1
+            0x100
             mstore
 
+            0x160
+            mstore        // store current bytecode ptr
+
+            /* (26) t2_ptr_ // store ptr to calldata   // store ptr to calldata   */
+// expects t2 pointer
+    0x20
+    add
+            0x120
+            mstore
+
+            0x40
+            mload       // store current freeMemPtr as mem offset
+            0x140
+            mstore
+
+            // store initial tag
             0xc0
             mload
-            0x60
+            0x80
             mstore
 
             interpret_11_extra_start
@@ -6770,7 +6805,7 @@ for_stack_12:
             mstore
 
         interpret_11_extra_start:
-        0x80    // push data pointer on stack
+            0x160    // push bytecode pointer on stack
           mload
           0x00
           0xf8
@@ -6817,7 +6852,7 @@ for_stack_12:
           pop // pops old data_ptr
         interpret_11_extra_loop:
           dup3
-          0x80    // store data_ptr
+          0x160    // store data_ptr
           mstore
           0x08
           dup2
@@ -6835,12 +6870,259 @@ for_stack_12:
           pop
           jump	// out
         interpret_11_extra_end_3:
-            0x60
+            0x80      // load previous tag
             mload
             dup1
             0xc0
             mstore
             jump
+        calldataload_11_extra:
+            // calldata start position
+            0x120
+            mload    // ptr to calldata
+            add      // add the given offset
+            mload
+            0xc0
+            // push
+            mload
+            jump
+        calldatasize_01_extra:
+            // load calldata length from pointer
+            0x20
+            0x120
+            mload     // ptr
+            sub       // length is in prev slot
+            mload
 
+            0xc0
+            // push
+            mload
+            jump
+        calldatacopy_30_extra:
+            // len, calldata_pos, mem_ptr
+            0x140        // mem offset
+            mload
+            add          // new mem_ptr
+
+            swap1      // len, mem_ptr, calldata_pos
+            0x120
+            mload      // calldata pointer
+            add        // add calldata_pos
+            swap1      // len, calldata_ptr, mem_ptr
+            /* (3) mmultimstore // size_bytes, source_ptr, target_ptr   // size_bytes, source_ptr, target_ptr   */
+// alloc before using it
+            // size_bytes, source_ptr, target_ptr
+            dup3   // size_bytes
+
+            // calc slots
+            0x20
+            dup2
+            div
+
+            0x00
+            0x20
+            dup4
+            mod
+            gt
+            add
+
+            swap1
+            pop
+
+            // end calc slots
+
+            swap3            // slots, source_ptr, target_ptr ; replace length with slots
+            pop
+
+            mmultimstore_end_3
+            dup4             // slots
+            0x00
+
+for_stack_13:
+        dup2   // end
+        dup2   // start
+        lt
+        forloop_stack_13
+        jumpi
+        pop    // pop end, step
+        pop
+        jump
+    forloop_stack_13:   // any content variables are kept after jumptag, end, step
+
+                // slots, source_ptr, target_ptr, tag, end, step
+                dup5
+                mload
+                dup5
+                mstore
+
+                dup5
+                0x20
+                add
+                swap5
+                pop
+
+                dup4
+                0x20
+                add
+                swap4
+                pop
+
+    forloop_end_stack_13:
+        0x01   // start/step first
+        add
+        for_stack_13
+        jump
+        mmultimstore_end_3:
+            pop
+            pop
+            pop
+
+            0xc0
+            // push
+            mload
+            jump
+
+        codesize_01_extra:
+            // load bytecode length from pointer
+            0x20
+            0x100
+            mload     // ptr
+            sub       // length is in prev slot
+            mload
+
+            0xc0
+            // push
+            mload
+            jump
+        codecopy_30_extra:
+            // len, code_pos, mem_ptr
+            0x140        // mem offset
+            mload
+            add          // new mem_ptr
+
+            swap1      // len, mem_ptr, bytecode_pos
+            0x100
+            mload      // bytecode pointer
+            add        // add bytecode_pos
+            swap1      // len, bytecode_ptr, mem_ptr
+            /* (4) mmultimstore // size_bytes, source_ptr, target_ptr   // size_bytes, source_ptr, target_ptr   */
+// alloc before using it
+            // size_bytes, source_ptr, target_ptr
+            dup3   // size_bytes
+
+            // calc slots
+            0x20
+            dup2
+            div
+
+            0x00
+            0x20
+            dup4
+            mod
+            gt
+            add
+
+            swap1
+            pop
+
+            // end calc slots
+
+            swap3            // slots, source_ptr, target_ptr ; replace length with slots
+            pop
+
+            mmultimstore_end_4
+            dup4             // slots
+            0x00
+
+for_stack_14:
+        dup2   // end
+        dup2   // start
+        lt
+        forloop_stack_14
+        jumpi
+        pop    // pop end, step
+        pop
+        jump
+    forloop_stack_14:   // any content variables are kept after jumptag, end, step
+
+                // slots, source_ptr, target_ptr, tag, end, step
+                dup5
+                mload
+                dup5
+                mstore
+
+                dup5
+                0x20
+                add
+                swap5
+                pop
+
+                dup4
+                0x20
+                add
+                swap4
+                pop
+
+    forloop_end_stack_14:
+        0x01   // start/step first
+        add
+        for_stack_14
+        jump
+        mmultimstore_end_4:
+            pop
+            pop
+            pop
+
+            0xc0
+            // push
+            mload
+            jump
+        extcodecopy_40_extra:
+            stop
+        returndatacopy_30_extra:
+            stop
+        mload_11_extra:
+            // position
+            // increase with mem offset
+            0x140
+            mload
+            add
+            mload
+
+            0xc0
+            // push
+            mload
+            jump
+        mstore_20_extra:
+            // value, ptr
+            // increase with mem offset
+            0x140
+            mload
+            add
+            mstore
+
+            0xc0
+            // push
+            mload
+            jump
+        mstore8_20_extra:
+            // value, ptr
+            // increase with mem offset
+            0x140
+            mload
+            add
+            mstore8
+
+            0xc0
+            // push
+            mload
+            jump
+        return_20_extra:
+            // len, ptr
+            // increase ptr with mem offset
+            0x140
+            mload
+            add
+            return
 
     }
