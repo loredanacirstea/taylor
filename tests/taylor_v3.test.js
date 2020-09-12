@@ -222,6 +222,11 @@ describe.each([
         resp = await instance.call('(apply "0x3100004200000000" 4 2)');
         expect(resp).toEqual(8);
     });
+
+    it('test interpret', async function () {
+        resp = await instance.call('(interpret "0x600960050160005260206000f3" "0x")');
+        expect(resp).toEqual(14);
+    });
 });
 
 describe('Test calls', () => {

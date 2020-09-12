@@ -4247,6 +4247,59 @@ unused_173:  // 0x15f
             jump
             stop
             stop
+        /* (170) eopcode 0x165, 174      */
+unused_174:  // 0x165
+        stop
+        stop
+        stop
+        stop
+        stop
+        stop
+        stop
+        /* (171) eopcode 0x166, 175      */
+unused_175:  // 0x166
+        stop
+        stop
+        stop
+        stop
+        stop
+        stop
+        stop
+        /* (172) eopcode 0x167, 176      */
+unused_176:  // 0x167
+        stop
+        stop
+        stop
+        stop
+        stop
+        stop
+        stop
+        /* (173) eopcode 0x168, 177      */
+unused_177:  // 0x168
+        stop
+        stop
+        stop
+        stop
+        stop
+        stop
+        stop
+        /* (174) eopcode 0x169, 178      */
+unused_178:  // 0x169
+        stop
+        stop
+        stop
+        stop
+        stop
+        stop
+        stop
+        interpret_11:     // 0x16a
+            pop
+            interpret_11_extra
+            //
+            // push
+            jump
+            stop
+            stop
         jump_10_extra:
             0xe0        // start of data data_ptr
             // push1
@@ -6698,5 +6751,96 @@ for_stack_12:
             // push
             mload
             jump
+        interpret_11_extra:
+            // ptr to bytecode
+            /* (25) t2_ptr_ //   //   */
+// expects t2 pointer
+    0x20
+    add
+            0x80
+            mstore
+
+            0xc0
+            mload
+            0x60
+            mstore
+
+            interpret_11_extra_start
+            0xc0
+            mstore
+
+        interpret_11_extra_start:
+        0x80    // push data pointer on stack
+          mload
+          0x00
+          0xf8
+          0x02
+          exp
+          dup3
+          mload
+          div
+          0x01
+          dup4
+          add
+          swap3
+          pop
+          0x02
+          0x80
+          dup3
+          lt
+          0x5f
+          dup4
+          gt
+          add
+          eq
+          iszero
+          interpret_11_extra_loop
+          jumpi
+          0x5f
+          dup2
+          sub
+          0x08
+          dup2
+          mul
+          0x0100
+          sub
+          0x02
+          exp
+          dup5
+          mload
+          div
+          swap3 // replace value with new value
+          pop
+          dup4  // dups data_ptr
+          add    // add with size
+          swap3  // replaces with new data_ptr
+          pop // pops old data_ptr
+        interpret_11_extra_loop:
+          dup3
+          0x80    // store data_ptr
+          mstore
+          0x08
+          dup2
+          mul
+          0xa0
+          mload
+          add
+          swap1  // opcode first & remove
+          pop
+          swap1 // value on top
+          swap2 // data_ptr on top, to remove -> pos on top for jump
+          pop
+          jump // in
+        interpret_11_extra_end:
+          pop
+          jump	// out
+        interpret_11_extra_end_3:
+            0x60
+            mload
+            dup1
+            0xc0
+            mstore
+            jump
+
 
     }

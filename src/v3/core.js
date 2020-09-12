@@ -21,6 +21,8 @@ const core = {
     'apply-compiled': '162',
     'apply-stored': '163',
     'apply-lambda': '164',
+
+    'interpret': '16a',
 }
 
 module.exports = core;

@@ -69,25 +69,6 @@ type_enc.function_compiled = (name, bodylen, arity, stack = true) => type_enc.fu
 type_enc.function_stored = (name, codehex, bodylen, arity, stack = true) => type_enc.function(name, codehex, bodylen, arity, 1, stack)
 type_enc.function_lambda = (name, bodylen, arity, stack = true) => type_enc.function(name, nativeEnv[name], bodylen, arity, 2, stack)
 
-// Object.keys(nativeEnv).forEach((name, i) => {
-//         const { arity, mutability } = nativeEnv[name];
-//         let appliedf, count = i+1;
-//         appliedf = type_enc.function_compiled;
-//         const f = (arity, bodylen) => {
-//             bodylen = bodylen || arity * 32;
-//             return appliedf(count, bodylen, arity);
-//         }
-//         if (arity || arity === 0) {
-//             nativeEnv[name].id = f(arity)
-//             nativeEnv[name].hex = nativeEnv[name].id;
-//         }
-//         else {
-//             nativeEnv[name].hex = f;
-//         }
-//         nativeEnv[name].hexf = f;
-//     });
-
-// console.log('nativeEnv', nativeEnv);
 
 function expr2h(expression, defenv) {
     const ast = malReader.read_str(expression);
