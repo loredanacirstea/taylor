@@ -278,7 +278,7 @@ const tests = {
         {
             test: '(codesize_)',
             result: true,
-            process: (resp, instance) => resp > 2220,
+            result: 8,
         },
     ],
     extcodesize_: [
@@ -370,21 +370,22 @@ const tests = {
     calldatacopy__: [
         {
             test: '(return# (calldatacopy__ 0 32 ))',
-            result: '0x3101400100000101310120020000012010000000000000000000000000000000',
+            result: '0x3001400100000101300120020000012010000000000000000000000000000000',
             decode: ['bytes32'],
         },
     ],
     codecopy__: [
         {
+            // only for evm interpreter, reads from calldata
             test: '(return# (codecopy__ 0 10 ))',
-            result: '0x6103aa60a052603a60c0',
+            result: '0x6103c460a052605460c0',
             decode: null,
         },
     ],
     extcodecopy__: [
         {
             test: '(return# (extcodecopy__ (address_ ) 0 10 ))',
-            result: '0x6103aa60a052603a60c0',
+            result: '0x6103c460a052605460c0',
             decode: null,
         },
     ],
@@ -493,7 +494,7 @@ const tests = {
     ],
     mload_: [
         {
-            test: '(mload_ (tn_ptr_ (mmstore__ 1000)))',
+            test: '(mload_ (t2_ptr_ (mmstore__ 1000)))',
             result: 1000,
             decode: ['uint'],
         }

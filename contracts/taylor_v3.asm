@@ -95,7 +95,8 @@ dataSize(sub_0)
         // 0x120 ptr to calldata for evm interpreter
         // 0x140 mem offset for evm interpreter
         // 0x160 current data_ptr for evm interpreter - maybe this should be in the mem frame
-        // 0x180 ptr to entire calldata - data_ptr
+        // 0x180 calldata length - for calldatasize fn
+        // 0x1a0 ptr to entire calldata - data_ptr
 
 
 
@@ -113,15 +114,32 @@ tag_eval
 
         // 0xe0 - current memory frame
 
+        // initially, set both bytecode & calldata pointers at calldata
+        0x1a0
+        0x100
+        mstore
+
+        0x1a0
+        0x120
+        mstore
+
+        0x1a0
+        0x160
+        mstore
+
+        calldatasize
+        0x180
+        mstore
+
         // copy input data in memory
-        /* (0) calld 0x180     // data_ptr   // data_ptr   */
+        /* (0) calld 0x1a0     // data_ptr   // data_ptr   */
 calldatasize
     0x00
-    0x180     // data_ptr
+    0x1a0     // data_ptr
     calldatacopy
 
         // freeMemPtr
-        0x180
+        0x1a0
         calldatasize
         add
         0x40
@@ -162,7 +180,7 @@ calldatasize
         mstore
 
         // everything is 0 except:
-        0x180   // data_ptr
+        0x1a0   // data_ptr
         dup2
         /* (0) setdataptr //   //   */
 0x20

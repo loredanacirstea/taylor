@@ -20,7 +20,7 @@ const tests = {
     t2_ptr_: [
         {
             test: '(t2_ptr_ (mmstore__ 12))',
-            result: 1620,
+            result: 1780,
             decode: ['uint'],
         },
     ],

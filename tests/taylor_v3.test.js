@@ -93,7 +93,7 @@ describe.each([
         let resp;
         await instance.send('(setalias! "mulmul" (setfn! (fn* (a b) (mul_ a b))) )');
 
-        resp = await instance.call('(apply (getfn "0x3400100000000000") 4 2)');
+        resp = await instance.call('(apply (getfn "0x3100004200000000") 4 2)');
         expect(resp).toEqual(8);
 
         resp = await instance.call('(apply (getfn (getalias "mulmul")) 4 2)');
