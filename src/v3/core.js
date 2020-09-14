@@ -19,8 +19,7 @@ const core = {
     'setroot!': '160',
     'setleaf!': '161',
     'apply-compiled': '162',
-    'apply-stored': '163',
-    'apply-lambda': '164',
+    'apply-lambda': '163',
 
     'interpret': '16a',
 }

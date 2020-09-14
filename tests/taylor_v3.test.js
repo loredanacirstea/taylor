@@ -91,12 +91,12 @@ describe.each([
 
     it('stored', async function () {
         let resp;
-        await instance.send('(setalias! "mulmul" (setfn! (fn* (a b) (mul_ a b))) )');
+        await instance.send('(setalias! (keccak256_ "mulmul") (setfn! (fn* (a b) (mul_ a b))) )');
 
-        resp = await instance.call('(apply (getfn "0x3100004200000000") 4 2)');
+        resp = await instance.call('(apply (getfn 0x3100004200000000000000000000000000000000000000000000000000000000) 4 2)');
         expect(resp).toEqual(8);
 
-        resp = await instance.call('(apply (getfn (getalias "mulmul")) 4 2)');
+        resp = await instance.call('(apply (getfn (getalias (keccak256_ "mulmul") )) 4 2)');
         expect(resp).toEqual(8);
     });
 
@@ -216,12 +216,12 @@ describe.each([
         const tay2_ = await taylor.deployRebuild(3);
         const tay2 = tay.getTay(tay2_.provider, tay2_.signer)(tay2_.address);
 
-        await tay2.send('(setalias! "mulmul" (setfn! (fn* (a b) (mul_ a b))) )');
+        await tay2.send('(def! mulmul (fn* (a b) (mul_ a b)) )');
 
 
         await instance.send(`(setleaf! ${tay2.address} )`);
 
-        resp = await instance.call('(apply "0x3100004200000000" 4 2)');
+        resp = await instance.call('(mulmul 4 2)');
         expect(resp).toEqual(8);
     });
 

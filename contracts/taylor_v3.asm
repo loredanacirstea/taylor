@@ -36,8 +36,6 @@ dataSize(sub_0)
 
 
 
-
-
         // GETTERS  //
 
 
@@ -4251,14 +4249,6 @@ unused_173:  // 0x15f
             jump
             stop
             stop
-        apply_stored_x1:     // 0x163
-            pop
-            apply_stored_x1_extra
-            //
-            // push
-            jump
-            stop
-            stop
         apply_lambda_x1:     // 0x164
             pop
             apply_lambda_x1_extra
@@ -4891,11 +4881,7 @@ for_stack_5:
             // push
             mload
             jump
-        getfn_11_extra:  // fsig pointer -> pointer
-            0x20
-            add
-            mload
-
+        getfn_11_extra:  // fsig uint256 -> pointer
             0xfffffbffffffffffffffffffffffffffffffffffffffffffffffffffffffffff    // mem/stack -> 0
             and
 
@@ -5027,95 +5013,16 @@ for_stack_6:
             // push
             mload
             jump
-        setalias_20_extra:  // name pointer, signature ptr TODO might be > 32 bytes save with length
-            // sig, name_ptr
-            /* (0) getnamehash // sig, key   // sig, key   */
-// expects pointer to name (bytes)
-
-            0x03    // seed
-            0x00
-            mstore
-
-            // hash name first, so we don't need to copy the bytes
-            dup1
-            mload   // length
-            swap1   // length, ptr
-            sha3
-
-            0x20
-            mstore
-
-            0x40
-            0x00
-            sha3
+        setalias_20_extra:  // key/ name hash, signature ptr TODO might be > 32 bytes save with length
+            // sig, key
             sstore
             0x01           // add a success result on stack
             0xc0
             // push
             mload
             jump
-        getalias_11_extra:  // name pointer -> signature pointer
-            /* (1) getnamehash //   //   */
-// expects pointer to name (bytes)
-
-            0x03    // seed
-            0x00
-            mstore
-
-            // hash name first, so we don't need to copy the bytes
-            dup1
-            mload   // length
-            swap1   // length, ptr
-            sha3
-
-            0x20
-            mstore
-
-            0x40
-            0x00
-            sha3
+        getalias_11_extra:  // key/name hash -> signature uint256
             sload        // load signature
-
-            0x20          // TODO multi slots
-            /* (0) t2_init__ 0x40      */
-// expects length; 0 = freeMemPtr
-    dup1
-    0x20
-    add           // length, fulllength
-
-    // alloc
-    0x40
-    mload
-    swap1
-    dup2
-    add
-    0x40
-    mstore     // length, ptr
-    // end alloc
-
-    dup1       // store length   // length, ptr, ptr
-    swap2      // ptr, ptr, length
-    swap1      // ptr, length, ptr
-    mstore     // ptr
-            dup1      // sig, sig_ptr, sig_ptr
-            swap2    // sig_ptr, sig_ptr, sig
-            swap1    // sig_ptr, sig, sig_ptr
-
-            /* (0) t2_ptr_ //   //   */
-// expects t2 pointer
-    0x20
-    add
-            mstore    // sig_ptr
-
-            0x01
-            /* (14) getframe //   //   */
-0xe0
-            mload
-            /* (3) setdelmarker // do not delete frame   // do not delete frame   */
-0x140
-            add
-            mstore
-
             0xc0
             // push
             mload
@@ -5127,11 +5034,11 @@ for_stack_6:
             swap1
             pop     // remove branch2_ptr
 
-            /* (1) t2_ptr_ // get actual pointer   // get actual pointer   */
+            /* (0) t2_ptr_ // get actual pointer   // get actual pointer   */
 // expects t2 pointer
     0x20
     add
-            /* (15) getframe // branch1_ptr, frame_ptr   // branch1_ptr, frame_ptr   */
+            /* (14) getframe // branch1_ptr, frame_ptr   // branch1_ptr, frame_ptr   */
 0xe0
             mload
             /* (2) setdataptr //   //   */
@@ -5144,11 +5051,11 @@ for_stack_6:
         if_3x_branch2:
             pop    // remove branch1_ptr
 
-            /* (2) t2_ptr_ // get actual pointer   // get actual pointer   */
+            /* (1) t2_ptr_ // get actual pointer   // get actual pointer   */
 // expects t2 pointer
     0x20
     add
-            /* (16) getframe // branch2_ptr, frame_ptr   // branch2_ptr, frame_ptr   */
+            /* (15) getframe // branch2_ptr, frame_ptr   // branch2_ptr, frame_ptr   */
 0xe0
             mload
             /* (3) setdataptr //   //   */
@@ -5159,7 +5066,7 @@ for_stack_6:
             tag_eval
             jump
         self_0x_extra:
-            /* (17) getframe //   //   */
+            /* (16) getframe //   //   */
 0xe0
             mload
             /* (1) getenvptr //   //   */
@@ -5173,7 +5080,7 @@ for_stack_6:
             jump
         super_1x_extra:
             // index
-            /* (18) getframe //   //   */
+            /* (17) getframe //   //   */
 0xe0
             mload
             swap1     // frame_ptr, super index
@@ -5235,6 +5142,51 @@ for_stack_7:
         calldatacopy__21_extra:
                               // calld_length, calld_start
             dup2              // calld_length, calld_start, calld_length
+            /* (0) t2_init__ 0x40    // calld_length, calld_start, mem_ptr__   // calld_length, calld_start, mem_ptr__   */
+// expects length; 0 = freeMemPtr
+    dup1
+    0x20
+    add           // length, fulllength
+
+    // alloc
+    0x40    // calld_length
+    mload
+    swap1
+    dup2
+    add
+    0x40    // calld_length
+    mstore     // length, ptr
+    // end alloc
+
+    dup1       // store length   // length, ptr, ptr
+    swap2      // ptr, ptr, length
+    swap1      // ptr, length, ptr
+    mstore     // ptr
+            swap2             // mem_ptr__, calld_start, calld_length
+            swap1             // mem_ptr__, calld_length, calld_start
+            dup3
+            /* (2) t2_ptr_ // mem_ptr__, calld_length, calld_start, ptr   // mem_ptr__, calld_length, calld_start, ptr   */
+// expects t2 pointer
+    0x20
+    add
+            calldatacopy      // mem_ptr__
+
+            0x01
+            /* (18) getframe //   //   */
+0xe0
+            mload
+            /* (3) setdelmarker // do not delete frame   // do not delete frame   */
+0x140
+            add
+            mstore
+
+            0xc0
+            // push
+            mload
+            jump
+        codecopy__21_extra:
+                              // calld_length, calld_start
+            dup2              // calld_length, calld_start, calld_length
             /* (1) t2_init__ 0x40    // calld_length, calld_start, mem_ptr__   // calld_length, calld_start, mem_ptr__   */
 // expects length; 0 = freeMemPtr
     dup1
@@ -5262,7 +5214,7 @@ for_stack_7:
 // expects t2 pointer
     0x20
     add
-            calldatacopy      // mem_ptr__
+            codecopy          // mem_ptr__
 
             0x01
             /* (19) getframe //   //   */
@@ -5277,55 +5229,10 @@ for_stack_7:
             // push
             mload
             jump
-        codecopy__21_extra:
-                              // calld_length, calld_start
-            dup2              // calld_length, calld_start, calld_length
-            /* (2) t2_init__ 0x40    // calld_length, calld_start, mem_ptr__   // calld_length, calld_start, mem_ptr__   */
-// expects length; 0 = freeMemPtr
-    dup1
-    0x20
-    add           // length, fulllength
-
-    // alloc
-    0x40    // calld_length
-    mload
-    swap1
-    dup2
-    add
-    0x40    // calld_length
-    mstore     // length, ptr
-    // end alloc
-
-    dup1       // store length   // length, ptr, ptr
-    swap2      // ptr, ptr, length
-    swap1      // ptr, length, ptr
-    mstore     // ptr
-            swap2             // mem_ptr__, calld_start, calld_length
-            swap1             // mem_ptr__, calld_length, calld_start
-            dup3
-            /* (4) t2_ptr_ // mem_ptr__, calld_length, calld_start, ptr   // mem_ptr__, calld_length, calld_start, ptr   */
-// expects t2 pointer
-    0x20
-    add
-            codecopy          // mem_ptr__
-
-            0x01
-            /* (20) getframe //   //   */
-0xe0
-            mload
-            /* (5) setdelmarker // do not delete frame   // do not delete frame   */
-0x140
-            add
-            mstore
-
-            0xc0
-            // push
-            mload
-            jump
         extcodecopy__31_extra:
                               // calld_length, calld_start, address
             dup3              // calld_length, calld_start, address, calld_length
-            /* (3) t2_init__ 0x40    // calld_length, calld_start, address, mem_ptr__   // calld_length, calld_start, address, mem_ptr__   */
+            /* (2) t2_init__ 0x40    // calld_length, calld_start, address, mem_ptr__   // calld_length, calld_start, address, mem_ptr__   */
 // expects length; 0 = freeMemPtr
     dup1
     0x20
@@ -5349,7 +5256,7 @@ for_stack_7:
             swap2             // mem_ptr__, calld_length, address, calld_start
             swap1             // mem_ptr__, calld_length, calld_start, address
             dup4
-            /* (5) t2_ptr_ // mem_ptr__, calld_length, calld_start, address, ptr   // mem_ptr__, calld_length, calld_start, address, ptr   */
+            /* (4) t2_ptr_ // mem_ptr__, calld_length, calld_start, address, ptr   // mem_ptr__, calld_length, calld_start, address, ptr   */
 // expects t2 pointer
     0x20
     add
@@ -5357,10 +5264,10 @@ for_stack_7:
             extcodecopy       // mem_ptr__
 
             0x01
-            /* (21) getframe //   //   */
+            /* (20) getframe //   //   */
 0xe0
             mload
-            /* (6) setdelmarker // do not delete frame   // do not delete frame   */
+            /* (5) setdelmarker // do not delete frame   // do not delete frame   */
 0x140
             add
             mstore
@@ -5372,7 +5279,7 @@ for_stack_7:
         returndatacopy__21_extra:
                               // calld_length, calld_start
             dup2              // calld_length, calld_start, calld_length
-            /* (4) t2_init__ 0x40    // calld_length, calld_start, mem_ptr__   // calld_length, calld_start, mem_ptr__   */
+            /* (3) t2_init__ 0x40    // calld_length, calld_start, mem_ptr__   // calld_length, calld_start, mem_ptr__   */
 // expects length; 0 = freeMemPtr
     dup1
     0x20
@@ -5395,17 +5302,17 @@ for_stack_7:
             swap2             // mem_ptr__, calld_start, calld_length
             swap1             // mem_ptr__, calld_length, calld_start
             dup3
-            /* (6) t2_ptr_ // mem_ptr__, calld_length, calld_start, ptr   // mem_ptr__, calld_length, calld_start, ptr   */
+            /* (5) t2_ptr_ // mem_ptr__, calld_length, calld_start, ptr   // mem_ptr__, calld_length, calld_start, ptr   */
 // expects t2 pointer
     0x20
     add
             returndatacopy    // mem_ptr__
 
             0x01
-            /* (22) getframe //   //   */
+            /* (21) getframe //   //   */
 0xe0
             mload
-            /* (7) setdelmarker // do not delete frame   // do not delete frame   */
+            /* (6) setdelmarker // do not delete frame   // do not delete frame   */
 0x140
             add
             mstore
@@ -5421,7 +5328,7 @@ for_stack_7:
 // expects t2 pointer
     mload
             swap1
-            /* (7) t2_ptr_ // len, ptr_   // len, ptr_   */
+            /* (6) t2_ptr_ // len, ptr_   // len, ptr_   */
 // expects t2 pointer
     0x20
     add
@@ -5433,7 +5340,7 @@ for_stack_7:
         mmstore__x1_extra:
             // multiple 32byte items
 
-            /* (23) getframe //   //   */
+            /* (22) getframe //   //   */
 0xe0
             mload
             /* (7) getdataptr //   //   */
@@ -5452,7 +5359,7 @@ for_stack_7:
             dup1            // items, arity, arity
             0x20
             mul
-            /* (5) t2_init__ 0x40  // items, arity, ptr   // items, arity, ptr   */
+            /* (4) t2_init__ 0x40  // items, arity, ptr   // items, arity, ptr   */
 // expects length; 0 = freeMemPtr
     dup1
     0x20
@@ -5473,7 +5380,7 @@ for_stack_7:
     swap1      // ptr, length, ptr
     mstore     // ptr
             dup1
-            /* (8) t2_ptr_ // items, arity, ptr, current ptr   // items, arity, ptr, current ptr   */
+            /* (7) t2_ptr_ // items, arity, ptr, current ptr   // items, arity, ptr, current ptr   */
 // expects t2 pointer
     0x20
     add
@@ -5517,10 +5424,10 @@ for_stack_8:
             pop
 
             0x01
-            /* (24) getframe //   //   */
+            /* (23) getframe //   //   */
 0xe0
             mload
-            /* (8) setdelmarker // do not delete frame   // do not delete frame   */
+            /* (7) setdelmarker // do not delete frame   // do not delete frame   */
 0x140
             add
             mstore
@@ -5532,7 +5439,7 @@ for_stack_8:
         mmstore8__x1_extra:
             // multiple 32byte items
 
-            /* (25) getframe //   //   */
+            /* (24) getframe //   //   */
 0xe0
             mload
             /* (8) getdataptr //   //   */
@@ -5551,7 +5458,7 @@ for_stack_8:
             dup1            // items, arity, arity
             0x20
             mul
-            /* (6) t2_init__ 0x40  // items, arity, ptr   // items, arity, ptr   */
+            /* (5) t2_init__ 0x40  // items, arity, ptr   // items, arity, ptr   */
 // expects length; 0 = freeMemPtr
     dup1
     0x20
@@ -5572,7 +5479,7 @@ for_stack_8:
     swap1      // ptr, length, ptr
     mstore     // ptr
             dup1
-            /* (9) t2_ptr_ // items, arity, ptr, current ptr   // items, arity, ptr, current ptr   */
+            /* (8) t2_ptr_ // items, arity, ptr, current ptr   // items, arity, ptr, current ptr   */
 // expects t2 pointer
     0x20
     add
@@ -5586,10 +5493,10 @@ for_stack_8:
             pop
 
             0x01
-            /* (26) getframe //   //   */
+            /* (25) getframe //   //   */
 0xe0
             mload
-            /* (9) setdelmarker // do not delete frame   // do not delete frame   */
+            /* (8) setdelmarker // do not delete frame   // do not delete frame   */
 0x140
             add
             mstore
@@ -5622,7 +5529,7 @@ for_stack_8:
 // expects t2 pointer
     mload
             dup5
-            /* (10) t2_ptr_ // data_ptr, addr, out_size, out_ptr, in_size, in_ptr   // data_ptr, addr, out_size, out_ptr, in_size, in_ptr   */
+            /* (9) t2_ptr_ // data_ptr, addr, out_size, out_ptr, in_size, in_ptr   // data_ptr, addr, out_size, out_ptr, in_size, in_ptr   */
 // expects t2 pointer
     0x20
     add
@@ -5640,7 +5547,7 @@ for_stack_8:
 // expects t2 pointer
     mload
             dup6
-            /* (11) t2_ptr_ // data_ptr, value, addr, out_size, out_ptr, in_size, in_ptr   // data_ptr, value, addr, out_size, out_ptr, in_size, in_ptr   */
+            /* (10) t2_ptr_ // data_ptr, value, addr, out_size, out_ptr, in_size, in_ptr   // data_ptr, value, addr, out_size, out_ptr, in_size, in_ptr   */
 // expects t2 pointer
     0x20
     add
@@ -5659,7 +5566,7 @@ for_stack_8:
 // expects t2 pointer
     mload
             dup6
-            /* (12) t2_ptr_ // data_ptr, value, addr, out_size, out_ptr, in_size, in_ptr   // data_ptr, value, addr, out_size, out_ptr, in_size, in_ptr   */
+            /* (11) t2_ptr_ // data_ptr, value, addr, out_size, out_ptr, in_size, in_ptr   // data_ptr, value, addr, out_size, out_ptr, in_size, in_ptr   */
 // expects t2 pointer
     0x20
     add
@@ -5678,7 +5585,7 @@ for_stack_8:
 // expects t2 pointer
     mload
             dup5
-            /* (13) t2_ptr_ // data_ptr, addr, out_size, out_ptr, in_size, in_ptr   // data_ptr, addr, out_size, out_ptr, in_size, in_ptr   */
+            /* (12) t2_ptr_ // data_ptr, addr, out_size, out_ptr, in_size, in_ptr   // data_ptr, addr, out_size, out_ptr, in_size, in_ptr   */
 // expects t2 pointer
     0x20
     add
@@ -5695,7 +5602,7 @@ for_stack_8:
 
             // success
             returndatasize
-            /* (7) t2_init__ 0x40       // ptr__   // ptr__   */
+            /* (6) t2_init__ 0x40       // ptr__   // ptr__   */
 // expects length; 0 = freeMemPtr
     dup1
     0x20
@@ -5718,17 +5625,17 @@ for_stack_8:
             returndatasize
             0x00                 // ptr__, size, rptr
             dup3                 // ptr__, size, rptr, ptr__
-            /* (14) t2_ptr_ // ptr__, size, rptr, ptr   // ptr__, size, rptr, ptr   */
+            /* (13) t2_ptr_ // ptr__, size, rptr, ptr   // ptr__, size, rptr, ptr   */
 // expects t2 pointer
     0x20
     add
             returndatacopy       // ptr__
 
             0x01
-            /* (27) getframe //   //   */
+            /* (26) getframe //   //   */
 0xe0
             mload
-            /* (10) setdelmarker // do not delete frame   // do not delete frame   */
+            /* (9) setdelmarker // do not delete frame   // do not delete frame   */
 0x140
             add
             mstore
@@ -5738,16 +5645,16 @@ for_stack_8:
             mload
             jump
         t2_ptr_11_extra:
-            /* (15) t2_ptr_ //   //   */
+            /* (14) t2_ptr_ //   //   */
 // expects t2 pointer
     0x20
     add
 
             0x01
-            /* (28) getframe //   //   */
+            /* (27) getframe //   //   */
 0xe0
             mload
-            /* (11) setdelmarker // do not delete frame   // do not delete frame   */
+            /* (10) setdelmarker // do not delete frame   // do not delete frame   */
 0x140
             add
             mstore
@@ -5771,7 +5678,7 @@ for_stack_8:
 // expects t2 pointer
     mload
             swap2        // len, value, t2__
-            /* (16) t2_ptr_ //   //   */
+            /* (15) t2_ptr_ //   //   */
 // expects t2 pointer
     0x20
     add
@@ -5787,11 +5694,11 @@ for_stack_8:
             /* (7) t2_len_ //   //   */
 // expects t2 pointer
     mload
-            /* (17) t2_ptr_ // topics, data_len, data_ptr   // topics, data_len, data_ptr   */
+            /* (16) t2_ptr_ // topics, data_len, data_ptr   // topics, data_len, data_ptr   */
 // expects t2 pointer
     0x20
     add
-            /* (29) getframe //   //   */
+            /* (28) getframe //   //   */
 0xe0
             mload
             /* (9) getdataptr //   //   */
@@ -5852,7 +5759,7 @@ for_stack_8:
             dup2
             add       // t2_1, t2_2, t2_1_len, t2_2_len, len
 
-            /* (8) t2_init__ 0x40  // t2_1, t2_2, t2_1_len, t2_2_len, t2_3__   // t2_1, t2_2, t2_1_len, t2_2_len, t2_3__   */
+            /* (7) t2_init__ 0x40  // t2_1, t2_2, t2_1_len, t2_2_len, t2_3__   // t2_1, t2_2, t2_1_len, t2_2_len, t2_3__   */
 // expects length; 0 = freeMemPtr
     dup1
     0x20
@@ -5876,12 +5783,12 @@ for_stack_8:
             swap2     // t2_1, t2_2, t2_3__, t2_2_len, t2_1_len
             dup1      // t2_1, t2_2, t2_3__, t2_2_len, t2_1_len, t2_1_len
             dup6      // t2_1, t2_2, t2_3__, t2_2_len, t2_1_len, t2_1_len, t2_1
-            /* (18) t2_ptr_ // t2_1, t2_2, t2_3__, t2_2_len, t2_1_len, t2_1_len, t2_1_ptr   // t2_1, t2_2, t2_3__, t2_2_len, t2_1_len, t2_1_len, t2_1_ptr   */
+            /* (17) t2_ptr_ // t2_1, t2_2, t2_3__, t2_2_len, t2_1_len, t2_1_len, t2_1_ptr   // t2_1, t2_2, t2_3__, t2_2_len, t2_1_len, t2_1_len, t2_1_ptr   */
 // expects t2 pointer
     0x20
     add
             dup5      // t2_1, t2_2, t2_3__, t2_2_len, t2_1_len, t2_1_len, t2_1_ptr, t2_3__
-            /* (19) t2_ptr_ // t2_1, t2_2, t2_3__, t2_2_len, t2_1_len, t2_1_len, t2_1_ptr, t2_3_ptr   // t2_1, t2_2, t2_3__, t2_2_len, t2_1_len, t2_1_len, t2_1_ptr, t2_3_ptr   */
+            /* (18) t2_ptr_ // t2_1, t2_2, t2_3__, t2_2_len, t2_1_len, t2_1_len, t2_1_ptr, t2_3_ptr   // t2_1, t2_2, t2_3__, t2_2_len, t2_1_len, t2_1_len, t2_1_ptr, t2_3_ptr   */
 // expects t2 pointer
     0x20
     add
@@ -5956,12 +5863,12 @@ for_stack_9:
 
             dup2      // t2_1, t2_2, t2_3__, t2_2_len, t2_1_len, t2_2_len
             dup5      // t2_1, t2_2, t2_3__, t2_2_len, t2_1_len, t2_2_len, t2_2
-            /* (20) t2_ptr_ // t2_1, t2_2, t2_3__, t2_2_len, t2_1_len, t2_2_len, t2_2_ptr   // t2_1, t2_2, t2_3__, t2_2_len, t2_1_len, t2_2_len, t2_2_ptr   */
+            /* (19) t2_ptr_ // t2_1, t2_2, t2_3__, t2_2_len, t2_1_len, t2_2_len, t2_2_ptr   // t2_1, t2_2, t2_3__, t2_2_len, t2_1_len, t2_2_len, t2_2_ptr   */
 // expects t2 pointer
     0x20
     add
             dup5      // t2_1, t2_2, t2_3__, t2_2_len, t2_1_len, t2_2_len, t2_2_ptr, t2_3__
-            /* (21) t2_ptr_ // t2_1, t2_2, t2_3__, t2_2_len, t2_1_len, t2_2_len, t2_2_ptr, t2_3__ptr   // t2_1, t2_2, t2_3__, t2_2_len, t2_1_len, t2_2_len, t2_2_ptr, t2_3__ptr   */
+            /* (20) t2_ptr_ // t2_1, t2_2, t2_3__, t2_2_len, t2_1_len, t2_2_len, t2_2_ptr, t2_3__ptr   // t2_1, t2_2, t2_3__, t2_2_len, t2_1_len, t2_2_len, t2_2_ptr, t2_3__ptr   */
 // expects t2 pointer
     0x20
     add
@@ -6044,10 +5951,10 @@ for_stack_10:
             pop
 
             0x01
-            /* (30) getframe //   //   */
+            /* (29) getframe //   //   */
 0xe0
             mload
-            /* (12) setdelmarker // do not delete frame   // do not delete frame   */
+            /* (11) setdelmarker // do not delete frame   // do not delete frame   */
 0x140
             add
             mstore
@@ -6057,7 +5964,7 @@ for_stack_10:
             mload
             jump
         tuple___x1_extra:
-            /* (31) getframe //   //   */
+            /* (30) getframe //   //   */
 0xe0
             mload
             /* (10) getdataptr //   //   */
@@ -6142,10 +6049,10 @@ for_stack_11:
             pop
 
             0x01
-            /* (32) getframe //   //   */
+            /* (31) getframe //   //   */
 0xe0
             mload
-            /* (13) setdelmarker // do not delete frame   // do not delete frame   */
+            /* (12) setdelmarker // do not delete frame   // do not delete frame   */
 0x140
             add
             mstore
@@ -6181,7 +6088,7 @@ for_stack_11:
     dup2     // ptr, arity, ptr
     mstore   // store arity at pointer -> ptr
 
-            /* (33) getframe //   //   */
+            /* (32) getframe //   //   */
 0xe0
             mload
             /* (2) getoutputptr //   //   */
@@ -6200,7 +6107,7 @@ for_stack_11:
     mstore
 
             map_xx_extra_loop
-            /* (34) getframe //   //   */
+            /* (33) getframe //   //   */
 0xe0
             mload
             /* (2) setreturn //   //   */
@@ -6209,7 +6116,7 @@ for_stack_11:
             mstore
 
             0x00
-            /* (35) getframe //   //   */
+            /* (34) getframe //   //   */
 0xe0
             mload
             /* (1) setforstep //   //   */
@@ -6234,7 +6141,7 @@ for_stack_11:
 
         map_xx_extra_loop:
             // arg_ptr, lambda_ptr, result
-            /* (36) getframe //   //   */
+            /* (35) getframe //   //   */
 0xe0
             mload
             /* (3) getoutputptr // arg_ptr, lambda_ptr, result, ptr   // arg_ptr, lambda_ptr, result, ptr   */
@@ -6282,7 +6189,7 @@ for_stack_11:
 
             pop
             pop
-            /* (37) getframe //   //   */
+            /* (36) getframe //   //   */
 0xe0
             mload
             /* (4) getoutputptr //   //   */
@@ -6302,7 +6209,7 @@ for_stack_11:
     mload
 
             eval_function_for_content     // usual return after a list item is processed
-            /* (38) getframe //   //   */
+            /* (37) getframe //   //   */
 0xe0
             mload
             /* (3) setreturn //   //   */
@@ -6310,12 +6217,12 @@ for_stack_11:
             add
             mstore
 
-            /* (39) getframe // result_ptr, frame_ptr   // result_ptr, frame_ptr   */
+            /* (38) getframe // result_ptr, frame_ptr   // result_ptr, frame_ptr   */
 0xe0
             mload
             swap1     // frame_ptr, result_ptr
 
-            /* (40) getframe //   //   */
+            /* (39) getframe //   //   */
 0xe0
             mload
             /* (5) getoutputptr //   //   */
@@ -6339,10 +6246,10 @@ for_stack_11:
             mstore
 
             0x01
-            /* (41) getframe //   //   */
+            /* (40) getframe //   //   */
 0xe0
             mload
-            /* (14) setdelmarker // do not delete frame   // do not delete frame   */
+            /* (13) setdelmarker // do not delete frame   // do not delete frame   */
 0x140
             add
             mstore
@@ -6424,10 +6331,17 @@ for_stack_11:
             // push
             mload
             jump
-        apply_xx_extra: // args, lambda_ptr__ or signature_ptr__ for compiled/stored
-            // get ftype - compiled, stored, lambda
+        apply_xx_extra: // args, lambda_ptr__ or signature_ptr__ for compiled/stored or 0 if not fn found
+            // get ftype - compiled, lambda
+
+            dup1
+            mload
+            iszero
+            apply_external_x1_extra
+            jumpi
+
             dup1         // args, ptr__, ptr__
-            /* (22) t2_ptr_ //   //   */
+            /* (21) t2_ptr_ //   //   */
 // expects t2 pointer
     0x20
     add
@@ -6448,18 +6362,20 @@ for_stack_11:
             mul
             apply_compiled_x1
             add
+
             jump
         apply_compiled_x1_extra:
             0xc0
             // push
             mload
             jump
-        apply_stored_x1_extra:     // args, signature_ptr__ lookup in storage or forward to registered contract
-            // args, sig_ptr__
-            0xc0
-            mload    // args, sig_ptr__, tag
+        apply_stored_x1_extra:     // args, signature uint256 lookup in storage or forward to registered contract
+            // args, signature
 
-            dup2    // args, sig_ptr__, tag, sig_ptr__
+            0xc0
+            mload    // args, signature, tag
+
+            dup2    // args, signature, tag, signature
 
             apply_stored_x1_extra_1
             0xc0
@@ -6475,7 +6391,7 @@ for_stack_11:
             mstore   // put back tag
 
             dup1
-            /* (23) t2_ptr_ //   //   */
+            /* (22) t2_ptr_ //   //   */
 // expects t2 pointer
     0x20
     add
@@ -6618,7 +6534,7 @@ for_stack_12:
     0x40  // lambda_ptr
     mstore
 
-            /* (42) getframe // lambda_ptr, new_env_ptr, new_frame_ptr, prev_frame_ptr   // lambda_ptr, new_env_ptr, new_frame_ptr, prev_frame_ptr   */
+            /* (41) getframe // lambda_ptr, new_env_ptr, new_frame_ptr, prev_frame_ptr   // lambda_ptr, new_env_ptr, new_frame_ptr, prev_frame_ptr   */
 0xe0
             mload
             dup1   // lambda_ptr, new_env_ptr, new_frame_ptr, prev_frame_ptr, prev_frame_ptr
@@ -6679,7 +6595,7 @@ for_stack_12:
             jump
 
         apply_xx_extra_eval_end:
-            /* (43) getframe //   //   */
+            /* (42) getframe //   //   */
 0xe0
             mload
             /* (5) getloco //   //   */
@@ -6691,7 +6607,7 @@ for_stack_12:
             jumpi
 
             // mem - put result on stack
-            /* (44) getframe //   //   */
+            /* (43) getframe //   //   */
 0xe0
             mload
             /* (7) getoutputptr //   //   */
@@ -6705,7 +6621,7 @@ for_stack_12:
             mload
         apply_xx_extra_eval_end_both:
             // previous frame
-            /* (45) getframe //   //   */
+            /* (44) getframe //   //   */
 0xe0
             mload
             mload     // get previous frame
@@ -6728,7 +6644,7 @@ for_stack_12:
             0xc0
             mstore
 
-            /* (46) getframe //   //   */
+            /* (45) getframe //   //   */
 0xe0
             mload
             /* (11) getdataptr //   //   */
@@ -6768,7 +6684,7 @@ for_stack_12:
         apply_external_x1_extra_1:
             // args, sig_ptr__, tag, result_ptr
 
-            /* (24) t2_ptr_ //   //   */
+            /* (23) t2_ptr_ //   //   */
 // expects t2 pointer
     0x20
     add
@@ -6789,7 +6705,7 @@ for_stack_12:
             jump
         interpret_11_extra:
             // ptr to calldata, ptr to bytecode
-            /* (25) t2_ptr_ // store ptr to bytecode   // store ptr to bytecode   */
+            /* (24) t2_ptr_ // store ptr to bytecode   // store ptr to bytecode   */
 // expects t2 pointer
     0x20
     add
@@ -6800,7 +6716,7 @@ for_stack_12:
             0x160
             mstore        // store current bytecode ptr
 
-            /* (26) t2_ptr_ // store ptr to calldata   // store ptr to calldata   */
+            /* (25) t2_ptr_ // store ptr to calldata   // store ptr to calldata   */
 // expects t2 pointer
     0x20
     add

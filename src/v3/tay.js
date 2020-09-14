@@ -41,9 +41,9 @@ const subids_bytelike = {
 
 const type_enc = {
     number: value => {
-        const v = isHexString(value) ? new BN(value, 16) : new BN(value);
+        const v = isHexString(value) ? new BN(value.substring(2), 16) : new BN(value);
         return (
-            (new BN(rootids.number.padEnd(32, '0'), 2)).toString(16)
+            (new BN(rootids.number.padEnd(32, '0'), 2)).toString(16).padStart(8, '0')
             + v.toString(16).padStart(64, '0')
         );
     },
@@ -66,8 +66,8 @@ const type_enc = {
     },
 }
 type_enc.function_compiled = (name, bodylen, arity, stack = true) => type_enc.function(name, nativeEnv[name], bodylen, arity, 0, stack)
-type_enc.function_stored = (name, codehex, bodylen, arity, stack = true) => type_enc.function(name, codehex, bodylen, arity, 1, stack)
-type_enc.function_lambda = (name, bodylen, arity, stack = true) => type_enc.function(name, nativeEnv[name], bodylen, arity, 2, stack)
+type_enc.function_stored = (name, codehex, bodylen, arity, stack = true) => type_enc.function(name, codehex, bodylen, arity, 2, stack)
+type_enc.function_lambda = (name, bodylen, arity, stack = true) => type_enc.function(name, nativeEnv[name], bodylen, arity, 1, stack)
 
 
 function expr2h(expression, defenv) {
@@ -83,7 +83,6 @@ const ast2hSpecialMap = {
     if: handleIf,
     memory: handleMem,
     stack: handleStack,
-    sig: handleSig,
 }
 
 const parentNotApply = parent => !parent || parent[0].value !== 'apply';
@@ -223,7 +222,10 @@ function handleStack(ast, parent, unkownMap, defenv, arrItemType, reverseArgs, s
 function handleDef(ast, parent, unkownMap, defenv, arrItemType, reverseArgs, stack, envdepth) {
     const newast = [
         malTypes._symbol('setalias!'),
-        ast[2].value,   // fn alias
+        [
+            malTypes._symbol('keccak256_'),
+            ast[2].value,   // fn alias
+        ],
         [
             malTypes._symbol('setfn!'),
             ast[1],
@@ -234,8 +236,14 @@ function handleDef(ast, parent, unkownMap, defenv, arrItemType, reverseArgs, sta
 
 function handleStored(ast, parent, unkownMap, defenv, arrItemType, reverseArgs, stack, envdepth) {
     const newast = [
-        malTypes._symbol('getalias'),
-        ast.value,
+        malTypes._symbol('getfn'),
+        [
+            malTypes._symbol('getalias'),
+            [
+                malTypes._symbol('keccak256_'),
+                ast.value,
+            ],
+        ],
     ]
     return ast2h(newast, parent, unkownMap, defenv, arrItemType, reverseArgs, stack, envdepth);
 }
