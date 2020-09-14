@@ -56,11 +56,16 @@ const type_enc = {
             + val
         );
     },
+    // outtype 0 (t1/value), 1 (t2/pointer), 2 (t3/tuple)
     function: (name, codehex, bodylen, arity, ftype = 0, stack = true) => {
         const mutability = name.includes('!') ? 1 : 0;
+        let outtype = name.slice(-3).split('').reduce((a,v) => v === '_' ? (a+1) : a, 0);
+        if (outtype > 0) outtype -= 1;
         const id = rootids.function + u2b(mutability) + u2b(ftype).padStart(3, '0')
             + u2b(bodylen).padStart(14, '0')
-            + u2b(stack ? 0 : 1).padStart(4, '0')
+            + '0'
+            + u2b(outtype).padStart(2, '0')
+            + (stack ? '0' : '1')
             + u2b(arity).padStart(6, '0');
         return (new BN(id, 2)).toString(16) + codehex.padStart(8, '0')
     },
@@ -85,20 +90,23 @@ const ast2hSpecialMap = {
     stack: handleStack,
 }
 
-const parentNotApply = parent => !parent || parent[0].value !== 'apply';
+const parentNotApply = parent => !parent || !parent[0].value || !parent[0].value.includes('apply');
 // ( (fn* ...) ...args)
 const isExecutableLambda = ast => ast && ast[0] && ast[0][0] && ast[0][0].value === 'fn*';
 // (fnname ...args) - not unknown, not native fn
 const isExecutableStored = (ast, unkownMap) => ast && ast[0] && malTypes._symbol_Q(ast[0]) && !ast2hSpecialMap[ast[0].value] && !unkownMap[ast[0].value] && !nativeEnv[ast[0].value];
+const extractOutType = value => value.match(/(_*)$/)[0];
 
 function ast2h(ast, parent=null, unkownMap={}, defenv={}, arrItemType=null, reverseArgs=true, stack=true, envdepth=0) {
     if (!(ast instanceof Array)) ast = [ast];
 
     // add apply if needed and not applied yet
-    if (parentNotApply(parent)
-        && (isExecutableLambda(ast) || isExecutableStored(ast, unkownMap))
-    ) {
-        ast.splice(0, 0, malTypes._symbol('apply'));
+    if (parentNotApply(parent)) {
+        if (isExecutableLambda(ast))
+            ast.splice(0, 0, malTypes._symbol('apply-lambda'));
+        else if (isExecutableStored(ast, unkownMap))
+            ast.splice(0, 0, malTypes._symbol('apply' + extractOutType(ast[0].value)));
+            // ast.splice(0, 0, malTypes._symbol('apply'));
     }
 
     if(reverseArgs) {
@@ -128,7 +136,7 @@ function ast2h(ast, parent=null, unkownMap={}, defenv={}, arrItemType=null, reve
                 const { index, depth } = unkownMap[elem.value]
                 let val = type_enc.function_compiled('unknown', index, depth - envdepth, stack);
 
-                if (elem.value === 'self' && ast[0] && ast[0].value === 'self') val = type_enc.function_compiled('apply', 0, arity + 1, stack) + val;
+                if (elem.value === 'self' && ast[0] && ast[0].value === 'self') val = type_enc.function_compiled('apply-lambda', 0, arity + 1, stack) + val;
                 return val;
             }
 

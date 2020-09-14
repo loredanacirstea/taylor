@@ -20,6 +20,9 @@ const core = {
     'setleaf!': '161',
     'apply-compiled': '162',
     'apply-lambda': '163',
+    'apply_': '105',
+    'apply__': '105',
+    'apply___': '105',
 
     'interpret': '16a',
 }

@@ -91,20 +91,20 @@ describe.each([
 
     it('stored', async function () {
         let resp;
-        await instance.send('(setalias! (keccak256_ "mulmul") (setfn! (fn* (a b) (mul_ a b))) )');
+        await instance.send('(setalias! (keccak256_ "mulmul_") (setfn! (fn* (a b) (mul_ a b))) )');
 
-        resp = await instance.call('(apply (getfn 0x3100004200000000000000000000000000000000000000000000000000000000) 4 2)');
+        resp = await instance.call('(apply_ (getfn 0x3100004200000000000000000000000000000000000000000000000000000000) 4 2)');
         expect(resp).toEqual(8);
 
-        resp = await instance.call('(apply (getfn (getalias (keccak256_ "mulmul") )) 4 2)');
+        resp = await instance.call('(apply_ (getfn (getalias (keccak256_ "mulmul_") )) 4 2)');
         expect(resp).toEqual(8);
     });
 
     it('def!', async function () {
         let resp;
-        await instance.send('(def! fnmul (fn* (a b) (mul_ a b)) )');
+        await instance.send('(def! fnmul_ (fn* (a b) (mul_ a b)) )');
 
-        resp = await instance.call('(fnmul 4 2)');
+        resp = await instance.call('(fnmul_ 4 2)');
         expect(resp).toEqual(8);
     });
 
@@ -216,13 +216,26 @@ describe.each([
         const tay2_ = await taylor.deployRebuild(3);
         const tay2 = tay.getTay(tay2_.provider, tay2_.signer)(tay2_.address);
 
-        await tay2.send('(def! mulmul (fn* (a b) (mul_ a b)) )');
-
+        await tay2.send('(def! mulmul_ (fn* (a b) (mul_ a b)) )');
 
         await instance.send(`(setleaf! ${tay2.address} )`);
 
-        resp = await instance.call('(mulmul 4 2)');
+        resp = await instance.call('(mulmul_ 4 2)');
         expect(resp).toEqual(8);
+    });
+
+    it.skip('test registration2', async function () {
+        let resp;
+        // await instance.call('(return# )')
+        const tay2_ = await taylor.deployRebuild(3);
+        const tay2 = tay.getTay(tay2_.provider, tay2_.signer)(tay2_.address);
+
+        await tay2.send('(def! fntest__ (fn* () "0x112233445566") )');
+
+        await instance.send(`(setleaf! ${tay2.address} )`);
+
+        resp = await instance.call('(return# (fntest__ ))');
+        expect(resp).toEqual('0x112233445566');
     });
 
     it('test interpret', async function () {
