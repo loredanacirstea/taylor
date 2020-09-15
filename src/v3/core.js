@@ -11,6 +11,8 @@ const core = {
     if: '10a',
     self: '10b',
     super: '10c',
+    'let*': '10d',
+
     join__: '140',
     map_: '150',
     reduce_: '151',

@@ -74,6 +74,7 @@ type_enc.function_compiled = (name, bodylen, arity, stack = true) => type_enc.fu
 type_enc.function_stored = (name, codehex, bodylen, arity, stack = true) => type_enc.function(name, codehex, bodylen, arity, 2, stack)
 type_enc.function_lambda = (name, bodylen, arity, stack = true) => type_enc.function(name, nativeEnv[name], bodylen, arity, 1, stack)
 
+console.log('-----type_enc.function_stored: ', type_enc.function_stored("mulmul", '0', 2, 2, 0));
 
 function expr2h(expression, defenv) {
     const ast = malReader.read_str(expression);
@@ -84,6 +85,7 @@ function expr2h(expression, defenv) {
 
 const ast2hSpecialMap = {
     'fn*': handleFn,
+    'let*': handleLet,
     'def!': handleDef,
     if: handleIf,
     memory: handleMem,
@@ -185,24 +187,58 @@ function handleFn(ast, parent, unkownMap, defenv, arrItemType, reverseArgs, stac
     envdepth += 1;
     const arity = ast[1].length;
     const unkownMapcpy = JSON.parse(JSON.stringify(unkownMap));
-    let largs = [];
 
-    let lambdaArgs = ast[1].map((elem, i) => {
-        const index = i;
+    let largs = ast[1].map((elem, i) => {
         const enc = type_enc.function_compiled('unknown', i, 0, stack);
         unkownMapcpy[elem.value] = { depth: envdepth, index: i };
-        largs.push(index.toString(16).padStart(4, '0'));
-        return enc;
+        return i.toString(16).padStart(4, '0');
     });
-
-    lambdaArgs = lambdaArgs.join('');
     largs = largs.join('');
+
     const lambdaBody = ast2h(ast[2], ast, unkownMapcpy, defenv, null, true, stack, envdepth);
     // fpu?; body length (without args)
     let encoded = type_enc.function_lambda('fn*', lambdaBody.length/2, arity, stack)
         + largs
         + lambdaBody;
     encoded = type_enc.bytelike(encoded);
+    return encoded;
+}
+
+// ast[0] = f name
+// ast[1] = computation
+// ast[2] = variable pairs
+// (let* (<name> <value/code>) <computation>)
+// bytelike(values) + bytelike(computation)
+// we wrap all the code/values in a bytelike type, to avoid occupying too many stack slots
+// the values are evaluated one by one, from memory
+function handleLet(ast, parent, unkownMap, defenv, arrItemType, reverseArgs, stack, envdepth) {
+    envdepth += 1;
+    const computation = ast[1];
+    const pairs = ast[2];
+    const arity = pairs.length / 2;
+    const unkownMapcpy = JSON.parse(JSON.stringify(unkownMap));
+    if (pairs.length % 2 > 0) throw new Error ('let* needs an even number of arguments');
+
+    let largs = [];
+    for (let i = 0; i < pairs.length; i+= 2) {
+        const name = pairs[i];
+        const index = i/2;
+        const enc = type_enc.function_compiled('unknown', index, 0, stack);
+        unkownMapcpy[name.value] = { depth: envdepth, index };
+        // always compute arg in memory
+        const arg = ast2h(pairs[i + 1], pairs, unkownMapcpy, defenv, null, true, false, envdepth)
+        largs.push(arg);
+
+        // i.toString(16).padStart(4, '0');
+    }
+    largs = largs.join('');
+
+    const body = ast2h(computation, ast, unkownMapcpy, defenv, null, true, stack, envdepth);
+
+    // instead of body length: number of variables
+    let encoded = type_enc.function_compiled(ast[0].value, arity, 2,stack)
+        + type_enc.bytelike(largs)
+        + type_enc.bytelike(body);
     return encoded;
 }
 
