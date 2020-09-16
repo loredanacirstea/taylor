@@ -212,11 +212,23 @@ const tests = {
         },
         {
             test: `( (fn* (d e)
-                (let* (a 6) (add_ (add_ a d) e) )
-            ) 2 1
-            )`,
+                (let* (a 6)
+                    (add_ (add_ a d) e)
+                )
+            ) 2 1)`,
             result: 9,
-            skip: true,
+        },
+        {
+            test: `( (fn* (d e)
+                (let* (
+                        a 6
+                        b (fn* (f g) (add_ f g))
+                        c (fn* (h i) (mul_ h i))
+                    )
+                    (apply b (apply c a d) e)
+                )
+            ) 2 1)`,
+            result: 13,
         },
     ],
 }

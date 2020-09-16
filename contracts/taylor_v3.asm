@@ -4711,20 +4711,23 @@ unused_178:  // 0x169
             mload
             0xe0
             shr
-
-            dup1        //  frame_ptr, fourb, fourb
-            /* (0) getfunclength // frame_ptr, fourb, length   // frame_ptr, fourb, length   */
+            /* (0) getfunclength // frame_ptr, length (index 8bits + superIndex 6bits)   // frame_ptr, length (index 8bits + superIndex 6bits)   */
 // expects a 4byte value
             0xfffc00
             and
             0x0a
             shr
 
-            swap1       // frame_ptr, length, fourb
-            /* (1) getfuncarity // frame_ptr, length, arity // frame_ptr, index, superIndex   // frame_ptr, length, arity // frame_ptr, index, superIndex   */
-// expects a 4byte value
+            dup1
             0x3f
-            and
+            and          // frame_ptr, length, superIndex
+
+            swap1
+            0x06
+            shr         // frame_ptr, superIndex, index
+            swap1       // frame_ptr, index, superIndex
+
+
 
             dup3        // frame_ptr, index, superIndex, frame_ptr
             swap1       // frame_ptr, index, frame_ptr, superIndex
@@ -4765,6 +4768,7 @@ for_stack_4:
 
             0x40     // after arity and self
             add      // frame_ptr, index, env_ptr
+
             dup2   // frame_ptr, index, env_ptr, index
             0x20
             mul
@@ -5364,7 +5368,7 @@ for_stack_7:
             mload
             0xe0
             shr
-            /* (2) getfuncarity // items, arity   // items, arity   */
+            /* (1) getfuncarity // items, arity   // items, arity   */
 // expects a 4byte value
             0x3f
             and
@@ -5463,7 +5467,7 @@ for_stack_8:
             mload
             0xe0
             shr
-            /* (3) getfuncarity // items, arity   // items, arity   */
+            /* (2) getfuncarity // items, arity   // items, arity   */
 // expects a 4byte value
             0x3f
             and
@@ -5722,7 +5726,7 @@ for_stack_8:
             mload
             0xe0
             shr
-            /* (4) getfuncarity // topics, data_len, data_ptr, arity   // topics, data_len, data_ptr, arity   */
+            /* (3) getfuncarity // topics, data_len, data_ptr, arity   // topics, data_len, data_ptr, arity   */
 // expects a 4byte value
             0x3f
             and
@@ -5988,7 +5992,7 @@ for_stack_10:
             mload
             0xe0
             shr
-            /* (5) getfuncarity //   //   */
+            /* (4) getfuncarity //   //   */
 // expects a 4byte value
             0x3f
             and
@@ -6417,7 +6421,7 @@ for_stack_11:
             0xe0
             shr
 
-            /* (6) getfuncarity // lambda arity // args, lambda_ptr__, lambda_ptr, lambda_arity   // lambda arity // args, lambda_ptr__, lambda_ptr, lambda_arity   */
+            /* (5) getfuncarity // lambda arity // args, lambda_ptr__, lambda_ptr, lambda_arity   // lambda arity // args, lambda_ptr__, lambda_ptr, lambda_arity   */
 // expects a 4byte value
             0x3f
             and
@@ -7224,11 +7228,63 @@ for_stack_15:
     0x20
     add
 
-            /* (46) getframe //   //   */
+            // MEMORY FRAME INIT  //
+            0x160
+            /* (6) allocate 0x40  // computation_ptr_, args_ptr_, new_frame_ptr   // computation_ptr_, args_ptr_, new_frame_ptr   */
+0x40  // computation_ptr_
+    mload
+    swap1
+    dup2
+    add
+    0x40  // computation_ptr_
+    mstore
+
+            /* (46) getframe // computation_ptr_, args_ptr_, new_frame_ptr, prev_frame_ptr   // computation_ptr_, args_ptr_, new_frame_ptr, prev_frame_ptr   */
 0xe0
             mload
+            dup1   // computation_ptr_, args_ptr_, new_frame_ptr, prev_frame_ptr, prev_frame_ptr
+            dup3   // computation_ptr_, args_ptr_, new_frame_ptr, prev_frame_ptr, prev_frame_ptr, new_frame_ptr
+            mstore  // PREV_PTR(0)  // computation_ptr_, args_ptr_, new_frame_ptr, prev_frame_ptr
+
+            // store current_frame_ptr
+            dup2
+            0xe0
+            mstore
+
+            dup1     // get mem/stack location from parent
+            /* (6) getloco // computation_ptr_, new_frame_ptr, prev_frame_ptr, mem/stack   // computation_ptr_, new_frame_ptr, prev_frame_ptr, mem/stack   */
+0x60
+            add
+            mload
+            dup3     // computation_ptr_, new_frame_ptr, prev_frame_ptr, mem/stack, new_frame_ptr
+            /* (3) setloco // MEM/STACK(3) //   if next is a function, it will set the mem/stack location itself   // MEM/STACK(3) //   if next is a function, it will set the mem/stack location itself   */
+0x60
+            add
+            mstore
+
+            // computation_ptr_, args_ptr_, new_frame_ptr, prev_frame_ptr
+
             dup1
-            /* (12) getdataptr //  computation_ptr_, args_ptr_, frame_ptr   //  computation_ptr_, args_ptr_, frame_ptr   */
+            /* (8) getoutputptr // computation_ptr_, args_ptr_, new_frame_ptr, prev_frame_ptr, output_ptr   // computation_ptr_, args_ptr_, new_frame_ptr, prev_frame_ptr, output_ptr   */
+0xa0
+            add
+            mload
+            dup3         // computation_ptr_, args_ptr_, new_frame_ptr, prev_frame_ptr, output_ptr, new_frame_ptr
+            /* (2) setoutputptr // computation_ptr_, args_ptr_, new_frame_ptr, prev_frame_ptr   // computation_ptr_, args_ptr_, new_frame_ptr, prev_frame_ptr   */
+0xa0
+            add
+            mstore
+
+            swap1      // computation_ptr_, args_ptr_, prev_frame_ptr, new_frame_ptr
+            swap3      // new_frame_ptr, args_ptr_, prev_frame_ptr, computation_ptr_
+
+            dup4       // new_frame_ptr, args_ptr_, prev_frame_ptr, computation_ptr_, new_frame_ptr
+            /* (5) setdataptr // new_frame_ptr, args_ptr_, prev_frame_ptr   // new_frame_ptr, args_ptr_, prev_frame_ptr   */
+0x20
+            add
+            mstore
+
+            /* (12) getdataptr //  new_frame_ptr, args_ptr_, old_data_ptr   //  new_frame_ptr, args_ptr_, old_data_ptr   */
 0x20
             add
             mload
@@ -7237,33 +7293,18 @@ for_stack_15:
             mload
             0xe0
             shr
-            /* (3) getfunclength //   computation_ptr_, args_ptr_, frame_ptr, arity number of vars   //   computation_ptr_, args_ptr_, frame_ptr, arity number of vars   */
+            /* (3) getfunclength //   new_frame_ptr, args_ptr_, arity number of vars   //   new_frame_ptr, args_ptr_, arity number of vars   */
 // expects a 4byte value
             0xfffc00
             and
             0x0a
             shr
 
-            dup2
-            /* (1) getfuncloco //    computation_ptr_, args_ptr_, frame_ptr, arity, loc   //    computation_ptr_, args_ptr_, frame_ptr, arity, loc   */
-// expects a 4byte value
-            0x40
-            and
-            0x40
-            eq   // returns 0 (stack) or 1 (memory)
-            dup3      // frame ptr
-            /* (3) setloco //   //   */
-0x60
-            add
-            mstore
-
-            // computation_ptr_, args_ptr_, frame_ptr, arity
-
             // env_ptr
             dup1
             0x01
             add       // self
-            /* (5) t3_init__ 0x40      // computation_ptr_, args_ptr_, frame_ptr, arity, env_ptr   // computation_ptr_, args_ptr_, frame_ptr, arity, env_ptr   */
+            /* (5) t3_init__ 0x40      // new_frame_ptr, args_ptr_, arity, env_ptr   // new_frame_ptr, args_ptr_, arity, env_ptr   */
 // expects on stack: arity
     dup1   // arity
     0x20
@@ -7272,29 +7313,29 @@ for_stack_15:
     add
 
     // alloc
-    0x40      // computation_ptr_
+    0x40      // new_frame_ptr
     mload
     swap1
     dup2
     add
-    0x40      // computation_ptr_
+    0x40      // new_frame_ptr
     mstore
     // end alloc
 
     swap1    // ptr, arity
     dup2     // ptr, arity, ptr
     mstore   // store arity at pointer -> ptr
-            dup3
-            /* (2) setenvptr // computation_ptr_, args_ptr_, frame_ptr, arity   // computation_ptr_, args_ptr_, frame_ptr, arity   */
+
+            dup4                // new_frame_ptr, args_ptr_, arity, env_ptr, new_frame_ptr
+            /* (2) setenvptr //  new_frame_ptr, args_ptr_, arity   //  new_frame_ptr, args_ptr_, arity   */
 0x40
             add
             mstore
 
-
             dup1       // arity - no of partials one for arity
             0x01
             add
-            /* (6) t3_init__ 0x40   // computation_ptr_, args_ptr_, frame_ptr, arity, partials_ptr   // computation_ptr_, args_ptr_, frame_ptr, arity, partials_ptr   */
+            /* (6) t3_init__ 0x40   // new_frame_ptr, args_ptr_, arity, partials_ptr   // new_frame_ptr, args_ptr_, arity, partials_ptr   */
 // expects on stack: arity
     dup1   // arity
     0x20
@@ -7303,12 +7344,12 @@ for_stack_15:
     add
 
     // alloc
-    0x40   // computation_ptr_
+    0x40   // new_frame_ptr
     mload
     swap1
     dup2
     add
-    0x40   // computation_ptr_
+    0x40   // new_frame_ptr
     mstore
     // end alloc
 
@@ -7318,14 +7359,14 @@ for_stack_15:
 
             dup1      // partials_ptr
             0x20      // partial ptr to store new end_ptr and arity - fake partial
-            add       // computation_ptr_, args_ptr_, frame_ptr, arity, partials_ptr, partials_ptr
+            add       //  new_frame_ptr, args_ptr_, arity, partials_ptr, partials_ptr
 
-            dup3   // arity is result_ptr  // computation_ptr_, args_ptr_, frame_ptr, arity, partials_ptr, partials_ptr, arity
+            dup3   // arity is result_ptr  //  new_frame_ptr, args_ptr_, arity, partials_ptr, partials_ptr, arity
 
             // !!!!!!!!end_ptr is args_ptr_
-            dup6   // end_ptr              // computation_ptr_, args_ptr_, frame_ptr, arity, partials_ptr, partials_ptr, arity, args_ptr_
+            dup5   // end_ptr              //  new_frame_ptr, args_ptr_, arity, partials_ptr, partials_ptr, arity, args_ptr_
             0x02
-            /* (1) t3__ 0x40  // partial1         // computation_ptr_, args_ptr_, frame_ptr, arity, partials_ptr, partials_ptr, partial1   // partial1         // computation_ptr_, args_ptr_, frame_ptr, arity, partials_ptr, partials_ptr, partial1   */
+            /* (1) t3__ 0x40  // partial1         //  new_frame_ptr, args_ptr_, arity, partials_ptr, partials_ptr, partial1   // partial1         //  new_frame_ptr, args_ptr_, arity, partials_ptr, partials_ptr, partial1   */
 // expects on stack: inputs, arity
     dup1   // arity
     0x20
@@ -7335,12 +7376,12 @@ for_stack_15:
 
 
     // alloc
-    0x40  // partial1         // computation_ptr_
+    0x40  // partial1         //  new_frame_ptr
     mload
     swap1
     dup2
     add
-    0x40  // partial1         // computation_ptr_
+    0x40  // partial1         //  new_frame_ptr
     mstore
     // end alloc
 
@@ -7397,11 +7438,11 @@ for_stack_16:
     t3__1_1:  // after for loop does nothing has ptr last on stack
         pop      // pops increased ptr
             swap1
-            mstore     // store partial1   // computation_ptr_, args_ptr_, frame_ptr, arity, partials_ptr
+            mstore     // store partial1   //  new_frame_ptr, args_ptr_, arity, partials_ptr
 
-            dup1                      // computation_ptr_, args_ptr_, frame_ptr, arity, partials_ptr, partials_ptr
-            dup4    // frame ptr
-            /* (2) setpartialsptr // computation_ptr_, args_ptr_, frame_ptr, arity, partials_ptr   // computation_ptr_, args_ptr_, frame_ptr, arity, partials_ptr   */
+            dup1                      //  new_frame_ptr, args_ptr_, arity, partials_ptr, partials_ptr
+            dup5                      //  new_frame_ptr, args_ptr_, arity, partials_ptr, partials_ptr, new_frame_ptr
+            /* (2) setpartialsptr // new_frame_ptr, args_ptr_, arity, partials_ptr   // new_frame_ptr, args_ptr_, arity, partials_ptr   */
 0x80
             add
             mstore
@@ -7423,7 +7464,7 @@ for_stack_17:
         jump
     forloop_stack_17:   // any content variables are kept after jumptag, end, step
 
-                // computation_ptr_, args_ptr_, frame_ptr, arity, partials_ptr, tag, end, step
+                // new_frame_ptr, args_ptr_, arity, partials_ptr, tag, end, step
                 0x02
                 /* (7) t3_init__ 0x40  //partial   //partial   */
 // expects on stack: arity
@@ -7464,14 +7505,11 @@ for_stack_17:
 
         let_x1_extra_rest:
             pop   // partial_ptr
-
             // remove stack except arity
             swap1
             pop
             swap1
             pop
-            // computation_ptr_ remains on stack
-            // could be popped and retrieved from args_ptr_(?)
 
             let_x1_extra_for_end   // arity, tag
             swap1   // tag, arity
@@ -7536,7 +7574,7 @@ for_stack_17:
 
                 // MEMORY FRAME INIT  //
                 0x160
-                /* (6) allocate 0x40     // frame_ptr   // frame_ptr   */
+                /* (7) allocate 0x40     // frame_ptr   // frame_ptr   */
 0x40     // frame_ptr
     mload
     swap1
@@ -7600,7 +7638,7 @@ for_stack_17:
                 // new_frame_ptr, output_ptr
                 dup1    // new_frame_ptr, output_ptr, output_ptr
                 dup3    // new_frame_ptr, output_ptr, output_ptr, new_frame_ptr
-                /* (2) setoutputptr // OUTPUT_PTR(5) //  new_frame_ptr, output_ptr   // OUTPUT_PTR(5) //  new_frame_ptr, output_ptr   */
+                /* (3) setoutputptr // OUTPUT_PTR(5) //  new_frame_ptr, output_ptr   // OUTPUT_PTR(5) //  new_frame_ptr, output_ptr   */
 0xa0
             add
             mstore
@@ -7622,7 +7660,7 @@ for_stack_17:
     mload
 
                 dup2       // new_frame_ptr, data_ptr, new_frame_ptr
-                /* (5) setdataptr // DATA_PTR(1) //   new_frame_ptr   // DATA_PTR(1) //   new_frame_ptr   */
+                /* (6) setdataptr // DATA_PTR(1) //   new_frame_ptr   // DATA_PTR(1) //   new_frame_ptr   */
 0x20
             add
             mstore
@@ -7674,7 +7712,7 @@ for_stack_17:
             mload
 
                     dup1
-                    /* (8) getoutputptr //   //    */
+                    /* (9) getoutputptr //   //    */
 0xa0
             add
             mload
@@ -7683,17 +7721,17 @@ for_stack_17:
                     add
                     mload       // load result_ptr or value
 
-                    // computation_ptr_, frame_ptr, result_ptr
+                    // frame_ptr, result_ptr
 
                     dup2
                     mload       // prev_frame
-                    /* (3) getenvptr // computation_ptr_, frame_ptr, result_ptr, env_ptr   // computation_ptr_, frame_ptr, result_ptr, env_ptr   */
+                    /* (3) getenvptr // frame_ptr, result_ptr, env_ptr   // frame_ptr, result_ptr, env_ptr   */
 0x40
             add
             mload
 
                     dup3
-                    mload       // computation_ptr_, frame_ptr, result_ptr, env_ptr, prev_frame
+                    mload       // frame_ptr, result_ptr, env_ptr, prev_frame
                     /* (2) getforstep // index in env_ptr   // index in env_ptr   */
 0xc0
             add
@@ -7701,9 +7739,9 @@ for_stack_17:
                     0x20
                     mul
                     0x40
-                    add         // arity + self    // computation_ptr_, frame_ptr, result_ptr, env_ptr, offset
-                    add         // computation_ptr_, frame_ptr, result_ptr, env_ptr_current
-                    mstore      // computation_ptr_, frame_ptr
+                    add         // arity + self    // frame_ptr, result_ptr, env_ptr, offset
+                    add         // frame_ptr, result_ptr, env_ptr_current
+                    mstore      // frame_ptr
 
                     dup1
                     mload     // get previous frame
@@ -7743,71 +7781,9 @@ for_stack_17:
         jump
 
         let_x1_extra_for_end:
-            // computation_ptr_
-
-            // MEMORY FRAME INIT  //
-            0x160
-            /* (7) allocate 0x40  // computation_ptr_, new_frame_ptr   // computation_ptr_, new_frame_ptr   */
-0x40  // computation_ptr_
-    mload
-    swap1
-    dup2
-    add
-    0x40  // computation_ptr_
-    mstore
-
-            /* (49) getframe // computation_ptr_, new_frame_ptr, prev_frame_ptr   // computation_ptr_, new_frame_ptr, prev_frame_ptr   */
+            /* (49) getframe //   //   */
 0xe0
             mload
-            dup1   // computation_ptr_, new_frame_ptr, prev_frame_ptr, prev_frame_ptr
-            dup3   // computation_ptr_, new_frame_ptr, prev_frame_ptr, prev_frame_ptr, new_frame_ptr
-            mstore  // PREV_PTR(0)  // computation_ptr_, new_frame_ptr, prev_frame_ptr
-
-            // store current_frame_ptr
-            dup2
-            0xe0
-            mstore
-
-            dup1     // get mem/stack location from parent
-            /* (6) getloco // computation_ptr_, new_frame_ptr, prev_frame_ptr, mem/stack   // computation_ptr_, new_frame_ptr, prev_frame_ptr, mem/stack   */
-0x60
-            add
-            mload
-            dup3     // computation_ptr_, new_frame_ptr, prev_frame_ptr, mem/stack, new_frame_ptr
-            /* (5) setloco // MEM/STACK(3) //   if next is a function, it will set the mem/stack location itself   // MEM/STACK(3) //   if next is a function, it will set the mem/stack location itself   */
-0x60
-            add
-            mstore
-
-            // computation_ptr_, new_frame_ptr, prev_frame_ptr
-
-            dup1
-            /* (9) getoutputptr // computation_ptr_, new_frame_ptr, prev_frame_ptr, output_ptr   // computation_ptr_, new_frame_ptr, prev_frame_ptr, output_ptr   */
-0xa0
-            add
-            mload
-            dup3         // computation_ptr_, new_frame_ptr, prev_frame_ptr, output_ptr, new_frame_ptr
-            /* (3) setoutputptr // computation_ptr_, new_frame_ptr, prev_frame_ptr   // computation_ptr_, new_frame_ptr, prev_frame_ptr   */
-0xa0
-            add
-            mstore
-
-            /* (4) getenvptr //   //    */
-0x40
-            add
-            mload
-            dup2
-            /* (4) setenvptr // computation_ptr_, new_frame_ptr   // computation_ptr_, new_frame_ptr   */
-0x40
-            add
-            mstore
-
-            swap1      // new_frame_ptr, computation_ptr_
-            dup2       // new_frame_ptr, computation_ptr_, new_frame_ptr
-            /* (6) setdataptr // new_frame_ptr   // new_frame_ptr   */
-0x20
-            add
-            mstore
 
             let_x1_extra_eval_end    // return tag
             swap1
@@ -7815,6 +7791,8 @@ for_stack_17:
 0x120
             add
             mstore
+
+
             tag_eval
             jump
 
