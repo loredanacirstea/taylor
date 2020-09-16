@@ -108,7 +108,6 @@ function ast2h(ast, parent=null, unkownMap={}, defenv={}, arrItemType=null, reve
             ast.splice(0, 0, malTypes._symbol('apply-lambda'));
         else if (isExecutableStored(ast, unkownMap))
             ast.splice(0, 0, malTypes._symbol('apply' + extractOutType(ast[0].value)));
-            // ast.splice(0, 0, malTypes._symbol('apply'));
     }
 
     if(reverseArgs) {
@@ -127,6 +126,9 @@ function ast2h(ast, parent=null, unkownMap={}, defenv={}, arrItemType=null, reve
         if (elem === null) return uint(0);
 
         if (elem && elem[0] && elem[0].value && ast2hSpecialMap[elem[0].value]) {
+            if(reverseArgs) {
+                elem = [elem[0]].concat(elem.slice(1).reverse());
+            }
             return ast2hSpecialMap[elem[0].value](elem, parent, unkownMap, defenv, arrItemType, reverseArgs, stack, envdepth);
         }
 
@@ -183,19 +185,22 @@ function ast2h(ast, parent=null, unkownMap={}, defenv={}, arrItemType=null, reve
 }
 
 // apply byte(lambda)
+// reversed
+// ast[0] - name
+// ast[1] - body
+// ast[2] - args
 function handleFn(ast, parent, unkownMap, defenv, arrItemType, reverseArgs, stack, envdepth) {
     envdepth += 1;
-    const arity = ast[1].length;
+    const arity = ast[2].length;
     const unkownMapcpy = JSON.parse(JSON.stringify(unkownMap));
 
-    let largs = ast[1].map((elem, i) => {
-        const enc = type_enc.function_compiled('unknown', i, 0, stack);
+    let largs = ast[2].map((elem, i) => {
         unkownMapcpy[elem.value] = { depth: envdepth, index: i };
         return i.toString(16).padStart(4, '0');
     });
     largs = largs.join('');
 
-    const lambdaBody = ast2h(ast[2], ast, unkownMapcpy, defenv, null, true, stack, envdepth);
+    const lambdaBody = ast2h(ast[1], ast, unkownMapcpy, defenv, null, true, stack, envdepth);
     // fpu?; body length (without args)
     let encoded = type_enc.function_lambda('fn*', lambdaBody.length/2, arity, stack)
         + largs
@@ -223,13 +228,10 @@ function handleLet(ast, parent, unkownMap, defenv, arrItemType, reverseArgs, sta
     for (let i = 0; i < pairs.length; i+= 2) {
         const name = pairs[i];
         const index = i/2;
-        const enc = type_enc.function_compiled('unknown', index, 0, stack);
         unkownMapcpy[name.value] = { depth: envdepth, index };
         // always compute arg in memory
         const arg = ast2h(pairs[i + 1], pairs, unkownMapcpy, defenv, null, true, false, envdepth)
         largs.push(arg);
-
-        // i.toString(16).padStart(4, '0');
     }
     largs = largs.join('');
 

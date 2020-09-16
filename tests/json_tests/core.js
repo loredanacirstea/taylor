@@ -170,6 +170,55 @@ const tests = {
             wait: 600000,
         }
     ],
+    'let*': [
+        {
+            test: '(let* (c 2) c)',
+            result: 2,
+        },
+        {
+            test: '(let* (c 8 d 5) (add_ c d))',
+            result: 13,
+        },
+        {
+            test: `(let* (
+                c (fn* (a b) (add_ a b))
+            )
+            (apply c 5 8)
+        )`,
+            result: 13,
+        },
+        {
+            test: `(let* (
+                c (fn* (a b) (add_ a b))
+                d (fn* (a b) (mul_ a b))
+            )
+            (apply d 2 (apply c 5 8))
+        )`,
+            result: 26,
+        },
+        {
+            test: '(let* (a 4 b (add_ a 2)) b)',
+            result: 6,
+        },
+        {
+            test: '(let* (a 4 b (add_ a 2) c (mul_ b 3)) (sub_ c b))',
+            result: 12,
+        },
+        {
+            test: `(let* (c 2 a (add_ c 4))
+                ((fn* (d e) (add_ d e)) a c)
+            )`,
+            result: 8,
+        },
+        {
+            test: `( (fn* (d e)
+                (let* (a 6) (add_ (add_ a d) e) )
+            ) 2 1
+            )`,
+            result: 9,
+            skip: true,
+        },
+    ],
 }
 
 const prereq = [];

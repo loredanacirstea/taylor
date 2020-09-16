@@ -7251,7 +7251,7 @@ for_stack_15:
             and
             0x40
             eq   // returns 0 (stack) or 1 (memory)
-            dup4      // frame ptr
+            dup3      // frame ptr
             /* (3) setloco //   //   */
 0x60
             add
@@ -7669,7 +7669,6 @@ for_stack_17:
 
                 let_x1_extra_for_content:
                     // copy result in env_ptr
-
                     /* (48) getframe //   //   */
 0xe0
             mload

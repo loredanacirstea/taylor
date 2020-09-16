@@ -370,7 +370,7 @@ const tests = {
     calldatacopy__: [
         {
             test: '(return# (calldatacopy__ 0 32 ))',
-            result: '0x3001400100000101300120020000012010000000000000000000000000000000',
+            result: '0x3001400100000101300120820000012010000000000000000000000000000000',
             decode: ['bytes32'],
         },
     ],
@@ -378,14 +378,14 @@ const tests = {
         {
             // only for evm interpreter, reads from calldata
             test: '(return# (codecopy__ 0 10 ))',
-            result: '0x6103c460a052605460c0',
+            result: '0x6103c660a052605460c0',
             decode: null,
         },
     ],
     extcodecopy__: [
         {
             test: '(return# (extcodecopy__ (address_ ) 0 10 ))',
-            result: '0x6103c460a052605460c0',
+            result: '0x6103c660a052605460c0',
             decode: null,
         },
     ],
