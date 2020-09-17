@@ -76,12 +76,10 @@ type_enc.function_lambda = (name, bodylen, arity, stack = true) => type_enc.func
 // !!!we mess up body length here (not used now)
 type_enc.unknown = (index, envindex, stack) => type_enc.function_compiled('unknown', b2u(u2b(index).padStart(8, '0') + u2b(envindex).padStart(6, '0')), 0, stack);
 
-console.log('-----type_enc.function_stored: ', type_enc.function_stored("mulmul", '0', 2, 2, 0));
-
 function expr2h(expression, defenv) {
     const ast = malReader.read_str(expression);
     const encoded = x0(ast2h(ast, null, {}, defenv));
-    console.log('encoded', encoded);
+    // console.log('encoded', encoded);
     return { encoded, ast };
 }
 
@@ -201,15 +199,15 @@ function ast2h(ast, parent=null, unkownMap={}, defenv={}, arrItemType=null, reve
 // ast[2] - args
 function handleFn(ast, parent, unkownMap, defenv, arrItemType, reverseArgs, stack, envdepth) {
     const arity = ast[2].length;
-    const unkownMapcpy = JSON.parse(JSON.stringify(unkownMap));
+    const unknownMapcpy = JSON.parse(JSON.stringify(unkownMap));
 
     let largs = ast[2].map((elem, i) => {
-        unkownMapcpy[elem.value] = { depth: envdepth, index: i };
+        unknownMapcpy[elem.value] = { depth: envdepth, index: i };
         return i.toString(16).padStart(4, '0');
     });
     largs = largs.join('');
 
-    const lambdaBody = ast2h(ast[1], ast, unkownMapcpy, defenv, null, true, stack, envdepth);
+    const lambdaBody = ast2h(ast[1], ast, unknownMapcpy, defenv, null, true, stack, envdepth);
     // fpu?; body length (without args)
     let encoded = type_enc.function_lambda('fn*', lambdaBody.length/2, arity, stack)
         + largs
@@ -229,22 +227,22 @@ function handleLet(ast, parent, unkownMap, defenv, arrItemType, reverseArgs, sta
     const computation = ast[1];
     const pairs = ast[2];
     const arity = pairs.length / 2;
-    const unkownMapcpy = JSON.parse(JSON.stringify(unkownMap));
+    const unknownMapcpy = JSON.parse(JSON.stringify(unkownMap));
     if (pairs.length % 2 > 0) throw new Error ('let* needs an even number of arguments');
 
     let largs = [];
     for (let i = 0; i < pairs.length; i+= 2) {
         const name = pairs[i];
         const index = i/2;
-        unkownMapcpy[name.value] = { depth: envdepth, index };
+        unknownMapcpy[name.value] = { depth: envdepth, index };
 
         // always compute arg in memory
-        const arg = ast2h(pairs[i + 1], pairs, unkownMapcpy, defenv, null, true, false, envdepth)
+        const arg = ast2h(pairs[i + 1], pairs, unknownMapcpy, defenv, null, true, false, envdepth)
         largs.push(arg);
     }
     largs = largs.join('');
 
-    const body = ast2h(computation, ast, unkownMapcpy, defenv, null, true, stack, envdepth);
+    const body = ast2h(computation, ast, unknownMapcpy, defenv, null, true, stack, envdepth);
 
     // instead of body length: number of variables
     let encoded = type_enc.function_compiled(ast[0].value, arity, 2,stack)
@@ -255,6 +253,8 @@ function handleLet(ast, parent, unkownMap, defenv, arrItemType, reverseArgs, sta
 
 // ast is inversed
 function handleIf(ast, parent, unkownMap, defenv, arrItemType, reverseArgs, stack, envdepth) {
+    // if just moves the data_ptr in the same memory frame
+    envdepth -= 1;
     const unknownMap_cpy = JSON.parse(JSON.stringify(unkownMap))
     const condition = ast2h(ast[3], ast, unknownMap_cpy, defenv, null, true, stack, envdepth);
     const action1body = ast2h(ast[2], ast, unknownMap_cpy, defenv, null, true, stack, envdepth);
@@ -304,7 +304,7 @@ function handleStored(ast, parent, unkownMap, defenv, arrItemType, reverseArgs, 
 }
 
 function decode (data, returntypes) {
-    console.log('decode data', data, returntypes)
+    // console.log('decode data', data, returntypes)
     let decoded;
     if (returntypes && returntypes[0] === 'string') {
         return data.slice(2).hexDecode();
