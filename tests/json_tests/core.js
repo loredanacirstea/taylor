@@ -73,6 +73,18 @@ const tests = {
             decode: 'tuple',
         },
     ],
+    nth_: [
+        {
+            test: '(nth_ (tuple___ 4 5 9) 1)',
+            result: 5,
+            decode: ['uint'],
+        },
+        {
+            test: '(return# (nth_ (tuple___ "0x1122334455" "0x667788") 0))',
+            result: "0x1122334455",
+            decode: null,
+        },
+    ],
     map_: [
         {
             test: '(return___# (map_ (fn* (a) 9) (tuple___ 4 5 9)))',

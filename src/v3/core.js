@@ -17,6 +17,7 @@ const core = {
     map_: '150',
     reduce_: '151',
     tuple___: '14a',
+    nth_: '14c',
 
     'setroot!': '160',
     'setleaf!': '161',

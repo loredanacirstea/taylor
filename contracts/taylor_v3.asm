@@ -4047,16 +4047,15 @@ unused_152:  // 0x149
             jump
             stop
             stop
-        /* (148) eopcode 0x14c, 155      */
-unused_155:  // 0x14c
-        stop
-        stop
-        stop
-        stop
-        stop
-        stop
-        stop
-        /* (149) eopcode 0x14d, 156      */
+        nth_21: // 0x14c
+            pop
+            nth_21_extra
+            //
+            // push
+            jump
+            stop
+            stop
+        /* (148) eopcode 0x14d, 156      */
 unused_156:  // 0x14d
         stop
         stop
@@ -4065,7 +4064,7 @@ unused_156:  // 0x14d
         stop
         stop
         stop
-        /* (150) eopcode 0x14e, 157      */
+        /* (149) eopcode 0x14e, 157      */
 unused_157:  // 0x14e
         stop
         stop
@@ -4074,7 +4073,7 @@ unused_157:  // 0x14e
         stop
         stop
         stop
-        /* (151) eopcode 0x14f, 158      */
+        /* (150) eopcode 0x14f, 158      */
 unused_158:  // 0x14f
         stop
         stop
@@ -4091,7 +4090,7 @@ unused_158:  // 0x14f
             jump
             stop
             stop
-        /* (152) eopcode 0x151, 159      */
+        /* (151) eopcode 0x151, 159      */
 unused_159:  // 0x151
         stop
         stop
@@ -4100,7 +4099,7 @@ unused_159:  // 0x151
         stop
         stop
         stop
-        /* (153) eopcode 0x152, 160      */
+        /* (152) eopcode 0x152, 160      */
 unused_160:  // 0x152
         stop
         stop
@@ -4109,7 +4108,7 @@ unused_160:  // 0x152
         stop
         stop
         stop
-        /* (154) eopcode 0x153, 161      */
+        /* (153) eopcode 0x153, 161      */
 unused_161:  // 0x153
         stop
         stop
@@ -4118,7 +4117,7 @@ unused_161:  // 0x153
         stop
         stop
         stop
-        /* (155) eopcode 0x154, 162      */
+        /* (154) eopcode 0x154, 162      */
 unused_162:  // 0x154
         stop
         stop
@@ -4127,7 +4126,7 @@ unused_162:  // 0x154
         stop
         stop
         stop
-        /* (156) eopcode 0x155, 163      */
+        /* (155) eopcode 0x155, 163      */
 unused_163:  // 0x155
         stop
         stop
@@ -4136,7 +4135,7 @@ unused_163:  // 0x155
         stop
         stop
         stop
-        /* (157) eopcode 0x156, 164      */
+        /* (156) eopcode 0x156, 164      */
 unused_164:  // 0x156
         stop
         stop
@@ -4145,7 +4144,7 @@ unused_164:  // 0x156
         stop
         stop
         stop
-        /* (158) eopcode 0x157, 165      */
+        /* (157) eopcode 0x157, 165      */
 unused_165:  // 0x157
         stop
         stop
@@ -4154,7 +4153,7 @@ unused_165:  // 0x157
         stop
         stop
         stop
-        /* (159) eopcode 0x158, 166      */
+        /* (158) eopcode 0x158, 166      */
 unused_166:  // 0x158
         stop
         stop
@@ -4163,7 +4162,7 @@ unused_166:  // 0x158
         stop
         stop
         stop
-        /* (160) eopcode 0x159, 167      */
+        /* (159) eopcode 0x159, 167      */
 unused_167:  // 0x159
         stop
         stop
@@ -4172,7 +4171,7 @@ unused_167:  // 0x159
         stop
         stop
         stop
-        /* (161) eopcode 0x15a, 168      */
+        /* (160) eopcode 0x15a, 168      */
 unused_168:  // 0x15a
         stop
         stop
@@ -4181,7 +4180,7 @@ unused_168:  // 0x15a
         stop
         stop
         stop
-        /* (162) eopcode 0x15b, 169      */
+        /* (161) eopcode 0x15b, 169      */
 unused_169:  // 0x15b
         stop
         stop
@@ -4190,7 +4189,7 @@ unused_169:  // 0x15b
         stop
         stop
         stop
-        /* (163) eopcode 0x15c, 170      */
+        /* (162) eopcode 0x15c, 170      */
 unused_170:  // 0x15c
         stop
         stop
@@ -4199,7 +4198,7 @@ unused_170:  // 0x15c
         stop
         stop
         stop
-        /* (164) eopcode 0x15d, 171      */
+        /* (163) eopcode 0x15d, 171      */
 unused_171:  // 0x15d
         stop
         stop
@@ -4208,7 +4207,7 @@ unused_171:  // 0x15d
         stop
         stop
         stop
-        /* (165) eopcode 0x15e, 172      */
+        /* (164) eopcode 0x15e, 172      */
 unused_172:  // 0x15e
         stop
         stop
@@ -4217,7 +4216,7 @@ unused_172:  // 0x15e
         stop
         stop
         stop
-        /* (166) eopcode 0x15f, 173      */
+        /* (165) eopcode 0x15f, 173      */
 unused_173:  // 0x15f
         stop
         stop
@@ -4258,7 +4257,7 @@ unused_173:  // 0x15f
             jump
             stop
             stop
-        /* (167) eopcode 0x164, 176      */
+        /* (166) eopcode 0x164, 176      */
 unused_176:  // 0x164
         stop
         stop
@@ -4267,7 +4266,7 @@ unused_176:  // 0x164
         stop
         stop
         stop
-        /* (168) eopcode 0x165, 176      */
+        /* (167) eopcode 0x165, 176      */
 unused_176:  // 0x165
         stop
         stop
@@ -4276,7 +4275,7 @@ unused_176:  // 0x165
         stop
         stop
         stop
-        /* (169) eopcode 0x166, 176      */
+        /* (168) eopcode 0x166, 176      */
 unused_176:  // 0x166
         stop
         stop
@@ -4285,7 +4284,7 @@ unused_176:  // 0x166
         stop
         stop
         stop
-        /* (170) eopcode 0x167, 176      */
+        /* (169) eopcode 0x167, 176      */
 unused_176:  // 0x167
         stop
         stop
@@ -4294,7 +4293,7 @@ unused_176:  // 0x167
         stop
         stop
         stop
-        /* (171) eopcode 0x168, 177      */
+        /* (170) eopcode 0x168, 177      */
 unused_177:  // 0x168
         stop
         stop
@@ -4303,7 +4302,7 @@ unused_177:  // 0x168
         stop
         stop
         stop
-        /* (172) eopcode 0x169, 178      */
+        /* (171) eopcode 0x169, 178      */
 unused_178:  // 0x169
         stop
         stop
@@ -6205,6 +6204,22 @@ for_stack_12:
             // push
             mload
             jump
+        nth_21_extra:
+            // index, t3ptr___
+            swap1
+            /* (0) t3_item_ //   //   */
+// expects t3 pointer, index on stack
+    0x20
+    mul
+    0x20
+    add
+    add
+    mload
+
+            0xc0
+            // push
+            mload
+            jump
         map_xx_extra:
             // t3___ptr, lambda_ptr
 
@@ -6294,7 +6309,7 @@ for_stack_12:
             mload
             mload
             0x01
-            /* (0) t3_item_ //   //   */
+            /* (1) t3_item_ //   //   */
 // expects t3 pointer, index on stack
     0x20
     mul
@@ -6343,7 +6358,7 @@ for_stack_12:
             mload
 
             0x01
-            /* (1) t3_item_ //   //   */
+            /* (2) t3_item_ //   //   */
 // expects t3 pointer, index on stack
     0x20
     mul
@@ -6375,7 +6390,7 @@ for_stack_12:
             mload
             mload
             0x00
-            /* (2) t3_item_ // frame_ptr, result_ptr, end_ptr   // frame_ptr, result_ptr, end_ptr   */
+            /* (3) t3_item_ // frame_ptr, result_ptr, end_ptr   // frame_ptr, result_ptr, end_ptr   */
 // expects t3 pointer, index on stack
     0x20
     mul
@@ -6419,7 +6434,7 @@ for_stack_12:
 
             dup3
             swap1       // arg_ptr, lambda_ptr, arg_ptr, step
-            /* (3) t3_item_ // arg_ptr, lambda_ptr, arg   // arg_ptr, lambda_ptr, arg   */
+            /* (4) t3_item_ // arg_ptr, lambda_ptr, arg   // arg_ptr, lambda_ptr, arg   */
 // expects t3 pointer, index on stack
     0x20
     mul
