@@ -31,6 +31,13 @@ const tests = {
             decode: ['uint'],
         },
     ],
+    clone__: [
+        {
+            test: '(return# (clone__ (t2_ptr_ "0x112233445566778899") 5))',
+            result: "0x1122334455",
+            decode: null,
+        },
+    ],
     bytelike: [
         {
             test: '(return# "0x2ed0c03fade6398d546adc5d9250df997c801ed12ed0c03fade6398d546adc5d9250df997c801ed1")',
