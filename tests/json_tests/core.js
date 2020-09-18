@@ -190,7 +190,7 @@ const tests = {
         }
     ],
     'let*': [
-        { settings: true, only: true },
+        { settings: true, only: false },
         {
             test: '(let* (c 2) c)',
             result: 2,
@@ -219,6 +219,7 @@ const tests = {
         {
             test: '(let* (a 4 b (add_ a 2)) b)',
             result: 6,
+            skip: true,
         },
         {
             test: '(let* (a 4 b (add_ a 2) c (mul_ b 3)) (sub_ c b))',
@@ -249,6 +250,53 @@ const tests = {
                 )
             ) 2 1)`,
             result: 13,
+        },
+        {
+            test: `((fn* (str pos)
+                (let* (
+                        a pos
+                    )
+                    a
+                )
+            ) "0x1122" 2)`,
+            result: 2,
+        },
+        {
+            test: `((fn* (str pos)
+                (let* (
+                        a str
+                    )
+                    (return# a)
+                )
+            ) "0x1122" 2)`,
+            result: '0x1122',
+            decode: null,
+        },
+        {
+            test: `( (fn* (str1 str2)
+                (let* (
+                        a (t2_len_ str1)
+                        b (fn* (f g) (add_ f g))
+                        c (fn* (h i) (mul_ h i))
+                        d (join__ str1 str2)
+                    )
+                    (apply b (apply c a (t2_len_ d)) 0)
+                )
+            ) "0x1122" "0x334455")`,
+            result: 10,
+        },
+        {
+            test: `((fn* (str pos)
+                (if (lt_ (t2_len_ str) pos)
+                    (self
+                        (join__ str "a")
+                        pos
+                    )
+                    (return# str)
+                )
+            ) "b" 3)`,
+            result: 'baa',
+            decode: ['string'],
         },
     ],
 }

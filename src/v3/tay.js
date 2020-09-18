@@ -230,14 +230,17 @@ function handleLet(ast, parent, unkownMap, defenv, arrItemType, reverseArgs, sta
     const unknownMapcpy = JSON.parse(JSON.stringify(unkownMap));
     if (pairs.length % 2 > 0) throw new Error ('let* needs an even number of arguments');
 
+    // We add 1 because let creates a new memory frame for each variable calculation
+    const envdepthIncr = envdepth + 1;
+
     let largs = [];
     for (let i = 0; i < pairs.length; i+= 2) {
         const name = pairs[i];
         const index = i/2;
-        unknownMapcpy[name.value] = { depth: envdepth, index };
+        unknownMapcpy[name.value] = { depth: envdepthIncr, index };
 
         // always compute arg in memory
-        const arg = ast2h(pairs[i + 1], pairs, unknownMapcpy, defenv, null, true, false, envdepth)
+        const arg = ast2h(pairs[i + 1], pairs, unknownMapcpy, defenv, null, true, false, envdepthIncr)
         largs.push(arg);
     }
     largs = largs.join('');
