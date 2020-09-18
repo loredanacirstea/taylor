@@ -61,8 +61,8 @@ const tests = {
             decode: ['string'],
         },
         {
-            test: '(return# (join__ "b0x2ed0c03fade6398d546ed10000" "0x801ed12ed0c03fade6398d546adc00000000000000"))',
-            result: '0x6230783265643063303366616465363339386435343665643130303030801ed12ed0c03fade6398d546adc00000000000000',
+            test: '(return# (join__ "0x2ed0c03fade6398d546ed10000" "0x801ed12ed0c03fade6398d546adc00000000000000"))',
+            result: '0x2ed0c03fade6398d546ed10000801ed12ed0c03fade6398d546adc00000000000000',
             decode: null,
         }
     ],
@@ -190,6 +190,7 @@ const tests = {
         }
     ],
     'let*': [
+        { settings: true, only: true },
         {
             test: '(let* (c 2) c)',
             result: 2,

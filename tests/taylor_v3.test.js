@@ -29,10 +29,15 @@ describe.each([
     let resp;
     for (name of Object.keys(tests.evm.tests)) {
         const tts = tests.evm.tests[name]
+        let only, skip;
+        if (tts[0].settings) {
+            ({ only, skip } = tts[0]);
+            tts.splice(0, 1);
+        }
         tts.map((tt, i) => {
             let testapi = test;
-            if (tt.skip) testapi = test.skip;
-            if (tt.only) testapi = test.only;
+            if (skip || tt.skip) testapi = test.skip;
+            if (only || tt.only) testapi = test.only;
 
             testapi(name + '_' + i, async function () {
                 resp = await instance.call(tt.test, tt.txObj || {}, tt.decode);
@@ -44,10 +49,15 @@ describe.each([
 
     for (name of Object.keys(tests.core.tests)) {
         const tts = tests.core.tests[name]
+        let only, skip;
+        if (tts[0].settings) {
+            ({ only, skip } = tts[0]);
+            tts.splice(0, 1);
+        }
         tts.map((tt, i) => {
             let testapi = test;
-            if (tt.skip) testapi = test.skip;
-            if (tt.only) testapi = test.only;
+            if (skip || tt.skip) testapi = test.skip;
+            if (only || tt.only) testapi = test.only;
 
             testapi(name + '_' + i, async function () {
                 resp = await instance.call(tt.test, tt.txObj || {}, tt.decode);
