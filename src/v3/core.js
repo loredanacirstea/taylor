@@ -25,6 +25,7 @@ const core = {
     'setleaf!': '161',
     'apply-compiled': '162',
     'apply-lambda': '163',
+    'apply-list': '164',
     'apply_': '105',
     'apply__': '105',
     'apply___': '105',

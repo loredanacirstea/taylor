@@ -316,6 +316,20 @@ const tests = {
             decode: ['string'],
         },
     ],
+    apply_list: [
+        {
+            test: `(apply-list (fn* (a b) (add_ a b)) (tuple___ 5 8))`,
+            result: 13,
+        },
+        {
+            test: `(let* (
+                    c (fn* (a b) (add_ a b))
+                )
+                (apply-list c (tuple___ 5 8))
+            )`,
+            result: 13,
+        },
+    ]
 }
 
 const prereq = [];

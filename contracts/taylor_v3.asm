@@ -4263,16 +4263,15 @@ unused_173:  // 0x15f
             jump
             stop
             stop
-        /* (164) eopcode 0x164, 176      */
-unused_176:  // 0x164
-        stop
-        stop
-        stop
-        stop
-        stop
-        stop
-        stop
-        /* (165) eopcode 0x165, 176      */
+        apply_list_21:     // 0x164
+            pop
+            apply_list_21_extra
+            //
+            // push
+            jump
+            stop
+            stop
+        /* (164) eopcode 0x165, 176      */
 unused_176:  // 0x165
         stop
         stop
@@ -4281,7 +4280,7 @@ unused_176:  // 0x165
         stop
         stop
         stop
-        /* (166) eopcode 0x166, 176      */
+        /* (165) eopcode 0x166, 176      */
 unused_176:  // 0x166
         stop
         stop
@@ -4290,7 +4289,7 @@ unused_176:  // 0x166
         stop
         stop
         stop
-        /* (167) eopcode 0x167, 176      */
+        /* (166) eopcode 0x167, 176      */
 unused_176:  // 0x167
         stop
         stop
@@ -4299,7 +4298,7 @@ unused_176:  // 0x167
         stop
         stop
         stop
-        /* (168) eopcode 0x168, 177      */
+        /* (167) eopcode 0x168, 177      */
 unused_177:  // 0x168
         stop
         stop
@@ -4308,7 +4307,7 @@ unused_177:  // 0x168
         stop
         stop
         stop
-        /* (169) eopcode 0x169, 178      */
+        /* (168) eopcode 0x169, 178      */
 unused_178:  // 0x169
         stop
         stop
@@ -6881,6 +6880,154 @@ for_stack_15:
             // push
             mload
             jump
+        apply_list_21_extra:
+            // arg_list___, lambda_ptr__
+
+            dup1  // arg_list___, lambda_ptr__, lambda_ptr__
+            0x20
+            add   // after length lambda_ptr // arg_list___, lambda_ptr__, lambda_ptr, lambda_ptr
+            dup1     // load lambda head todo: require id is lambda id
+            /* (10) getfourb // arg_list___, lambda_ptr__, lambda_ptr, 4b   // arg_list___, lambda_ptr__, lambda_ptr, 4b   */
+// expects a pointer
+            mload
+            0xe0
+            shr
+
+            /* (5) getfuncarity // lambda arity // arg_list___, lambda_ptr__, lambda_ptr, lambda_arity   // lambda arity // arg_list___, lambda_ptr__, lambda_ptr, lambda_arity   */
+// expects a 4byte value
+            0x3f
+            and
+
+            // move lambda pointer to lambda body
+            swap1   // arg_list___, lambda_ptr__, lambda_arity, lambda_ptr
+            0x08
+            add     // lambda sig
+            dup2
+            0x02
+            mul     // unknowns offset
+            add     // move lambda ptr at body
+
+            swap1   // arg_list___, lambda_ptr__, lambda_ptr, lambda_arity
+
+            // create new memory frame with new env
+
+            dup1             // arg_list___, lambda_ptr__, lambda_ptr, lambda_arity, lambda_arity
+            0x01
+            add              // self
+            /* (6) t3_init__ 0x40   // arg_list___, lambda_ptr__, lambda_ptr, lambda_arity, new_env_ptr   // arg_list___, lambda_ptr__, lambda_ptr, lambda_arity, new_env_ptr   */
+// expects on stack: arity
+    dup1   // arity
+    0x20
+    mul
+    0x20
+    add
+
+    // alloc
+    0x40   // arg_list___
+    mload
+    swap1
+    dup2
+    add
+    0x40   // arg_list___
+    mstore
+    // end alloc
+
+    swap1    // ptr, arity
+    dup2     // ptr, arity, ptr
+    mstore   // store arity at pointer -> ptr
+
+            // storing reference to self
+            swap1   // arg_list___, lambda_ptr__, lambda_ptr, new_env_ptr, lambda_arity
+            swap2   // arg_list___, lambda_ptr__, lambda_arity, new_env_ptr, lambda_ptr
+            swap3   // arg_list___, lambda_ptr, lambda_arity, new_env_ptr, lambda_ptr__
+            dup2    // arg_list___, lambda_ptr, lambda_arity, new_env_ptr, lambda_ptr__, new_env_ptr
+            0x20
+            add
+            mstore  // arg_list___, lambda_ptr, lambda_arity, new_env_ptr
+
+            swap1   // arg_list___, lambda_ptr, new_env_ptr, lambda_arity
+            0x20
+            mul     // arg_list___, lambda_ptr, new_env_ptr, size_bytes
+            dup4
+            0x20
+            add    // arg_list___, lambda_ptr, new_env_ptr, size_bytes, arg_list___ptr_
+            dup3
+            0x40
+            add    // arg_list___, lambda_ptr, new_env_ptr, size_bytes, arg_list___ptr_, new_env_ptr_
+            /* (7) mmultimstore // arg_list___, lambda_ptr, new_env_ptr   // arg_list___, lambda_ptr, new_env_ptr   */
+// alloc before using it
+            // size_bytes, source_ptr, target_ptr
+            dup3   // size_bytes
+
+            // calc slots
+            0x20
+            dup2
+            div
+
+            0x00
+            0x20
+            dup4
+            mod
+            gt
+            add
+
+            swap1
+            pop
+
+            // end calc slots
+
+            swap3            // slots, source_ptr, target_ptr ; replace length with slots
+            pop
+
+            mmultimstore_end_7
+            dup4             // slots
+            0x00
+
+for_stack_16:
+        dup2   // end
+        dup2   // start
+        lt
+        forloop_stack_16
+        jumpi
+        pop    // pop end, step
+        pop
+        jump
+    forloop_stack_16:   // any content variables are kept after jumptag, end, step
+
+                // slots, source_ptr, target_ptr, tag, end, step
+                dup5
+                mload
+                dup5
+                mstore
+
+                dup5
+                0x20
+                add
+                swap5
+                pop
+
+                dup4
+                0x20
+                add
+                swap4
+                pop
+
+    forloop_end_stack_16:
+        0x01   // start/step first
+        add
+        for_stack_16
+        jump
+        mmultimstore_end_7:
+            pop
+            pop
+            pop
+            swap1
+            swap2
+            pop
+
+            apply_xx_extra_mfor_end_1    // lambda_ptr__, new_env_ptr
+            jump
+
         apply_stored_x1_extra:     // args, signature uint256 lookup in storage or forward to registered contract
             // args, signature
             0xc0
@@ -6905,13 +7052,13 @@ for_stack_15:
             0x20
             add   // after length lambda_ptr // args, lambda_ptr__, lambda_ptr, lambda_ptr
             dup1     // load lambda head todo: require id is lambda id
-            /* (10) getfourb // args, lambda_ptr__, lambda_ptr, 4b   // args, lambda_ptr__, lambda_ptr, 4b   */
+            /* (11) getfourb // args, lambda_ptr__, lambda_ptr, 4b   // args, lambda_ptr__, lambda_ptr, 4b   */
 // expects a pointer
             mload
             0xe0
             shr
 
-            /* (5) getfuncarity // lambda arity // args, lambda_ptr__, lambda_ptr, lambda_arity   // lambda arity // args, lambda_ptr__, lambda_ptr, lambda_arity   */
+            /* (6) getfuncarity // lambda arity // args, lambda_ptr__, lambda_ptr, lambda_arity   // lambda arity // args, lambda_ptr__, lambda_ptr, lambda_arity   */
 // expects a 4byte value
             0x3f
             and
@@ -6932,7 +7079,7 @@ for_stack_15:
             dup1             // args, lambda_ptr__, lambda_ptr, lambda_arity, lambda_arity
             0x01
             add              // self
-            /* (6) t3_init__ 0x40   // args, lambda_ptr__, lambda_ptr, lambda_arity, new_env_ptr   // args, lambda_ptr__, lambda_ptr, lambda_arity, new_env_ptr   */
+            /* (7) t3_init__ 0x40   // args, lambda_ptr__, lambda_ptr, lambda_arity, new_env_ptr   // args, lambda_ptr__, lambda_ptr, lambda_arity, new_env_ptr   */
 // expects on stack: arity
     dup1   // arity
     0x20
@@ -6977,16 +7124,16 @@ for_stack_15:
             swap1  // args, lambda_ptr, new_env_ptr, current_env_ptr, tag, lambda_arity
             0x00
 
-for_stack_16:
+for_stack_17:
         dup2   // end
         dup2   // start
         lt
-        forloop_stack_16
+        forloop_stack_17
         jumpi
         pop    // pop end, step
         pop
         jump
-    forloop_stack_16:   // any content variables are kept after jumptag, end, step
+    forloop_stack_17:   // any content variables are kept after jumptag, end, step
 
                 // args, lambda_ptr, new_env_ptr, current_env_ptr, tag, end, step
 
@@ -7008,15 +7155,16 @@ for_stack_16:
                 swap6
                 pop
 
-    forloop_end_stack_16:
+    forloop_end_stack_17:
         0x01   // start/step first
         add
-        for_stack_16
+        for_stack_17
         jump
 
         apply_xx_extra_mfor_end:
             // lambda_ptr, new_env_ptr, current_env_ptr
             pop  // lambda_ptr, new_env_ptr
+        apply_xx_extra_mfor_end_1:   // used by apply-list
 
             // MEMORY FRAME INIT  //
             0x160
@@ -7140,7 +7288,7 @@ for_stack_16:
             add
             mload
             dup1
-            /* (11) getfourb //   args, tag, code_ptr, 4bsig   //   args, tag, code_ptr, 4bsig   */
+            /* (12) getfourb //   args, tag, code_ptr, 4bsig   //   args, tag, code_ptr, 4bsig   */
 // expects a pointer
             mload
             0xe0
@@ -7246,7 +7394,7 @@ for_stack_16:
             sub    // args, sig_ptr__, tag, code_ptr, length, newcode_ptr_, len
             dup4  // args, sig_ptr__, tag, code_ptr, length, newcode_ptr_, length, code_ptr
             dup3    // args, sig_ptr__, tag, code_ptr, length, newcode_ptr_, length, code_ptr, newcode_ptr_
-            /* (7) mmultimstore // size_bytes, source_ptr, target_ptr   // size_bytes, source_ptr, target_ptr   */
+            /* (8) mmultimstore // size_bytes, source_ptr, target_ptr   // size_bytes, source_ptr, target_ptr   */
 // alloc before using it
             // size_bytes, source_ptr, target_ptr
             dup3   // size_bytes
@@ -7271,20 +7419,20 @@ for_stack_16:
             swap3            // slots, source_ptr, target_ptr ; replace length with slots
             pop
 
-            mmultimstore_end_7
+            mmultimstore_end_8
             dup4             // slots
             0x00
 
-for_stack_17:
+for_stack_18:
         dup2   // end
         dup2   // start
         lt
-        forloop_stack_17
+        forloop_stack_18
         jumpi
         pop    // pop end, step
         pop
         jump
-    forloop_stack_17:   // any content variables are kept after jumptag, end, step
+    forloop_stack_18:   // any content variables are kept after jumptag, end, step
 
                 // slots, source_ptr, target_ptr, tag, end, step
                 dup5
@@ -7304,12 +7452,12 @@ for_stack_17:
                 swap4
                 pop
 
-    forloop_end_stack_17:
+    forloop_end_stack_18:
         0x01   // start/step first
         add
-        for_stack_17
+        for_stack_18
         jump
-        mmultimstore_end_7:
+        mmultimstore_end_8:
             pop
             pop
             pop
@@ -7488,102 +7636,6 @@ for_stack_17:
             mload      // calldata pointer
             add        // add calldata_pos
             swap1      // len, calldata_ptr, mem_ptr
-            /* (8) mmultimstore // size_bytes, source_ptr, target_ptr   // size_bytes, source_ptr, target_ptr   */
-// alloc before using it
-            // size_bytes, source_ptr, target_ptr
-            dup3   // size_bytes
-
-            // calc slots
-            0x20
-            dup2
-            div
-
-            0x00
-            0x20
-            dup4
-            mod
-            gt
-            add
-
-            swap1
-            pop
-
-            // end calc slots
-
-            swap3            // slots, source_ptr, target_ptr ; replace length with slots
-            pop
-
-            mmultimstore_end_8
-            dup4             // slots
-            0x00
-
-for_stack_18:
-        dup2   // end
-        dup2   // start
-        lt
-        forloop_stack_18
-        jumpi
-        pop    // pop end, step
-        pop
-        jump
-    forloop_stack_18:   // any content variables are kept after jumptag, end, step
-
-                // slots, source_ptr, target_ptr, tag, end, step
-                dup5
-                mload
-                dup5
-                mstore
-
-                dup5
-                0x20
-                add
-                swap5
-                pop
-
-                dup4
-                0x20
-                add
-                swap4
-                pop
-
-    forloop_end_stack_18:
-        0x01   // start/step first
-        add
-        for_stack_18
-        jump
-        mmultimstore_end_8:
-            pop
-            pop
-            pop
-
-            0xc0
-            // push
-            mload
-            jump
-
-        codesize_01_extra:
-            // load bytecode length from pointer
-            0x20
-            0x100
-            mload     // ptr
-            sub       // length is in prev slot
-            mload
-
-            0xc0
-            // push
-            mload
-            jump
-        codecopy_30_extra:
-            // len, code_pos, mem_ptr
-            0x140        // mem offset
-            mload
-            add          // new mem_ptr
-
-            swap1      // len, mem_ptr, bytecode_pos
-            0x100
-            mload      // bytecode pointer
-            add        // add bytecode_pos
-            swap1      // len, bytecode_ptr, mem_ptr
             /* (9) mmultimstore // size_bytes, source_ptr, target_ptr   // size_bytes, source_ptr, target_ptr   */
 // alloc before using it
             // size_bytes, source_ptr, target_ptr
@@ -7648,6 +7700,102 @@ for_stack_19:
         for_stack_19
         jump
         mmultimstore_end_9:
+            pop
+            pop
+            pop
+
+            0xc0
+            // push
+            mload
+            jump
+
+        codesize_01_extra:
+            // load bytecode length from pointer
+            0x20
+            0x100
+            mload     // ptr
+            sub       // length is in prev slot
+            mload
+
+            0xc0
+            // push
+            mload
+            jump
+        codecopy_30_extra:
+            // len, code_pos, mem_ptr
+            0x140        // mem offset
+            mload
+            add          // new mem_ptr
+
+            swap1      // len, mem_ptr, bytecode_pos
+            0x100
+            mload      // bytecode pointer
+            add        // add bytecode_pos
+            swap1      // len, bytecode_ptr, mem_ptr
+            /* (10) mmultimstore // size_bytes, source_ptr, target_ptr   // size_bytes, source_ptr, target_ptr   */
+// alloc before using it
+            // size_bytes, source_ptr, target_ptr
+            dup3   // size_bytes
+
+            // calc slots
+            0x20
+            dup2
+            div
+
+            0x00
+            0x20
+            dup4
+            mod
+            gt
+            add
+
+            swap1
+            pop
+
+            // end calc slots
+
+            swap3            // slots, source_ptr, target_ptr ; replace length with slots
+            pop
+
+            mmultimstore_end_10
+            dup4             // slots
+            0x00
+
+for_stack_20:
+        dup2   // end
+        dup2   // start
+        lt
+        forloop_stack_20
+        jumpi
+        pop    // pop end, step
+        pop
+        jump
+    forloop_stack_20:   // any content variables are kept after jumptag, end, step
+
+                // slots, source_ptr, target_ptr, tag, end, step
+                dup5
+                mload
+                dup5
+                mstore
+
+                dup5
+                0x20
+                add
+                swap5
+                pop
+
+                dup4
+                0x20
+                add
+                swap4
+                pop
+
+    forloop_end_stack_20:
+        0x01   // start/step first
+        add
+        for_stack_20
+        jump
+        mmultimstore_end_10:
             pop
             pop
             pop
@@ -7775,7 +7923,7 @@ for_stack_19:
 0x20
             add
             mload
-            /* (12) getfourb //   //   */
+            /* (13) getfourb //   //   */
 // expects a pointer
             mload
             0xe0
@@ -7791,7 +7939,7 @@ for_stack_19:
             dup1
             0x01
             add       // self
-            /* (7) t3_init__ 0x40      // new_frame_ptr, args_ptr_, arity, env_ptr   // new_frame_ptr, args_ptr_, arity, env_ptr   */
+            /* (8) t3_init__ 0x40      // new_frame_ptr, args_ptr_, arity, env_ptr   // new_frame_ptr, args_ptr_, arity, env_ptr   */
 // expects on stack: arity
     dup1   // arity
     0x20
@@ -7822,7 +7970,7 @@ for_stack_19:
             dup1       // arity - no of partials one for arity
             0x01
             add
-            /* (8) t3_init__ 0x40   // new_frame_ptr, args_ptr_, arity, partials_ptr   // new_frame_ptr, args_ptr_, arity, partials_ptr   */
+            /* (9) t3_init__ 0x40   // new_frame_ptr, args_ptr_, arity, partials_ptr   // new_frame_ptr, args_ptr_, arity, partials_ptr   */
 // expects on stack: arity
     dup1   // arity
     0x20
@@ -7889,16 +8037,16 @@ for_stack_19:
     swap1     // inputs, iniptr, current_ptr, tag, arity
     0x00
 
-for_stack_20:
+for_stack_21:
         dup2   // end
         dup2   // start
         lt
-        forloop_stack_20
+        forloop_stack_21
         jumpi
         pop    // pop end, step
         pop
         jump
-    forloop_stack_20:   // any content variables are kept after jumptag, end, step
+    forloop_stack_21:   // any content variables are kept after jumptag, end, step
 
         // inputs, iniptr, current_ptr, tag, end, step
         dup6       // store first input
@@ -7916,10 +8064,10 @@ for_stack_20:
         swap5
         pop      // inputs_rest, ptr, tag, end, step
 
-    forloop_end_stack_20:
+    forloop_end_stack_21:
         0x01   // start/step first
         add
-        for_stack_20
+        for_stack_21
         jump
 
     t3__1_1:  // after for loop does nothing has ptr last on stack
@@ -7940,20 +8088,20 @@ for_stack_20:
             dup3
             0x00
 
-for_stack_21:
+for_stack_22:
         dup2   // end
         dup2   // start
         lt
-        forloop_stack_21
+        forloop_stack_22
         jumpi
         pop    // pop end, step
         pop
         jump
-    forloop_stack_21:   // any content variables are kept after jumptag, end, step
+    forloop_stack_22:   // any content variables are kept after jumptag, end, step
 
                 // new_frame_ptr, args_ptr_, arity, partials_ptr, tag, end, step
                 0x02
-                /* (9) t3_init__ 0x40  //partial   //partial   */
+                /* (10) t3_init__ 0x40  //partial   //partial   */
 // expects on stack: arity
     dup1   // arity
     0x20
@@ -7984,10 +8132,10 @@ for_stack_21:
                 add
                 mstore
 
-    forloop_end_stack_21:
+    forloop_end_stack_22:
         0x01   // start/step first
         add
-        for_stack_21
+        for_stack_22
         jump
 
         let_x1_extra_rest:
