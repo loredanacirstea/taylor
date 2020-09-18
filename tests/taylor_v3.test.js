@@ -307,6 +307,128 @@ describe.each([
         resp = await instance.call(`(interpret "${Ballot.runtime_bytecode}" "0x609ff1bd")`, {}, null);
         expect(resp).toEqual('0x0000000000000000000000000000000000000000000000000000000000000001');
     });
+
+    const byte_ = `(fn* (str pos)
+        (byte_ pos (mload_ (t2_ptr_ str)))
+    )`;
+
+    const slice___ = `(fn* (str pos)
+        (tuple___
+            (clone__ (t2_ptr_ str) pos)
+            (clone__ (add_ (t2_ptr_ str) pos) (sub_ (t2_len_ str) pos))
+        )
+    )`;
+
+    it('byte', async function () {
+        let resp;
+
+        // t2.byte
+        resp = await instance.call(`( ${byte_} "abc" 0)`);
+        expect(resp).toEqual(parseInt("a".hexEncode(), 16));
+
+        resp = await instance.call(`( ${byte_} "abc" 2)`);
+        expect(resp).toEqual(parseInt("c".hexEncode(), 16));
+    });
+
+    it('slice___', async function () {
+        let resp;
+
+        resp = await instance.call(`(return# (nth_ (${slice___} "0x112233445566778899" 2) 0))`, {}, null);
+        expect(resp).toEqual('0x1122');
+
+        resp = await instance.call(`(return# (nth_ (${slice___} "0x112233445566778899" 2) 1))`, {}, null);
+        expect(resp).toEqual('0x33445566778899');
+
+    });
+
+    // deallocation should not happen is the result of the applied function
+    // is a pointer calculated in one of the list arguments (function arg)
+    it('deallocation bug', async function () {
+        let resp;
+
+        resp = await instance.call(`((fn* (str pos)
+            (if (gt_ (t2_len_ str) 0)
+                (self
+                    (nth_ (${slice___} str 1) 1)
+                    (add_ pos 1)
+                )
+                pos
+            )
+        ) "abc" 0)`);
+        expect(resp).toEqual(3);
+    });
+
+    it('regex - /<char>*/', async function () {
+        let resp;
+
+        const regex_a_any = `(fn* (str char)
+            (if (gt_ (t2_len_ str) 0)
+                (if (eq_ (${byte_} str 0) char)
+                    (self
+                        (nth_ (${slice___} str 1) 1)
+                        char
+                    )
+                    0
+                )
+                1
+            )
+        )`
+
+        resp = await instance.call(`(${regex_a_any} "" 97)`);
+        expect(resp).toEqual(1);
+
+        resp = await instance.call(`(${regex_a_any} "a" 97)`);
+        expect(resp).toEqual(1);
+
+        resp = await instance.call(`(${regex_a_any} "b" 97)`);
+        expect(resp).toEqual(0);
+
+        resp = await instance.call(`(${regex_a_any} "aa" 97)`);
+        expect(resp).toEqual(1);
+
+        resp = await instance.call(`(${regex_a_any} "ab" 97)`);
+        expect(resp).toEqual(0);
+    }, 60000);
+
+    it('regex - /<char_range>*/', async function () {
+        let resp;
+
+        const regex_char_range = `(fn* (str minChar maxChar)
+            (if (gt_ (t2_len_ str) 0)
+                (if (and_
+                        (gt_ (${byte_} str 0) (sub_ minChar 1))
+                        (lt_ (${byte_} str 0) (add_ maxChar 1))
+                    )
+                    (self
+                        (nth_ (${slice___} str 1) 1)
+                        minChar maxChar
+                    )
+                    0
+                )
+                1
+            )
+        )`
+
+        resp = await instance.call(`(${regex_char_range} "" 97 122)`);
+        expect(resp).toEqual(1);
+
+        resp = await instance.call(`(${regex_char_range} "a" 97 122)`);
+        expect(resp).toEqual(1);
+
+        resp = await instance.call(`(${regex_char_range} "z" 97 122)`);
+        expect(resp).toEqual(1);
+
+        resp = await instance.call(`(${regex_char_range} "[" 97 122)`);
+        expect(resp).toEqual(0);
+
+        resp = await instance.call(`(${regex_char_range} "lorez." 97 122)`);
+        expect(resp).toEqual(0);
+
+        resp = await instance.call(`(${regex_char_range} "lorez" 97 122)`);
+        expect(resp).toEqual(1);
+
+    }, 100000);
+
 });
 
 describe('Test calls', () => {

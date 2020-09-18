@@ -378,14 +378,14 @@ const tests = {
         {
             // only for evm interpreter, reads from calldata
             test: '(return# (codecopy__ 0 10 ))',
-            result: '0x6103c660a052605460c0',
+            result: '0x6103d160a052605460c0',
             decode: null,
         },
     ],
     extcodecopy__: [
         {
             test: '(return# (extcodecopy__ (address_ ) 0 10 ))',
-            result: '0x6103c660a052605460c0',
+            result: '0x6103d160a052605460c0',
             decode: null,
         },
     ],
