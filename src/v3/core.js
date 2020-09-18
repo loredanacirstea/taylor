@@ -18,6 +18,8 @@ const core = {
     reduce_: '151',
     tuple___: '14a',
     nth_: '14c',
+    rest___: '14d',
+    join___: '14e',
 
     'setroot!': '160',
     'setleaf!': '161',

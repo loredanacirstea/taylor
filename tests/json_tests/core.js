@@ -46,7 +46,7 @@ const tests = {
             decode: null,
         },
     ],
-    join_: [
+    join__: [
         {
             test: '(return# (join__ "0x2ed0c03fade6398d546adc5d9250df997c801ed12ed0c03fade6398d546adc5d9250df997c801ed1" "0x2ed0c03fade6398d546adc5d9250df997c801ed12ed0c03fade6398d546adc5d9250df997c801ed1"))',
             result: "0x2ed0c03fade6398d546adc5d9250df997c801ed12ed0c03fade6398d546adc5d9250df997c801ed12ed0c03fade6398d546adc5d9250df997c801ed12ed0c03fade6398d546adc5d9250df997c801ed1",
@@ -83,6 +83,23 @@ const tests = {
             test: '(return# (nth_ (tuple___ "0x1122334455" "0x667788") 0))',
             result: "0x1122334455",
             decode: null,
+        },
+    ],
+    join___: [
+        {
+            test: '(return___# (join___  (tuple___ 2 3) (tuple___ 4 5 6)))',
+            result: [2, 3, 4, 5, 6],
+            decode: 'tuple',
+        },
+        {
+            test: '(return___# (join___  (tuple___ ) (tuple___ 4 5 6)))',
+            result: [4, 5, 6],
+            decode: 'tuple',
+        },
+        {
+            test: '(return___# (join___  (tuple___ 8) (tuple___ )))',
+            result: [8],
+            decode: 'tuple',
         },
     ],
     map_: [

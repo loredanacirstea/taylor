@@ -439,6 +439,20 @@ describe.each([
 
     }, 100000);
 
+    it('first', async function () {
+        let resp;
+        await instance.send(`(def! first (fn* (___list)
+            (nth_ ___list 0)
+        ))`);
+        resp = await instance.call(`(first (tuple___ 21 3 4))`)
+        expect(resp).toEqual(21);
+    });
+
+    it('rest___', async function () {
+        let resp;
+        resp = await instance.call(`(return___# (rest___ (tuple___ 21 3 4 99)))`, {}, 'tuple')
+        expect(resp).toEqual([3, 4, 99]);
+    });
 });
 
 describe('Test calls', () => {
