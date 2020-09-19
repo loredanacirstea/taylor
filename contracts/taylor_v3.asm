@@ -4079,15 +4079,14 @@ unused_152:  // 0x149
             jump
             stop
             stop
-        /* (148) eopcode 0x14f, 158      */
-unused_158:  // 0x14f
-        stop
-        stop
-        stop
-        stop
-        stop
-        stop
-        stop
+        t3_arity_11: // 0x14f
+            pop
+            t3_arity_11_extra
+            //
+            // push
+            jump
+            stop
+            stop
         map_xx:         // 0x150
             pop
             map_xx_extra
@@ -4096,7 +4095,7 @@ unused_158:  // 0x14f
             jump
             stop
             stop
-        /* (149) eopcode 0x151, 159      */
+        /* (148) eopcode 0x151, 159      */
 unused_159:  // 0x151
         stop
         stop
@@ -4105,7 +4104,7 @@ unused_159:  // 0x151
         stop
         stop
         stop
-        /* (150) eopcode 0x152, 160      */
+        /* (149) eopcode 0x152, 160      */
 unused_160:  // 0x152
         stop
         stop
@@ -4114,7 +4113,7 @@ unused_160:  // 0x152
         stop
         stop
         stop
-        /* (151) eopcode 0x153, 161      */
+        /* (150) eopcode 0x153, 161      */
 unused_161:  // 0x153
         stop
         stop
@@ -4123,7 +4122,7 @@ unused_161:  // 0x153
         stop
         stop
         stop
-        /* (152) eopcode 0x154, 162      */
+        /* (151) eopcode 0x154, 162      */
 unused_162:  // 0x154
         stop
         stop
@@ -4132,7 +4131,7 @@ unused_162:  // 0x154
         stop
         stop
         stop
-        /* (153) eopcode 0x155, 163      */
+        /* (152) eopcode 0x155, 163      */
 unused_163:  // 0x155
         stop
         stop
@@ -4141,7 +4140,7 @@ unused_163:  // 0x155
         stop
         stop
         stop
-        /* (154) eopcode 0x156, 164      */
+        /* (153) eopcode 0x156, 164      */
 unused_164:  // 0x156
         stop
         stop
@@ -4150,7 +4149,7 @@ unused_164:  // 0x156
         stop
         stop
         stop
-        /* (155) eopcode 0x157, 165      */
+        /* (154) eopcode 0x157, 165      */
 unused_165:  // 0x157
         stop
         stop
@@ -4159,7 +4158,7 @@ unused_165:  // 0x157
         stop
         stop
         stop
-        /* (156) eopcode 0x158, 166      */
+        /* (155) eopcode 0x158, 166      */
 unused_166:  // 0x158
         stop
         stop
@@ -4168,7 +4167,7 @@ unused_166:  // 0x158
         stop
         stop
         stop
-        /* (157) eopcode 0x159, 167      */
+        /* (156) eopcode 0x159, 167      */
 unused_167:  // 0x159
         stop
         stop
@@ -4177,7 +4176,7 @@ unused_167:  // 0x159
         stop
         stop
         stop
-        /* (158) eopcode 0x15a, 168      */
+        /* (157) eopcode 0x15a, 168      */
 unused_168:  // 0x15a
         stop
         stop
@@ -4186,7 +4185,7 @@ unused_168:  // 0x15a
         stop
         stop
         stop
-        /* (159) eopcode 0x15b, 169      */
+        /* (158) eopcode 0x15b, 169      */
 unused_169:  // 0x15b
         stop
         stop
@@ -4195,7 +4194,7 @@ unused_169:  // 0x15b
         stop
         stop
         stop
-        /* (160) eopcode 0x15c, 170      */
+        /* (159) eopcode 0x15c, 170      */
 unused_170:  // 0x15c
         stop
         stop
@@ -4204,7 +4203,7 @@ unused_170:  // 0x15c
         stop
         stop
         stop
-        /* (161) eopcode 0x15d, 171      */
+        /* (160) eopcode 0x15d, 171      */
 unused_171:  // 0x15d
         stop
         stop
@@ -4213,7 +4212,7 @@ unused_171:  // 0x15d
         stop
         stop
         stop
-        /* (162) eopcode 0x15e, 172      */
+        /* (161) eopcode 0x15e, 172      */
 unused_172:  // 0x15e
         stop
         stop
@@ -4222,7 +4221,7 @@ unused_172:  // 0x15e
         stop
         stop
         stop
-        /* (163) eopcode 0x15f, 173      */
+        /* (162) eopcode 0x15f, 173      */
 unused_173:  // 0x15f
         stop
         stop
@@ -4271,7 +4270,7 @@ unused_173:  // 0x15f
             jump
             stop
             stop
-        /* (164) eopcode 0x165, 176      */
+        /* (163) eopcode 0x165, 176      */
 unused_176:  // 0x165
         stop
         stop
@@ -4280,7 +4279,7 @@ unused_176:  // 0x165
         stop
         stop
         stop
-        /* (165) eopcode 0x166, 176      */
+        /* (164) eopcode 0x166, 176      */
 unused_176:  // 0x166
         stop
         stop
@@ -4289,7 +4288,7 @@ unused_176:  // 0x166
         stop
         stop
         stop
-        /* (166) eopcode 0x167, 176      */
+        /* (165) eopcode 0x167, 176      */
 unused_176:  // 0x167
         stop
         stop
@@ -4298,7 +4297,7 @@ unused_176:  // 0x167
         stop
         stop
         stop
-        /* (167) eopcode 0x168, 177      */
+        /* (166) eopcode 0x168, 177      */
 unused_177:  // 0x168
         stop
         stop
@@ -4307,7 +4306,7 @@ unused_177:  // 0x168
         stop
         stop
         stop
-        /* (168) eopcode 0x169, 178      */
+        /* (167) eopcode 0x169, 178      */
 unused_178:  // 0x169
         stop
         stop
@@ -6248,10 +6247,19 @@ for_stack_12:
             jump
         rest___11_extra:
             // t3ptr___
-            0x01
-            dup2
-            /* (0) t3_arity_ //   //   */
+
+            dup1
+            /* (0) t3_arity_ // t3ptr___, arity   // t3ptr___, arity   */
 mload   // expects t3 pointer on stack
+
+            0x00
+            dup2
+            eq
+            rest___11_extra_zero
+            jumpi
+
+            0x01
+            swap1
             sub                 // t3ptr___, new_arity
 
             dup1
@@ -6359,6 +6367,46 @@ for_stack_13:
             swap1
             pop
 
+            0x01
+            /* (34) getframe //   //   */
+0xe0
+            mload
+            /* (15) setdelmarker // do not delete frame   // do not delete frame   */
+0x140
+            add
+            mstore
+
+            0xc0
+            // push
+            mload
+            jump
+        rest___11_extra_zero:
+            // t3ptr___, arity
+            /* (4) t3_init__ 0x40       // t3ptr___, empty_tuple   // t3ptr___, empty_tuple   */
+// expects on stack: arity
+    dup1   // arity
+    0x20
+    mul
+    0x20
+    add
+
+    // alloc
+    0x40       // t3ptr___
+    mload
+    swap1
+    dup2
+    add
+    0x40       // t3ptr___
+    mstore
+    // end alloc
+
+    swap1    // ptr, arity
+    dup2     // ptr, arity, ptr
+    mstore   // store arity at pointer -> ptr
+
+            swap1
+            pop
+
             0xc0
             // push
             mload
@@ -6375,7 +6423,7 @@ mload   // expects t3 pointer on stack
             dup2
             dup2
             add                  // t3ptr___1, t3ptr___2, arity1, arity2, arity
-            /* (4) t3_init__ 0x40       // t3ptr___1, t3ptr___2, arity1, arity2, new_t3___   // t3ptr___1, t3ptr___2, arity1, arity2, new_t3___   */
+            /* (5) t3_init__ 0x40       // t3ptr___1, t3ptr___2, arity1, arity2, new_t3___   // t3ptr___1, t3ptr___2, arity1, arity2, new_t3___   */
 // expects on stack: arity
     dup1   // arity
     0x20
@@ -6562,6 +6610,24 @@ for_stack_15:
             pop
             pop
 
+            0x01
+            /* (35) getframe //   //   */
+0xe0
+            mload
+            /* (16) setdelmarker // do not delete frame   // do not delete frame   */
+0x140
+            add
+            mstore
+
+            0xc0
+            // push
+            mload
+            jump
+        t3_arity_11_extra:
+            // t3_ptr___
+            /* (3) t3_arity_ //   //   */
+mload   // expects t3 pointer on stack
+
             0xc0
             // push
             mload
@@ -6571,7 +6637,7 @@ for_stack_15:
 
             dup2
             mload     // arity
-            /* (5) t3_init__ 0x40    // t3___ptr, lambda_ptr, result_ptr   // t3___ptr, lambda_ptr, result_ptr   */
+            /* (6) t3_init__ 0x40    // t3___ptr, lambda_ptr, result_ptr   // t3___ptr, lambda_ptr, result_ptr   */
 // expects on stack: arity
     dup1   // arity
     0x20
@@ -6593,7 +6659,7 @@ for_stack_15:
     dup2     // ptr, arity, ptr
     mstore   // store arity at pointer -> ptr
 
-            /* (34) getframe //   //   */
+            /* (36) getframe //   //   */
 0xe0
             mload
             /* (2) getoutputptr //   //   */
@@ -6612,7 +6678,7 @@ for_stack_15:
     mstore
 
             map_xx_extra_loop
-            /* (35) getframe //   //   */
+            /* (37) getframe //   //   */
 0xe0
             mload
             /* (2) setreturn //   //   */
@@ -6621,7 +6687,7 @@ for_stack_15:
             mstore
 
             0x00
-            /* (36) getframe //   //   */
+            /* (38) getframe //   //   */
 0xe0
             mload
             /* (1) setforstep //   //   */
@@ -6646,7 +6712,7 @@ for_stack_15:
 
         map_xx_extra_loop:
             // arg_ptr, lambda_ptr, result
-            /* (37) getframe //   //   */
+            /* (39) getframe //   //   */
 0xe0
             mload
             /* (3) getoutputptr // arg_ptr, lambda_ptr, result, ptr   // arg_ptr, lambda_ptr, result, ptr   */
@@ -6694,7 +6760,7 @@ for_stack_15:
 
             pop
             pop
-            /* (38) getframe //   //   */
+            /* (40) getframe //   //   */
 0xe0
             mload
             /* (4) getoutputptr //   //   */
@@ -6714,7 +6780,7 @@ for_stack_15:
     mload
 
             eval_function_for_content     // usual return after a list item is processed
-            /* (39) getframe //   //   */
+            /* (41) getframe //   //   */
 0xe0
             mload
             /* (3) setreturn //   //   */
@@ -6722,12 +6788,12 @@ for_stack_15:
             add
             mstore
 
-            /* (40) getframe // result_ptr, frame_ptr   // result_ptr, frame_ptr   */
+            /* (42) getframe // result_ptr, frame_ptr   // result_ptr, frame_ptr   */
 0xe0
             mload
             swap1     // frame_ptr, result_ptr
 
-            /* (41) getframe //   //   */
+            /* (43) getframe //   //   */
 0xe0
             mload
             /* (5) getoutputptr //   //   */
@@ -6751,10 +6817,10 @@ for_stack_15:
             mstore
 
             0x01
-            /* (42) getframe //   //   */
+            /* (44) getframe //   //   */
 0xe0
             mload
-            /* (15) setdelmarker // do not delete frame   // do not delete frame   */
+            /* (17) setdelmarker // do not delete frame   // do not delete frame   */
 0x140
             add
             mstore
@@ -6882,7 +6948,6 @@ for_stack_15:
             jump
         apply_list_21_extra:
             // arg_list___, lambda_ptr__
-
             dup1  // arg_list___, lambda_ptr__, lambda_ptr__
             0x20
             add   // after length lambda_ptr // arg_list___, lambda_ptr__, lambda_ptr, lambda_ptr
@@ -6914,7 +6979,7 @@ for_stack_15:
             dup1             // arg_list___, lambda_ptr__, lambda_ptr, lambda_arity, lambda_arity
             0x01
             add              // self
-            /* (6) t3_init__ 0x40   // arg_list___, lambda_ptr__, lambda_ptr, lambda_arity, new_env_ptr   // arg_list___, lambda_ptr__, lambda_ptr, lambda_arity, new_env_ptr   */
+            /* (7) t3_init__ 0x40   // arg_list___, lambda_ptr__, lambda_ptr, lambda_arity, new_env_ptr   // arg_list___, lambda_ptr__, lambda_ptr, lambda_arity, new_env_ptr   */
 // expects on stack: arity
     dup1   // arity
     0x20
@@ -7079,7 +7144,7 @@ for_stack_16:
             dup1             // args, lambda_ptr__, lambda_ptr, lambda_arity, lambda_arity
             0x01
             add              // self
-            /* (7) t3_init__ 0x40   // args, lambda_ptr__, lambda_ptr, lambda_arity, new_env_ptr   // args, lambda_ptr__, lambda_ptr, lambda_arity, new_env_ptr   */
+            /* (8) t3_init__ 0x40   // args, lambda_ptr__, lambda_ptr, lambda_arity, new_env_ptr   // args, lambda_ptr__, lambda_ptr, lambda_arity, new_env_ptr   */
 // expects on stack: arity
     dup1   // arity
     0x20
@@ -7177,7 +7242,7 @@ for_stack_17:
     0x40  // lambda_ptr
     mstore
 
-            /* (43) getframe // lambda_ptr, new_env_ptr, new_frame_ptr, prev_frame_ptr   // lambda_ptr, new_env_ptr, new_frame_ptr, prev_frame_ptr   */
+            /* (45) getframe // lambda_ptr, new_env_ptr, new_frame_ptr, prev_frame_ptr   // lambda_ptr, new_env_ptr, new_frame_ptr, prev_frame_ptr   */
 0xe0
             mload
             dup1   // lambda_ptr, new_env_ptr, new_frame_ptr, prev_frame_ptr, prev_frame_ptr
@@ -7235,7 +7300,7 @@ for_stack_17:
             jump
 
         apply_xx_extra_eval_end:
-            /* (44) getframe //   //   */
+            /* (46) getframe //   //   */
 0xe0
             mload
             /* (5) getloco //   //   */
@@ -7247,7 +7312,7 @@ for_stack_17:
             jumpi
 
             // mem - put result on stack
-            /* (45) getframe //   //   */
+            /* (47) getframe //   //   */
 0xe0
             mload
             /* (7) getoutputptr //   //   */
@@ -7261,7 +7326,7 @@ for_stack_17:
             mload
         apply_xx_extra_eval_end_both:
             // previous frame
-            /* (46) getframe //   //   */
+            /* (48) getframe //   //   */
 0xe0
             mload
             mload     // get previous frame
@@ -7280,7 +7345,7 @@ for_stack_17:
             0xc0
             mload  // args, tag
 
-            /* (47) getframe //   //   */
+            /* (49) getframe //   //   */
 0xe0
             mload
             /* (11) getdataptr //   args, tag, code_ptr   //   args, tag, code_ptr   */
@@ -7874,7 +7939,7 @@ for_stack_20:
     0x40  // computation_ptr_
     mstore
 
-            /* (48) getframe // computation_ptr_, args_ptr_, new_frame_ptr, prev_frame_ptr   // computation_ptr_, args_ptr_, new_frame_ptr, prev_frame_ptr   */
+            /* (50) getframe // computation_ptr_, args_ptr_, new_frame_ptr, prev_frame_ptr   // computation_ptr_, args_ptr_, new_frame_ptr, prev_frame_ptr   */
 0xe0
             mload
             dup1   // computation_ptr_, args_ptr_, new_frame_ptr, prev_frame_ptr, prev_frame_ptr
@@ -7939,7 +8004,7 @@ for_stack_20:
             dup1
             0x01
             add       // self
-            /* (8) t3_init__ 0x40      // new_frame_ptr, args_ptr_, arity, env_ptr   // new_frame_ptr, args_ptr_, arity, env_ptr   */
+            /* (9) t3_init__ 0x40      // new_frame_ptr, args_ptr_, arity, env_ptr   // new_frame_ptr, args_ptr_, arity, env_ptr   */
 // expects on stack: arity
     dup1   // arity
     0x20
@@ -7970,7 +8035,7 @@ for_stack_20:
             dup1       // arity - no of partials one for arity
             0x01
             add
-            /* (9) t3_init__ 0x40   // new_frame_ptr, args_ptr_, arity, partials_ptr   // new_frame_ptr, args_ptr_, arity, partials_ptr   */
+            /* (10) t3_init__ 0x40   // new_frame_ptr, args_ptr_, arity, partials_ptr   // new_frame_ptr, args_ptr_, arity, partials_ptr   */
 // expects on stack: arity
     dup1   // arity
     0x20
@@ -8101,7 +8166,7 @@ for_stack_22:
 
                 // new_frame_ptr, args_ptr_, arity, partials_ptr, tag, end, step
                 0x02
-                /* (10) t3_init__ 0x40  //partial   //partial   */
+                /* (11) t3_init__ 0x40  //partial   //partial   */
 // expects on stack: arity
     dup1   // arity
     0x20
@@ -8218,7 +8283,7 @@ for_stack_22:
     0x40     // frame_ptr
     mstore
 
-                /* (49) getframe // frame_ptr, prev_frame_ptr   // frame_ptr, prev_frame_ptr   */
+                /* (51) getframe // frame_ptr, prev_frame_ptr   // frame_ptr, prev_frame_ptr   */
 0xe0
             mload
                 dup1
@@ -8342,7 +8407,7 @@ for_stack_22:
 
                 let_x1_extra_for_content:
                     // copy result in env_ptr
-                    /* (50) getframe //   //   */
+                    /* (52) getframe //   //   */
 0xe0
             mload
 
@@ -8425,7 +8490,7 @@ for_stack_22:
         jump
 
         let_x1_extra_for_end:
-            /* (51) getframe //   //   */
+            /* (53) getframe //   //   */
 0xe0
             mload
 
@@ -8441,7 +8506,7 @@ for_stack_22:
             jump
 
         let_x1_extra_eval_end:
-            /* (52) getframe //   //   */
+            /* (54) getframe //   //   */
 0xe0
             mload
             /* (7) getloco //   //   */
@@ -8453,7 +8518,7 @@ for_stack_22:
             jumpi
 
             // mem - put result on stack
-            /* (53) getframe //   //   */
+            /* (55) getframe //   //   */
 0xe0
             mload
             /* (10) getoutputptr //   //   */
@@ -8467,7 +8532,7 @@ for_stack_22:
             mload
         let_x1_extra_eval_end_both:
             // previous frame
-            /* (54) getframe //   //   */
+            /* (56) getframe //   //   */
 0xe0
             mload
             mload     // get previous frame

@@ -20,6 +20,7 @@ const core = {
     nth_: '14c',
     rest___: '14d',
     join___: '14e',
+    t3_arity_: '14f',
 
     'setroot!': '160',
     'setleaf!': '161',

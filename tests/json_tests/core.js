@@ -73,6 +73,18 @@ const tests = {
             decode: 'tuple',
         },
     ],
+    t3_arity_: [
+        {
+            test: '(t3_arity_ (tuple___ 12 3 7))',
+            result: 3,
+            decode: ['uint'],
+        },
+        {
+            test: '(t3_arity_ (tuple___ ))',
+            result: 0,
+            decode: ['uint'],
+        },
+    ],
     nth_: [
         {
             test: '(nth_ (tuple___ 4 5 9) 1)',
@@ -83,6 +95,46 @@ const tests = {
             test: '(return# (nth_ (tuple___ "0x1122334455" "0x667788") 0))',
             result: "0x1122334455",
             decode: null,
+        },
+        {
+            test: `(return# (nth_
+                (nth_
+                    (tuple___ 100 4 (tuple___ "0x112233445566" "hello" 5) 16)
+                    2
+                ) 1
+            ))`,
+            result: "hello",
+            decode: ['string'],
+        },
+        {
+            test: '(nth_ (tuple___ ) 0)',
+            result: null,
+            decode: ['uint'],
+            skip: true,
+        },
+    ],
+    rest___: [
+        {
+            test: '(return___# (rest___ (tuple___ 21 3 4 99)))',
+            result: [3, 4, 99],
+            decode: 'tuple',
+        },
+        {
+            test: '(return___# (rest___ (tuple___ )) )',
+            result: [],
+            decode: 'tuple',
+        },
+        {
+            test: '(nth_ (rest___ (tuple___ )) 0)',
+            result: [],
+            decode: 'tuple',
+        },
+        {
+            test: `(return___# (nth_ (rest___
+                (tuple___ (tuple___ 97 122) (tuple___ 33) (tuple___ 63))
+            ) 0))`,
+            result: [33],
+            decode: 'tuple',
         },
     ],
     join___: [
@@ -207,7 +259,6 @@ const tests = {
         }
     ],
     'let*': [
-        { settings: true, only: false },
         {
             test: '(let* (c 2) c)',
             result: 2,
