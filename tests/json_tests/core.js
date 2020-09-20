@@ -220,6 +220,7 @@ const tests = {
             result: 52,
         },
         {
+            description: 'fibonacci',
             test: `( (fn* (n)
                 (if (lt_ n 3)
                     1
@@ -230,6 +231,7 @@ const tests = {
             wait: 60000,
         },
         {
+            description: 'fibonacci memory',
             test: `(memory ( (fn* (n)
                 (if (lt_ n 3)
                     1
@@ -240,6 +242,7 @@ const tests = {
             wait: 60000,
         },
         {
+            description: 'recursive',
             test: `((fn* (n max) (if (gt_ n max)
                     n
                     (self (add_ n 1) max)
@@ -249,6 +252,7 @@ const tests = {
             wait: 60000,
         },
         {
+            description: 'recursive memory',
             test: `(memory ((fn* (n max) (if (gt_ n max)
                     n
                     (self (add_ n 1) max)
@@ -269,6 +273,16 @@ const tests = {
             ) "b" 3)`,
             result: 'baa',
             decode: ['string'],
+        },
+        {
+            description: 'test fn in fn',
+            test: `((fn* (a)
+                (if (eq_ 0 (mod_ a 2))
+                    ((fn* (b) (div_ b 2) ) a)
+                    a
+                )
+            ) 6)`,
+            result: 3,
         },
     ],
     'let*': [
@@ -400,6 +414,4 @@ const tests = {
     ]
 }
 
-const prereq = [];
-
-module.exports = { tests, prereq };
+module.exports = tests;

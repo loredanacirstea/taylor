@@ -169,7 +169,7 @@ function ast2h(ast, parent=null, unkownMap={}, defenv={}, arrItemType=null, reve
             }
 
             // Stored function
-            return handleStored(elem, ast, unkownMap, defenv, null, true, stack, envdepth);
+            return handleStored(elem, ast, unkownMap, defenv, null, true, stack, argenvdepth);
         }
 
         if (elem instanceof Array) {

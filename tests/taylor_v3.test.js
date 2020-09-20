@@ -1,6 +1,7 @@
 const BN = require('bn.js');
 require('../src/extensions.js');
 const { taylor, signer, provider, getTestCallContract } = require('./setup/fixtures.js');
+const bootfn = require('../src/v3/bootstrap.js');
 const tay = require('../src/v3/tay.js');
 const tests = require('./json_tests/index.js');
 const { SimpleYul, SimpleSol, SimpleStorage, Ballot } = require('./setup/test_bytecodes');
@@ -9,13 +10,13 @@ const { x0, strip0x } = require('../src/utils.js');
 describe.each([
     ['chain'],
     // ['js'],
-])('Test EVM (%s)', (backendname) => {
-    let instance;
+])('Test (%s)', (backendname) => {
+    let instance, storedfn = {};
     if (backendname === 'chain') {
         beforeAll(() => {
             return taylor.deployRebuild(3).then(t => {
-              console.log('****Tay', t.address);
-              instance = tay.getTay(t.provider, t.signer)(t.address);
+                console.log('****Tay', t.address);
+                instance = tay.getTay(t.provider, t.signer)(t.address);
             })
             //   .then(() => tay.js.getBackend(instance.address, instance.provider, instance.signer))
         }, 50000);
@@ -26,47 +27,49 @@ describe.each([
         // });
     }
 
-    let resp;
-    for (name of Object.keys(tests.evm.tests)) {
-        const tts = tests.evm.tests[name]
-        let only, skip;
+    const alltests = Object.assign({},
+        tests.evm,
+        tests.core,
+        tests.stored,
+    )
+
+    for (name of Object.keys(alltests)) {
+        const tts = alltests[name]
+        let only, skip, prereq = [];
         if (tts[0].settings) {
-            ({ only, skip } = tts[0]);
+            ({ only, skip, prereq=[] } = tts[0]);
             tts.splice(0, 1);
         }
         tts.map((tt, i) => {
             let testapi = test;
             if (only || tt.only) testapi = test.only;
             if (skip || tt.skip) testapi = test.skip;
+            const t_prereq = prereq.concat(tt.prereq || []);
 
-            testapi(name + '_' + i, async function () {
-                resp = await instance.call(tt.test, tt.txObj || {}, tt.decode);
+            const prereqSetup = async (instance, fname, allfns) => {
+                if (!storedfn[fname]) {
+                    if (!allfns[fname]) throw new Error(`Function ${fname} not found.`);
+                    for (prepre of (allfns[fname].prereq) || []) {
+                        await prereqSetup(instance, prepre, allfns);
+                    }
+                    await instance.send(`(def! ${fname} ${allfns[fname].expr})`);
+                    storedfn[fname] = true;
+                }
+            }
+
+            testapi(name + '_' + i + (tt.description || ''), async function () {
+                if (t_prereq) {
+                    for (let fname of t_prereq) {
+                        await prereqSetup(instance, fname, bootfn.all);
+                    }
+                }
+
+                let resp = await instance.call(tt.test, tt.txObj || {}, tt.decode);
                 if (tt.process) resp = tt.process(resp, instance);
                 expect(resp).toEqual(tt.result);
             }, tt.wait || 10000);
         });
     }
-
-    for (name of Object.keys(tests.core.tests)) {
-        const tts = tests.core.tests[name]
-        let only, skip;
-        if (tts[0].settings) {
-            ({ only, skip } = tts[0]);
-            tts.splice(0, 1);
-        }
-        tts.map((tt, i) => {
-            let testapi = test;
-            if (only || tt.only) testapi = test.only;
-            if (skip || tt.skip) testapi = test.skip;
-
-            testapi(name + '_' + i, async function () {
-                resp = await instance.call(tt.test, tt.txObj || {}, tt.decode);
-                if (tt.process) resp = tt.process(resp, instance);
-                expect(resp).toEqual(tt.result);
-            }, tt.wait || 10000);
-        });
-    }
-
 });
 
 describe.each([
@@ -89,16 +92,6 @@ describe.each([
         // });
     }
 
-    it('add', async function () {
-        const resp = await instance.call('(add_ 4 5)');
-        expect(resp).toEqual(9);
-    });
-
-    it('lambda', async function () {
-        const resp = await instance.call('((fn* (a b) (mul_ a b)) 4 2)');
-        expect(resp).toEqual(8);
-    });
-
     it('stored', async function () {
         let resp;
         await instance.send('(setalias! (keccak256_ "mulmul_") (setfn! (fn* (a b) (mul_ a b))) )');
@@ -118,15 +111,6 @@ describe.each([
         expect(resp).toEqual(8);
     });
 
-    it('if', async function () {
-        let resp;
-        resp = await instance.call('(if (gt_ 4 3) (add_ 4 5) (mul_ 4 5) )');
-        expect(resp).toEqual(9);
-
-        resp = await instance.call('(if (lt_ 4 3) (add_ 4 5) (mul_ 4 5) )');
-        expect(resp).toEqual(20);
-    });
-
     it('memory-stack', async function () {
         let resp;
 
@@ -142,72 +126,6 @@ describe.each([
         // TODO: mix stack & memory - needs adapter function
         // resp = await instance.call('(memory (add_ (stack (sub_ 9 (mul_ 1 3)) ) 5) )');
         // expect(resp).toEqual(11);
-    });
-
-    it('recursive lambda', async function () {
-        let resp;
-        resp = await instance.call(`((fn* (n max) (if (gt_ n max)
-                n
-                (self (add_ n 1) max)
-            )
-        ) 0 2)`);  // 200
-        expect(resp).toEqual(3);
-    }, 300000);
-
-
-    it('recursive lambda memory', async function () {
-        let resp;
-        resp = await instance.call(`(memory
-            ((fn* (n max) (if (gt_ n max)
-                n
-                (self (add_ n 1) max)
-            )
-        ) 0 2) )`);
-        expect(resp).toEqual(3);
-    }, 300000);
-
-    it('recursive lambda memory', async function () {
-        let resp;
-        resp = await instance.call(`(memory
-            ((fn* (n max) (if (gt_ n max)
-                n
-                (add_ (self (add_ n 1) max) 5)
-            )
-        ) 0 2) )`); // 100
-        expect(resp).toEqual(18);
-    }, 300000);
-
-    it('fibonacci lambda', async function () {
-        let resp;
-        resp = await instance.call(`((fn* (n)
-            (if (or_ (eq_ n 1) (eq_ n 2))
-                1
-                (add_ (self (sub_ n 1)) (self (sub_ n 2)) )
-            )
-        ) 8)`);  // 10
-        expect(resp).toEqual(21);
-    }, 30000);
-
-    it('fibonacci lambda memory', async function () {
-        let resp;
-        resp = await instance.call(`(memory ((fn* (n)
-            (if (or_ (eq_ n 1) (eq_ n 2))
-                1
-                (add_ (self (sub_ n 1)) (self (sub_ n 2)) )
-            )
-        ) 8) )`);  // 10
-        expect(resp).toEqual(21);
-    }, 1000000);
-
-    it('test fn in fn', async function () {
-        let resp;
-        resp = await instance.call(`((fn* (a)
-            (if (eq_ 0 (mod_ a 2))
-                ((fn* (b) (div_ b 2) ) a)
-                a
-            )
-        ) 6)`);
-        expect(resp).toEqual(3);
     });
 
     it('test super', async function () {
@@ -318,39 +236,6 @@ describe.each([
         expect(resp).toEqual('0x0000000000000000000000000000000000000000000000000000000000000001');
     });
 
-    const byte_ = `(fn* (str pos)
-        (byte_ pos (mload_ (t2_ptr_ str)))
-    )`;
-
-    const slice___ = `(fn* (str pos)
-        (tuple___
-            (clone__ (t2_ptr_ str) pos)
-            (clone__ (add_ (t2_ptr_ str) pos) (sub_ (t2_len_ str) pos))
-        )
-    )`;
-
-    it('byte', async function () {
-        let resp;
-
-        // t2.byte
-        resp = await instance.call(`( ${byte_} "abc" 0)`);
-        expect(resp).toEqual(parseInt("a".hexEncode(), 16));
-
-        resp = await instance.call(`( ${byte_} "abc" 2)`);
-        expect(resp).toEqual(parseInt("c".hexEncode(), 16));
-    });
-
-    it('slice___', async function () {
-        let resp;
-
-        resp = await instance.call(`(return# (nth_ (${slice___} "0x112233445566778899" 2) 0))`, {}, null);
-        expect(resp).toEqual('0x1122');
-
-        resp = await instance.call(`(return# (nth_ (${slice___} "0x112233445566778899" 2) 1))`, {}, null);
-        expect(resp).toEqual('0x33445566778899');
-
-    });
-
     // deallocation should not happen is the result of the applied function
     // is a pointer calculated in one of the list arguments (function arg)
     it('deallocation bug', async function () {
@@ -359,99 +244,13 @@ describe.each([
         resp = await instance.call(`((fn* (str pos)
             (if (gt_ (t2_len_ str) 0)
                 (self
-                    (nth_ (${slice___} str 1) 1)
+                    (nth_ (${bootfn.all.slice___.expr} str 1) 1)
                     (add_ pos 1)
                 )
                 pos
             )
         ) "abc" 0)`);
         expect(resp).toEqual(3);
-    });
-
-    it('regex - /<char>*/', async function () {
-        let resp;
-
-        const regex_a_any = `(fn* (str char)
-            (if (gt_ (t2_len_ str) 0)
-                (if (eq_ (${byte_} str 0) char)
-                    (self
-                        (nth_ (${slice___} str 1) 1)
-                        char
-                    )
-                    0
-                )
-                1
-            )
-        )`
-
-        resp = await instance.call(`(${regex_a_any} "" 97)`);
-        expect(resp).toEqual(1);
-
-        resp = await instance.call(`(${regex_a_any} "a" 97)`);
-        expect(resp).toEqual(1);
-
-        resp = await instance.call(`(${regex_a_any} "b" 97)`);
-        expect(resp).toEqual(0);
-
-        resp = await instance.call(`(${regex_a_any} "aa" 97)`);
-        expect(resp).toEqual(1);
-
-        resp = await instance.call(`(${regex_a_any} "ab" 97)`);
-        expect(resp).toEqual(0);
-    }, 60000);
-
-    it('regex - /<char_range>*/', async function () {
-        let resp;
-
-        const regex_char_range = `(fn* (str minChar maxChar)
-            (if (gt_ (t2_len_ str) 0)
-                (if (and_
-                        (gt_ (${byte_} str 0) (sub_ minChar 1))
-                        (lt_ (${byte_} str 0) (add_ maxChar 1))
-                    )
-                    (self
-                        (nth_ (${slice___} str 1) 1)
-                        minChar maxChar
-                    )
-                    0
-                )
-                1
-            )
-        )`
-
-        resp = await instance.call(`(${regex_char_range} "" 97 122)`);
-        expect(resp).toEqual(1);
-
-        resp = await instance.call(`(${regex_char_range} "a" 97 122)`);
-        expect(resp).toEqual(1);
-
-        resp = await instance.call(`(${regex_char_range} "z" 97 122)`);
-        expect(resp).toEqual(1);
-
-        resp = await instance.call(`(${regex_char_range} "[" 97 122)`);
-        expect(resp).toEqual(0);
-
-        resp = await instance.call(`(${regex_char_range} "lorez." 97 122)`);
-        expect(resp).toEqual(0);
-
-        resp = await instance.call(`(${regex_char_range} "lorez" 97 122)`);
-        expect(resp).toEqual(1);
-
-    }, 100000);
-
-    it('first', async function () {
-        let resp;
-        await instance.send(`(def! first (fn* (___list)
-            (nth_ ___list 0)
-        ))`);
-        resp = await instance.call(`(first (tuple___ 21 3 4))`)
-        expect(resp).toEqual(21);
-    });
-
-    it('rest___', async function () {
-        let resp;
-        resp = await instance.call(`(return___# (rest___ (tuple___ 21 3 4 99)))`, {}, 'tuple')
-        expect(resp).toEqual([3, 4, 99]);
     });
 });
 
