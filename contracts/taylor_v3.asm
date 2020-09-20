@@ -789,13 +789,14 @@ for_stack_2:
             0xe0
             mstore
 
+            // function args inherit function evironment
             dup1   // previous frame ptr is on stack
             /* (0) getenvptr //   //   */
 0x40
             add
             mload
             dup3    // new_frame_ptr
-            /* (0) setenvptr // ENV_PTR(2)  // TODO - more complex when we have let*   // ENV_PTR(2)  // TODO - more complex when we have let*   */
+            /* (0) setenvptr // ENV_PTR(2)   // ENV_PTR(2)   */
 0x40
             add
             mstore
@@ -4728,7 +4729,6 @@ unused_178:  // 0x169
             shr         // frame_ptr, superIndex, index
             swap1       // frame_ptr, index, superIndex
 
-
             dup3        // frame_ptr, index, superIndex, frame_ptr
             swap1       // frame_ptr, index, frame_ptr, superIndex
 
@@ -4775,6 +4775,7 @@ for_stack_4:
             mul
             add    // frame_ptr, index, env_ptr
             mload  // load env value
+
 
             swap1   // pop index
             pop
@@ -7984,7 +7985,8 @@ for_stack_20:
             add
             mstore
 
-            /* (12) getdataptr //  new_frame_ptr, args_ptr_, old_data_ptr   //  new_frame_ptr, args_ptr_, old_data_ptr   */
+            dup1
+            /* (12) getdataptr //  new_frame_ptr, args_ptr_, prev_frame_ptr, old_data_ptr   //  new_frame_ptr, args_ptr_, prev_frame_ptr, old_data_ptr   */
 0x20
             add
             mload
@@ -7993,7 +7995,7 @@ for_stack_20:
             mload
             0xe0
             shr
-            /* (3) getfunclength //   new_frame_ptr, args_ptr_, arity number of vars   //   new_frame_ptr, args_ptr_, arity number of vars   */
+            /* (3) getfunclength //   new_frame_ptr, args_ptr_, prev_frame_ptr, arity number of vars   //   new_frame_ptr, args_ptr_, prev_frame_ptr, arity number of vars   */
 // expects a 4byte value
             0xfffc00
             and
@@ -8004,7 +8006,7 @@ for_stack_20:
             dup1
             0x01
             add       // self
-            /* (9) t3_init__ 0x40      // new_frame_ptr, args_ptr_, arity, env_ptr   // new_frame_ptr, args_ptr_, arity, env_ptr   */
+            /* (9) t3_init__ 0x40      // new_frame_ptr, args_ptr_, prev_frame_ptr, arity, env_ptr   // new_frame_ptr, args_ptr_, prev_frame_ptr, arity, env_ptr   */
 // expects on stack: arity
     dup1   // arity
     0x20
@@ -8025,6 +8027,21 @@ for_stack_20:
     swap1    // ptr, arity
     dup2     // ptr, arity, ptr
     mstore   // store arity at pointer -> ptr
+
+            swap1       //  new_frame_ptr, args_ptr_, prev_frame_ptr, env_ptr, arity
+            swap2       // new_frame_ptr, args_ptr_, arity, env_ptr, prev_frame_ptr
+            /* (2) getenvptr //   //   */
+0x40
+            add
+            mload
+            0x20
+            add
+            mload     // self lambda ptr
+            dup2
+            0x20
+            add
+            mstore     // save prev frame lambda
+
 
             dup4                // new_frame_ptr, args_ptr_, arity, env_ptr, new_frame_ptr
             /* (2) setenvptr //  new_frame_ptr, args_ptr_, arity   //  new_frame_ptr, args_ptr_, arity   */
@@ -8296,7 +8313,7 @@ for_stack_22:
                 mstore      // frame_ptr, prev_frame_ptr
 
                 dup1   // frame_ptr, prev_frame_ptr, prev_frame_ptr
-                /* (2) getenvptr // frame_ptr, prev_frame_ptr, env_ptr   // frame_ptr, prev_frame_ptr, env_ptr   */
+                /* (3) getenvptr // frame_ptr, prev_frame_ptr, env_ptr   // frame_ptr, prev_frame_ptr, env_ptr   */
 0x40
             add
             mload
@@ -8426,7 +8443,7 @@ for_stack_22:
 
                     dup2
                     mload       // prev_frame
-                    /* (3) getenvptr // frame_ptr, result_ptr, env_ptr   // frame_ptr, result_ptr, env_ptr   */
+                    /* (4) getenvptr // frame_ptr, result_ptr, env_ptr   // frame_ptr, result_ptr, env_ptr   */
 0x40
             add
             mload

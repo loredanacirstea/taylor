@@ -36,8 +36,8 @@ describe.each([
         }
         tts.map((tt, i) => {
             let testapi = test;
-            if (skip || tt.skip) testapi = test.skip;
             if (only || tt.only) testapi = test.only;
+            if (skip || tt.skip) testapi = test.skip;
 
             testapi(name + '_' + i, async function () {
                 resp = await instance.call(tt.test, tt.txObj || {}, tt.decode);
@@ -56,8 +56,8 @@ describe.each([
         }
         tts.map((tt, i) => {
             let testapi = test;
-            if (skip || tt.skip) testapi = test.skip;
             if (only || tt.only) testapi = test.only;
+            if (skip || tt.skip) testapi = test.skip;
 
             testapi(name + '_' + i, async function () {
                 resp = await instance.call(tt.test, tt.txObj || {}, tt.decode);

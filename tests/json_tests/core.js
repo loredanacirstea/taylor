@@ -227,7 +227,7 @@ const tests = {
                 )
             ) 8)`,  // 19
             result: 21,
-            wait: 600000,
+            wait: 60000,
         },
         {
             test: `(memory ( (fn* (n)
@@ -237,7 +237,7 @@ const tests = {
                 )
             ) 8))`,  // 18
             result: 21,
-            wait: 600000,
+            wait: 60000,
         },
         {
             test: `((fn* (n max) (if (gt_ n max)
@@ -246,7 +246,7 @@ const tests = {
                 )
             ) 0 4)`, // 500
             result: 5,
-            wait: 600000,
+            wait: 60000,
         },
         {
             test: `(memory ((fn* (n max) (if (gt_ n max)
@@ -255,8 +255,21 @@ const tests = {
                 )
             ) 0 4))`, // 450
             result: 5,
-            wait: 600000,
-        }
+            wait: 60000,
+        },
+        {
+            test: `((fn* (str pos)
+                (if (lt_ (t2_len_ str) pos)
+                    (self
+                        (join__ str "a")
+                        pos
+                    )
+                    (return# str)
+                )
+            ) "b" 3)`,
+            result: 'baa',
+            decode: ['string'],
+        },
     ],
     'let*': [
         {
@@ -355,12 +368,16 @@ const tests = {
         },
         {
             test: `((fn* (str pos)
-                (if (lt_ (t2_len_ str) pos)
-                    (self
-                        (join__ str "a")
-                        pos
+                (let* (
+                        len (t2_len_ str)
                     )
-                    (return# str)
+                    (if (lt_ len pos)
+                        (self
+                            (join__ str "a")
+                            pos
+                        )
+                        (return# str)
+                    )
                 )
             ) "b" 3)`,
             result: 'baa',

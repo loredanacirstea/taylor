@@ -104,10 +104,15 @@ const extractOutType = value => value.match(/(_*)$/)[0];
 // rest of memory frames just copy the old environment pointer
 
 function ast2h(ast, parent=null, unkownMap={}, defenv={}, arrItemType=null, reverseArgs=true, stack=true, envdepth=0, increnv=true) {
-    if (!(ast instanceof Array)) ast = [ast];
-    else if (increnv) envdepth += 1;
+    if (!(ast instanceof Array)) {
+        ast = [ast];
+        increnv = false;
+    }
 
     // add apply if needed and not applied yet
+    // ! apply creates memory frame for evaluating the lambda body
+    // but we don't need to increase the env depth because the argenvdepth increase
+    // for the lambda body is equivalent
     if (parentNotApply(parent)) {
         if (isExecutableLambda(ast)) {
             ast.splice(0, 0, malTypes._symbol('apply-lambda'));
@@ -127,6 +132,8 @@ function ast2h(ast, parent=null, unkownMap={}, defenv={}, arrItemType=null, reve
 
     // do not count the function itselt
     const arity = ast.length - 1;
+    let argenvdepth = envdepth;
+    if (increnv) argenvdepth += 1;
 
     return ast.map((elem, i) => {
         // nil
@@ -136,7 +143,7 @@ function ast2h(ast, parent=null, unkownMap={}, defenv={}, arrItemType=null, reve
             if(reverseArgs) {
                 elem = [elem[0]].concat(elem.slice(1).reverse());
             }
-            return ast2hSpecialMap[elem[0].value](elem, parent, unkownMap, defenv, arrItemType, reverseArgs, stack, envdepth);
+            return ast2hSpecialMap[elem[0].value](elem, parent, unkownMap, defenv, arrItemType, reverseArgs, stack, argenvdepth);
         }
 
         // if Symbol
@@ -145,9 +152,7 @@ function ast2h(ast, parent=null, unkownMap={}, defenv={}, arrItemType=null, reve
 
             if (unkownMap[elem.value]) {
                 const { index, depth } = unkownMap[elem.value]
-                let val = type_enc.unknown(index, envdepth - depth, stack);
-
-                if (elem.value === 'self' && ast[0] && ast[0].value === 'self') val = type_enc.function_compiled('apply-lambda', 0, arity + 1, stack) + val;
+                let val = type_enc.unknown(index, argenvdepth - depth, stack);
                 return val;
             }
 
@@ -159,7 +164,7 @@ function ast2h(ast, parent=null, unkownMap={}, defenv={}, arrItemType=null, reve
             // It is a function name - either compiled or stored
             if (nativeEnv[elem.value]) {
                 // no increasing of envdepth, because the body is in the same environment (at least for apply-lambda)
-                const body = ast2h(ast.slice(1), ast, unkownMap, defenv, null, true, stack, envdepth, false);
+                const body = ast2h(ast.slice(1), ast, unkownMap, defenv, null, true, stack, argenvdepth, false);
                 return type_enc.function_compiled(elem.value, body.length / 2, arity, stack);
             }
 
@@ -168,7 +173,7 @@ function ast2h(ast, parent=null, unkownMap={}, defenv={}, arrItemType=null, reve
         }
 
         if (elem instanceof Array) {
-            return ast2h(elem, ast, unkownMap, defenv, null, true, stack, envdepth);
+            return ast2h(elem, ast, unkownMap, defenv, null, true, stack, argenvdepth);
         }
 
         let value = elem;
@@ -231,21 +236,22 @@ function handleLet(ast, parent, unkownMap, defenv, arrItemType, reverseArgs, sta
     if (pairs.length % 2 > 0) throw new Error ('let* needs an even number of arguments');
 
     // We add 1 because let creates a new memory frame for each variable calculation
-    const envdepthIncr = envdepth + 1;
+    const envdepthArgs = envdepth + 2;
+    const envdepthBody = envdepth + 1;
 
     let largs = [];
     for (let i = 0; i < pairs.length; i+= 2) {
         const name = pairs[i];
         const index = i/2;
-        unknownMapcpy[name.value] = { depth: envdepthIncr, index };
+        unknownMapcpy[name.value] = { depth: envdepthBody, index };
 
         // always compute arg in memory
-        const arg = ast2h(pairs[i + 1], pairs, unknownMapcpy, defenv, null, true, false, envdepthIncr)
+        const arg = ast2h(pairs[i + 1], pairs, unknownMapcpy, defenv, null, true, false, envdepthArgs)
         largs.push(arg);
     }
     largs = largs.join('');
 
-    const body = ast2h(computation, ast, unknownMapcpy, defenv, null, true, stack, envdepth);
+    const body = ast2h(computation, ast, unknownMapcpy, defenv, null, true, stack, envdepthBody);
 
     // instead of body length: number of variables
     let encoded = type_enc.function_compiled(ast[0].value, arity, 2,stack)
@@ -256,10 +262,11 @@ function handleLet(ast, parent, unkownMap, defenv, arrItemType, reverseArgs, sta
 
 // ast is inversed
 function handleIf(ast, parent, unkownMap, defenv, arrItemType, reverseArgs, stack, envdepth) {
-    // if just moves the data_ptr in the same memory frame
-    envdepth -= 1;
     const unknownMap_cpy = JSON.parse(JSON.stringify(unkownMap))
-    const condition = ast2h(ast[3], ast, unknownMap_cpy, defenv, null, true, stack, envdepth);
+
+    // eval creates a mem frame for each arg
+    // only condition env depth matters
+    const condition = ast2h(ast[3], ast, unknownMap_cpy, defenv, null, true, stack, envdepth+1);
     const action1body = ast2h(ast[2], ast, unknownMap_cpy, defenv, null, true, stack, envdepth);
     const action2body = ast2h(ast[1], ast, unknownMap_cpy, defenv, null, true, stack, envdepth);
     const len = (condition.length + action1body.length + action2body.length) / 2;
