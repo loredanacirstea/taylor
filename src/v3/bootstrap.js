@@ -56,25 +56,21 @@ const regexfn = {
         prereq: ['t2_byte_', 'slice___'],
     },
     regex: {
-        expr: `(fn* (str pos functions fargs)
-            (if (gt_ pos 15)
-                (return# str)
-                (if (eq_ str 0)
-                    0
-                    (let* (
-                            is_empty_str (eq_ (t2_len_ str) 0)
-                            is_empty_funcs (eq_ (t3_arity_ functions) 0)
-                        )
-                        (if (and_ is_empty_str is_empty_funcs)
-                            1
-                            (if (eq_ (add_ is_empty_str is_empty_funcs) 1)
-                                0
-                                (self
-                                    (apply-list (nth_ functions 0) (join___ (tuple___ str) (nth_ fargs 0)))
-                                    (add_ pos 1)
-                                    (rest___ functions)
-                                    (rest___ fargs)
-                                )
+        expr: `(fn* (str functions fargs)
+            (if (eq_ str 0)
+                0
+                (let* (
+                        is_empty_str (eq_ (t2_len_ str) 0)
+                        is_empty_funcs (eq_ (t3_arity_ functions) 0)
+                    )
+                    (if (and_ is_empty_str is_empty_funcs)
+                        1
+                        (if (eq_ (add_ is_empty_str is_empty_funcs) 1)
+                            0
+                            (self
+                                (apply-list (nth_ functions 0) (join___ (tuple___ str) (nth_ fargs 0)))
+                                (rest___ functions)
+                                (rest___ fargs)
                             )
                         )
                     )

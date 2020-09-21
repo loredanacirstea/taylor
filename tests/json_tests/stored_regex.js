@@ -67,13 +67,13 @@ const tests = {
         { settings: true, prereq: ['regex.char.any', 'regex.range.any', 'regex'] },
         {
             description: 'regex  /[a-z]*!*?*/ - "lor!!?"',
-            test: `(regex "lor!!?" 0 (tuple___ regex.range.any regex.char.any regex.char.any) (tuple___ (tuple___ 97 122) (tuple___ 33) (tuple___ 63)) )`,
+            test: `(regex "lor!!?" (tuple___ regex.range.any regex.char.any regex.char.any) (tuple___ (tuple___ 97 122) (tuple___ 33) (tuple___ 63)) )`,
             result: 1,
             wait: 60000,
         },
         {
             description: 'regex  /[a-z]*!*?*/ - "lor!!?."',
-            test: `(regex "lor!!?." 0 (tuple___ regex.range.any regex.char.any regex.char.any) (tuple___ (tuple___ 97 122) (tuple___ 33) (tuple___ 63)) )`,
+            test: `(regex "lor!!?." (tuple___ regex.range.any regex.char.any regex.char.any) (tuple___ (tuple___ 97 122) (tuple___ 33) (tuple___ 63)) )`,
             result: 0,
             wait: 60000,
         },
