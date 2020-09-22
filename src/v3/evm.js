@@ -53,6 +53,8 @@ const opcodes = {
 	number:		'43',
 	difficulty:	'44',
 	gaslimit:	'45',
+	chainid: '46',
+	selfbalance: '47',
 
 	pop:	'50',
 	mload:	'51',

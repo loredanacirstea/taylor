@@ -391,3 +391,26 @@ describe('Test calls', () => {
     });
 
 });
+
+describe('Test taylor <-> hex', () => {
+    let resp, expr, encoded, decoded;
+
+    const alltests = Object.assign({},
+        tests.evm,
+        tests.core,
+    )
+
+    for (name of Object.keys(alltests)) {
+        const tts = alltests[name]
+        if (tts[0].settings) tts.splice(0, 1);
+        tts.map((tt, i) => {
+            test('taylor <-> hex: ' + name + '_' + i, async function () {
+                encoded = tay.expr2h(tt.test).encoded;
+                decoded = tay.h2expr(encoded).expr;
+                // console.log('initial', tt.test);
+                // console.log('decoded', decoded.expr);
+                expect(tay.expr2h(decoded).encoded).toBe(encoded);
+            });
+        });
+    }
+});

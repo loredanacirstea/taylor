@@ -208,13 +208,13 @@ const tests = {
     ],
     addmod_: [
         {
-            test: '(addmod_ 10, 5, 4)',
+            test: '(addmod_ 10 5 4)',
             result: 3,
         },
     ],
     mulmod_: [
         {
-            test: '(mulmod_ 10, 5, 4)',
+            test: '(mulmod_ 10 5 4)',
             result: 2,
         },
     ],
@@ -391,28 +391,28 @@ const tests = {
     ],
     create_: [
         {
-            test: '',
+            test: '(create_ )',
             result: 0,
             skip: true,
         },
     ],
     create2_: [
         {
-            test: '',
+            test: '(create2_ )',
             result: 0,
             skip: true,
         },
     ],
-    'callcode_!': [
+    'callcode!__': [
         {
-            test: '',
+            test: '(callcode!__ )',
             result: 0,
             skip: true,
         },
     ],
-    'delegatecall_!': [
+    'delegatecall!__': [
         {
-            test: '',
+            test: '(delegatecall!__ )',
             result: 0,
             skip: true,
         },
@@ -426,7 +426,7 @@ const tests = {
     ],
     'selfdestruct#': [
         {
-            test: '',
+            test: '(selfdestruct# )',
             result: 0,
             skip: true,
         },

@@ -7,6 +7,7 @@ const { sendTransaction, call, getLogs } = require('../web3.js');
 const nativeEvm = require('./evm.js');
 const wrappedEvm = require('./evmw.js');
 const nativeCore = require('./core.js');
+const jsBackend = require('./backend_js.js');
 
 const nativeEvm_ = {};
 Object.keys(nativeEvm).forEach(fname => {
@@ -14,6 +15,10 @@ Object.keys(nativeEvm).forEach(fname => {
 });
 
 const nativeEnv = Object.assign({}, nativeEvm_, wrappedEvm, nativeCore);
+const nativeEnv_r = {};
+Object.keys(nativeEnv).forEach(fname => {
+    nativeEnv_r[nativeEnv[fname]] = fname;
+});
 
 const {
     u2b, u2h, b2u, b2h, h2u, h2b,
@@ -37,6 +42,36 @@ const rootids = {
 const subids_bytelike = {
     bytes: '01',
     string: '10',
+}
+
+const rootids_r = {}
+Object.keys(rootids).forEach(tname => {
+    rootids_r[parseInt(b2h(rootids[tname]))] = tname;
+});
+
+const slicebytes = (data, size) => data.substring(0, size * 2).padEnd(size * 2, '0');
+const getfourb = data => new BN(slicebytes(data, 4), 16);
+const geteightb = data => new BN(slicebytes(data, 8), 16);
+const movefour = data => data.substring(8);
+const moveeight = data => data.substring(16);
+const move32 = data => data.substring(64);
+const movebytes = (data, pos) => data.substring(pos * 2);
+const mload = data => new BN(slicebytes(data, 32), 16);
+const mmload = (data, size) => slicebytes(data, size);
+const getfuncarity = sig4b => sig4b.and(new BN(0x3f));
+const getfunclength = sig4b => sig4b.and(new BN(0xfffc00)).shrn(0x0a);
+const getfunctype = sig4b => sig4b.and(new BN(0x7000000)).shrn(0x18);
+const getouttype = sig4b => sig4b.and(new BN(0x180)).shrn(0x07);
+const getfuncloco = sig4b => sig4b.and(new BN(0x40)).eq(new BN(0x40)) ? 1 : 0;
+const getrootid = b32bn => b32bn.shrn(0xfc);
+const getfname = hexcode => nativeEnv_r[hexcode.padStart(2, '0')];
+const getbyteliketype = sig4b => sig4b.and(new BN(0xc000000)).shrn(26);
+const getunknownindexes = sig4b => {
+    // index 8bits + superIndex 6bits
+    const indexes = getfunclength(sig4b);
+    const superIndex = indexes.and(new BN(0x3f))
+    const index = indexes.shrn(0x06);
+    return { index, superIndex };
 }
 
 const type_enc = {
@@ -313,6 +348,128 @@ function handleStored(ast, parent, unkownMap, defenv, arrItemType, reverseArgs, 
     return ast2h(newast, parent, unkownMap, defenv, arrItemType, reverseArgs, stack, envdepth);
 }
 
+function reverseAstArgs(ast) {
+    if (!(ast instanceof Array)) return ast;
+    if (!ast[0]) return ast;
+    return [reverseAstArgs(ast[0])].concat(ast.slice(1).reverse().map(reverseAstArgs));
+}
+
+function hexToTaylor (data) {
+    const reversedAst = hexToTaylorInner(strip0x(data)).value;
+    const ast = reverseAstArgs(reversedAst);
+    let expr = jsBackend.PRINT(ast, false);
+    return { ast, expr };
+}
+
+const decodeMapSpecialFnPost = {
+    '163': decodeApplyLambda,
+    '10a': decodeIf,
+    '10d': decodeLet,
+}
+const decodeMapSpecialFnPre = {
+    '103': decodeUnknown,
+    '104': decodeLambda,
+}
+
+function hexToTaylorInner (data, envdepth = 0) {
+    let newdata;
+    const rootid = getrootid(mload(data));
+
+    switch (rootids_r[rootid]) {
+        case 'function':
+            const arity = getfuncarity(getfourb(data)).toNumber();
+            const hexcode = getfourb(movefour(data)).toString(16);
+            let ast = [ malTypes._symbol(getfname(hexcode)) ];
+            if (decodeMapSpecialFnPre[hexcode]) return decodeMapSpecialFnPre[hexcode](data, ast, arity, envdepth);
+            newdata = moveeight(data);
+            const argenv = envdepth + 1;
+            for (let i = 0 ; i < arity; i++) {
+                const arg = hexToTaylorInner(newdata, argenv);
+                newdata = arg.end;
+                ast.push(arg.value);
+            }
+            if (decodeMapSpecialFnPost[hexcode]) ast = decodeMapSpecialFnPost[hexcode](ast, envdepth);
+            return { value: ast, end: newdata };
+        case 'bytelike':
+            const length = getfourb(movefour(data)).toNumber();
+            newdata = moveeight(data);
+            const value = { value: '0x' + mmload(newdata, length), end: newdata.substring(length * 2) };
+            const isString = getbyteliketype(getfourb(data)).eq(new BN(2));
+            if (isString) value.value = strip0x(value.value).hexDecode();
+            return value;
+        case 'number':
+            newdata = movefour(data);
+            return { value: mload(newdata).toNumber(), end: move32(newdata) };
+        default:
+            throw new Error('rootid not found');
+    }
+}
+
+function decodeLambda(data, ast, arity, envdepth) {
+    let newdata = moveeight(data);
+    // move past arg indexes 00000001 // TODO these should be removed
+    newdata = movebytes(newdata, 2 * arity);
+    const argast = [];
+    for (let i = 0 ; i < arity; i++) {
+        argast.push(malTypes._symbol(`x_${envdepth}_${i}`));
+    }
+
+    const lambdabody = hexToTaylorInner(newdata, envdepth);
+    // reverse order
+    ast.push(lambdabody.value);
+    ast.push(argast);
+    return { value: ast, end: newdata };
+}
+
+function decodeUnknown(data, ast, arity, envdepth) {
+    const { index, superIndex } = getunknownindexes(getfourb(data));
+    const absSuperIndex = envdepth - superIndex;
+
+    // console.log('decodeUnknown', index, superIndex, absSuperIndex);
+    let newdata = moveeight(data);
+
+    return { value: malTypes._symbol(`x_${absSuperIndex}_${index}`), end: newdata };
+}
+
+function decodeLet(ast, envdepth) {
+    // console.log('decodeLet', ast, envdepth);
+    // body
+    const bodyenvdepth = envdepth + 1;
+    const body = (hexToTaylorInner(strip0x(ast[2]), bodyenvdepth)).value;
+    // args
+    const argenvdepth = envdepth + 2;
+    let arg = hexToTaylorInner(strip0x(ast[1]), argenvdepth);
+    let args = [malTypes._symbol(`x_${bodyenvdepth}_0`), arg.value];
+    let index = 1;
+    // TODO when args are lambdas
+
+    while (arg.end.length > 0) {
+        arg = hexToTaylorInner(arg.end, argenvdepth);
+        args.push(malTypes._symbol(`x_${bodyenvdepth}_${index}`));
+        args.push(arg.value);
+        index += 1;
+    }
+
+    // reverse
+    ast[1] = body;
+    ast[2] = [args[0]].concat(args.slice(1).reverse())
+    return ast;
+}
+
+function decodeApplyLambda (ast, envdepth) {
+    const ind = ast.length - 1;
+    const lambdaast = hexToTaylorInner(strip0x(ast[ind]), envdepth + 1);
+    return [lambdaast.value].concat(ast.slice(1, ind));
+}
+
+function decodeIf (ast, envdepth) {
+    // branch2
+    ast[1] = (hexToTaylorInner(strip0x(ast[1]), envdepth)).value;
+    // branch1
+    ast[2] = (hexToTaylorInner(strip0x(ast[2]), envdepth)).value;
+    return ast;
+}
+
 function decode (data, returntypes) {
     // console.log('decode data', data, returntypes)
     let decoded;
@@ -412,5 +569,7 @@ const getTay = (provider, signer) => (address, deploymentBlock) => {
 
 module.exports = {
     expr2h,
+    h2expr: hexToTaylor,
     getTay,
+    js: jsBackend,
 }
