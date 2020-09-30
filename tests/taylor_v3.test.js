@@ -128,17 +128,6 @@ describe.each([
         // expect(resp).toEqual(11);
     });
 
-    it('test super', async function () {
-        let resp;
-        resp = await instance.call(`((fn* (a)
-            (if (eq_ 0 (mod_ a 2))
-                ((fn* (b) (super 1 (div_ b 2) ) ) a)
-                a
-            )
-        ) 6)`);
-        expect(resp).toEqual(3);
-    }, 10000);
-
     it('test registration', async function () {
         let resp;
         const tay2_ = await taylor.deployRebuild(3);

@@ -284,6 +284,32 @@ const tests = {
             ) 6)`,
             result: 3,
         },
+        {
+            description: 'test super',
+            test: `((fn* (a)
+                (if (eq_ 0 (mod_ a 2))
+                    ((fn* (b) (super 1 (div_ b 2) ) ) a)
+                    a
+                )
+            ) 6)`,
+            result: 3,
+            wait: 10000,
+        },
+        {
+            description: 'test super - depth 2',
+            test: `((fn* (a)
+                (if (eq_ 0 (mod_ a 2))
+                    ((fn* (b)
+                        ((fn* (c)
+                            (super 2 (div_ b c) )
+                        ) 2)
+                    ) a)
+                    a
+                )
+            ) 6)`,
+            result: 3,
+            wait: 10000,
+        },
     ],
     'let*': [
         {

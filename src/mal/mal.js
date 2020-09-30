@@ -144,9 +144,22 @@ async function _EVAL(ast, env) {
     default:
         var el = await eval_ast(ast, env), f = el[0];
         if (f.__ast__) {
+            const oldEnv = env;
             ast = f.__ast__;
             env = f.__gen_env__(el.slice(1));
+            env.__parent__ = oldEnv;
             env.set(types._symbol('self'), f);
+            function findSuper (currentEnv) {
+                return function () {
+                    const [ index, ...args ] = arguments;
+                    if (index === 0) {
+                        const f = currentEnv.get(types._symbol('self'));
+                        return _EVAL(f.__ast__, f.__gen_env__(args));
+                    }
+                    return findSuper(currentEnv.__parent__)(index - 1, ...args);
+                }
+            }
+            env.set(types._symbol('super'), findSuper(env));
         } else {
             return f.apply(f, el.slice(1));
         }
