@@ -146,6 +146,7 @@ async function _EVAL(ast, env) {
         if (f.__ast__) {
             ast = f.__ast__;
             env = f.__gen_env__(el.slice(1));
+            env.set(types._symbol('self'), f);
         } else {
             return f.apply(f, el.slice(1));
         }
