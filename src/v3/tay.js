@@ -77,9 +77,15 @@ const getunknownindexes = sig4b => {
 const type_enc = {
     number: value => {
         const v = isHexString(value) ? new BN(value.substring(2), 16) : new BN(value);
+        let val;
+        if (v.isNeg()) {
+            val = strip0x(ethers.utils.defaultAbiCoder.encode(['int256'], [v.toNumber()]));
+        } else {
+            val = v.toString(16).padStart(64, '0');
+        }
         return (
             (new BN(rootids.number.padEnd(32, '0'), 2)).toString(16).padStart(8, '0')
-            + v.toString(16).padStart(64, '0')
+            + val
         );
     },
     bytelike: (value, isString=false, encoding=0) => {
@@ -109,9 +115,12 @@ type_enc.function_compiled = (name, bodylen, arity, stack = true) => type_enc.fu
 type_enc.function_stored = (name, codehex, bodylen, arity, stack = true) => type_enc.function(name, codehex, bodylen, arity, 2, stack)
 type_enc.function_lambda = (name, bodylen, arity, stack = true) => type_enc.function(name, nativeEnv[name], bodylen, arity, 1, stack)
 // !!!we mess up body length here (not used now)
-type_enc.unknown = (index, envindex, stack) => type_enc.function_compiled('unknown', b2u(u2b(index).padStart(8, '0') + u2b(envindex).padStart(6, '0')), 0, stack);
+type_enc.unknown = (index, envindex, stack) => {
+    return type_enc.function_compiled('unknown', b2u(u2b(index).padStart(8, '0') + u2b(envindex).padStart(6, '0')), 0, stack);
+}
 
 function expr2h(expression, defenv) {
+    if (!expression) throw new Error('No expression provided.');
     const ast = malReader.read_str(expression);
     const encoded = x0(ast2h(ast, null, {}, defenv));
     // console.log('encoded', encoded);
@@ -424,15 +433,12 @@ function decodeLambda(data, ast, arity, envdepth) {
 function decodeUnknown(data, ast, arity, envdepth) {
     const { index, superIndex } = getunknownindexes(getfourb(data));
     const absSuperIndex = envdepth - superIndex;
-
-    // console.log('decodeUnknown', index, superIndex, absSuperIndex);
     let newdata = moveeight(data);
 
     return { value: malTypes._symbol(`x_${absSuperIndex}_${index}`), end: newdata };
 }
 
 function decodeLet(ast, envdepth) {
-    // console.log('decodeLet', ast, envdepth);
     // body
     const bodyenvdepth = envdepth + 1;
     const body = (hexToTaylorInner(strip0x(ast[2]), bodyenvdepth)).value;
@@ -476,17 +482,26 @@ function decode (data, returntypes) {
     if (returntypes && returntypes[0] === 'string') {
         return data.slice(2).hexDecode();
     }
+    if (returntypes === 'hex') {
+        if (BN.isBN(data)) {
+            if (data.isNeg()) data = new BN('ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff', 16).add(data).add(new BN(1));
+
+            return '0x' + data.toString(16).padStart(64, '0');
+        }
+        return data;
+    }
     if (returntypes === 'tuple') {
         const arity = ethers.utils.defaultAbiCoder.decode(['uint'], data)[0].toNumber();
         return ethers.utils.defaultAbiCoder.decode('uint '.repeat(arity).split(' '), '0x' + data.substring(66)).map(val => val.toNumber());
     }
     if (returntypes) {
+        if (BN.isBN(data)) data = '0x' + data.toString(16).padStart(64, '0');
         decoded = ethers.utils.defaultAbiCoder.decode(returntypes, data);
     } else decoded = [data];
     decoded = decoded.map(result => {
         if (typeof result === 'object') {
             result = toBN(result);
-            result = underNumberLimit(result) ? result.toNumber() : result;
+            result = underNumberLimit(result) ? result.toNumber() : (returntypes ? result : ('0x' + returntypes.toString(16)));
         }
         return result;
     });
@@ -508,15 +523,17 @@ const getTay = (provider, signer) => (address, deploymentBlock) => {
 
     interpreter.call = async (expr, txObj, returntypes) => {
         const {encoded, ast} = expr2h(expr);
+        const data = await interpreter.call_raw(encoded, txObj);
         if (typeof returntypes === 'undefined') {
             let ispointer = ast[0].value && ast[0].value.includes('__');
             if (!ispointer) {
                 ispointer = ast[0].value && ast[0].value.includes('#') && ast[1] && ast[1] instanceof Array && ast[1][0].value.includes('__');
             }
             if (ispointer) returntypes = null;
+            else if (strip0x(data).length > 64) returntypes = null;
             else returntypes = ['uint'];
         }
-        return decode(await interpreter.call_raw(encoded, txObj), returntypes);
+        return decode(data, returntypes);
     }
 
     interpreter.send = async (expression, txObj={}, newsigner=null) => {
@@ -534,6 +551,14 @@ const getTay = (provider, signer) => (address, deploymentBlock) => {
         //     expr2h(expression),
         //     txObj,
         // )
+    }
+
+    interpreter.sendAndWait = async (mal_expression, txObj) => {
+        let receipt = await interpreter.send(mal_expression, txObj);
+        if (receipt.wait) {
+            receipt = await receipt.wait();
+        }
+        return receipt;
     }
 
     interpreter.init = () => {};
@@ -566,6 +591,9 @@ const getTay = (provider, signer) => (address, deploymentBlock) => {
     return interpreter;
 }
 
+jsBackend.encode = expr2h;
+jsBackend.decode = hexToTaylor;
+jsBackend.decoderaw = decode;
 
 module.exports = {
     expr2h,

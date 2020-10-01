@@ -43,19 +43,71 @@ const tests = {
             result: 3,
         },
         {
+            test: '(div_ 9 -3)',
+            result: 0,
+        },
+        {
+            test: '(div_ -9 3)',
+            result: '0x5555555555555555555555555555555555555555555555555555555555555552',
+            decode: 'hex',
+        },
+        {
+            test: '(div_ -9 -3)',
+            result: 0,
+        },
+        {
             test: '(div_ 0 3)',
+            result: 0,
+        },
+        {
+            test: '(div_ 0 -3)',
             result: 0,
         },
         {
             test: '(div_ 3 0)',
             result: 0,
-            skip: true,
+        },
+        {
+            test: '(div_ 0 0)',
+            result: 0,
         },
     ],
     sdiv_: [
         {
-            test: '(sdiv_ 12 3)',
-            result: 4,
+            test: '(sdiv_ 9 3)',
+            result: 3,
+        },
+        {
+            test: '(sdiv_ 9 -3)',
+            // result: -3,
+            decode: 'hex',
+            result: '0xfffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffd',
+        },
+        {
+            test: '(sdiv_ -9 3)',
+            // result: -3,
+            decode: 'hex',
+            result: '0xfffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffd',
+        },
+        {
+            test: '(sdiv_ -9 -3)',
+            result: 3,
+        },
+        {
+            test: '(sdiv_ 0 3)',
+            result: 0,
+        },
+        {
+            test: '(sdiv_ 0 -3)',
+            result: 0,
+        },
+        {
+            test: '(sdiv_ 3 0)',
+            result: 0,
+        },
+        {
+            test: '(sdiv_ 0 0)',
+            result: 0,
         },
     ],
     mod_: [
@@ -68,18 +120,67 @@ const tests = {
             result: 1,
         },
         {
+            test: '(mod_ 10 -4)',
+            result: 10,
+        },
+        {
+            test: '(mod_ -10 4)',
+            result: 2,
+        },
+        {
+            test: '(mod_ -10 -4)',
+            // result: -10,
+            decode: 'hex',
+            result: '0xfffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff6',
+        },
+        {
             test: '(mod_ 0 3)',
             result: 0,
         },
         {
             test: '(mod_ 12 0)',
             result: 0,
-            skip: true,
+        },
+        {
+            test: '(mod_ 0 0)',
+            result: 0,
         },
     ],
     smod_: [
         {
             test: '(smod_ 12 3)',
+            result: 0,
+        },
+        {
+            test: '(smod_ 10 3)',
+            result: 1,
+        },
+        {
+            test: '(smod_ 10 -4)',
+            result: 2,
+        },
+        {
+            test: '(smod_ -10 4)',
+            // result: -2,
+            decode: 'hex',
+            result: '0xfffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffe',
+        },
+        {
+            test: '(smod_ -10 -4)',
+            // result: -2,
+            decode: 'hex',
+            result: '0xfffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffe',
+        },
+        {
+            test: '(smod_ 0 3)',
+            result: 0,
+        },
+        {
+            test: '(smod_ 12 0)',
+            result: 0,
+        },
+        {
+            test: '(smod_ 0 0)',
             result: 0,
         },
     ],
@@ -117,6 +218,14 @@ const tests = {
             test: '(lt_ 3 2)',
             result: 0,
         },
+        {
+            test: '(lt_ -3 2)',
+            result: 0,
+        },
+        {
+            test: '(lt_ 3 -7)',
+            result: 1,
+        },
     ],
     gt_: [
         {
@@ -127,17 +236,49 @@ const tests = {
             test: '(gt_ 3 2)',
             result: 1,
         },
+        {
+            test: '(gt_ -3 2)',
+            result: 1,
+        },
+        {
+            test: '(gt_ 3 -7)',
+            result: 0,
+        },
     ],
     slt_: [
         {
             test: '(slt_ 3 7)',
             result: 1,
         },
+        {
+            test: '(slt_ 3 2)',
+            result: 0,
+        },
+        {
+            test: '(slt_ -3 2)',
+            result: 1,
+        },
+        {
+            test: '(slt_ 3 -7)',
+            result: 0,
+        },
     ],
     sgt_: [
         {
-            test: '(sgt_ 7 7)',
+            test: '(sgt_ 3 7)',
             result: 0,
+        },
+        {
+            test: '(sgt_ 3 2)',
+            result: 1,
+        },
+        {
+            test: '(sgt_ -3 2)',
+            result: 0,
+        },
+        {
+            test: '(sgt_ 3 -7)',
+            result: 1,
         },
     ],
     eq_: [
@@ -187,6 +328,10 @@ const tests = {
             test: '(byte_ 30 0x11445566)',
             result: 0x55,
         },
+        {
+            test: '(byte_ 3 "0x11445566")',
+            result: 0x55,
+        },
     ],
     shl_: [
         {
@@ -204,6 +349,11 @@ const tests = {
         {
             test: '(sar_ 2 12)',
             result: 3,
+        },
+        {
+            test: '(sar_ 1 -5)',
+            result: -3,
+            skip: true,
         },
     ],
     addmod_: [
@@ -264,8 +414,9 @@ const tests = {
     ],
     calldataload_: [
         {
-            test: '(calldataload_ 1024)',
-            result: 0,
+            test: '(calldataload_ 0)',
+            result: '0x3000900100000035100000000000000000000000000000000000000000000000',
+            decode: null,
         },
     ],
     calldatasize_: [
@@ -310,9 +461,9 @@ const tests = {
     origin_: [
         {
             test: '(origin_)',
-            result: '0x4980dC938ef8C21b20bA9CA73D0400BB63206f2a',
-            txObj: { from: '0x4980dC938ef8C21b20bA9CA73D0400BB63206f2a' },
-            // process: (resp, instance) => resp.toString(16).toLowerCase(),
+            result: '0x4980dc938ef8c21b20ba9ca73d0400bb63206f2a',
+            txObj: { from: '0x4980dc938ef8c21b20ba9ca73d0400bb63206f2a' },
+            process: (resp, instance) => resp.toString(16).toLowerCase(),
             decode: ['address'],
         },
     ],
@@ -362,9 +513,8 @@ const tests = {
     gaslimit_: [
         {
             test: '(gaslimit_)',
-            result: 1000000,
-            txObj: { gasLimit: 1000000 },
-            process: (resp) => resp.toNumber(),
+            result: true,
+            process: resp => resp.toNumber() >= 30000000,
         },
     ],
     calldatacopy__: [
@@ -448,6 +598,7 @@ const tests = {
             test: '(keccak256_ (mmstore__ 1000))',
             result: '0xef9d334ee3e15416314a60312ef616e881c3bfffe4b60b11befc2707c79b7d35',
             decode: ['bytes32'],
+            skip: true,
         },
     ],
     'revert#': [
@@ -483,6 +634,11 @@ const tests = {
             test: '(return# (mmstore__ 1000))',
             result: 1000,
             decode: ['uint'],
+        },
+        {
+            test: '(return# (mmstore__ 1000 5))',
+            result: [1000, 5],
+            decode: ['uint', 'uint'],
         }
     ],
     mmstore8__: [
@@ -497,12 +653,10 @@ const tests = {
             test: '(mload_ (t2_ptr_ (mmstore__ 1000)))',
             result: 1000,
             decode: ['uint'],
-        }
-    ],
-    mmload__: [
+        },
         {
-            test: '(return# (mmstore__ 1000))',
-            result: 1000,
+            test: '(mload_ (mstore_ 100 4))',
+            result: 4,
             decode: ['uint'],
         }
     ],
@@ -511,13 +665,19 @@ const tests = {
             test: '(sload_ (store!_ 5 1000))',
             result: 1000,
             decode: ['uint'],
-        }
+        },
     ],
     'store!_': [
         {
             test: '(sload_ (store!_ (keccak256_ "0xc5d2460186f7233c927e7db2dcc703c0e500b653ca82273b7bfad8045d85a470c5d2460186f7233c927e7db2dcc703c0e500b653ca82273b7bfad8045d85a470") 4000))',
             result: 4000,
             decode: ['uint'],
+        },
+        {
+            test: '(sload_ (keccak256_ "0xc5d2460186f7233c927e7db2dcc703c0e500b653ca82273b7bfad8045d85a470c5d2460186f7233c927e7db2dcc703c0e500b653ca82273b7bfad8045d85a470"))',
+            result: 4000,
+            decode: ['uint'],
+            skip: true,
         }
     ],
     msize_: [

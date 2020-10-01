@@ -11,8 +11,8 @@ const wrapped_t2 = {
     msstore_: '12a',
     call__: '12b',
     'call!__': '12c',
-    callcode__: '12d',
-    delegatecall__: '12e',
+    'callcode!__': '12d',
+    'delegatecall!__': '12e',
     log_: '12f',
     t2_ptr_: '130',
     t2_len_: '131',
@@ -27,7 +27,7 @@ const wrapped_t2 = {
     'revert#': '124',
     'stop#': '00',
     'selfdestruct#': 'ff',
-    'invalid#': '',
+    'invalid#': 'fe',
 
     'return___#': '14b',
 }

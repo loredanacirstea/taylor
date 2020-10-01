@@ -19,15 +19,17 @@ const tests = {
     ],
     t2_ptr_: [
         {
-            test: '(t2_ptr_ (mmstore__ 12))',
-            result: 1780,
+            test: '(t2_ptr_ "0x112233")',
+            // result: 1459,
+            result: true,
             decode: ['uint'],
+            process: resp => resp > 400,
         },
     ],
     t2_len_: [
         {
-            test: '(t2_len_ (mmstore__ 12))',
-            result: 32,
+            test: '(t2_len_ "0x112233")',
+            result: 3,
             decode: ['uint'],
         },
     ],
@@ -121,11 +123,6 @@ const tests = {
         },
         {
             test: '(return___# (rest___ (tuple___ )) )',
-            result: [],
-            decode: 'tuple',
-        },
-        {
-            test: '(nth_ (rest___ (tuple___ )) 0)',
             result: [],
             decode: 'tuple',
         },
@@ -424,16 +421,16 @@ const tests = {
             decode: ['string'],
         },
     ],
-    apply_list: [
+    apply_tuple: [
         {
-            test: `(apply-list (fn* (a b) (add_ a b)) (tuple___ 5 8))`,
+            test: `(apply-tuple (fn* (a b) (add_ a b)) (tuple___ 5 8))`,
             result: 13,
         },
         {
             test: `(let* (
                     c (fn* (a b) (add_ a b))
                 )
-                (apply-list c (tuple___ 5 8))
+                (apply-tuple c (tuple___ 5 8))
             )`,
             result: 13,
         },

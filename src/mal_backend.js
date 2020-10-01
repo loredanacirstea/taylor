@@ -4,8 +4,12 @@ const interop = require('./mal/interop');
 const BN = require('bn.js');
 const ethers = require('ethers');
 const bootstrap_functions = require('./bootstrap.js');
-const { strip0x } = require('./utils.js');
+const { strip0x, toBN, uint8ArrayToHex, hexToUint8Array, uint8arrToBN, uint8ArrayToHexAddr } = require('./utils.js');
 require('./extensions.js');
+const { jsvm } = require('ewasm-jsvm');
+const native = require('./native.js');
+
+mal.jsvm = jsvm();
 
 mal.re = str => mal.EVAL(mal.READ(str), mal.repl_env)
 mal.reps = async lines => {
@@ -26,11 +30,18 @@ const modifyEnv = (name, func) => {
     })
 }
 
-const toHex = bnval => {
-    let hex = bnval.toString(16);
+const evenHex = hex => {
     if (hex.length % 2 === 1) hex = '0' + hex;
-    return '0x' + hex;
+    return hex;
 }
+
+const _toHex = bnval => {
+    let hex = bnval.toString(16);
+    hex = evenHex(hex);
+    return hex;
+}
+
+const toHex = bnval => '0x' + _toHex(bnval);
 
 const isArray = val => {
     try {
@@ -92,13 +103,43 @@ const callContract = (address, fsig, data, providerOrSigner, isTx=false, ethvalu
     return contract[name](...data, {value: ethvalue});
 }
 
+
+const toTayBN = hexval => {
+    return {_hex: hexval, _isBigNumber: {_hex: '0x01'}}
+};
+
+const jsEvalParseBN = answ => {
+    if (BN.isBN(answ)) answ = toTayBN(answ.toString(16));
+    if (typeof answ === 'boolean') answ = toTayBN(answ ? '01' : '00')
+
+    if (answ && typeof answ === 'object') {
+        if (answ instanceof Array) {
+            return answ.map(val => jsEvalParseBN(val));
+        }
+        const newobj = {};
+        Object.keys(answ).forEach(key => {
+            newobj[key] = jsEvalParseBN(answ[key]);
+        });
+        return newobj;
+    }
+
+    return answ;
+}
+
 mal.globalStorage = {};
 mal.runtimeMemory = {};
-mal.freeMemPtr = 192;
+mal.storageMap = new WebAssembly.Memory({ initial: 2 }); // Size is in pages.
+mal.memoryMap = new WebAssembly.Memory({ initial: 2 }); // Size is in pages.
+
+mal.freeMemPtr = 0x40;
 mal.allocate = size => {
     const ptr = mal.freeMemPtr;
-    mal.freeMemPtr += size;
-    return ptr;
+    let value = (native_extensions.evm.loadMem(ptr)).toNumber();
+    if (value === 0) {
+        value = 0x1a0;
+    }
+    native_extensions.evm.storeMem(ptr, native_extensions.ethabi_encode("uint256", value + size));
+    return value;
 }
 
 modifyEnv('nil?', (orig_func, value) => {
@@ -113,16 +154,19 @@ modifyEnv('nil?', (orig_func, value) => {
 
 const extensions = {};
 const native_extensions = {
-    BN: n => {
-        if (typeof n === 'string' && n.substring(0, 2) === '0x') {
-            return new BN(n.substring(2), 16);
+    BN: toBN,
+    evm_unsign: value => {
+        if (typeof value === 'number' && value < 0) {
+            const evmvalue = ethers.utils.defaultAbiCoder.encode(['int256'], [value]);
+            return native_extensions.BN(evmvalue);
         }
-        if (BN.isBN(n)) return n;
-        if (typeof n === 'object' && n._hex) return new BN(n._hex.substring(2), 16);
-        return new BN(n);
+        return value;
+    },
+    keccak256_: t2ptr__ => {
+        let value = native_extensions.getbytelike__(t2ptr__);
+        return ethers.utils.keccak256(ethers.utils.arrayify(value));
     },
     keccak256: n => {
-        // console.log('keccak256', n, typeof n)
         if (n instanceof Array) n = mal.runtimeMemory[n[0]];
         if (typeof n !== 'string') throw new Error('keccak256 expects string');
 
@@ -143,7 +187,6 @@ const native_extensions = {
 
         switch (typeof n) {
             case 'number':
-                // return n.toString(16).padStart(8, '0');
                 return n.toString(16).padStart(64, '0');
             case 'string':
                 return n;
@@ -153,32 +196,76 @@ const native_extensions = {
         mal.globalStorage[key] = value;
         return key;
     },
-    sload: (key, typename) => {
-        let value = mal.globalStorage[key];
-        // TODO: proper typecheck
-
-        try {
-            value = JSON.parse(value)
-        } catch(e) {}
-
-        return value;
+    mmstore__: (valuesList) => {
+        const hexvalue = '0x' + valuesList.map(value => {
+            return native_extensions.BN(value).toString(16).padStart(64, '0');
+        }).join('');
+        return native_extensions.bytelike_(hexvalue);
     },
-    mstore: (value) => {
-        const length = value.toString().length;
-        const key = mal.allocate(length);
-        mal.runtimeMemory[key] = value;
-        // console.log('--mstore', key, length, mal.runtimeMemory[key], typeof value);
-        return [key, length, 'ptr'];
+    mmstore8__: (value) => {
+        const hexvalue = '0x' + valuesList.map(value => {
+            return native_extensions.BN(value).toString(16).padStart(2, '0').substring(0, 4);
+        }).join('');
+        return native_extensions.bytelike_(hexvalue);
     },
-    mload: (key) => {
-        let value = mal.runtimeMemory[key] || 0;
-        // TODO: proper typecheck
+    bytelike_: (hexvalue) => {
+        let value = strip0x(hexvalue);
+        let len = value.length / 2;
+        let offset = mal.allocate(len + 32);
+        value = new BN(len).toString(16).padStart(64, '0') + value;
 
-        try {
-            value = JSON.parse(value)
-        } catch(e) {}
+        // TODO offset, mimic interpreter offsets
+        native_extensions.storeMemory(value, offset, len + 32);
+        return offset;
+    },
+    getbytelike__: offset => {
+        let offsetn = (native_extensions.BN(offset)).toNumber();
+        let len = (native_extensions.evm.loadMem(offsetn));
+        len = len.toNumber();
+        let value = native_extensions.loadMemory(offsetn + 32, len);
+        return uint8ArrayToHex(value);
+    },
+    tuple___: elems => {
+        const encoded = elems.map(elem => {
+            return native_extensions.BN(elem).toString(16).padStart(64, '0');
+        });
 
-        return value;
+        let arity = encoded.length;
+        let len = arity * 32;
+        let offset = mal.allocate(len + 32);
+        let value = new BN(arity).toString(16).padStart(64, '0');
+        value += encoded.map(n => n.toString(16)).join('');
+
+        native_extensions.storeMemory(value, offset, len + 32);
+        return offset;
+    },
+    gettuple___: offset => {
+        let offsetn = (native_extensions.BN(offset)).toNumber();
+        let arity = (native_extensions.evm.loadMem(offsetn));
+        arity = arity.toNumber();
+        let value = native_extensions.loadMemory(offsetn, arity * 32 + 32);
+        value = uint8ArrayToHex(value);
+        return value
+    },
+    storeMemory: (hexvalue, offset, len) => {
+        let value = strip0x(hexvalue);
+        const slots = Math.ceil(len / 32);
+        [...(new Array(slots)).keys()]
+            .map(ind => value.substring(ind * 64, (ind + 1) * 64))
+            .forEach((slice, ind) => {
+                native_extensions.evm.storeMem(offset + ind * 32, '0x' + slice);
+            });
+    },
+    loadMemory: (offset, len) => {
+        const slots = Math.ceil(len / 32);
+        return '0x' + [...(new Array(slots)).keys()]
+            .map(ind => {
+                // BN
+                const value = native_extensions.evm.loadMem(offset + (32 * ind)).toString(16).padStart(64, '0');
+                return value;
+            })
+            .join('')
+            .substring(0, len * 2);
     },
     range: (start, stop, step) => {
         start = native_extensions.BN(start).toNumber();
@@ -206,13 +293,26 @@ const native_extensions = {
         console.log('receipt', receipt);
         return receipt;
     },
+    replaceBytelike: jsvalue => {
+        if (typeof jsvalue === 'string' && jsvalue.substring(0, 2) === '0x') {
+            return native_extensions.bytelike_(jsvalue);
+        }
+        if (typeof jsvalue === 'string') {
+            return native_extensions.bytelike_(jsvalue.hexEncode());
+        }
+        if (jsvalue instanceof Array) return jsvalue.map(native_extensions.replaceBytelike);
+        // !objects can be BigNumber
+        return jsvalue;
+    },
     listToJsArray: liststr => {
         // ! always expects a resolved list
         liststr = liststr.replace(/(?<!(BN))\(/g, '(list ');
         return mal.re(liststr);
     },
     listToJsArrayStr: async liststr => {
-        const jsequiv = await native_extensions.listToJsArray(liststr);
+        let jsequiv = await native_extensions.listToJsArray(liststr);
+        // if bytelike, we store it in memory and return the pointer
+        jsequiv = native_extensions.replaceBytelike(jsequiv);
         return JSON.stringify(jsequiv);
     },
     listToJsArrayLength: async liststr => {
@@ -231,11 +331,13 @@ const native_extensions = {
 
         return toHex(a) + strip0x(toHex(b));
     },
-    return_d: a => {
-        // console.log('return_d', a);
-        if (a instanceof Array) return mal.runtimeMemory[a[0]] || 0;
-        return a;
+    return_d: t2ptr__ => {
+        return native_extensions.getbytelike__(t2ptr__);
     },
+    return_3: t3ptr___ => {
+        return native_extensions.gettuple___(t3ptr___);
+    },
+    eth_sig: (fsig) => ethSig(ethHumanAbiToJson((ethShortAbiToHuman(fsig)).abi)),
     ethabi_encode: (types, values) => {
         if (!(types instanceof Array)) types = [types];
         if (!(values instanceof Array)) values = [values];
@@ -252,30 +354,148 @@ const native_extensions = {
     wasmcall: async (url, fname, args) => {
         const wmodule = await WebAssembly.instantiateStreaming(fetch(url), {});
         return wmodule.instance.exports[fname](...args);
+    },
+    evm: {
+        getAddress: () => uint8ArrayToHexAddr(mal.jsvm_env.getAddress()),
+        getExternalBalance: (a) => uint8arrToBN(mal.jsvm_env.getExternalBalance(a)),
+        getSelfBalance: () => uint8arrToBN(mal.jsvm_env.getSelfBalance()),
+        getBlockHash: () => uint8ArrayToHex(mal.jsvm_env.getBlockHash()),
+        getCaller: () => uint8ArrayToHexAddr(mal.jsvm_env.getCaller()),
+        getCallValue: () => uint8arrToBN(mal.jsvm_env.getCallValue()),
+        getCallDataSize: () => uint8arrToBN(mal.jsvm_env.getCallDataSize()),
+        callDataLoad: (offset) => uint8ArrayToHex(mal.jsvm_env.callDataLoad(offset)),
+        getCodeSize: () => uint8arrToBN(mal.jsvm_env.getCodeSize()),
+        getExternalCodeSize: (address) => uint8arrToBN(mal.jsvm_env.getExternalCodeSize(address)),
+        getBlockCoinbase: () => uint8ArrayToHexAddr(mal.jsvm_env.getBlockCoinbase()),
+        getBlockDifficulty: () => uint8ArrayToHex(mal.jsvm_env.getBlockDifficulty()),
+        getGasLeft: () => new BN(mal.jsvm_env.getGasLeft()),
+        getBlockGasLimit: () => new BN(mal.jsvm_env.getBlockGasLimit()),
+        getTxGasPrice: () => new BN(mal.jsvm_env.getTxGasPrice()),
+        getBlockNumber: () => new BN(mal.jsvm_env.getBlockNumber()),
+        getBlockTimestamp: () => new BN(mal.jsvm_env.getBlockTimestamp()),
+        getBlockChainId: () => new BN(mal.jsvm_env.getBlockChainId()),
+        getTxOrigin: () => uint8ArrayToHexAddr(mal.jsvm_env.getTxOrigin()),
+        getReturnDataSize: () => new BN(mal.jsvm_env.getReturnDataSize()),
+        getMSize: () => new BN(mal.jsvm_env.getMSize()),
+        stop: () => uint8ArrayToHex(mal.jsvm_env.stop()),
+        return: (offset, len) => uint8ArrayToHex(mal.jsvm_env.finish(offset, len)),
+        revert: (offset, len) => uint8ArrayToHex(mal.jsvm_env.finish(offset, len)),
+
+        loadMem: offset => {
+            let value = mal.jsvm_env.loadMemory(offset);
+            // TODO: proper typecheck
+            value = uint8arrToBN(value);
+            return value;
+        },
+        storeMem: (offset, hexvalue) => {
+            const encoded = hexToUint8Array(hexvalue);
+            mal.jsvm_env.storeMemory(encoded, offset);
+            return offset;
+        },
+        storeMem8: (offset, hexvalue) => {
+            if (strip0x(hexvalue).length !== 1) throw new Error(`storeMem8 only receives 1 byte. Value: ${hexvalue}`);
+            const encoded = hexToUint8Array(hexvalue);
+            mal.jsvm_env.storeMemory8(encoded, offset);
+            return offset;
+        },
+        loadS: (key) => {
+            const offset = '0x' + (native_extensions.BN(key)).toString(16);
+            let value = mal.jsvm_env.storageLoad(hexToUint8Array(offset));
+            return uint8arrToBN(value);
+        },
+        storeS: (key, value) => {
+            key = native_extensions.BN(key);
+            const _key = '0x' + key.toString(16);
+            const _value = '0x' + (native_extensions.BN(value)).toString(16);
+            mal.jsvm_env.storageStore(hexToUint8Array(_key), hexToUint8Array(_value));
+            return key;
+        },
+
+    },
+    wevm: {
+        calldatacopy__: (calldOffset, calldLen) => {
+            let offset = mal.allocate(calldLen);
+            native_extensions.evm.storeMem(offset, native_extensions.ethabi_encode("uint256", calldLen));
+            mal.jsvm_env.callDataCopy(offset + 32, calldOffset, calldLen);
+            return offset;
+        },
+        codecopy__: (codeOffset, codeLen) => {
+            let offset = mal.allocate(codeLen);
+            native_extensions.evm.storeMem(offset, native_extensions.ethabi_encode("uint256", codeLen));
+            mal.jsvm_env.codeCopy(offset + 32, codeOffset, codeLen);
+            return offset;
+        }
+    },
+    core: {
+        t2_ptr_: t2ptr__ => t2ptr__ + 32,
+        t2_len_: t2ptr__ => native_extensions.evm.loadMem(t2ptr__),
+        clone__: (ptr, len) => {
+            const value = native_extensions.loadMemory(ptr, len);
+            const offset =  native_extensions.bytelike_(value);
+            return offset;
+        },
+        join__: (ptr1__, ptr2__) => {
+            let value1 = native_extensions.getbytelike__(ptr1__);
+            let value2 = native_extensions.getbytelike__(ptr2__);
+            return native_extensions.bytelike_(value1 + strip0x(value2));
+        },
+        tuple___: elems => {
+            return native_extensions.tuple___(elems);
+        },
+        t3_arity_: t3ptr___ => native_extensions.evm.loadMem(native_extensions.BN(t3ptr___).toNumber()).toNumber(),
+        t3_ptr_: t3ptr___ => native_extensions.BN(t3ptr___).toNumber() + 32,
+        nth_: (t3___, index) => {
+            const arity = native_extensions.core.t3_arity_(t3___);
+            if (index >= arity) throw new Error('Index out of bounds');
+
+            const ptr = native_extensions.core.t3_ptr_(t3___);
+            const value = native_extensions.evm.loadMem(index * 32 + ptr);
+            return value;
+        },
+        rest___: t3___ => {
+            const arity = native_extensions.core.t3_arity_(t3___);
+            if (arity < 1) return t3___;
+
+            const newarity = arity - 1;
+            const ptr = native_extensions.core.t3_ptr_(t3___) + 32;
+            const value = native_extensions.loadMemory(ptr, newarity * 32);
+            const len = newarity * 32 + 32;
+
+            const hexvalue = (new BN(newarity)).toString(16).padStart(64, '0') + strip0x(value);
+            const offset = mal.allocate(len);
+            native_extensions.storeMemory(hexvalue, offset, len);
+            return offset;
+        },
+        join___: (t3_1___, t3_2___) => {
+            const arity1 = native_extensions.core.t3_arity_(t3_1___);
+            const arity2 = native_extensions.core.t3_arity_(t3_2___);
+            const ptr1 = native_extensions.core.t3_ptr_(t3_1___);
+            const ptr2 = native_extensions.core.t3_ptr_(t3_2___);
+            const value1 = native_extensions.loadMemory(ptr1, arity1 * 32);
+            const value2 = native_extensions.loadMemory(ptr2, arity2 * 32);
+
+            const hexvalue = (new BN(arity1 + arity2)).toString(16).padStart(64, '0') + strip0x(value1) + strip0x(value2);
+            const len = (arity1 + arity2) * 32 + 32;
+            const offset = mal.allocate(len);
+            native_extensions.storeMemory(hexvalue, offset, len);
+            return offset;
+        },
+        tuple___2list: (t3ptr___) => {
+            const ptr = native_extensions.core.t3_ptr_(t3ptr___);
+            const arity = native_extensions.core.t3_arity_(t3ptr___);
+            const elems = [];
+            for (let i = 0; i < arity; i++) {
+                elems.push(native_extensions.evm.loadMem(i * 32 + ptr))
+            }
+            return elems;
+        },
+        list2tuple___: async (liststr) => {
+            return native_extensions.core.tuple___(liststr);
+        },
     }
 }
 
 mal.repl_env.set(malTypes._symbol('utils'), native_extensions);
-
-const toTayBN = hexval => { return {_hex: hexval, _isBigNumber: {_hex: '0x01'}} };
-
-const jsEvalParseBN = answ => {
-    if (BN.isBN(answ)) answ = toTayBN('0x' + answ.toString(16));
-    if (typeof answ === 'boolean') answ = toTayBN(toHex(answ ? 1 : 0))
-
-    if (answ && typeof answ === 'object') {
-        if (answ instanceof Array) {
-            return answ.map(val => jsEvalParseBN(val));
-        }
-        const newobj = {};
-        Object.keys(answ).forEach(key => {
-            newobj[key] = jsEvalParseBN(answ[key]);
-        });
-        return newobj;
-    }
-
-    return answ;
-}
 
 modifyEnv('js-eval', async (orig_func, str) => {
     const utils = Object.assign({}, native_extensions, extensions);
@@ -289,216 +509,89 @@ modifyEnv('js-eval', async (orig_func, str) => {
         answ = undefined;
     }
 
-    // console.log('--js-eval', str, answ, typeof answ);
-
     answ = jsEvalParseBN(answ);
-    // console.log('js-eval', answ, typeof answ);
     return interop.js_to_mal(answ);
 })
 
-async function init() {
+const all_functions = {};
 
-/* Taylor */
+const base_functions = {
+    array: 'vector',
+    'array?': 'vector?',
 
-await mal.rep('(def! js-str (fn* (val) (js-eval (str "utils.jsStr(`" (pr-str val) "`)" )) ))');
+    unimplemented: '(fn* () (throw "unimplemented"))',
+    'js-str': '(fn* (val) (js-eval (str "utils.jsStr(`" (pr-str val) "`)" )) )',
 
-await mal.reps(`
+    reduce: '(fn* (f xs init) (if (empty? xs) init (reduce f (rest xs) (f init (first xs)) )))',
+    range: '(fn* (start stop step) (js-eval (str "utils.range(" (js-str start) "," (js-str stop) "," (js-str step) ")" )) )',
+    push: '(fn* (arr value) (conj arr value) )',
+    shift: '(fn* (arr value) (cons value arr) )',
 
-(def! reduce (fn* (f xs init) (if (empty? xs) init (reduce f (rest xs) (f init (first xs)) ))))
-
-(def! encode (fn* (a) (js-eval (str "utils.encode(" (js-str a) ")") )))
-
-(def! store! (fn* (key value) (js-eval (str "utils.store(" key "," (js-str value) ")") )))
-
-(def! sload (fn* (key type) (js-eval (str "utils.sload(" key ",'" type "')") )))
-
-(def! mstore (fn* (value) (js-eval (str "utils.mstore(" (js-str value) ")") )))
-
-(def! mload (fn* (t2ptr) (js-eval (str "utils.mload(" t2ptr ")") )))
-
-(def! array vector)
-
-(def! array? (fn* (a) (vector? a) ))
-
-(def! range (fn* (start stop step) (js-eval (str "utils.range(" (js-str start) "," (js-str stop) "," (js-str step) ")" )) ))
-
-(def! push (fn* (arr value)
-    (conj arr value)
-))
-
-(def! shift (fn* (arr value)
-    (cons value arr)
-))
-
-(def! join (fn* (a b) (js-eval (str "utils.join(" (js-str a) "," (js-str b) ")") ) ))
-
-(def! length (fn* (val)
-    (if (sequential? val)
-        (js-eval (str
-            "utils.listToJsArrayLength('"
-                (pr-str val)
-            "')"
-        ))
-        (let* (
-                strval (pr-str val)
-            )
+    join: `(fn* (a b) (js-eval (str "utils.join('" a "','" b "')") ) )`,
+    length: `(fn* (val)
+        (if (sequential? val)
             (js-eval (str
-                strval
-                ".slice(0, 2) === '0x' ? "
-                strval
-                ".substring(2).length / 2 : "
-                strval
-                ".length / 2"
+                "utils.listToJsArrayLength('"
+                    (pr-str val)
+                "')"
             ))
+            (let* (
+                    strval (pr-str val)
+                )
+                (js-eval (str
+                    strval
+                    ".slice(0, 2) === '0x' ? "
+                    strval
+                    ".substring(2).length / 2 : "
+                    strval
+                    ".length / 2"
+                ))
+            )
         )
-    )
-))
-`)
+    )`,
 
-/* EVM */
+    encode: '(fn* (a) (js-eval (str "utils.encode(" (js-str a) ")") ))',
+    evm_unsign: '(fn* (a) (js-eval (str "utils.evm_unsign(" (js-str a) ")") ))',
+    bignumber: '(fn* (a) (js-eval (str "utils.BN(" (js-str a) ")") ))',
 
-await mal.reps(`
-(def! add (fn* (a b) (js-eval (str "utils.BN(" (js-str a) ").add(utils.BN(" (js-str b) "))"))))
+}
 
-(def! sub (fn* (a b) (js-eval (str "utils.BN(" (js-str a) ").sub(utils.BN(" (js-str b) "))"))))
+async function init() {
+    for (fname of Object.keys(all_functions)) {
+        await mal.rep(`(def! ${fname} ${all_functions[fname]})`);
+    }
 
-(def! mul (fn* (a b) (js-eval (str "utils.BN(" (js-str a) ").mul(utils.BN(" (js-str b) "))"))))
+    await mal.reps(`
+    (def! t2 (fn* (a b) (list a b "ptr") ))
 
-(def! div (fn* (a b) (js-eval (str "utils.BN(" (js-str a) ").div(utils.BN(" (js-str b) "))"))))
+    (def! t12 (fn* (a) (first a) ))
 
-;sdiv
+    (def! t21 (fn* (a) (nth a 1) ))
 
-(def! mod (fn* (a b) (js-eval (str "utils.BN(" (js-str a) ").mod(utils.BN(" (js-str b) "))"))))
+    `)
 
-;smod
+    await mal.reps(`
+    (def! balances {})
 
-;(def! exp (fn* (a b) (js-eval (str "utils.BN(" (js-str a) ").pow(utils.BN(" (js-str b) "))"))))
+    (def! keccak256 (fn* (& xs) (js-eval (str "utils.keccak256('" (reduce str (map encode xs) "" ) "')") )))
 
-(def! exp (fn* (a b) (js-eval (str "utils.limited_pow(" (js-str a) "," (js-str b) ")"))))
+    (def! revert (fn* (a) (throw a) ) )
 
-(def! lt (fn* (a b) (js-eval (str "utils.BN(" (js-str a) ").lt(utils.BN(" (js-str b) "))"))))
+    (def! return (fn* (a) a ))
 
-(def! gt (fn* (a b) (js-eval (str "utils.BN(" (js-str a) ").gt(utils.BN(" (js-str b) "))"))))
+    (def! eth-call (fn* (address fsig argList) (js-eval (str "utils.ethcall('" address "','" fsig "'," (js-str argList) ")" )) ))
 
-;sgt
+    (def! eth-call! (fn* (address fsig argList ethvalue) (js-eval (str "utils.ethsend('" address "','" fsig "'," (js-str argList) "," (js-str ethvalue)  ")" )) ))
 
-;slt
+    (def! eth-sig (fn* (fsig) (js-eval (str "utils.eth_sig('" fsig "')" )) ))
 
-(def! eq (fn* (a b) (js-eval (str "utils.BN(" (js-str a) ").eq(utils.BN(" (js-str b) "))"))))
+    (def! eth-abi-encode (fn* (types values) (js-eval (str "utils.ethabi_encode(" (js-str types) "," (js-str values) ")" )) ))
 
-(def! iszero (fn* (a) (js-eval (str "utils.BN(" (js-str a) ").isZero()"))))
+    (def! eth-abi-decode (fn* (types values) (js-eval (str "utils.ethabi_decode(" (js-str types) "," (js-str values) ")" )) ))
 
-(def! not (fn* (a) (js-eval (str "utils.BN(" (js-str a) ").notn(256)")) ) )
+    (def! wasm-call (fn* (url fname args) (js-eval (str "utils.wasmcall(" (js-str url) "," (js-str fname) "," (js-str args) ")" )) ))
 
-(def! and (fn* (a b) (js-eval (str "utils.BN(" (js-str a) ").and(utils.BN(" (js-str b) "))")) ) )
-
-(def! or (fn* (a b) (js-eval (str "utils.BN(" (js-str a) ").or(utils.BN(" (js-str b) "))")) ) )
-
-(def! xor (fn* (a b) (js-eval (str "utils.BN(" (js-str a) ").xor(utils.BN(" (js-str b) "))")) ) )
-
-(def! byte (fn* (nth b) (js-eval (str "utils.BN(" (js-str b) ").substring(2).substring(" nth "*2, " nth "*2 + 2)" )) ) )
-
-(def! shl (fn* (a b) (js-eval (str "utils.BN(" (js-str b) ").shln(" a ")")) ) )
-
-(def! shr (fn* (a b) (js-eval (str "utils.BN(" (js-str b) ").shrn(" a ")")) ) )
-
-`)
-
-await mal.reps(`
-(def! t2 (fn* (a b) (list a b "ptr") ))
-
-(def! t12 (fn* (a) (first a) ))
-
-(def! t21 (fn* (a) (nth a 1) ))
-
-(def! msize (fn* () 256 ))
-
-`)
-
-await mal.reps(`
-(def! balances {})
-
-(def! gas (fn* () (get cenv "gas")))
-
-(def! address (fn* () (get cenv "address")))
-
-(def! balance (fn* (addr) (get balances addr)))
-
-(def! selfbalance (fn* () (get balances (address))))
-
-(def! caller (fn* (address) (get cenv "caller" )))
-
-(def! callvalue (fn* (address) (get cenv "callvalue" )))
-
-(def! calldatasize (fn* () 8))
-
-(def! codesize (fn* () 22200 ))
-
-(def! extcodesize (fn* (address) 0 ))
-
-(def! returndatasize (fn* () 0 ))
-
-(def! extcodehash (fn* (address) 0 ))
-
-(def! chainid (fn* () (get cenv "chainid" )))
-
-(def! origin (fn* () (get cenv "origin" )))
-
-(def! gasprice (fn* () (get cenv "gasPrice" )))
-
-(def! blockhash (fn* () (get cenv "blockhash" )))
-
-(def! coinbase (fn* () (get cenv "coinbase" )))
-
-(def! timestamp (fn* (a b) (js-eval "new Date().getTime()") ) )
-
-(def! number (fn* () (get cenv "number" )))
-
-(def! difficulty (fn* () (get cenv "difficulty" )))
-
-(def! gaslimit (fn* () (get cenv "gasLimit" )))
-
-(def! keccak256 (fn* (& xs) (js-eval (str "utils.keccak256('" (reduce str (map encode xs) "" ) "')") )))
-
-(def! revert (fn* (a) (throw a) ) )
-
-(def! return (fn* (a) a ))
-
-(def! return# (fn* (a) (js-eval (str "utils.return_d(" (js-str a) ")" )) ))
-
-(def! eth-call (fn* (address fsig argList) (js-eval (str "utils.ethcall('" address "','" fsig "'," (js-str argList) ")" )) ))
-
-(def! eth-call! (fn* (address fsig argList ethvalue) (js-eval (str "utils.ethsend('" address "','" fsig "'," (js-str argList) "," (js-str ethvalue)  ")" )) ))
-
-(def! eth-abi-encode (fn* (types values) (js-eval (str "utils.ethabi_encode(" (js-str types) "," (js-str values) ")" )) ))
-
-(def! eth-abi-decode (fn* (types values) (js-eval (str "utils.ethabi_decode(" (js-str types) "," (js-str values) ")" )) ))
-
-(def! wasm-call (fn* (url fname args) (js-eval (str "utils.wasmcall(" (js-str url) "," (js-str fname) "," (js-str args) ")" )) ))
-
-`)
-
-/*  */
-
-await mal.reps(Object.values(bootstrap_functions).join('\n\n'));
-
-
-/* EVM */
-
-// addmod
-// mulmod
-// signextend
-// calldataload
-// calldatacopy
-// codecopy
-// extcodecopy
-// create
-// create2
-// call
-// callcode
-// delegatecall
-// staticcall
-// logs
+    `)
 }
 
 const DEFAULT_TXOBJ = {
@@ -509,58 +602,77 @@ const DEFAULT_TXOBJ = {
 
 const underNumberLimit = bnval => bnval.abs().lt(new BN(2).pow(new BN(16)));
 
+Object.assign(all_functions, base_functions);
+mal.functions = all_functions;
+mal.extend = obj => {
+    Object.assign(all_functions, obj);
+}
+mal.extend(bootstrap_functions);
+
 mal.getBackend = async (address, provider, signer) => {
     address = address || '0x81bD2984bE297E18F310BAef6b895ea089484968';
+
     const dec = async bnval => {
+        console.log('dec', bnval);
         if (bnval instanceof Promise) bnval = await bnval;
+        if (typeof bnval === 'number' || typeof bnval === 'object' && bnval._hex) {
+            bnval = toBN(bnval);
+        }
         if(!bnval) return bnval;
 
-        if (typeof bnval === 'number') {
-            bnval = new BN(bnval);
-        } else if (typeof bnval === 'object' && bnval._hex) {
-            bnval = new BN(bnval._hex.substring(2), 16);
-        } else if (bnval instanceof Array) {
+        if (bnval instanceof Array) {
             let vals = []
             for (let val of bnval) {
                 vals.push(await dec(val));
             }
             return vals;
         }
-
-        if (BN.isBN(bnval)) {
-            return underNumberLimit(bnval) ? bnval.toNumber() : bnval;
-        }
         return bnval;
     }
 
     const from = signer ? await signer.getAddress() : '0xfCbCE2e4d0E19642d3a2412D84088F24bFB33a48';
-    const chainid = provider ? (await provider.getNetwork()).chainId : 3;
 
     await init();
 
     const interpreter = {
       address,
-      call: async (mal_expression, txObj) => {
-        mal_expression = mal_expression.replace(/_/g, '');
+      call: async (expr, txObj = {}, returntypes) => {
+        // expr = expr.replace(/_/g, '');
         txObj = Object.assign({ from }, DEFAULT_TXOBJ, txObj);
+        txObj.data = hexToUint8Array(mal.encode(expr).encoded);
+        txObj.to = address;
 
-        await mal.rep(`(def! cenv {
-          "gas" 176000
-          "gasLimit" ${txObj.gasLimit}
-          "address" (str "${address}")
-          "callvalue" (js-eval "utils.BN(${txObj.value})")
-          "gasPrice" (js-eval "utils.BN(${txObj.gasPrice})")
-          "caller" (str "${txObj.from}")
-          "number" (js-eval "utils.BN(3)")
-          "coinbase" (str "0x0000000000000000000000000000000000000000")
-          "blockhash" (str "0x37b89115ab3653201f2f995d2d0c50cb99b65251f530ed496470b9102e035d5f")
-          "origin" (str "${txObj.from}")
-          "difficulty" (js-eval "utils.BN(300)")
-          "chainid" ${chainid}
-        })`);
+        const internalCallWrap = (index, dataObj) => {}
+        const getCache = () => {}
 
-        const answ = await mal.re(mal_expression);
-        return dec(answ);
+        // receive tx obj
+        mal.jsvm.deploy({ data: txObj.data, to: address });
+        mal.jsvm_env = mal.jsvm.call(txObj, internalCallWrap, null, getCache);
+
+        Object.keys(mal.jsvm_env).forEach(fname => {
+            if (!native_extensions.evm[fname]) {
+                native_extensions.evm[fname] = mal.jsvm_env[fname];
+            }
+        });
+
+        let answ;
+        try {
+            answ = await mal.re(expr);
+        } catch (e) {
+            console.log(e);
+            throw new Error(e);
+        }
+
+        answ = await dec(answ);
+        if (returntypes) {
+            answ = mal.decoderaw(answ, returntypes);
+        }
+        else if (BN.isBN(answ)) {
+            // default return type is uint
+            return underNumberLimit(answ) ? answ.toNumber() : answ;
+        }
+
+        return answ;
       },
       provider,
       signer: signer || { getAddress: () => from },

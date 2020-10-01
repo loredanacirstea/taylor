@@ -6,5 +6,3 @@ contract TestInterpreter_2 {
         return a + b;
     }
 }
-
-// 22853; 429 exec cost

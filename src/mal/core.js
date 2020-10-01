@@ -143,6 +143,11 @@ function apply(f) {
     return f.apply(f, args);
 }
 
+function apply_list(f) {
+    var args = Array.prototype.slice.call(arguments, 1);
+    return f.apply(f, args[0]);
+}
+
 async function map(f, lst) {
     const elems = [];
     for (let el of lst) {
@@ -246,6 +251,7 @@ var ns = {'type': types._obj_type,
           'empty?': empty_Q,
           'count': count,
           'apply': apply,
+          'apply-list': apply_list,
           'map': map,
 
           'conj': conj,

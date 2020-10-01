@@ -9,7 +9,7 @@ const { x0, strip0x } = require('../src/utils.js');
 
 describe.each([
     ['chain'],
-    // ['js'],
+    ['js'],
 ])('Test (%s)', (backendname) => {
     let instance, storedfn = {};
     if (backendname === 'chain') {
@@ -18,19 +18,19 @@ describe.each([
                 console.log('****Tay', t.address);
                 instance = tay.getTay(t.provider, t.signer)(t.address);
             })
-            //   .then(() => tay.js.getBackend(instance.address, instance.provider, instance.signer))
+            .then(() => tay.js.getBackend(instance.address, instance.provider, instance.signer))
         }, 50000);
     } else {
-        // beforeAll(() => {
-        //     return tay.js.getBackend(null, provider, signer)
-        //         .then(inst => instance = inst);
-        // });
+        beforeAll(() => {
+            return tay.js.getBackend(null, provider, signer)
+                .then(inst => instance = inst);
+        });
     }
 
     const alltests = Object.assign({},
         tests.evm,
         tests.core,
-        tests.stored,
+        // tests.stored,
     )
 
     for (name of Object.keys(alltests)) {
@@ -64,7 +64,9 @@ describe.each([
                     }
                 }
 
-                let resp = await instance.call(tt.test, tt.txObj || {}, tt.decode);
+                const func = tt.transaction ? instance.send : instance.call;
+
+                let resp = await func(tt.test, tt.txObj || {}, tt.decode);
                 if (tt.process) resp = tt.process(resp, instance);
                 expect(resp).toEqual(tt.result);
             }, tt.wait || 10000);
@@ -197,22 +199,22 @@ describe.each([
         expect(resp).toEqual(Ballot.runtime_bytecode);
         await instance.send(`(interpret "${Ballot.constructor_bytecode}" "0x")`, {}, null);
 
-        // get chairperson
+        // chairperson()
         resp = await instance.call(`(interpret "${Ballot.runtime_bytecode}" "0x2e4176cf")`, {}, null);
         expect(resp).toEqual(x0(strip0x(account).padStart(64, '0')));
 
-        // winnerName
+        // winnerName()
         resp = await instance.call(`(interpret "${Ballot.runtime_bytecode}" "0xe2ba53f0")`, {}, null);
         expect(resp).toEqual('0x0000000000000000000000000000000000000000000000000000000000000020000000000000000000000000000000000000000000000000000000000000000970726f706f73616c310000000000000000000000000000000000000000000000');
 
-        // winningProposal
+        // winningProposal()
         resp = await instance.call(`(interpret "${Ballot.runtime_bytecode}" "0x609ff1bd")`, {}, null);
         expect(resp).toEqual('0x0000000000000000000000000000000000000000000000000000000000000000');
 
-        // vote proposal 1
+        // vote()   proposal 1
         await instance.send(`(interpret "${Ballot.runtime_bytecode}" "0x0121b93f0000000000000000000000000000000000000000000000000000000000000001")`, {}, null);
 
-        // get proposal 1
+        // proposals(uint256) - get proposal 1
         resp = await instance.call(`(interpret "${Ballot.runtime_bytecode}" "0x013cf08b0000000000000000000000000000000000000000000000000000000000000001")`, {}, null);
         expect(resp).toEqual('0x00000000000000000000000000000000000000000000000000000000000000400000000000000000000000000000000000000000000000000000000000000001000000000000000000000000000000000000000000000000000000000000000970726f706f73616c320000000000000000000000000000000000000000000000');
 

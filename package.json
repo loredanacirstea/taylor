@@ -30,7 +30,8 @@
     "webpack-cli": "^3.3.12"
   },
   "dependencies": {
-    "ethers": "^5.0.5"
+    "ethers": "^5.0.5",
+    "ewasm-jsvm": "file:../../wasm/ewasm-jsvm"
   },
   "publishConfig": {
     "access": "public"
