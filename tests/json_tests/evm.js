@@ -352,8 +352,15 @@ const tests = {
         },
         {
             test: '(sar_ 1 -5)',
-            result: -3,
-            skip: true,
+            // result: -3,
+            decode: 'hex',
+            result: '0xfffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffd',
+        },
+        {
+            test: '(sar_ 3 -5)',
+            // result: -1,
+            decode: 'hex',
+            result: '0xffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff',
         },
     ],
     addmod_: [

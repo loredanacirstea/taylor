@@ -410,7 +410,15 @@ const native_extensions = {
             mal.jsvm_env.storageStore(hexToUint8Array(_key), hexToUint8Array(_value));
             return key;
         },
-
+        sar: (nobits, value) => {
+            const _nobits = nobits.toNumber();
+            let valueBase2 = value.toTwos(256).toString(2);
+            // remove LSB * _nobits
+            valueBase2 = valueBase2.substring(0, valueBase2.length - _nobits);
+            // add MSB * _nobits
+            valueBase2 = valueBase2[0].repeat(_nobits) + valueBase2;
+            return (new BN(valueBase2, 2)).fromTwos(256);
+        }
     },
     wevm: {
         calldatacopy__: (calldOffset, calldLen) => {

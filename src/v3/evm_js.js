@@ -53,7 +53,7 @@ const evm = {
 	byte:	'(fn* (nth b) (js-eval (str "utils.BN(" (js-str b) ").substring(2).substring(" nth "*2, " nth "*2 + 2)" )) )',
 	shl:	'(fn* (a b) (js-eval (str "utils.BN(" (js-str b) ").shln(" a ")")) )',
 	shr:	'(fn* (a b) (js-eval (str "utils.BN(" (js-str b) ").shrn(" a ")")) )',
-	sar:	'unimplemented',
+	sar:	`(fn* (a b) (js-eval (str "utils.evm.sar(utils.BN(" (js-str a) "),utils.BN(" (js-str b) "))")) )`,
 
     keccak256:	`(fn* (a) (js-eval (str "utils.keccak256_(" (js-str a) ")") ))`,
     sha3:	    'keccak256_',
