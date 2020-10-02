@@ -5,6 +5,24 @@ const tests = {
             result: 12,
         },
         {
+            test: '(add_ -9 -3)',
+            // result: -12,
+            result: '0xfffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff4',
+            decode: 'hex',
+        },
+        {
+            test: '(add_ -9 3)',
+            // result: -6,
+            result: '0xfffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffa',
+            decode: 'hex',
+        },
+        {
+            test: '(add_ 3 -9)',
+            // result: -6,
+            result: '0xfffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffa',
+            decode: 'hex',
+        },
+        {
             test: '(add_ 9 0)',
             result: 9,
         },
@@ -27,6 +45,28 @@ const tests = {
             result: 6,
         },
         {
+            test: '(sub_ -9 -3)',
+            // result: -6,
+            result: '0xfffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffa',
+            decode: 'hex',
+        },
+        {
+            test: '(sub_ -9 3)',
+            // result: -12,
+            result: '0xfffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff4',
+            decode: 'hex',
+        },
+        {
+            test: '(sub_ 3 -9)',
+            result: 12,
+        },
+        {
+            test: '(sub_ 3 19)',
+            // result: -16,
+            result: '0xfffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff0',
+            decode: 'hex',
+        },
+        {
             test: '(sub_ 0 0)',
             result: 0,
         },
@@ -42,7 +82,27 @@ const tests = {
             result: 27,
         },
         {
+            test: '(mul_ 9 -3)',
+            // result: -27,
+            result: '0xffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffe5',
+            decode: 'hex',
+        },
+        {
+            test: '(mul_ -9 3)',
+            // result: -27,
+            result: '0xffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffe5',
+            decode: 'hex',
+        },
+        {
+            test: '(mul_ -9 -3)',
+            result: 27,
+        },
+        {
             test: '(mul_ 0 3)',
+            result: 0,
+        },
+        {
+            test: '(mul_ -9 0)',
             result: 0,
         },
         {
@@ -216,6 +276,20 @@ const tests = {
             result: 256,
         },
         {
+            test: '(exp_ -2 8)',
+            result: 256,
+        },
+        {
+            test: '(exp_ -2 7)',
+            // result: -128,
+            result: '0xffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff80',
+            decode: 'hex',
+        },
+        {
+            test: '(exp_ 2 -8)',
+            result: 0,
+        },
+        {
             test: '(exp_ 2 32)',
             result: 4294967296,
             process: resp => resp.toNumber(),
@@ -223,6 +297,13 @@ const tests = {
         {
             test: '(exp_ 2 0)',
             result: 1,
+        },
+        {
+            test: '(exp_ -2 33)',
+            // result: -8589934592,
+            // process: resp => resp.toNumber(),
+            result: '0xfffffffffffffffffffffffffffffffffffffffffffffffffffffffe00000000',
+            decode: 'hex',
         },
         {
             test: '(exp_ 0 8)',
@@ -233,6 +314,11 @@ const tests = {
         {
             test: '(not_ (not_ 12))',
             result: 12,
+        },
+        {
+            test: '(not_ 0)',
+            result: '0xffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff',
+            decode: 'hex',
         },
     ],
     lt_: [
@@ -312,6 +398,18 @@ const tests = {
             test: '(eq_ 7 7)',
             result: 1,
         },
+        {
+            test: '(eq_ -7 -7)',
+            result: 1,
+        },
+        {
+            test: '(eq_ -7 7)',
+            result: 0,
+        },
+        {
+            test: '(eq_ -4294967295 4294967295)',
+            result: 0,
+        },
     ],
     iszero_: [
         {
@@ -321,6 +419,10 @@ const tests = {
         {
             test: '(iszero_ 0)',
             result: 1,
+        },
+        {
+            test: '(iszero_ -4)',
+            result: 0,
         },
     ],
     and_: [
@@ -405,6 +507,7 @@ const tests = {
         {
             test: '(signextend_ 2 12)',
             result: 0xc,
+            skip: true,
         },
     ],
     gas_: [
