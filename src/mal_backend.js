@@ -410,6 +410,12 @@ const native_extensions = {
             mal.jsvm_env.storageStore(hexToUint8Array(_key), hexToUint8Array(_value));
             return key;
         },
+        uint256Max: () => new BN('10000000000000000000000000000000000000000000000000000000000000000', 16),
+        // mimick evm overflow
+        add: (a, b) => a.add(b).mod(native_extensions.evm.uint256Max()),
+        mul: (a, b) => a.mul(b).mod(native_extensions.evm.uint256Max()),
+        // mimick evm underflow
+        sub: (a, b) => a.sub(b).mod(native_extensions.evm.uint256Max()),
         sar: (nobits, value) => {
             const _nobits = nobits.toNumber();
             let valueBase2 = value.toTwos(256).toString(2);

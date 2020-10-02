@@ -1,8 +1,8 @@
 const evm = {
     stop: 	'(fn* () (js-eval "utils.evm.stop()") )',
-	add:  	'(fn* (a b) (js-eval (str "utils.BN(" (js-str a) ").add(utils.BN(" (js-str b) "))")))',
-	mul:  	'(fn* (a b) (js-eval (str "utils.BN(" (js-str a) ").mul(utils.BN(" (js-str b) "))")))',
-	sub:  	'(fn* (a b) (js-eval (str "utils.BN(" (js-str a) ").sub(utils.BN(" (js-str b) "))")))',
+	add: '(fn* (a b) (js-eval (str "utils.evm.add(utils.BN(" (js-str a) "),utils.BN(" (js-str b) "))")))',
+	mul: '(fn* (a b) (js-eval (str "utils.evm.mul(utils.BN(" (js-str a) "),utils.BN(" (js-str b) "))")))',
+	sub: '(fn* (a b) (js-eval (str "utils.evm.sub(utils.BN(" (js-str a) "),utils.BN(" (js-str b) "))")))',
 	div:  	`(fn* (a b)
 		(if (iszero_ (bignumber b))
 			(bignumber 0)

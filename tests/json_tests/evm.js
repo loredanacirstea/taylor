@@ -12,6 +12,14 @@ const tests = {
             test: '(add_ 0 0)',
             result: 0,
         },
+        {
+            test: '(add_ (exp_ 2 256) 0)',
+            result: 0,
+        },
+        {
+            test: '(add_ (exp_ 2 256) 1)',
+            result: 1,
+        },
     ],
     sub_: [
         {
@@ -21,6 +29,11 @@ const tests = {
         {
             test: '(sub_ 0 0)',
             result: 0,
+        },
+        {
+            test: '(sub_ 0 1)',
+            result: '0xffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff',
+            decode: 'hex',
         },
     ],
     mul_: [
@@ -35,6 +48,19 @@ const tests = {
         {
             test: '(mul_ 0 0)',
             result: 0,
+        },
+        {
+            test: '(mul_ (exp_ 2 255) 2)',
+            result: 0,
+        },
+        {
+            test: '(mul_ (exp_ 2 255) 4)',
+            result: 0,
+        },
+        {
+            test: '(mul_ (exp_ 2 255) 3)',
+            result: '0x8000000000000000000000000000000000000000000000000000000000000000',
+            decode: 'hex',
         },
     ],
     div_: [
