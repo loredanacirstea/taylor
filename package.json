@@ -1,6 +1,6 @@
 {
   "name": "@pipeos/taylor",
-  "version": "0.0.9",
+  "version": "0.0.10",
   "description": "Lisp-like functional language, interpreted by WebAssembly & the Ethereum Virtual Machine",
   "main": "src/index.js",
   "directories": {
@@ -39,6 +39,7 @@
     "build/*",
     "contracts/*",
     "dist/*",
-    "src/*"
+    "src/*",
+    "tests/json_tests/*"
   ]
 }

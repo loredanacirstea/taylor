@@ -1,5 +1,5 @@
 const ethers = require('ethers');
-const { deployContractFromPath } = require('../../src/deploy.js');
+const { deployContractFromPath } = require('../../src/deploy_path.js');
 const { compileTaylorAndWrite } = require('../../src/build_utils.js');
 const taylor = require('../../src/index.js');
 
