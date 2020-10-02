@@ -1,6 +1,3 @@
-const fs = require('fs')
-const solc = require('solc')
-
 let cpath = __dirname.split('/');
 cpath.pop();
 const TAYLOR_PATH = cpath.join('/') + '/contracts/mal_like_tay.sol';
@@ -23,13 +20,16 @@ var solcDataSol = source => JSON.stringify({
 });
 
 const compileContract = filePath => {
+  const fs = require('fs')
+  const solc = require('solc');
+
   const source = fs.readFileSync(filePath).toString();
   let solcData = solcDataYul;
-  
+
   if (!filePath.includes('tay.sol')) {
     solcData = solcDataSol;
   }
-  
+
   const output = JSON.parse(solc.compile(solcData(source)));
 
   if (output.errors.length > 1 || !output.contracts) {
