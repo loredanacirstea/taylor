@@ -418,7 +418,12 @@ const native_extensions = {
         sub: (a, b) => a.sub(b).mod(native_extensions.evm.uint256Max()),
         sar: (nobits, value) => {
             const _nobits = nobits.toNumber();
-            let valueBase2 = value.toTwos(256).toString(2);
+            let valueBase2;
+            if (value.isNeg()) {
+                valueBase2 = value.toTwos(256).toString(2);
+            } else {
+                valueBase2 = value.toString(2).padStart(256, '0');
+            }
             // remove LSB * _nobits
             valueBase2 = valueBase2.substring(0, valueBase2.length - _nobits);
             // add MSB * _nobits
