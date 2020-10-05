@@ -23,6 +23,7 @@ const _lkeyToKey = lkey => {
     return letterToNumber(lkey) + _lkeyToKey(lkey.substring(1));
 }
 const lkeyToKey = lkey => _lkeyToKey(lkey).split(';').reverse().join(';');
+const clone = value => JSON.parse(JSON.stringify(value));
 
 class CanvasDatagrid extends React.Component {
     tayprops = ['formatter', 'onCellChange']
@@ -236,7 +237,7 @@ class Luxor extends React.Component {
         this.activeSheet = 0;
         DEFAULT_SHEETS.map(d => this.formattedData[d.id] = {});
 
-        let data = JSON.parse(JSON.stringify(DEFAULT_SHEETS));
+        let data = clone(DEFAULT_SHEETS);
         data = this.setWorspace(data);
 
         this.state = {
@@ -268,7 +269,7 @@ class Luxor extends React.Component {
             chainid = (await this.props.taylor_js.provider.getNetwork()).chainId;
             chainid = parseInt(chainid);
         }
-        let data = JSON.parse(JSON.stringify(DEFAULT_SHEETS));
+        let data = clone(DEFAULT_SHEETS);
         let sheetid = 0;
         data = this.setWorspace(data);
 
@@ -346,7 +347,7 @@ class Luxor extends React.Component {
     }
 
     mergeData(sheetId, newdata) {
-        const activeData = JSON.parse(JSON.stringify(this.state.data));
+        const activeData = clone(this.state.data);
         const sheetIndx = activeData.findIndex(sheet => sheet.id === sheetId);
 
         const rowkeys = Object.keys(newdata);
@@ -354,12 +355,11 @@ class Luxor extends React.Component {
             const colkeys = Object.keys(newdata[ri]);
             for (let ci of colkeys) {
                 if (!activeData[sheetIndx].cells[ri]) activeData[sheetIndx].cells[ri] = {}
-                activeData[sheetIndx].cells[ri][ci] = Object.assign(
-                    {},
-                    activeData[sheetIndx].cells[ri][ci],
-                    newdata[ri][ci],
-                    {sheetId},
-                )
+                activeData[sheetIndx].cells[ri][ci] = clone({
+                    ...activeData[sheetIndx].cells[ri][ci],
+                    ...newdata[ri][ci],
+                    sheetId,
+                });
                 const key = cellkey(ri, ci);
                 this.addToDataMap(sheetId, key, newdata[ri][ci].text);
             }
@@ -510,7 +510,7 @@ class Luxor extends React.Component {
         const key = cellkey(i, j);
         const saveddata = {};
         saveddata[i] = {};
-        saveddata[i][j] = cell;
+        saveddata[i][j] = clone(cell);
         saveddata[i][j].text = value;
         saveddata[i][j].sheetId = sheetId;
         this.mergeData(sheetId, saveddata);
@@ -529,7 +529,7 @@ class Luxor extends React.Component {
             const depsource = this.formattedData[sheetId][depkey] ? this.formattedData[sheetId][depkey].source : null;
             if (depsource) {
                 const depvalue = await this.executeCell(sheetId, depkey, depsource);
-                this._onCellChange(sheetId, depkey, depvalue);
+                await this._onCellChange(sheetId, depkey, depvalue);
             }
         }
     }
@@ -583,9 +583,12 @@ class Luxor extends React.Component {
     addDepToDataMap(sheetId, dependent_key, dependency_key, source) {
         if (!this.formattedData[sheetId]) this.formattedData[sheetId] = {};
         if (!this.formattedData[sheetId][dependency_key]) this.formattedData[sheetId][dependency_key] = {};
-        if (!this.formattedData[sheetId][dependency_key].deps) this.formattedData[sheetId][dependency_key].deps = new Set();
-        this.formattedData[sheetId][dependency_key].deps.add(dependent_key);
-        
+        if (!this.formattedData[sheetId][dependency_key].deps || !this.formattedData[sheetId][dependency_key].deps.keys) this.formattedData[sheetId][dependency_key].deps = [];
+
+        const tempset = new Set(this.formattedData[sheetId][dependency_key].deps);
+        tempset.add(dependent_key);
+        this.formattedData[sheetId][dependency_key].deps = [...tempset];
+
         if (!this.formattedData[sheetId][dependent_key]) this.formattedData[sheetId][dependent_key] = {};
         this.formattedData[sheetId][dependent_key].source = source;
     }
@@ -593,7 +596,7 @@ class Luxor extends React.Component {
     getDepsFromDataMap(sheetId, key) {
         if (!this.formattedData[sheetId]) this.formattedData[sheetId] = {};
         if (!this.formattedData[sheetId][key] || !this.formattedData[sheetId][key].deps) return [];
-        return [...this.formattedData[sheetId][key].deps];
+        return this.formattedData[sheetId][key].deps;
     }
 
     getFromDataMap(sheetId, key) {
@@ -606,7 +609,7 @@ class Luxor extends React.Component {
             <div style={{ height: '100%' }}>
                 <CanvasDatagrid
                     formulas={{}}
-                    data={this.state.data}
+                    data={clone(this.state.data)}
                     formatter={this.formatter}
                     Cell={ getCell({onSend: this.onSend, onExecute: this.executeCell}) }
                     onChangeCell={this.onChangeCell}
