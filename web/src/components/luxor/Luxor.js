@@ -87,6 +87,7 @@ class CanvasDatagrid extends React.Component {
                 onChangeSelectedSheet={this.onChangeSelectedSheet}
                 onChangeCell={this.props.onChangeCell}
                 onChangeCells={this.props.onChangeCells}
+                onDeleteCells={this.props.onDeleteCells}
             />
         )
     }
@@ -249,6 +250,7 @@ class Luxor extends React.Component {
         this.onChangeCells = this.onChangeCells.bind(this);
         this.onChangeSelectedSheet = this.onChangeSelectedSheet.bind(this);
         this.onChange = this.onChange.bind(this);
+        this.onDeleteCells = this.onDeleteCells.bind(this);
         this.onSend = this.onSend.bind(this);
         this.executeCell = this.executeCell.bind(this);
     }
@@ -500,8 +502,23 @@ class Luxor extends React.Component {
         return code;
     }
 
-    async onChangeCells(sheetId, cells) {
-        console.log('onChangeCells sheetId, cells', sheetId, cells);
+    async onChangeCells(sheetId, cells) {}
+
+    async onDeleteCells(sheetId, activeCell, multiselection) {
+        // [{bounds: {top: 19, bottom: 22, left: 4, right: 4}}]
+
+        if (multiselection.length === 0) {
+            await this.onChangeCell(sheetId, '', activeCell);
+        }
+
+        for (let selection of multiselection) {
+            for (let ri = selection.bounds.top; ri <= selection.bounds.bottom; ri++) {
+                for (let ci = selection.bounds.left; ci <= selection.bounds.right; ci++) {
+                    // empty value
+                    await this.onChangeCell(sheetId, '', {rowIndex: ri.toString(), columnIndex: ci.toString()});
+                }
+            }
+        }
     }
 
     async onChangeCell(sheetId, value, cell) {
@@ -616,6 +633,7 @@ class Luxor extends React.Component {
                     onChangeCells={this.onChangeCells}
                     onChangeSelectedSheet={this.onChangeSelectedSheet}
                     onChange={this.onChange}
+                    onDeleteCells={this.onDeleteCells}
                     style={{ height: '100%', width: '100%' }}
                 />
                 <Button
