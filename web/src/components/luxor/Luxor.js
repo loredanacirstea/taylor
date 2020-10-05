@@ -517,15 +517,12 @@ class Luxor extends React.Component {
 
     replaceCellValues(sheetId, key, inicode) {
         let code = inicode.slice(1);
-        const matches = [...code.matchAll(SHEET_KEY_REGEX)].reverse();
-        for (const match of matches) {
-            const cell_key = match[0];
-            const numberkey = lkeyToKey(cell_key);
+        return matchCellKeys(code, indexes => {
+            const [rowi, coli] = indexes;
+            const numberkey = cellkey(rowi, coli);
             this.addDepToDataMap(sheetId, key, numberkey, inicode);
-            const tayvalue = taylor.jsval2tay(this.getFromDataMap(sheetId, numberkey));
-            code = code.substring(0, match.index) + tayvalue + code.substring(match.index + match[0].length);
-        }
-        return code;
+            return taylor.jsval2tay(this.getFromDataMap(sheetId, numberkey));
+        });
     }
 
     runExtensions(code) {
@@ -565,6 +562,8 @@ class Luxor extends React.Component {
     async onChangeCell(sheetId, value, cell) {
         const data = clone(cell);
         data.text = value;
+        if (parseInt(value)) data.text = parseInt(value);
+        else if (parseFloat(value)) data.text = parseFloat(value);
         data.sheetId = sheetId;
         await this._onChangeCell(data);
     }
