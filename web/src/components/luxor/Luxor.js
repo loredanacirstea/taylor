@@ -26,15 +26,15 @@ const lkeyToKey = lkey => _lkeyToKey(lkey).split(';').reverse().join(';');
 
 class CanvasDatagrid extends React.Component {
     tayprops = ['formatter', 'onCellChange']
-    
+
     constructor(props) {
         super(props);
 
         this.onChangeSelectedSheet = this.onChangeSelectedSheet.bind(this);
     }
-    
+
     updateAttributes(nextProps) {
-        
+
     }
     componentWillReceiveProps(nextProps) {
     }
@@ -56,7 +56,7 @@ class CanvasDatagrid extends React.Component {
         // const colorInactive = '#1A202C';
         // const activeSheetBtn = document.getElementsByClassName("css-1e5clkk");
         // const kids = document.getElementsByClassName("css-197w9ay")[0].children;
-        
+
         // for (const kid of kids) {
         //     kid.children[0].style.backgroundColor = colorInactive;
         //     kid.children[1].style.backgroundColor = colorInactive;
@@ -129,7 +129,7 @@ const DEFAULT_SHEETS = [
         selections: [],
         columnSizes: { 3: 200, 5: 200, 6: 200 },
     },
-    { 
+    {
         name: 'All Formulas',
         id: 5,
         cells: { 1: { 1: { text: '' } } },
@@ -176,7 +176,7 @@ const CellEthCallBang = (props) => {
     return (
         <>
         <DefaultCell {...props} />
-        <Arrow 
+        <Arrow
             x={x2}
             y={y2}
             points={[0, 0, 5, 0]}
@@ -428,7 +428,7 @@ class Luxor extends React.Component {
             && typeof this.formattedData[sheetId][key].value !== 'undefined'
             && this.formattedData[sheetId][key].value !== null
         ) ? this.formattedData[sheetId][key].value : value;
-        
+
         if (response instanceof Object && !(response instanceof Array)) {
             if (response._hex) response = new taylor.BN(response._hex.substring(2), 16);
             if (taylor.BN.isBN(response)) return response.toString(10);
@@ -458,7 +458,7 @@ class Luxor extends React.Component {
         if (!api) return value;
         const isTx = value.includes('!');
         if (!executeSend && isTx) return value;
-        
+
         try {
             let newvalue = this.runExtensions(value);
             newvalue = this.replaceCellValues(sheetId, key, newvalue);
@@ -520,10 +520,10 @@ class Luxor extends React.Component {
     async _onCellChange(sheetId, key, newvalue) {
         const execvalue = await this.executeCell(sheetId, key, newvalue)
         this.addToDataMap(sheetId, key, execvalue);
-        
+
         const deps = this.getDepsFromDataMap(sheetId, key);
         const deplength = deps.length;
-        
+
         for (let i = 0;  i < deplength; i++) {
             const depkey = deps[i];
             const depsource = this.formattedData[sheetId][depkey] ? this.formattedData[sheetId][depkey].source : null;
@@ -557,7 +557,7 @@ class Luxor extends React.Component {
 
             for (let i of Object.keys(rows)) {
                 if (!rows[i]) continue;
-                
+
                 const row = rows[i];
                 for (let j of Object.keys(row)) {
                     if (!row[j]) continue;
@@ -688,7 +688,7 @@ function luxorAllFormulas(interpreter_web3, interpreter_js) {
 
     let data = [['JS: use "="', 'Web3: use "$"'],[],[]]
     const header = ['', 'Expression', 'Description'];
-    
+
     data.push(['JS & Web3']);
     data.push(header);
 
@@ -715,7 +715,7 @@ function luxorTestsDataEthCall(addresses, fsigs, inirow=0, rows=50, cols=8) {
     inirow += 2;
     const header = ['Address', 'Function Sig', 'Arguments', 'JS Result', 'Total Balance'];
     const data = [header];
-    
+
     const { address, users } = addresses;
     users.forEach((useraddr, i) => {
         const row = i + inirow;
@@ -750,7 +750,7 @@ function luxorEthPipeExample(addresses) {
     // const edges3 = ``
     // const expr2 = `=(eth-pipe "J1" (list (list A2 B2) (list A5 B5)) C2 D2)`
     // const payable = `=(list)`
-    
+
     data.push(['Address', 'Function Abi', 'Graph Edges', 'Payable Index', 'Formula'])
     data.push([
         addresses.vr.address,
@@ -766,12 +766,12 @@ function luxorEthPipeExample(addresses) {
         payable2,
         expr2,
     ]);
-    
+
     data.push([
         addresses.mp.address,
         'buy(address vendor,address buyer,uint256 product_id,uint256 quantity) payable'
     ]);
-    
+
     // data.push([
     //     '0x470171ae1fD4C5A93A899E58FfF7f8585D5C9972',
     //     'getQuantity(address vendor,uint256 product_id)'
@@ -834,9 +834,9 @@ const tayextension = {
         matches.forEach(match => {
             const matchIndex = currentcode.indexOf(match);
             result += currentcode.substring(0, matchIndex);
-            
+
             const tail = currentcode.substring(matchIndex);
-            const end = tail.indexOf(')');            
+            const end = tail.indexOf(')');
             currentcode = tail.substring(end + 1);
 
             const srange = tail.substring(tail.indexOf('srange') + 6, end);
@@ -844,7 +844,7 @@ const tayextension = {
 
             if (args.length !== 2) throw new Error('srange needs two arguments');
             args = args.map(val => [val.substring(0, 1), val.substring(1)]);
-            
+
             const startCode = args[0][0].charCodeAt(0);
             const startDigit = parseInt(args[0][1]);
             const endCode = args[1][0].charCodeAt(0);
@@ -869,7 +869,7 @@ const table_f_ext = (args) => {
     let [letterkey, iter] = args;
     let corner = lkeyToKey(letterkey);
     let [ri, ci] = corner.split(';').map(val => parseInt(val));
-    
+
     if (iter instanceof Object && !(iter instanceof Array)) {
         if (iter._hex) iter = new taylor.BN(iter._hex.substring(2), 16);
         if (taylor.BN.isBN(iter)) iter = [iter.toString(10)];
@@ -885,7 +885,7 @@ const table_f_ext = (args) => {
 
 const _tableRowf = (iter, ri, ci) => {
     const newdata = {};
-        
+
         for (let row of iter) {
             let cci = ci;
             newdata[ri] = {};
@@ -900,7 +900,7 @@ const _tableRowf = (iter, ri, ci) => {
 
 const _tableColf = (iter, ri, ci) => {
     const newdata = {};
-        
+
     for (let row of iter) {
         let rri = ri;
         for (let value of row) {
@@ -920,7 +920,7 @@ const _tableAbi = (cell_table, abi, callback) => {
     if (isTx) {
         abi.outputs = [{name: 'receipt', type: 'object'}];
     }
-    
+
     abi.inputs.forEach(v => {
         iter.push([`${v.name} <${v.type}>`, 0]);
     });
@@ -1084,14 +1084,14 @@ const luxor_extensions = {
 
         const newdata = _tableAbi(cell_table, abi, (fsig, arg_cells, isTx, out_key, pay_key) => {
             const args = arg_cells.map((cellkey, i) => `(eth-abi-encode "${abi.inputs[i].type}" ${cellkey} )`);
-            
+
             if (!isTx && payable.length === 0) {
                 return `=(table-colf "${out_key}" (eth-abi-decode ${output_types} (eth-pipe-evm (list ${args.join(' ')}) ${fsteps} ${outputIndexes} )))`
             } else {
                 return `=(table-rowf "${out_key}" (eth-pipe-evm! (list ${args.join(' ')}) ${fsteps} ${outputIndexes} ${pay_key} ))`
             }
         });
-        
+
         return newdata;
     },
     ethPipeEvm: async (args, interpreter) => {
@@ -1127,7 +1127,7 @@ const luxor_extensions = {
 const iconStyle = {
     color: 'rgb(30, 30, 30)',
     marginLeft: '10px',
-    marginRight: '10px', 
+    marginRight: '10px',
 }
 
 const btnStyle = {

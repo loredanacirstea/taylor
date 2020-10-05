@@ -27,7 +27,7 @@ class TaylorEditor extends Component {
       code = '(add 12 12)';
       encoded = taylor.expr2h(code);
     }
-    
+
     this.scrollRef = React.createRef();
 
     this.state = {
@@ -160,7 +160,7 @@ class TaylorEditor extends Component {
           error = e.message;
         }
         callback({ result, error, gascost, encdata })
-      
+
       } else if (force) {
         let response, error, receipt = {};
         try {
@@ -172,7 +172,7 @@ class TaylorEditor extends Component {
           error = e.message;
           callback({ error, encdata })
         }
-  
+
         if (receipt.status === 0) {
           callback({ error: 'Transaction failed', receipt, encdata })
         } else {
@@ -325,18 +325,18 @@ class TaylorEditor extends Component {
     this.setState({ currentDeployment });
 
     const newtay = await taylor.deploy(provider, signer);
-    
+
     currentDeployment.address = newtay.address;
     if (ftod.length > 0) currentDeployment.waiting = '...bootstrapping';
     this.setState({ currentDeployment });
-    
+
     const receipt = await newtay.bootstrap(ftod).catch(e => {
       console.log('e', e);
       currentDeployment.waiting = `Something went wrong. Please report: ${GH_REPO}/issues`;
       this.setState({ currentDeployment });
     });
     console.log('bootstrap receipt', receipt);
-    
+
     if (receipt) {
       currentDeployment.waiting = false;
       this.setState({ functionsToDeploy: this.defaultFToD(), currentDeployment });
@@ -369,7 +369,7 @@ class TaylorEditor extends Component {
     let consoleStyles = { width, height: height - editorStyles.height };
     let panelStyles = { width, height };
     let luxorStyles = { width, height };
-    
+
     if (width > MIN_WIDTH) {
       const page = width / 3;
       editorStyles.width = page * 2;
@@ -388,7 +388,7 @@ class TaylorEditor extends Component {
     console.log('malbackend', malbackend);
     console.log('tayinterpreter', tayinterpreter);
     console.log('showLuxor', showLuxor);
-    
+
     return (
       <ScrollView
           ref={this.scrollRef}
@@ -562,7 +562,7 @@ class TaylorEditor extends Component {
                   </ListItem>)
                 })
               }
-              
+
             </Content>
             <br></br>
             <Button light

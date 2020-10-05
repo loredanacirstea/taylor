@@ -48,7 +48,7 @@ class MalTayContract extends Component {
     this.onChangeCurrency = this.onChangeCurrency.bind(this);
     this.onChangeGasprofile = this.onChangeGasprofile.bind(this);
     this.onChangeLivePreview = this.onChangeLivePreview.bind(this);
-  
+
     this.setWeb3();
   }
 
@@ -122,7 +122,7 @@ class MalTayContract extends Component {
       return;
     }
     const { provider, signer } = this.state;
-    
+
     this.setState({ backend });
     this.props.onRootChange(backend, this.web3util, await taylor.malBackend.getBackend(this.web3util ? this.web3util.address : null, provider, signer));
     setConfig({ backend });
@@ -191,7 +191,7 @@ class MalTayContract extends Component {
           >
             <Icon name='info' type="FontAwesome" style={btniconStyle} />
           </Button>
-          
+
           <Text style={textStyle}>select backend:</Text>
           <Item picker style={{ borderColor: false, marginRight: '60px' }}>
             <Picker
@@ -250,7 +250,7 @@ class MalTayContract extends Component {
               <Picker.Item label="fastest" value="fastest" key="fastest"/>
             </Picker>
           </Item>
-          
+
           <br></br><br></br>
           <Text style={textStyle}>select root Taylor contract:</Text>
           <Item picker style={{ borderColor: false, marginRight: '10px' }}>
@@ -263,7 +263,7 @@ class MalTayContract extends Component {
               { rootOptions }
             </Picker>
             {this.state.backend === 'injected' || this.state.backend === 'both'
-              ? <Button small light 
+              ? <Button small light
                   onClick={this.props.onDeploy}
                 >
                   <Icon name='rocket' type="FontAwesome" style={{ marginLeft: '5px', marginRight: '5px' }} />
@@ -296,7 +296,7 @@ class MalTayContract extends Component {
 
           <br></br><br></br>
           <Text style={textStyle}>@root functions:</Text>
-          
+
           <Item picker style={{ borderColor: false}}>
             <Picker
               mode="dropdown"
@@ -307,7 +307,7 @@ class MalTayContract extends Component {
                 Object.keys(rootFunctions).map((name, i) => {
                   return <Picker.Item label={'(' + name + ' ...) ' + (rootFunctions[name].registered ? '**' : '*')} value={name} key={i}/>
                 })
-                
+
               }
               {
                 Object.keys(nativeFunctions).map((name, i) => {
