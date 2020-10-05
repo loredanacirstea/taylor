@@ -309,10 +309,12 @@ const native_extensions = {
         liststr = liststr.replace(/(?<!(BN))\(/g, '(list ');
         return mal.re(liststr);
     },
-    listToJsArrayStr: async liststr => {
+    listToJsArrayStr: async (liststr, low=true) => {
         let jsequiv = await native_extensions.listToJsArray(liststr);
-        // if bytelike, we store it in memory and return the pointer
-        jsequiv = native_extensions.replaceBytelike(jsequiv);
+        if (low) {
+            // if bytelike, we store it in memory and return the pointer
+            jsequiv = native_extensions.replaceBytelike(jsequiv);
+        }
         return JSON.stringify(jsequiv);
     },
     listToJsArrayLength: async liststr => {
@@ -323,7 +325,13 @@ const native_extensions = {
         if (typeof val !== 'string') {
             val = JSON.stringify(val);
         }
-        return await native_extensions.listToJsArrayStr(val);
+        return await native_extensions.listToJsArrayStr(val, true);
+    },
+    jsStrExternal: async val => {
+        if (typeof val !== 'string') {
+            val = JSON.stringify(val);
+        }
+        return await native_extensions.listToJsArrayStr(val, false);
     },
     join: (a, b) => {
         if (typeof a !== 'string' || typeof b !== 'string') throw new Error('join argument is not string');
@@ -541,6 +549,8 @@ const base_functions = {
     unimplemented: '(fn* () (throw "unimplemented"))',
     'js-str': '(fn* (val) (js-eval (str "utils.jsStr(`" (pr-str val) "`)" )) )',
 
+    'js-str-external': '(fn* (val) (js-eval (str "utils.jsStrExternal(`" (pr-str val) "`)" )) )',
+
     reduce: '(fn* (f xs init) (if (empty? xs) init (reduce f (rest xs) (f init (first xs)) )))',
     range: '(fn* (start stop step) (js-eval (str "utils.range(" (js-str start) "," (js-str stop) "," (js-str step) ")" )) )',
     push: '(fn* (arr value) (conj arr value) )',
@@ -708,7 +718,7 @@ mal.getBackend = async (address, provider, signer) => {
         return interpreter.extend(`(def! ${name} (fn* (& xs)
             (js-eval (str
                 "utils.${utilname}("
-                    (js-str xs)
+                    (js-str-external xs)
                 ")"
             ))
         ))`)

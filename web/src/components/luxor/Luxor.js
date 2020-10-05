@@ -23,7 +23,17 @@ const _lkeyToKey = lkey => {
     return letterToNumber(lkey) + _lkeyToKey(lkey.substring(1));
 }
 const lkeyToKey = lkey => _lkeyToKey(lkey).split(';').reverse().join(';');
+const lkeyToInd = lkey => lkeyToKey(lkey).split(';').map(val => parseInt(val));
 const clone = value => JSON.parse(JSON.stringify(value));
+const matchCellKeys = (code, callback) => {
+    const matches = [...code.matchAll(SHEET_KEY_REGEX)].reverse();
+    for (const match of matches) {
+        const cell_key = match[0];   // A11
+        const replacement = callback(lkeyToInd(cell_key));
+        code = code.substring(0, match.index) + replacement + code.substring(match.index + match[0].length);
+    }
+    return code;
+}
 
 class CanvasDatagrid extends React.Component {
     tayprops = ['formatter', 'onCellChange']
@@ -357,12 +367,18 @@ class Luxor extends React.Component {
             const colkeys = Object.keys(newdata[ri]);
             for (let ci of colkeys) {
                 if (!activeData[sheetIndx].cells[ri]) activeData[sheetIndx].cells[ri] = {}
+                const key = cellkey(ri, ci);
+                const tocopy = clone(newdata[ri][ci]);
+                delete tocopy.delete;
+
                 activeData[sheetIndx].cells[ri][ci] = clone({
                     ...activeData[sheetIndx].cells[ri][ci],
-                    ...newdata[ri][ci],
+                    ...tocopy,
                     sheetId,
                 });
-                const key = cellkey(ri, ci);
+
+                if (newdata[ri][ci].delete) this.deleteFromDataMap(sheetId, key);
+                // even for delete;
                 this.addToDataMap(sheetId, key, newdata[ri][ci].text);
             }
         }
@@ -372,6 +388,24 @@ class Luxor extends React.Component {
     extendFormulas() {
         if (!this.props.taylor_js) return;
         const self = this;
+        this.props.taylor_js.jsextend('copy!', (args) => {
+            const [oSheetId, topleft, bottomright, tSheetId, tTopLeft] = args;
+            const newdata = luxor_extensions.copy(
+                [oSheetId, topleft, bottomright, tTopLeft],
+                this.state.data,
+                false,
+            );
+            return {response: null, newdata, sheetId: tSheetId};
+        });
+        this.props.taylor_js.jsextend('cut!', (args) => {
+            const [oSheetId, topleft, bottomright, tSheetId, tTopLeft] = args;
+            const newdata = luxor_extensions.copy(
+                [oSheetId, topleft, bottomright, tTopLeft],
+                this.state.data,
+                true,
+            );
+            return {response: null, newdata, sheetId: tSheetId};
+        });
         this.props.taylor_js.jsextend('table-rowf', (args) => {
             const newdata = luxor_extensions.tableRowf(args);
             return {response: null, newdata};
@@ -464,15 +498,14 @@ class Luxor extends React.Component {
         try {
             let newvalue = this.runExtensions(value);
             newvalue = this.replaceCellValues(sheetId, key, newvalue);
-            console.log('-----', isTx)
             if (!isTx) {
                 response = await api.call(newvalue);
             } else {
                 response = await api.sendAndWait(newvalue);
-                console.log('response', response);
+                // console.log('response', response);
             }
             if (response instanceof Object && response.newdata) {
-                this.mergeData(sheetId, response.newdata);
+                this.mergeData(response.sheetId || sheetId, response.newdata);
                 response = '';
             }
         } catch(e) {
@@ -508,33 +541,46 @@ class Luxor extends React.Component {
         // [{bounds: {top: 19, bottom: 22, left: 4, right: 4}}]
 
         if (multiselection.length === 0) {
-            await this.onChangeCell(sheetId, '', activeCell);
+            await this.onDeleteCell(sheetId, activeCell);
         }
 
         for (let selection of multiselection) {
             for (let ri = selection.bounds.top; ri <= selection.bounds.bottom; ri++) {
                 for (let ci = selection.bounds.left; ci <= selection.bounds.right; ci++) {
                     // empty value
-                    await this.onChangeCell(sheetId, '', {rowIndex: ri.toString(), columnIndex: ci.toString()});
+                    await this.onDeleteCell(sheetId, {rowIndex: ri.toString(), columnIndex: ci.toString()});
                 }
             }
         }
     }
 
+    async onDeleteCell(sheetId, cell) {
+        const data = clone(cell);
+        data.text = '';
+        data.delete = true;
+        data.sheetId = sheetId;
+        await this._onChangeCell(data);
+    }
+
     async onChangeCell(sheetId, value, cell) {
-        console.log('onChangeCell', sheetId, value, cell);
+        const data = clone(cell);
+        data.text = value;
+        data.sheetId = sheetId;
+        await this._onChangeCell(data);
+    }
+
+    async _onChangeCell(cell) {
         const i = cell.rowIndex, j = cell.columnIndex;
         const key = cellkey(i, j);
         const saveddata = {};
         saveddata[i] = {};
-        saveddata[i][j] = clone(cell);
-        saveddata[i][j].text = value;
-        saveddata[i][j].sheetId = sheetId;
-        this.mergeData(sheetId, saveddata);
-        await this._onCellChange(sheetId, key, value);
+        saveddata[i][j] = cell;
+
+        this.mergeData(cell.sheetId, saveddata);
+        await this.__onCellChange(cell.sheetId, key, cell.text);
     }
 
-    async _onCellChange(sheetId, key, newvalue) {
+    async __onCellChange(sheetId, key, newvalue) {
         const execvalue = await this.executeCell(sheetId, key, newvalue)
         this.addToDataMap(sheetId, key, execvalue);
 
@@ -546,17 +592,18 @@ class Luxor extends React.Component {
             const depsource = this.formattedData[sheetId][depkey] ? this.formattedData[sheetId][depkey].source : null;
             if (depsource) {
                 const depvalue = await this.executeCell(sheetId, depkey, depsource);
-                await this._onCellChange(sheetId, depkey, depvalue);
+                await this.__onCellChange(sheetId, depkey, depvalue);
             }
         }
     }
 
     onChangeSelectedSheet(sheetId) {
-        console.log('onChangeSelectedSheet', sheetId);
+        // console.log('onChangeSelectedSheet', sheetId);
         this.activeSheet = sheetId;
     }
 
     onChange(newdata) {
+        // ! don't update state from this handle -> produces a cycle
         Storage.set('workspace', {data: newdata[0], formatted: this.formattedData[0]});
     }
 
@@ -591,16 +638,22 @@ class Luxor extends React.Component {
         }
     }
 
+    // formattedData[sheetId][key]
+    // { value, deps: [], source }
+
     addToDataMap(sheetId, key, value) {
         if (!this.formattedData[sheetId]) this.formattedData[sheetId] = {};
         if (!this.formattedData[sheetId][key]) this.formattedData[sheetId][key] = {};
         this.formattedData[sheetId][key].value = value;
     }
 
+    // if A11 depends on B22 and C33
+    // B22.deps = [A11] ; C33.deps = [A11]
+    // A11.source = source; A11.dependencies = [B22, C33]
     addDepToDataMap(sheetId, dependent_key, dependency_key, source) {
         if (!this.formattedData[sheetId]) this.formattedData[sheetId] = {};
         if (!this.formattedData[sheetId][dependency_key]) this.formattedData[sheetId][dependency_key] = {};
-        if (!this.formattedData[sheetId][dependency_key].deps || !this.formattedData[sheetId][dependency_key].deps.keys) this.formattedData[sheetId][dependency_key].deps = [];
+        if (!this.formattedData[sheetId][dependency_key].deps) this.formattedData[sheetId][dependency_key].deps = [];
 
         const tempset = new Set(this.formattedData[sheetId][dependency_key].deps);
         tempset.add(dependent_key);
@@ -608,6 +661,35 @@ class Luxor extends React.Component {
 
         if (!this.formattedData[sheetId][dependent_key]) this.formattedData[sheetId][dependent_key] = {};
         this.formattedData[sheetId][dependent_key].source = source;
+
+        if (!this.formattedData[sheetId][dependent_key].dependencies) this.formattedData[sheetId][dependent_key].dependencies = [];
+
+        const tempdep = new Set(this.formattedData[sheetId][dependent_key].dependencies);
+        tempdep.add(dependency_key);
+        this.formattedData[sheetId][dependent_key].dependencies = [...tempdep];
+    }
+
+    removeDependency(sheetId, dependent_key, dependency_key) {
+        if (!this.formattedData[sheetId]) return;
+        if (!this.formattedData[sheetId][dependency_key]) return;
+        if (!this.formattedData[sheetId][dependency_key].deps) return;
+
+        const deps = this.formattedData[sheetId][dependency_key].deps;
+        const ind = deps.findIndex(value => value === dependent_key);
+        if (ind > -1) deps.splice(ind, 1);
+
+        this.formattedData[sheetId][dependency_key].deps = deps;
+    }
+
+    deleteFromDataMap(sheetId, dependent_key) {
+        if (!this.formattedData[sheetId]) return;
+        if (!this.formattedData[sheetId][dependent_key]) return;
+        if (!this.formattedData[sheetId][dependent_key].dependencies) return;
+        this.formattedData[sheetId][dependent_key].dependencies.forEach(dep => {
+            this.removeDependency(sheetId, dependent_key, dep);
+        });
+
+        delete this.formattedData[sheetId][dependent_key];
     }
 
     getDepsFromDataMap(sheetId, key) {
@@ -974,6 +1056,44 @@ const STATE_MUTAB = { pure: 0, view: 1, nonpayable: 2, payable: 3 }
 const STATE_MUTAB_REV = {0: 'pure', 1: 'view', 2: 'nonpayable', 3: 'payable'};
 
 const luxor_extensions = {
+    copy: (args, data, cut = false) => {
+        const [sheetId, tl, br, targettl] = args;
+        const tl_pos = lkeyToInd(tl);
+        const br_pos = lkeyToInd(br);
+        const targettl_pos = lkeyToInd(targettl);
+
+        const newdata = {};
+        const olddata = data[sheetId].cells;
+        const delta_ri = targettl_pos[0] - tl_pos[0];
+        const delta_ci = targettl_pos[1] - tl_pos[1];
+
+        for (let ri = tl_pos[0]; ri <= br_pos[0]; ri++) {
+            const target_ri = targettl_pos[0] + ri - tl_pos[0];
+            newdata[target_ri] = {};
+            if (cut) {
+                newdata[ri] = {};
+            }
+            for (let ci  = tl_pos[1]; ci <= br_pos[1]; ci++) {
+                const target_ci = targettl_pos[1] + ci - tl_pos[1];
+                if (cut) {
+                    newdata[ri][ci] = { text: '', delete: true }
+                }
+                if (olddata[ri] && olddata[ri][ci]) {
+                    let {text} = olddata[ri][ci];
+
+                    // update dependencies present in formula, if any
+                    text = matchCellKeys(text, indexes => {
+                        const [rowi, coli] = indexes;
+                        return keyToL(rowi + delta_ri, coli + delta_ci);
+                    });
+
+                    newdata[target_ri][target_ci] = { text };
+                }
+            }
+        }
+        return newdata;
+
+    },
     tableRowf: (args) => {
         let { iter, ri, ci } = table_f_ext(args);
         return _tableRowf(iter, ri, ci);
