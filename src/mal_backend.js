@@ -34,9 +34,9 @@ const isArray = val => {
     try {
         val = JSON.parse(val);
     } catch(e) {};
-    
+
     if (!(val instanceof Array)) return false;
-    
+
     // TODO deep type check
     let itemtype = typeof val[0];
     return !val.some(it => (typeof it) !== itemtype);
@@ -46,7 +46,7 @@ const ethShortAbiToHuman = (fsig, isTx) => {
     if (typeof isTx === 'undefined') isTx = !(fsig.includes('->'));
     const fname = fsig.split('(')[0].trim();
     let abi = fsig;
-    
+
     if (fsig.includes('->')) {
         let replacement = !fsig.includes('public') && !fsig.includes('external') ? ' public' : '';
         replacement += !fsig.includes('pure') && !fsig.includes('view') ? ' view' : '';
@@ -141,7 +141,7 @@ const native_extensions = {
     sload: (key, typename) => {
         let value = mal.globalStorage[key];
         // TODO: proper typecheck
-        
+
         try {
             value = JSON.parse(value)
         } catch(e) {}
@@ -176,7 +176,8 @@ const native_extensions = {
     },
     listToJsArray: liststr => {
         // ! always expects a resolved list
-        liststr = liststr.replace(/(?<!(BN))\(/g, '(list ');
+        // liststr = liststr.replace(/(?<!(BN))\(/g, '(list ');
+        liststr = liststr.replace(/\(\s*BN/g, '(list BN');
         return mal.re(liststr);
     },
     listToJsArrayStr: async liststr => {
@@ -449,7 +450,7 @@ mal.getBackend = async (address, provider, signer) => {
     const dec = async bnval => {
         if (bnval instanceof Promise) bnval = await bnval;
         if(!bnval) return bnval;
-        
+
         if (typeof bnval === 'number') {
             bnval = new BN(bnval);
         } else if (typeof bnval === 'object' && bnval._hex) {
@@ -461,24 +462,24 @@ mal.getBackend = async (address, provider, signer) => {
             }
             return vals;
         }
-        
+
         if (BN.isBN(bnval)) {
             return underNumberLimit(bnval) ? bnval.toNumber() : bnval;
         }
         return bnval;
     }
-  
+
     const from = signer ? await signer.getAddress() : '0xfCbCE2e4d0E19642d3a2412D84088F24bFB33a48';
     const chainid = provider ? (await provider.getNetwork()).chainId : 3;
 
     await init();
-  
+
     const interpreter = {
       address,
       call: async (mal_expression, txObj) => {
         mal_expression = mal_expression.replace(/_/g, '');
         txObj = Object.assign({ from }, DEFAULT_TXOBJ, txObj);
-  
+
         await mal.rep(`(def! cenv {
           "gas" 176000
           "gasLimit" ${txObj.gasLimit}
@@ -510,11 +511,11 @@ mal.getBackend = async (address, provider, signer) => {
         const utilname = name.replace(/-/g, '_').replace(/!/g, '_bang');
         extensions[utilname] = callb;
         return interpreter.extend(`(def! ${name} (fn* (& xs)
-            (js-eval (str 
-                "utils.${utilname}(" 
+            (js-eval (str
+                "utils.${utilname}("
                     (js-str xs)
                 ")"
-            )) 
+            ))
         ))`)
     }
     interpreter.getFns = () => {
