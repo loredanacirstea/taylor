@@ -3,7 +3,7 @@ const ethers = require('ethers');
 const deployContract = signer => async (compiled, args='') => {
   const transaction = {
     data: '0x' + compiled.evm.bytecode.object + args,
-    gasLimit: 7500000,
+    gasLimit: 8500000,
     value: 0,
     gasPrice: 50 * (10**9),
   };

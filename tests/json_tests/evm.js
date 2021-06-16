@@ -477,6 +477,7 @@ const tests = {
         {
             test: '(sar_ 2 12)',
             result: 3,
+            only: true
         },
         {
             test: '(sar_ 1 -5)',

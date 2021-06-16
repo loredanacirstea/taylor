@@ -1869,12 +1869,11 @@
   resolved "https://registry.yarnpkg.com/@nodelib/fs.stat/-/fs.stat-1.1.3.tgz#2b5a3ab3f918cca48a8c754c08168e3f03eba61b"
   integrity sha512-shAmDyaQC4H92APFoIaVDHCx5bStIocgvbwQyxPRrbUY20V1EYTbSDchWbuwlMG3V17cprZhA6+78JfB+3DTPw==
 
-"@pipeos/taylor@^0.0.7":
+"@pipeos/taylor@file:..":
   version "0.0.7"
-  resolved "https://registry.yarnpkg.com/@pipeos/taylor/-/taylor-0.0.7.tgz#7ffaddfe5487a2f86ae99ffe59bcf66be33774d3"
-  integrity sha512-wX9TmPGx+jBMFgcoISSmlN9BSNVpe60OEH3fW+tO071nYjpijNNMyGmnwK6g/ZqpaHEOu/VWL5uEFZBpXEdrGg==
   dependencies:
     ethers "^5.0.5"
+    ewasm-jsvm "file:../../../Library/Caches/Yarn/v6/npm-@pipeos-taylor-0.0.7-e31e01c0-d179-499c-9a6e-684b079c5fe0-1601014104617/node_modules/wasm/ewasm-jsvm"
 
 "@reach/alert@^0.1.2":
   version "0.1.5"
@@ -5274,6 +5273,9 @@ evp_bytestokey@^1.0.0, evp_bytestokey@^1.0.3:
   dependencies:
     md5.js "^1.3.4"
     safe-buffer "^5.1.1"
+
+"ewasm-jsvm@file:../../../wasm/ewasm-jsvm":
+  version "0.0.2"
 
 exec-sh@^0.3.2:
   version "0.3.4"

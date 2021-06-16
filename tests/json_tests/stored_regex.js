@@ -77,6 +77,15 @@ const tests = {
             result: 0,
             wait: 60000,
         },
+    ],
+    regex2: [
+        { settings: true, prereq: ['regex.char.any', 'regex.range.any', 'regex2'] },
+        {
+            description: 'regex2',
+            test: `(regex "lor!!?."  (tuple___ regex.range.any regex.char.any regex.char.any) (tuple___ (tuple___ 97 122) (tuple___ 33) (tuple___ 63)) )`,
+            result: 0,
+            wait: 60000,
+        },
     ]
 }
 

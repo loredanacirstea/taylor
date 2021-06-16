@@ -4,7 +4,7 @@ const { taylor, signer, provider, getTestCallContract } = require('./setup/fixtu
 const bootfn = require('../src/v3/bootstrap.js');
 const tay = require('../src/v3/tay.js');
 const tests = require('./json_tests/index.js');
-const { SimpleYul, SimpleSol, SimpleStorage, Ballot } = require('./setup/test_bytecodes');
+const { SimpleYul, SimpleSol, SimpleStorage, Ballot, Erc20 } = require('./setup/test_bytecodes');
 const { x0, strip0x } = require('../src/utils.js');
 
 describe.each([
@@ -74,7 +74,7 @@ describe.each([
     }
 });
 
-describe.each([
+describe.only.each([
     ['chain'],
     // ['js'],
 ])('Test core (%s)', (backendname) => {
@@ -162,7 +162,7 @@ describe.each([
         expect(resp).toEqual(14);
     });
 
-    it('test interpret constructor1 - SimpleYul', async function () {
+    it.only('test interpret constructor1 - SimpleYul', async function () {
         resp = await instance.call(`(interpret "${SimpleYul.constructor_bytecode}" "0x")`, {}, null);
         expect(resp).toEqual(SimpleYul.runtime_bytecode);
 
@@ -189,6 +189,20 @@ describe.each([
 
         resp = await instance.call(`(interpret "${SimpleStorage.runtime_bytecode}" "0xb05784b8")`, {}, null);
         expect(resp).toEqual('0x0000000000000000000000000000000000000000000000000000000000000006');
+    });
+
+    it('test interpret constructor4 - Erc20', async function () {
+        let resp;
+        const account = (await instance.signer.getAddress()).toLowerCase();
+
+        resp = await instance.call(`(interpret "${Erc20.constructor_bytecode}" "0x")`, {}, null);
+        expect(resp).toEqual(Erc20.runtime_bytecode);
+        await instance.send(`(interpret "${Erc20.constructor_bytecode}" "0x")`, {}, null);
+
+        // name()
+        resp = await instance.call(`(interpret "${Erc20.runtime_bytecode}" "06fdde03")`, {}, null);
+        expect(resp).toEqual(x0(strip0x(account).padStart(64, '0')));
+
     });
 
     it('test interpret constructor4 - Ballot', async function () {

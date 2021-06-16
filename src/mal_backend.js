@@ -279,6 +279,23 @@ const native_extensions = {
         if (b < 0) return 0;
         return native_extensions.BN(a).pow(native_extensions.BN(b));
     },
+    ethcallraw: async (address, data) => {
+        return mal.provider.call({
+            to: address,
+            from: await mal.signer.getAddress(),
+            data,
+        });
+    },
+    ethsendraw: async (address, data, value) => {
+        const receipt = await mal.provider.sendTransaction({
+            to: address,
+            from: await mal.signer.getAddress(),
+            data,
+            value,
+        });
+        if (receipt.wait) return receipt.wait();
+        return receipt;
+    },
     ethcall: async (address, fsig, data) => {
         if (!mal.provider) return;
         return callContract(address, fsig, data, mal.provider)
@@ -306,7 +323,8 @@ const native_extensions = {
     },
     listToJsArray: liststr => {
         // ! always expects a resolved list
-        liststr = liststr.replace(/(?<!(BN))\(/g, '(list ');
+        // liststr = liststr.replace(/(?<!(BN))\(/g, '(list ');
+        liststr = liststr.replace(/\(\s*BN/g, '(list BN');
         return mal.re(liststr);
     },
     listToJsArrayStr: async (liststr, low=true) => {
@@ -347,9 +365,17 @@ const native_extensions = {
     },
     eth_sig: (fsig) => ethSig(ethHumanAbiToJson((ethShortAbiToHuman(fsig)).abi)),
     ethabi_encode: (types, values) => {
+        console.log('ethabi_encode', types, values);
         if (!(types instanceof Array)) types = [types];
         if (!(values instanceof Array)) values = [values];
-        return ethers.utils.defaultAbiCoder.encode(types, values);
+        const encoded = ethers.utils.defaultAbiCoder.encode(types, values);
+        if (types.length > 1) {
+            return encoded;
+        }
+        // don't return a tuple
+        if (encoded.length === 66) return encoded;
+        // remove tuple offset
+        return '0x' + encoded.substring(66);
     },
     ethabi_decode: (types, data) => {
         const isarr = types instanceof Array;
@@ -427,15 +453,21 @@ const native_extensions = {
         sar: (nobits, value) => {
             const _nobits = nobits.toNumber();
             let valueBase2;
+            console.log('sar', nobits, _nobits, value);
             if (value.isNeg()) {
                 valueBase2 = value.toTwos(256).toString(2);
+                console.log('sar neg', value.toTwos(256), valueBase2);
             } else {
                 valueBase2 = value.toString(2).padStart(256, '0');
+                console.log('sar pos', valueBase2);
             }
             // remove LSB * _nobits
             valueBase2 = valueBase2.substring(0, valueBase2.length - _nobits);
+            console.log('sar valueBase2', valueBase2);
             // add MSB * _nobits
             valueBase2 = valueBase2[0].repeat(_nobits) + valueBase2;
+            console.log('sar valueBase2', valueBase2);
+            console.log('sar -----', (new BN(valueBase2, 2)).fromTwos(256));
             return (new BN(valueBase2, 2)).fromTwos(256);
         }
     },
@@ -608,17 +640,21 @@ async function init() {
 
     (def! return (fn* (a) a ))
 
-    (def! eth-call (fn* (address fsig argList) (js-eval (str "utils.ethcall('" address "','" fsig "'," (js-str argList) ")" )) ))
+    (def! eth-call-raw (fn* (address data) (js-eval (str "utils.ethcallraw('" address "','" data "')" )) ))
 
-    (def! eth-call! (fn* (address fsig argList ethvalue) (js-eval (str "utils.ethsend('" address "','" fsig "'," (js-str argList) "," (js-str ethvalue)  ")" )) ))
+    (def! eth-call-raw! (fn* (address data) (js-eval (str "utils.ethsendraw('" address "','" data "')" )) ))
+
+    (def! eth-call (fn* (address fsig argList) (js-eval (str "utils.ethcall('" address "','" fsig "'," (js-str-external argList) ")" )) ))
+
+    (def! eth-call! (fn* (address fsig argList ethvalue) (js-eval (str "utils.ethsend('" address "','" fsig "'," (js-str-external argList) "," (js-str-external ethvalue)  ")" )) ))
 
     (def! eth-sig (fn* (fsig) (js-eval (str "utils.eth_sig('" fsig "')" )) ))
 
-    (def! eth-abi-encode (fn* (types values) (js-eval (str "utils.ethabi_encode(" (js-str types) "," (js-str values) ")" )) ))
+    (def! eth-abi-encode (fn* (types values) (js-eval (str "utils.ethabi_encode(" (js-str-external types) "," (js-str-external values) ")" )) ))
 
-    (def! eth-abi-decode (fn* (types values) (js-eval (str "utils.ethabi_decode(" (js-str types) "," (js-str values) ")" )) ))
+    (def! eth-abi-decode (fn* (types values) (js-eval (str "utils.ethabi_decode(" (js-str-external types) "," (js-str-external values) ")" )) ))
 
-    (def! wasm-call (fn* (url fname args) (js-eval (str "utils.wasmcall(" (js-str url) "," (js-str fname) "," (js-str args) ")" )) ))
+    (def! wasm-call (fn* (url fname args) (js-eval (str "utils.wasmcall(" (js-str-external url) "," (js-str-external fname) "," (js-str-external args) ")" )) ))
 
     `)
 }

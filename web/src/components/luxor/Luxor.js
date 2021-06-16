@@ -88,7 +88,8 @@ class CanvasDatagrid extends React.Component {
                 showToolbar={false}
                 tabColor='rgb(155, 112, 63)'
                 allowNewSheet={false}
-                rowHeaderWidth={56}
+                rowHeaderWidth={70}
+                columnHeaderHeight={30}
                 formatter={this.props.formatter}
                 CellRenderer={this.props.Cell}
                 snap={true}
@@ -151,6 +152,18 @@ const DEFAULT_SHEETS = [
     {
         name: 'UI Elements',
         id: 6,
+        cells: { 1: { 1: { text: '' } } },
+        selections: [],
+    },
+    {
+        name: 'taylor v3',
+        id: 7,
+        cells: { 1: { 1: { text: '' } } },
+        selections: [],
+    },
+    {
+        name: 'interpreter',
+        id: 8,
         cells: { 1: { 1: { text: '' } } },
         selections: [],
     },
@@ -285,65 +298,84 @@ class Luxor extends React.Component {
         let sheetid = 0;
         data = this.setWorspace(data);
 
-        sheetid = 1;
-        const partialtestdata = luxorTestsData(taylor.tests.both.tests, chainid, false);
-        partialtestdata.forEach((row, ri) => {
-            data[sheetid].cells[ri+1] = {};
-            row.forEach((val, ci) => {
-                data[sheetid].cells[ri+1][ci+1] = { text: val, sheetId: data[sheetid].id };
-            });
-        });
+        // sheetid = 1;
+        // const partialtestdata = luxorTestsData(taylor.tests.both.tests, chainid, false);
+        // partialtestdata.forEach((row, ri) => {
+        //     data[sheetid].cells[ri+1] = {};
+        //     row.forEach((val, ci) => {
+        //         data[sheetid].cells[ri+1][ci+1] = { text: val, sheetId: data[sheetid].id };
+        //     });
+        // });
 
-        sheetid = 2;
-        const pipeex = PIPE_EXAMPLE.addresses[chainid];
-        if (chainid && pipeex) {
-            const ethpipedata = luxorEthPipeExample(pipeex);
-            ethpipedata.forEach((row, ri) => {
-                data[sheetid].cells[ri+1] = {};
-                row.forEach((val, ci) => {
-                    data[sheetid].cells[ri+1][ci+1] = { text: val, sheetId: data[sheetid].id };
-                });
-            });
-        }
+        // sheetid = 2;
+        // const pipeex = PIPE_EXAMPLE.addresses[chainid];
+        // if (chainid && pipeex) {
+        //     const ethpipedata = luxorEthPipeExample(pipeex);
+        //     ethpipedata.forEach((row, ri) => {
+        //         data[sheetid].cells[ri+1] = {};
+        //         row.forEach((val, ci) => {
+        //             data[sheetid].cells[ri+1][ci+1] = { text: val, sheetId: data[sheetid].id };
+        //         });
+        //     });
+        // }
 
-        sheetid = 3;
-        const wethex = WETH_EXAMPLE.addresses[chainid];
-        if (chainid && wethex) {
-            const ethabidata = luxorTestsDataEthCall(wethex, WETH_EXAMPLE.fsigs, 0);
-            ethabidata.forEach((row, ri) => {
-                data[sheetid].cells[ri+1] = {};
-                row.forEach((val, ci) => {
-                    data[sheetid].cells[ri+1][ci+1] = { text: val, sheetId: data[sheetid].id };
-                });
-            });
-        }
+        // sheetid = 3;
+        // const wethex = WETH_EXAMPLE.addresses[chainid];
+        // if (chainid && wethex) {
+        //     const ethabidata = luxorTestsDataEthCall(wethex, WETH_EXAMPLE.fsigs, 0);
+        //     ethabidata.forEach((row, ri) => {
+        //         data[sheetid].cells[ri+1] = {};
+        //         row.forEach((val, ci) => {
+        //             data[sheetid].cells[ri+1][ci+1] = { text: val, sheetId: data[sheetid].id };
+        //         });
+        //     });
+        // }
 
-        sheetid = 4;
-        const wasmdata = wasmTestData();
-        wasmdata.forEach((row, ri) => {
-            data[sheetid].cells[ri+1] = {};
-            row.forEach((val, ci) => {
-                data[sheetid].cells[ri+1][ci+1] = { text: val, sheetId: data[sheetid].id };
-            });
-        });
+        // sheetid = 4;
+        // const wasmdata = wasmTestData();
+        // wasmdata.forEach((row, ri) => {
+        //     data[sheetid].cells[ri+1] = {};
+        //     row.forEach((val, ci) => {
+        //         data[sheetid].cells[ri+1][ci+1] = { text: val, sheetId: data[sheetid].id };
+        //     });
+        // });
 
-        sheetid = 5;
-        const allformulas = luxorAllFormulas(this.props.taylor_web3, this.props.taylor_js);
-        allformulas.forEach((row, ri) => {
-            data[sheetid].cells[ri+1] = {};
-            row.forEach((val, ci) => {
-                data[sheetid].cells[ri+1][ci+1] = { text: val, sheetId: data[sheetid].id };
-            });
-        });
+        // sheetid = 5;
+        // const allformulas = luxorAllFormulas(this.props.taylor_web3, this.props.taylor_js);
+        // allformulas.forEach((row, ri) => {
+        //     data[sheetid].cells[ri+1] = {};
+        //     row.forEach((val, ci) => {
+        //         data[sheetid].cells[ri+1][ci+1] = { text: val, sheetId: data[sheetid].id };
+        //     });
+        // });
 
-        sheetid = 6;
-        const uiexamples = luxorUIExamples();
-        uiexamples.forEach((row, ri) => {
-            data[sheetid].cells[ri+1] = {};
-            row.forEach((val, ci) => {
-                data[sheetid].cells[ri+1][ci+1] = { text: val, sheetId: data[sheetid].id };
-            });
-        });
+        // sheetid = 6;
+        // const uiexamples = luxorUIExamples();
+        // uiexamples.forEach((row, ri) => {
+        //     data[sheetid].cells[ri+1] = {};
+        //     row.forEach((val, ci) => {
+        //         data[sheetid].cells[ri+1][ci+1] = { text: val, sheetId: data[sheetid].id };
+        //     });
+        // });
+
+        // sheetid = 7;
+        // const v3tests = Object.assign({}, taylor.tests.evm.tests, taylor.tests.core.tests);
+        // const tayv3data = luxorTestsData(v3tests, chainid, true);
+        // tayv3data.forEach((row, ri) => {
+        //     data[sheetid].cells[ri+1] = {};
+        //     row.forEach((val, ci) => {
+        //         data[sheetid].cells[ri+1][ci+1] = { text: val, sheetId: data[sheetid].id };
+        //     });
+        // });
+
+        // sheetid = 8;
+        // const saved = Storage.get('interpreter');
+        // if (saved && saved.data && saved.formatted) {
+        //     data[sheetid] = saved.data;
+        //     data[sheetid].name = 'Interpreter';
+        //     data[sheetid].id = 8;
+        //     this.formattedData[sheetid] = saved.formatted;
+        // }
 
         this.setState({ data });
     }
@@ -479,6 +511,7 @@ class Luxor extends React.Component {
     }
 
     async executeCell(sheetId, key, value, executeSend=false) {
+        // console.log('----executeCell', sheetId, key, value)
         if (!value || typeof value !== 'string') return value;
         let response;
 
@@ -498,6 +531,7 @@ class Luxor extends React.Component {
         try {
             let newvalue = this.runExtensions(value);
             newvalue = this.replaceCellValues(sheetId, key, newvalue);
+            // console.log('*executeCell newvalue', newvalue);
             if (!isTx) {
                 response = await api.call(newvalue);
             } else {
@@ -512,6 +546,7 @@ class Luxor extends React.Component {
             console.log(e);
             response = value;
         }
+        // console.log('*executeCell', response);
         return response;
     }
 
@@ -584,6 +619,7 @@ class Luxor extends React.Component {
         this.addToDataMap(sheetId, key, execvalue);
 
         const deps = this.getDepsFromDataMap(sheetId, key);
+        console.log('__onCellChange deps', deps);
         const deplength = deps.length;
 
         for (let i = 0;  i < deplength; i++) {
@@ -644,6 +680,7 @@ class Luxor extends React.Component {
         if (!this.formattedData[sheetId]) this.formattedData[sheetId] = {};
         if (!this.formattedData[sheetId][key]) this.formattedData[sheetId][key] = {};
         this.formattedData[sheetId][key].value = value;
+        console.log('addToDataMap this.formattedData[sheetId][key]', JSON.stringify(this.formattedData[sheetId][key]))
     }
 
     // if A11 depends on B22 and C33
@@ -654,9 +691,19 @@ class Luxor extends React.Component {
         if (!this.formattedData[sheetId][dependency_key]) this.formattedData[sheetId][dependency_key] = {};
         if (!this.formattedData[sheetId][dependency_key].deps) this.formattedData[sheetId][dependency_key].deps = [];
 
+        console.log('tttype', typeof this.formattedData[sheetId][dependency_key].deps);
+
+        if (typeof this.formattedData[sheetId][dependency_key].deps === 'object') {
+            this.formattedData[sheetId][dependency_key].deps = [];
+        }
+        console.log('---------  0000', JSON.stringify(this.formattedData[sheetId][dependency_key]));
+
         const tempset = new Set(this.formattedData[sheetId][dependency_key].deps);
         tempset.add(dependent_key);
         this.formattedData[sheetId][dependency_key].deps = [...tempset];
+
+        console.log('------- 000000', JSON.stringify(this.formattedData[sheetId][dependency_key]));
+        console.log('typeof', this.formattedData[sheetId][dependency_key].deps);
 
         if (!this.formattedData[sheetId][dependent_key]) this.formattedData[sheetId][dependent_key] = {};
         this.formattedData[sheetId][dependent_key].source = source;
@@ -674,9 +721,11 @@ class Luxor extends React.Component {
         if (!this.formattedData[sheetId][dependency_key].deps) return;
 
         const deps = this.formattedData[sheetId][dependency_key].deps;
+        console.log('removeDependency', deps);
         const ind = deps.findIndex(value => value === dependent_key);
         if (ind > -1) deps.splice(ind, 1);
 
+        console.log('removeDependency deps', deps);
         this.formattedData[sheetId][dependency_key].deps = deps;
     }
 

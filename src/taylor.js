@@ -23,7 +23,7 @@ const fidb = id => u2b(id).padStart(26, '0');
 const funcidb = name => {
     const nativef = typeof name === 'string' ? nativeEnv[name] : name;
     if (nativef.hex) return nativef;
-    
+
     let binf, hex;
     if (!nativef.composed) {
         binf = arity => '1' + arityb(arity) + fidb(nativef.id) + mutableb(nativef.mutable);
@@ -32,7 +32,7 @@ const funcidb = name => {
         binf = arities => composedf.map((funcs, i) => typeof funcs.bin === 'string' ? funcs.bin : funcs.bin(arities[i])).join('');
         hex = arities => composedf.map((funcs, i) => typeof funcs.hex === 'string' ? funcs.hex : funcs.hex(arities[i])).join('');
     }
-    
+
     if (nativef.arity !== null) {
         const bin = binf(nativef.arity);
         return { bin, hex: b2h(bin) }
@@ -237,7 +237,7 @@ const encodeInner = (jsvalue, t) => {
             return id + padded;
         case 'int':
             const valuee = x0(ethers.utils.defaultAbiCoder.encode(
-                ['int' + (t.size*8)], 
+                ['int' + (t.size*8)],
                 [parseInt(jsvalue)],
             ).substring(66-t.size*2));
             const paddedd = strip0x(hexZeroPad(valuee, t.size));
@@ -253,7 +253,7 @@ const encodeInner = (jsvalue, t) => {
             // const strval = jsvalue.hexEncode();
             // const strlength = strval.length / 2;
             // return  getbytesid(strlength, 1) + strval;
-            
+
             // TODO fixme - strings are now string32
             return getbytesid(32, 1) + jsvalue.hexEncode().padStart(64, '0');
 
@@ -376,7 +376,7 @@ const decodeInner = (inidata) => {
         const siglen = getSignatureLengthH(inidata);
         const signature = inidata.substring(8, siglen);
         data = inidata.substring(siglen);
-        
+
         const result = [...new Array(arity)].map((_, i) => {
             const item = decodeInner(signature + data);
             data = item.data;
@@ -411,7 +411,7 @@ const decode = data => {
 
 const ast2h = (ast, parent=null, unkownMap={}, defenv={}, arrItemType=null) => {
     if (!(ast instanceof Array)) ast = [ast];
-    
+
     // do not count the function itselt
     const arity = ast.length - 1;
 
@@ -419,7 +419,7 @@ const ast2h = (ast, parent=null, unkownMap={}, defenv={}, arrItemType=null) => {
         const elem = ast[0];
         const defname = ast[1].value.hexEncode().padStart(64, '0');
         // We add the function as an already stored function
-        // -> the contract loads the recursive function from storage each time 
+        // -> the contract loads the recursive function from storage each time
         defenv[ast[1].value] = true;
         const exprbody = ast2h(ast[2], ast, unkownMap, defenv);
         const exprlen = u2h(exprbody.length / 2).padStart(8, '0');
@@ -456,13 +456,13 @@ const ast2h = (ast, parent=null, unkownMap={}, defenv={}, arrItemType=null) => {
                 } else {
                     applyArity = ast[1][i+1].length;
                 }
-                
+
                 unkownMap[elem.value] = {
                     apply: nativeEnv.apply.hex(applyArity),
                     unknown: unkownMap[elem.value]
                 }
             }
-            
+
             const encodedvalue = ast2h(ast[1][i+1], ast, unkownMap, defenv);
             definitions += encodedvalue;
         }
@@ -543,7 +543,7 @@ const ast2h = (ast, parent=null, unkownMap={}, defenv={}, arrItemType=null) => {
                     const encodedName = getnumberid(32) + elem.value.hexEncode().padStart(64, '0');
                     return encodedName;
                 }
-                
+
                 // lambda variables should end up here
                 // lambda argument definition
                 if (!unkownMap[elem.value]) {
@@ -645,7 +645,7 @@ const jsval2tay = value => {
 const expr2h = (expression, defenv) => {
     const ast = malReader.read_str(expression);
     const encoded = x0(ast2h(ast, null, {}, defenv));
-    // console.log('encoded', encoded);
+    console.log('encoded', encoded);
     return encoded;
 }
 
@@ -667,13 +667,13 @@ const expr2string = (inidata, pos=0, accum='') => {
             accum += '(' + name + ' ';
             arity = funcArity(sigu);
         }
-        
+
         if (name === 'def!') {
             const fname = data.substring(0, tableSig[sig].offsets[0]).hexDecode();
             accum += ' ' + fname.toString() + ' ';
             data = data.substring(tableSig[sig].offsets[0]);
             pos += tableSig[sig].offsets[0]
-            
+
             const exprlen = data.substring(0, tableSig[sig].offsets[1]);
             data = data.substring(tableSig[sig].offsets[1]);
             pos += tableSig[sig].offsets[1]
@@ -684,7 +684,7 @@ const expr2string = (inidata, pos=0, accum='') => {
         } else if (name === 'if') {
             const action1bodyLen = parseInt(data.substring(0, tableSig[sig].offsets[0]), 16);
             const action2bodyLen = parseInt(data.substring(0, tableSig[sig].offsets[1]), 16);
-            
+
             let res = expr2string(inidata, pos + tableSig[sig].offsets[0] + tableSig[sig].offsets[1], accum);
             pos = res.pos;
             accum = res.accum;
@@ -736,11 +736,11 @@ const expr2string = (inidata, pos=0, accum='') => {
 }
 
 const expr2s = inidata => expr2string(strip0x(inidata)).accum;
-  
+
 const getStoredFunctions = getLogs => async (filter) => {
     const topic = '0x00000000000000000000000000000000000000000000000000000000ffffffff';
     const logs = await getLogs(topic, filter);
-  
+
     return logs.map(log => {
         log.name = log.topics[1].substring(2).hexDecode();
         log.signature = '0x' + log.topics[2].substring(58);
@@ -751,7 +751,7 @@ const getStoredFunctions = getLogs => async (filter) => {
 const getStoredTypes = getLogs => async (filter) => {
     const topic = '0x00000000000000000000000000000000000000000000000000000000fffffffd';
     const logs = await getLogs(topic, filter);
-  
+
     return logs.map(log => {
         log.name = log.topics[2].substring(2).hexDecode();
         log.signature = '0x' + log.topics[3].substring(58);
@@ -792,7 +792,7 @@ const getTaylor = (provider, signer) => (address, deploymentBlock) => {
         signer,
         expr2h: expression => expr2h(expression, interpreter.alltypes()),
     }
-    
+
     interpreter.call = async (mal_expression, txObj) => decode(await interpreter.call_raw(expr2h(mal_expression, interpreter.alltypes()), txObj));
     interpreter.send = async (expression, txObj={}, newsigner=null) => {
         if(!txObj.value && !newsigner) {
@@ -813,7 +813,7 @@ const getTaylor = (provider, signer) => (address, deploymentBlock) => {
 
     interpreter.estimateGas = async (expression, txObj={}) => {
         txObj = Object.assign({
-            from: await signer.getAddress(), 
+            from: await signer.getAddress(),
             to: interpreter.address,
             data: expr2h(expression, interpreter.alltypes()),
         }, txObj);
@@ -839,7 +839,7 @@ const getTaylor = (provider, signer) => (address, deploymentBlock) => {
 
         });
     }
-    
+
     interpreter.setRegistered = async () => {
         const raddrs = await interpreter.getregistered();
         for (let raddr of raddrs) {

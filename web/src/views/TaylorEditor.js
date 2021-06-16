@@ -119,10 +119,9 @@ class TaylorEditor extends Component {
   }
 
   async getGasCost(interpreter, code, isTransaction) {
-    let gas = await interpreter.estimateGas(code);
+    let {gas, executionGas} = await interpreter.estimateGas(code);
     let value;
     if (gas) {
-      gas = gas.toNumber();
       value = await interpreter.calculateCost(code);
     }
     else gas = value = 0;
@@ -132,10 +131,10 @@ class TaylorEditor extends Component {
       const gaspricedata = await(await fetch('https://ethgasstation.info/api/ethgasAPI.json')).json();
       // gasprice / 10 = gwei
       const gasprice = gaspricedata[profile] * 1000000000 / 10; // wei
-  
-      return { gas, currency, ethrate, gasprice, value };
+
+      return { gas, executionGas, currency, ethrate, gasprice, value };
     }
-    return {gas, value};
+    return {gas, executionGas, value};
   }
 
   onFunctionsChange(functions={}) {
@@ -158,6 +157,7 @@ class TaylorEditor extends Component {
           result = await interpreter.call(code, {from: interpreter.signer._address});
         } catch (e) {
           error = e.message;
+          console.log(e);
         }
         callback({ result, error, gascost, encdata })
 
@@ -170,6 +170,7 @@ class TaylorEditor extends Component {
           receipt = await response.wait();
         } catch (e) {
           error = e.message;
+          console.log(e);
           callback({ error, encdata })
         }
 
@@ -199,7 +200,8 @@ class TaylorEditor extends Component {
       if (backend) resultObj.backend = backend;
       if (gascost) {
         resultObj.gas = gascost.gas;
-        
+        resultObj.executionGas = gascost.executionGas;
+
         if (isTransaction) {
           const currency = gascost.currency.toUpperCase();
           resultObj.value = gascost.value;  // wei
@@ -462,7 +464,7 @@ class TaylorEditor extends Component {
                   type="FontAwesome"
                   style={{
                     color: result && result2 && JSON.stringify(result.result) === JSON.stringify(result2.result) ? 'green' : 'red',
-                    fontWeight: 'bold', position: 'absolute', left: '47%', top: '-10px', zIndex: 10 
+                    fontWeight: 'bold', position: 'absolute', left: '47%', top: '-10px', zIndex: 10
                   }}
                 />
               : <div></div>

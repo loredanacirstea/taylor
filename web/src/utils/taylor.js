@@ -5,12 +5,12 @@ const STORAGE_KEY_CONFIG = 'TaylorConfig';
 
 const DEFAULT_DEPLOYMENT = {
   5777: {
-    contract1: '0xFB3BF98f8035A9cb3c3D676909caDa22e18048f1',
+    contract1: '0x2f7FA4f33ac5EDDdfaDCadD792c073cE534bA766',
     root: 'contract1',
     block: 0,
   },
   1337: {
-    contract1: '0xFB3BF98f8035A9cb3c3D676909caDa22e18048f1',
+    contract1: '0x2f7FA4f33ac5EDDdfaDCadD792c073cE534bA766',
     root: 'contract1',
     block: 0,
   },

@@ -120,10 +120,11 @@ type_enc.unknown = (index, envindex, stack) => {
 }
 
 function expr2h(expression, defenv) {
+    console.log('expr2h', expression)
     if (!expression) throw new Error('No expression provided.');
     const ast = malReader.read_str(expression);
     const encoded = x0(ast2h(ast, null, {}, defenv));
-    // console.log('encoded', encoded);
+    console.log('encoded', encoded);
     return { encoded, ast };
 }
 
@@ -477,7 +478,7 @@ function decodeIf (ast, envdepth) {
 }
 
 function decode (data, returntypes) {
-    // console.log('decode data', data, returntypes)
+    console.log('decode data', data, returntypes)
     let decoded;
     if (returntypes && returntypes[0] === 'string') {
         return data.slice(2).hexDecode();

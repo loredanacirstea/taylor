@@ -5,6 +5,7 @@ import { addAddress, getAddresses, getConfig, setConfig } from '../utils/taylor.
 import taylor from '@pipeos/taylor';
 import { editorOpts } from '../utils/config.js';
 import { argsDisplay } from '../utils/taylor_editor.js';
+import { ethers } from 'ethers';
 
 const textStyle = {
   color: 'beige',
@@ -17,6 +18,47 @@ const pickerStyle = {
 }
 
 const btniconStyle = { marginLeft: '10px', marginRight: '10px'}
+
+const compileSolc = async (data) => {
+  const url = `http://192.168.1.140:4000/solc`;
+  // const url = `http://127.0.0.1:4000/solc`;
+  const response = await fetch(url, {
+    method: 'POST', // *GET, POST, PUT, DELETE, etc.
+    headers: {
+      'Content-Type': 'application/json'
+      // 'Content-Type': 'application/x-www-form-urlencoded',
+    },
+    body: JSON.stringify(data)
+  });
+  return response.json();
+}
+
+const getJsBackend = async (address, provider, signer) => {
+  const backend = await taylor.malBackend.getBackend(address, provider, signer);
+  // const backend = await taylor.tay.malBackend.getBackend(...args);
+
+  // code, lang, optimizations
+  await backend.jsextend('solc', async (args) => {
+    const data = { source: args[0], lang: args[1], optimizations: args[2] }
+    // console.log('-----solc0', data.source);
+    data.source = data.source.replace(/\(list/g, '(')
+    console.log('-----solc', data.source);
+    return await compileSolc(data);
+  });
+
+  // bytecode, value -> receipt
+  await backend.jsextend('deploy!', async (args) => {
+    const bytecode = args[0];
+    console.log('bytecode', bytecode);
+    const contract = new ethers.ContractFactory([], bytecode, signer);
+    const receipt = (await contract.deploy()).deployTransaction.wait();
+    console.log('receipt', receipt);
+    return receipt;
+  });
+
+  return backend;
+
+}
 
 class MalTayContract extends Component {
   constructor(props) {
@@ -56,7 +98,7 @@ class MalTayContract extends Component {
     const { provider, signer } = await getProvider();
     if (!provider) {
       this.setState({ backend: 'javascript' })
-      this.props.onRootChange('javascript', this.web3util, await taylor.malBackend.getBackend());
+      this.props.onRootChange('javascript', this.web3util, await getJsBackend());
       return;
     }
 
@@ -90,7 +132,9 @@ class MalTayContract extends Component {
       // this.setState({ registered: this.web3util.registered });
       // this.setState({ rootFunctions: this.web3util.functions });
       console.log('onRootChange', backend, this.web3util)
-      this.props.onRootChange(backend, this.web3util, await taylor.malBackend.getBackend(address, provider, signer));
+
+      this.props.onRootChange(backend, this.web3util, await getJsBackend(address, provider, signer));
+
 
       // this.web3util.watch(({ logtype, log }) => {
       //   if (logtype === 'function') {
@@ -124,7 +168,7 @@ class MalTayContract extends Component {
     const { provider, signer } = this.state;
 
     this.setState({ backend });
-    this.props.onRootChange(backend, this.web3util, await taylor.malBackend.getBackend(this.web3util ? this.web3util.address : null, provider, signer));
+    this.props.onRootChange(backend, this.web3util, await getJsBackend(this.web3util ? this.web3util.address : null, provider, signer));
     setConfig({ backend });
   }
 
