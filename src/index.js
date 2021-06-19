@@ -11,7 +11,8 @@ const deploy = async (provider, signer) => {
 
 const defaultTaylor = async (provider, signer) => {
     const network = await provider.getNetwork();
-    const deployment = defaultDeployment[network.chainId];
+    const chainId = network.chainId || 3;
+    const deployment = defaultDeployment[chainId];
     return taylor.getTaylor(provider, signer)(deployment.address, deployment.block);
 }
 
