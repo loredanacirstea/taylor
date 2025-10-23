@@ -181,10 +181,6 @@ Then:
 - `(delegate! "0xe8B7665DE12D67bC802aEcb8eef4D8bd34741C51")`
 
 
-## Moral Support
+## Moral Upgrade License
 
-Ethereum: `0xf149c02b892556eC1fCf39bF43A3bF5B4A9F2346`
-
-To see the current balance: https://etherscan.io/address/0xf149c02b892556eC1fCf39bF43A3bF5B4A9F2346.
-
-All participations to this project are public and are received into only one account, as required by the Moral Upgrade License (MUL2020): https://medium.com/@loredana.cirstea/mul2020-the-moral-upgrade-license-2020-b19dfbcbe54.
+Moral Upgrade License (MUL2020): https://medium.com/@loredana.cirstea/mul2020-the-moral-upgrade-license-2020-b19dfbcbe54.
